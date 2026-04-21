@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<!-- ocre-v17 -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#8B5E3C">
+<title>Ocre Immo</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><rect width='180' height='180' rx='36' fill='%238B5E3C'/><text x='90' y='130' text-anchor='middle' font-family='Georgia' font-weight='bold' font-size='90' fill='white'>O</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;overflow:hidden;height:100vh;height:100dvh}
+#root{height:100%}
+::-webkit-scrollbar{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const {useState, useEffect, useRef} = React;
+const API = '/api';
+
+const PROFILS = {Acheteur:'#8B5E3C', Vendeur:'#2E4A7A', Locataire:'#2E7D5C', Bailleur:'#C96B2E'};
+const INVEST = '#6B3F8E';
+const BADGES = {Acheteur:'ACH', Vendeur:'VDR', Locataire:'LOC', Bailleur:'BAI'};
+const STAGES = {
+  Acheteur:  ["I. L'Acheteur","II. Le bien recherché","III. Budget & financement","IV. Infos complémentaires"],
+  Vendeur:   ["I. Le Vendeur","II. Le bien à vendre","III. Prix & conditions","IV. Infos complémentaires"],
+  Locataire: ["I. Le Locataire","II. Le bien recherché","III. Loyer & garanties","IV. Infos complémentaires"],
+  Bailleur:  ["I. Le Bailleur","II. Le bien à louer","III. Loyer & conditions","IV. Infos complémentaires"]
+};
+const PAYS = [
+  {c:'MA',f:'🇲🇦',d:'MAD',n:'Maroc'},{c:'FR',f:'🇫🇷',d:'EUR',n:'France'},
+  {c:'ES',f:'🇪🇸',d:'EUR',n:'Espagne'},{c:'IT',f:'🇮🇹',d:'EUR',n:'Italie'},
+  {c:'PT',f:'🇵🇹',d:'EUR',n:'Portugal'},{c:'DE',f:'🇩🇪',d:'EUR',n:'Allemagne'},
+  {c:'BE',f:'🇧🇪',d:'EUR',n:'Belgique'},{c:'CH',f:'🇨🇭',d:'CHF',n:'Suisse'},
+  {c:'GB',f:'🇬🇧',d:'GBP',n:'UK'},{c:'US',f:'🇺🇸',d:'USD',n:'USA'},
+  {c:'CA',f:'🇨🇦',d:'CAD',n:'Canada'},{c:'AE',f:'🇦🇪',d:'AED',n:'Émirats'},
+  {c:'SA',f:'🇸🇦',d:'SAR',n:'Arabie S.'},{c:'QA',f:'🇶🇦',d:'QAR',n:'Qatar'},
+  {c:'SG',f:'🇸🇬',d:'SGD',n:'Singapour'},{c:'HK',f:'🇭🇰',d:'HKD',n:'HK'},
+  {c:'JP',f:'🇯🇵',d:'JPY',n:'Japon'},{c:'TH',f:'🇹🇭',d:'THB',n:'Thaïlande'}
+];
+const FORMES_JURIDIQUES = ['SARL','SA','SAS','EURL','SCI','Autre'];
+const TYPES_BIEN = ['Appartement','Maison','Villa','Riad','Terrain','Commerce','Bureau'];
+
+const FIELD_FILLED = {border:'1.5px solid #BBA88B', background:'#FFFCF5'};
+const FIELD_EMPTY  = {border:'1.5px solid #E8DDD0', background:'#FDFAF7'};
+
+function Field({label, value, onChange, type='text', placeholder='', style={}}) {
+  const filled = (value !== undefined && value !== null && String(value).trim() !== '');
+  const base = {width:'100%', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018'};
+  return (
+    <div style={{marginBottom:10, ...style}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <input type={type} value={value || ''} placeholder={placeholder}
+        onChange={e => onChange(e.target.value)}
+        style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
+    </div>
+  );
+}
+function Select({label, value, onChange, options, style={}}) {
+  const filled = (value !== undefined && value !== null && String(value).trim() !== '');
+  return (
+    <div style={{marginBottom:10, ...style}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <select value={value || ''} onChange={e => onChange(e.target.value)}
+        style={{width:'100%', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018',
+                ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}>
+        <option value="">—</option>
+        {options.map(o => <option key={o.v || o} value={o.v || o}>{o.l || o}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function Stage({title, expanded, onToggle, children}) {
+  return (
+    <div style={{background:'#fff', borderRadius:12, padding:14, marginBottom:10, border:'1px solid #EDE6DC'}}>
+      <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'2px 0'}}>
+        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C'}}>{title}</span>
+        <span style={{fontSize:13, color:'#8B7F6E'}}>{expanded ? '▼' : '▶'}</span>
+      </div>
+      {expanded && <div style={{marginTop:12}}>{children}</div>}
+    </div>
+  );
+}
+
+function ArchiveIcon({size=22, color='#8B5E3C'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="5" rx="1"/>
+      <path d="M4 9v10a1 1 0 001 1h14a1 1 0 001-1V9"/>
+      <line x1="10" y1="13" x2="14" y2="13"/>
+    </svg>
+  );
+}
+function ShareIcon({size=22, color='#8B5E3C'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+    </svg>
+  );
+}
+
+function App() {
+  const [apiLoading, setApiLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [appSettings, setAppSettings] = useState({});
+  const [clients, setClients] = useState([]);
+  const [country, setCountry] = useState('MA');
+  const [showArchives, setShowArchives] = useState(false);
+  const [userMenu, setUserMenu] = useState(false);
+  const [view, setView] = useState('list');
+  const [editing, setEditing] = useState(null);
+  const [toast, setToast] = useState('');
+  const [formKey, setFormKey] = useState(0);
+  const [activeProfil, setActiveProfil] = useState('Acheteur');
+  const [isInvestisseur, setIsInvestisseur] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('ocre_token');
+    if (!token) { window.location = '/login/'; return; }
+    (async () => {
+      try {
+        const me = await fetch(API + '/auth.php?action=me', {headers: {'X-Session-Token': token}}).then(r => r.json());
+        if (!me || !me.ok) { localStorage.removeItem('ocre_token'); window.location = '/login/'; return; }
+        setCurrentUser(me.user);
+        const st = await fetch(API + '/auth.php?action=status').then(r => r.json()).catch(() => null);
+        if (st && st.ok) setAppSettings(st);
+        const cl = await fetch(API + '/clients.php?action=list', {headers: {'X-Session-Token': token}}).then(r => r.json());
+        if (cl && cl.ok) setClients(cl.clients || []);
+      } catch (e) { /* silent */ }
+      setApiLoading(false);
+    })();
+  }, []);
+
+  function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2000); }
+
+  async function apiSaveClient(data) {
+    const token = localStorage.getItem('ocre_token');
+    try {
+      const r = await fetch(API + '/clients.php?action=save', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token},
+        body: JSON.stringify({client: data}),
+      });
+      const d = await r.json();
+      return (d && d.ok) ? d.client : null;
+    } catch (e) { return null; }
+  }
+  async function apiDeleteClient(id) {
+    const token = localStorage.getItem('ocre_token');
+    try {
+      await fetch(API + '/clients.php?action=delete', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token},
+        body: JSON.stringify({id}),
+      });
+    } catch (e) {}
+  }
+
+  async function handleSaveLocal(data) {
+    const incoming = {...(editing || {}), ...data, projet: activeProfil, is_investisseur: isInvestisseur};
+    setClients(prev => {
+      const exists = prev.find(c => c.id === incoming.id && incoming.id);
+      if (exists) return prev.map(c => c.id === incoming.id ? {...c, ...incoming} : c);
+      return [{...incoming, id: incoming.id || 'tmp-' + Date.now()}, ...prev];
+    });
+    setEditing(incoming);
+    const saved = await apiSaveClient(incoming);
+    if (saved) {
+      setClients(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
+      setEditing(saved);
+    }
+  }
+  async function handleDelete(id) {
+    if (!id) { setView('list'); setEditing(null); return; }
+    if (!confirm('Supprimer définitivement ce contact ?')) return;
+    setClients(prev => prev.filter(c => c.id !== id));
+    setView('list'); setEditing(null);
+    await apiDeleteClient(id);
+    showToast('Supprimé');
+  }
+  function openClient(c) {
+    setEditing(c);
+    setActiveProfil(c.projet || 'Acheteur');
+    setIsInvestisseur(!!c.is_investisseur);
+    setView('form');
+  }
+  function openNew() {
+    setEditing(null);
+    setFormKey(k => k + 1);
+    setView('form');
+  }
+  async function logout() {
+    const token = localStorage.getItem('ocre_token');
+    try { await fetch(API + '/auth.php?action=logout', {method:'POST', headers:{'X-Session-Token':token}}); } catch (e) {}
+    localStorage.removeItem('ocre_token');
+    localStorage.removeItem('ocre_user');
+    window.location = '/login/';
+  }
+
+  if (apiLoading) {
+    return (
+      <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F4EEE6'}}>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:32, color:'#8B5E3C', fontWeight:700, marginBottom:16}}>Ocre Immo</div>
+        <div style={{width:40, height:40, border:'3px solid #E8DDD0', borderTopColor:'#8B5E3C', borderRadius:'50%', animation:'spin 0.7s linear infinite'}}/>
+      </div>
+    );
+  }
+
+  return view === 'list' ? (
+    <ListView
+      clients={clients} country={country} setCountry={setCountry}
+      showArchives={showArchives} setShowArchives={setShowArchives}
+      userMenu={userMenu} setUserMenu={setUserMenu}
+      currentUser={currentUser} logout={logout}
+      activeProfil={activeProfil} setActiveProfil={setActiveProfil}
+      isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
+      openClient={openClient} openNew={openNew} toast={toast}
+    />
+  ) : (
+    <FormView
+      key={'f-' + formKey + '-' + (editing ? editing.id : 'new')}
+      editing={editing} setEditing={setEditing}
+      activeProfil={activeProfil} setActiveProfil={setActiveProfil}
+      isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
+      handleSaveLocal={handleSaveLocal} handleDelete={handleDelete}
+      backToList={() => { setView('list'); setEditing(null); }}
+      toast={toast} showToast={showToast}
+    />
+  );
+}
+
+function Header({left, center, right, userMenu, setUserMenu, currentUser, logout}) {
+  return (
+    <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, position:'relative'}}>
+        <div>{left}</div>
+        <div onClick={() => setUserMenu && setUserMenu(!userMenu)} style={{cursor:'pointer', textAlign:'center', flex:1}}>{center}</div>
+        <div>{right}</div>
+        {userMenu && currentUser && (
+          <div style={{position:'absolute', top:32, left:'50%', transform:'translateX(-50%)', background:'#fff', border:'1px solid #EDE6DC', borderRadius:10, padding:12, minWidth:210, boxShadow:'0 6px 20px rgba(139,94,60,0.12)', zIndex:20}}>
+            <div style={{fontSize:11, color:'#8B7F6E'}}>Connecté en tant que</div>
+            <div style={{fontWeight:700, fontSize:13}}>{(currentUser.prenom || '') + ' ' + (currentUser.nom || '')}</div>
+            <div style={{fontSize:11, color:'#8B7F6E', marginBottom:8}}>{currentUser.email}</div>
+            {currentUser.role === 'admin' && (
+              <a href="/admin/" style={{display:'block', background:'#FFF3EC', color:'#8B5E3C', padding:'7px 10px', borderRadius:7, fontWeight:700, fontSize:12, textAlign:'center', textDecoration:'none', marginBottom:6}}>⚙ Dashboard Admin</a>
+            )}
+            <button onClick={logout} style={{width:'100%', padding:'7px 10px', background:'#FDFAF7', color:'#C04B20', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Se déconnecter</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ListView(props) {
+  const {clients, country, setCountry, showArchives, setShowArchives,
+         userMenu, setUserMenu, currentUser, logout,
+         activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
+         openClient, openNew, toast} = props;
+  const pays = PAYS.find(p => p.c === country) || PAYS[0];
+  function cycleCountry() {
+    const i = PAYS.findIndex(p => p.c === country);
+    setCountry(PAYS[(i + 1) % PAYS.length].c);
+  }
+  const filtered = clients.filter(c => !!c.archived === showArchives);
+  const drafts = filtered.filter(c => c.is_draft);
+  const contacts = filtered.filter(c => !c.is_draft);
+  const countText = showArchives
+    ? `Archives / ${filtered.length} archivé${filtered.length > 1 ? 's' : ''}`
+    : `Mes Contacts / ${drafts.length} brouil · ${contacts.length} contact${contacts.length > 1 ? 's' : ''}`;
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+      <Header
+        left={
+          <button onClick={cycleCountry} style={{background:'#FDFAF7', border:'1.5px solid #E2D8CC', borderRadius:10, padding:'5px 10px', fontSize:13, fontWeight:600, color:'#2A2018', cursor:'pointer', fontFamily:'inherit'}}>
+            {pays.f} {pays.d}
+          </button>
+        }
+        center={<div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', letterSpacing:.5}}>Ocre Immo</div>}
+        right={
+          <button onClick={() => setShowArchives(!showArchives)} style={{background:'none', border:'none', cursor:'pointer', padding:4}} title={showArchives ? 'Voir contacts' : 'Voir archives'}>
+            <ArchiveIcon color={showArchives ? '#C96B2E' : '#8B5E3C'}/>
+          </button>
+        }
+        userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout}
+      />
+
+      <div style={{padding:'10px 14px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
+        <div style={{display:'flex', gap:6, overflowX:'auto', paddingBottom:4}}>
+          {Object.keys(PROFILS).map(p => {
+            const active = p === activeProfil;
+            return (
+              <button key={p} onClick={() => setActiveProfil(p)}
+                style={{padding:'6px 12px', borderRadius:999, border:'1.5px solid ' + (active ? PROFILS[p] : '#E8DDD0'),
+                        background: active ? PROFILS[p] : '#FDFAF7', color: active ? '#fff' : '#999',
+                        fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>{p}</button>
+            );
+          })}
+          <button onClick={() => setIsInvestisseur(!isInvestisseur)}
+            style={{padding:'6px 12px', borderRadius:999, border:'1.5px solid ' + (isInvestisseur ? INVEST : '#E8DDD0'),
+                    background: isInvestisseur ? INVEST : '#FDFAF7', color: isInvestisseur ? '#fff' : '#999',
+                    fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>💎 Investisseur</button>
+        </div>
+        <div style={{fontSize:11, color:'#8B7F6E', marginTop:6, letterSpacing:.3}}>{countText}</div>
+      </div>
+
+      <div style={{flex:1, overflowY:'auto', padding:12}}>
+        {!showArchives && drafts.length > 0 && (
+          <>
+            <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
+            {drafts.map(c => <ClientRow key={c.id} c={c} onClick={() => openClient(c)}/>)}
+          </>
+        )}
+        {!showArchives && contacts.length > 0 && (
+          <>
+            <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'12px 4px 6px'}}>Contacts · {contacts.length}</div>
+            {contacts.map(c => <ClientRow key={c.id} c={c} onClick={() => openClient(c)}/>)}
+          </>
+        )}
+        {showArchives && (
+          <>
+            {filtered.map(c => <ClientRow key={c.id} c={c} onClick={() => openClient(c)}/>)}
+            {filtered.length === 0 && <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:40}}>Aucune archive</div>}
+          </>
+        )}
+        {!showArchives && filtered.length === 0 && (
+          <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:40}}>
+            Aucun contact pour le moment. Clique sur <b>+</b> pour commencer.
+          </div>
+        )}
+      </div>
+
+      <button onClick={openNew}
+        style={{position:'fixed', bottom:24, right:20, width:56, height:56, borderRadius:'50%',
+                background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none',
+                fontSize:28, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 20px rgba(139,94,60,0.35)', fontFamily:'inherit'}}>+</button>
+
+      {toast && <Toast msg={toast}/>}
+    </div>
+  );
+}
+
+function ClientRow({c, onClick}) {
+  const col = c.is_investisseur ? INVEST : (PROFILS[c.projet] || PROFILS.Acheteur);
+  const badge = c.is_investisseur ? 'INV' : (BADGES[c.projet] || 'ACH');
+  const name = (c.profil_type === 'Société' && c.societe_nom)
+    ? c.societe_nom
+    : ((c.prenom || '') + ' ' + (c.nom || '')).trim() || 'Sans nom';
+  const sub = c.tel || c.email || '';
+  return (
+    <div onClick={onClick} style={{background:'#fff', padding:'10px 12px', borderRadius:10, marginBottom:8, display:'flex', alignItems:'center', gap:12, cursor:'pointer', border:'1px solid #EDE6DC'}}>
+      <div style={{width:38, height:38, borderRadius:8, background:col, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, letterSpacing:.5, flexShrink:0}}>{badge}</div>
+      <div style={{flex:1, minWidth:0}}>
+        <div style={{fontWeight:700, fontSize:14, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{name}</div>
+        <div style={{fontSize:11, color:'#8B7F6E'}}>{sub || '—'}</div>
+      </div>
+      <div style={{color:'#C4B5A0', fontSize:16}}>›</div>
+    </div>
+  );
+}
+
+function Toast({msg}) {
+  return (
+    <div style={{position:'fixed', top:18, left:'50%', transform:'translateX(-50%)',
+                 padding:'10px 20px', borderRadius:22, background:'#2A2018', color:'#fff',
+                 fontSize:13, fontWeight:700, animation:'fadeIn .2s ease', zIndex:100}}>{msg}</div>
+  );
+}
+
+function FormView(props) {
+  const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
+         handleSaveLocal, handleDelete, backToList, toast, showToast} = props;
+  const init = editing || {};
+  const [d, setD] = useState(init);
+  const [profilType, setProfilType] = useState(init.profil_type || 'Particulier');
+  const [expanded, setExpanded] = useState([true, false, false, false]);
+
+  function set(k, v) {
+    setD(prev => ({...prev, [k]: v}));
+  }
+  function commit(k, v) {
+    const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
+    setD(next);
+    handleSaveLocal(next);
+  }
+  function toggleStage(i) {
+    setExpanded(prev => prev.map((v, idx) => idx === i ? !v : v));
+  }
+  function shareClient() {
+    const name = (profilType === 'Société' && d.societe_nom) ? d.societe_nom : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
+    const payload = {title:'Ocre Immo', text: name || activeProfil, url: window.location.origin};
+    if (navigator.share) {
+      navigator.share(payload).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.origin);
+      showToast && showToast('Lien copié');
+    }
+  }
+
+  const stageTitle = editing && (d.prenom || d.nom || d.societe_nom)
+    ? ((profilType === 'Société' && d.societe_nom) ? d.societe_nom : ((d.prenom || '') + ' ' + (d.nom || '')).trim())
+    : ('Nouveau ' + activeProfil);
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={backToList} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>{stageTitle}</div>
+        <button onClick={shareClient} style={{background:'none', border:'none', cursor:'pointer', padding:4}}><ShareIcon/></button>
+      </div>
+
+      <div style={{padding:'10px 14px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
+        <div style={{display:'flex', gap:6, overflowX:'auto', paddingBottom:4}}>
+          {Object.keys(PROFILS).map(p => {
+            const active = p === activeProfil;
+            return (
+              <button key={p} onClick={() => setActiveProfil(p)}
+                style={{padding:'6px 12px', borderRadius:999, border:'1.5px solid ' + (active ? PROFILS[p] : '#E8DDD0'),
+                        background: active ? PROFILS[p] : '#FDFAF7', color: active ? '#fff' : '#999',
+                        fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>{p}</button>
+            );
+          })}
+          <button onClick={() => setIsInvestisseur(!isInvestisseur)}
+            style={{padding:'6px 12px', borderRadius:999, border:'1.5px solid ' + (isInvestisseur ? INVEST : '#E8DDD0'),
+                    background: isInvestisseur ? INVEST : '#FDFAF7', color: isInvestisseur ? '#fff' : '#999',
+                    fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>💎 Investisseur</button>
+        </div>
+      </div>
+
+      <div style={{flex:1, overflowY:'auto', padding:12}}>
+        <Stage title={STAGES[activeProfil][0]} expanded={expanded[0]} onToggle={() => toggleStage(0)}>
+          <div style={{display:'flex', gap:6, marginBottom:12}}>
+            {['Particulier', 'Société'].map(t => (
+              <button key={t} onClick={() => { setProfilType(t); commit('profil_type', t); }}
+                style={{flex:1, padding:'7px 10px', borderRadius:8, border:'1.5px solid ' + (profilType === t ? '#8B5E3C' : '#E8DDD0'),
+                        background: profilType === t ? '#FFF3EC' : '#FDFAF7', color: profilType === t ? '#8B5E3C' : '#8B7F6E',
+                        fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{t}</button>
+            ))}
+          </div>
+          {profilType === 'Particulier' ? (
+            <>
+              <div style={{display:'flex', gap:8}}>
+                <Field label="Prénom" value={d.prenom} onChange={v => set('prenom', v)} style={{flex:1}}/>
+                <Field label="Nom" value={d.nom} onChange={v => set('nom', v)} style={{flex:1}}/>
+              </div>
+              <Field label="Date de naissance" type="date" value={d.date_naissance} onChange={v => set('date_naissance', v)}/>
+              <Select label="Nationalité" value={d.nationalite} onChange={v => set('nationalite', v)}
+                options={PAYS.map(p => ({v: p.c, l: p.f + ' ' + p.n}))}/>
+            </>
+          ) : (
+            <>
+              <Field label="Raison sociale" value={d.societe_nom} onChange={v => set('societe_nom', v)}/>
+              <Select label="Forme juridique" value={d.forme_juridique} onChange={v => set('forme_juridique', v)} options={FORMES_JURIDIQUES}/>
+              <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)}/>
+              <Field label="Représentant" value={d.representant} onChange={v => set('representant', v)}/>
+            </>
+          )}
+          <div style={{display:'flex', gap:8}}>
+            <Field label="Téléphone" value={d.tel} onChange={v => set('tel', v)} style={{flex:1}}/>
+            <Field label="Email" type="email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
+          </div>
+          <Select label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)}
+            options={PAYS.map(p => ({v: p.c, l: p.f + ' ' + p.n}))}/>
+          <div style={{display:'flex', gap:8}}>
+            <Field label="Ville" value={d.ville} onChange={v => set('ville', v)} style={{flex:1}}/>
+            <Field label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} style={{flex:2}}/>
+          </div>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
+        </Stage>
+
+        <Stage title={STAGES[activeProfil][1]} expanded={expanded[1]} onToggle={() => toggleStage(1)}>
+          <Select label="Type de bien" value={d.type_bien} onChange={v => set('type_bien', v)} options={TYPES_BIEN}/>
+          {['Acheteur','Locataire'].includes(activeProfil) || isInvestisseur ? (
+            <div style={{display:'flex', gap:8}}>
+              <Field label="Surface min (m²)" type="number" value={d.surface_min} onChange={v => set('surface_min', v)} style={{flex:1}}/>
+              <Field label="Surface max (m²)" type="number" value={d.surface_max} onChange={v => set('surface_max', v)} style={{flex:1}}/>
+            </div>
+          ) : (
+            <Field label="Surface (m²)" type="number" value={d.surface} onChange={v => set('surface', v)}/>
+          )}
+          <div style={{display:'flex', gap:8}}>
+            <Field label="Chambres min" type="number" value={d.chambres_min} onChange={v => set('chambres_min', v)} style={{flex:1}}/>
+            <Field label="Chambres max" type="number" value={d.chambres_max} onChange={v => set('chambres_max', v)} style={{flex:1}}/>
+            <Field label="SDB" type="number" value={d.sdb} onChange={v => set('sdb', v)} style={{flex:1}}/>
+          </div>
+          <Select label="Étage" value={d.etage} onChange={v => set('etage', v)} options={['Peu importe','RDC','Intermédiaire','Dernier']}/>
+          <Field label="Orientation" value={d.orientation} onChange={v => set('orientation', v)}/>
+          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:8, marginBottom:4}}>Extérieur</div>
+          <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+            {['balcon','terrasse','jardin','piscine'].map(ext => (
+              <label key={ext} style={{display:'flex', alignItems:'center', gap:4, padding:'6px 10px', border:'1.5px solid #E8DDD0', borderRadius:8, background:'#FDFAF7', fontSize:12, cursor:'pointer'}}>
+                <input type="checkbox" checked={!!(d.exterieur && d.exterieur[ext])} onChange={e => set('exterieur', {...(d.exterieur || {}), [ext]: e.target.checked})}/>
+                {ext}
+              </label>
+            ))}
+          </div>
+          <div style={{display:'flex', gap:8, marginTop:10}}>
+            <Field label="Parking" value={d.parking} onChange={v => set('parking', v)} style={{flex:1}}/>
+            <Field label="Cave" value={d.cave} onChange={v => set('cave', v)} style={{flex:1}}/>
+          </div>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
+        </Stage>
+
+        <Stage title={STAGES[activeProfil][2]} expanded={expanded[2]} onToggle={() => toggleStage(2)}>
+          {activeProfil === 'Acheteur' && (
+            <>
+              <div style={{display:'flex', gap:8}}>
+                <Field label="Budget min" type="number" value={d.budget_min} onChange={v => set('budget_min', v)} style={{flex:1}}/>
+                <Field label="Budget max" type="number" value={d.budget_max} onChange={v => set('budget_max', v)} style={{flex:1}}/>
+              </div>
+              <Field label="Apport" type="number" value={d.apport} onChange={v => set('apport', v)}/>
+              <Select label="Financement" value={d.financement} onChange={v => set('financement', v)} options={['cash','crédit','mixte']}/>
+            </>
+          )}
+          {activeProfil === 'Vendeur' && (
+            <>
+              <Field label="Prix affiché" type="number" value={d.prix_affiche} onChange={v => set('prix_affiche', v)}/>
+              <Field label="Prix plancher (confidentiel)" type="number" value={d.prix_plancher} onChange={v => set('prix_plancher', v)}/>
+            </>
+          )}
+          {activeProfil === 'Locataire' && (
+            <>
+              <Field label="Loyer max" type="number" value={d.loyer_max} onChange={v => set('loyer_max', v)}/>
+              <Field label="Garants" value={d.garants} onChange={v => set('garants', v)}/>
+            </>
+          )}
+          {activeProfil === 'Bailleur' && (
+            <>
+              <Field label="Loyer demandé" type="number" value={d.loyer_demande} onChange={v => set('loyer_demande', v)}/>
+              <Field label="Loyer plancher (confidentiel)" type="number" value={d.loyer_plancher} onChange={v => set('loyer_plancher', v)}/>
+              <Field label="Charges" type="number" value={d.charges} onChange={v => set('charges', v)}/>
+              <Field label="Dépôt de garantie" type="number" value={d.depot} onChange={v => set('depot', v)}/>
+            </>
+          )}
+          {isInvestisseur && (
+            <>
+              <Field label="Rendement cible (%)" type="number" value={d.rendement_cible} onChange={v => set('rendement_cible', v)}/>
+              <Field label="Horizon d'investissement (ans)" type="number" value={d.horizon} onChange={v => set('horizon', v)}/>
+            </>
+          )}
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
+        </Stage>
+
+        <Stage title={STAGES[activeProfil][3]} expanded={expanded[3]} onToggle={() => toggleStage(3)}>
+          <div style={{marginBottom:10}}>
+            <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Notes</label>
+            <textarea value={d.notes || ''} onChange={e => set('notes', e.target.value)}
+              style={{width:'100%', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018',
+                      minHeight:80, border:'1.5px solid ' + (d.notes ? '#BBA88B' : '#E8DDD0'), background: d.notes ? '#FFFCF5' : '#FDFAF7', resize:'vertical'}}/>
+          </div>
+          <Select label="Langue préférée" value={d.langue} onChange={v => set('langue', v)} options={['FR','EN','AR','ES','IT','PT','DE']}/>
+          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:6, marginBottom:4}}>Canal privilégié</div>
+          <div style={{display:'flex', gap:6, marginBottom:10}}>
+            {['WhatsApp','Email','Téléphone'].map(canal => (
+              <button key={canal} onClick={() => set('canal', canal)}
+                style={{flex:1, padding:'7px 10px', borderRadius:8, border:'1.5px solid ' + (d.canal === canal ? '#8B5E3C' : '#E8DDD0'),
+                        background: d.canal === canal ? '#FFF3EC' : '#FDFAF7', color: d.canal === canal ? '#8B5E3C' : '#8B7F6E',
+                        fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{canal}</button>
+            ))}
+          </div>
+          <Field label="Origine contact" value={d.origine} onChange={v => set('origine', v)}/>
+          <Field label="Options" value={d.options} onChange={v => set('options', v)}/>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
+        </Stage>
+
+        <div style={{display:'flex', gap:8, alignItems:'center', marginTop:12, marginBottom:24}}>
+          <button onClick={() => commit('archived', !d.archived)}
+            title={d.archived ? 'Désarchiver' : 'Archiver'}
+            style={{padding:'10px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:10, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700}}>
+            <ArchiveIcon size={18}/> {d.archived ? 'Désarchiver' : 'Archiver'}
+          </button>
+          {editing && editing.id && (
+            <button onClick={() => handleDelete(editing.id)}
+              style={{padding:'10px 14px', background:'#C04B20', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12, fontFamily:'inherit'}}>Supprimer</button>
+          )}
+          <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
+            style={{flex:1, padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
+            Enregistrer
+          </button>
+        </div>
+      </div>
+
+      {toast && <Toast msg={toast}/>}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>

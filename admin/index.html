@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ocre Immo — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #EDE6DC;padding:14px 22px;position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.topbar-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;color:#8B5E3C;letter-spacing:.5px}
+.badge-admin{background:#1A1208;color:#fff;padding:3px 8px 4px;font-size:9px;border-radius:4px;text-transform:uppercase;font-weight:700;letter-spacing:1px;margin-left:10px}
+.topbar-right{display:flex;gap:10px;align-items:center;font-size:13px;color:#6B5E4A}
+.topbar-right a{color:#8B5E3C;text-decoration:none;font-weight:600}
+.tabs-nav{background:#fff;border-bottom:1px solid #EDE6DC;display:flex;overflow-x:auto;position:sticky;top:54px;z-index:9}
+.tabs-nav::-webkit-scrollbar{display:none}
+.tab-btn{padding:14px 18px;border:none;background:transparent;font-weight:600;color:#888;cursor:pointer;font-family:inherit;font-size:13px;white-space:nowrap;border-bottom:2.5px solid transparent}
+.tab-btn.active{color:#8B5E3C;border-bottom-color:#8B5E3C}
+.container{max-width:1100px;margin:0 auto;padding:22px}
+.card{background:#fff;border-radius:12px;border:1px solid #EDE6DC;padding:16px 18px;margin-bottom:16px}
+.card h2{font-size:13px;font-weight:700;color:#6B5E4A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{background:#fff;border-radius:10px;border:1px solid #EDE6DC;padding:14px;text-align:center}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:26px;color:#8B5E3C;font-weight:700}
+.stat-label{font-size:11px;color:#8B7F6E;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.switch{width:46px;height:26px;background:#E4DCD0;border-radius:13px;position:relative;cursor:pointer;transition:background .15s;flex-shrink:0}
+.switch.on{background:#2E7D5C}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform .15s}
+.switch.on::after{transform:translateX(20px)}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F2EBE2;gap:12px}
+.setting-row:last-child{border-bottom:none}
+.setting-key{font-weight:600;font-size:13px;color:#2A2018}
+.setting-desc{font-size:11px;color:#8B7F6E;margin-top:2px}
+.setting-input{padding:7px 10px;border:1.5px solid #E8DDD0;border-radius:7px;background:#FDFAF7;font-size:13px;font-family:inherit;width:200px;max-width:50%}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#F8F2E9;color:#6B5E4A;text-transform:uppercase;font-size:10px;letter-spacing:.5px;padding:10px 12px;text-align:left;border-bottom:1px solid #EDE6DC}
+td{padding:10px 12px;border-bottom:1px solid #F2EBE2}
+tr:hover td{background:#FDFAF7}
+.btn{padding:7px 12px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600}
+.btn-primary{background:linear-gradient(135deg,#8B5E3C,#A06B45);color:#fff}
+.btn-ghost{background:#FDFAF7;color:#8B5E3C;border:1px solid #E8DDD0}
+.btn-danger{background:#C04B20;color:#fff}
+.gate{max-width:400px;margin:80px auto;padding:30px;background:#fff;border-radius:14px;border:1px solid #EDE6DC;text-align:center}
+.gate h1{font-family:'Cormorant Garamond',serif;font-size:28px;color:#8B5E3C;margin-bottom:8px}
+.gate p{color:#8B7F6E;font-size:13px;margin-bottom:18px}
+.gate input{width:100%;padding:12px;border:1.5px solid #E8DDD0;border-radius:9px;background:#FDFAF7;font-size:16px;text-align:center;letter-spacing:3px;font-weight:700;color:#8B5E3C;font-family:inherit;margin-bottom:12px;outline:none}
+.gate input:focus{border-color:#8B5E3C}
+.toast{position:fixed;top:18px;right:18px;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:100}
+.toast.success{background:#2E7D5C;color:#fff}
+.toast.error{background:#C04B20;color:#fff}
+.form-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.form-row input,.form-row select{padding:9px 11px;border:1.5px solid #E8DDD0;border-radius:8px;background:#FDFAF7;font-size:13px;font-family:inherit;flex:1;min-width:140px}
+.back-link{display:inline-block;color:#8B5E3C;text-decoration:none;font-size:13px;font-weight:600;margin-right:auto}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <h1>Dashboard Admin</h1>
+  <p>Code administrateur requis</p>
+  <input id="gate-code" type="password" placeholder="CODE" autocomplete="off">
+  <button class="btn btn-primary" id="gate-btn" style="width:100%;padding:12px">Valider</button>
+  <p id="gate-msg" style="margin-top:14px;color:#C04B20;font-size:12px"></p>
+  <p style="margin-top:20px;font-size:12px"><a class="back-link" href="/">← Retour app</a></p>
+</div>
+
+<div id="dash" class="hidden">
+  <div class="topbar">
+    <div>
+      <span class="topbar-title">Ocre Immo</span>
+      <span class="badge-admin">Admin</span>
+    </div>
+    <div class="topbar-right">
+      <span id="who"></span>
+      <a href="/">← Retour app</a>
+    </div>
+  </div>
+  <div class="tabs-nav">
+    <button class="tab-btn active" data-tab="overview">Vue d'ensemble</button>
+    <button class="tab-btn" data-tab="access">Accès</button>
+    <button class="tab-btn" data-tab="modules">Modules</button>
+    <button class="tab-btn" data-tab="commerce">Commercialisation</button>
+    <button class="tab-btn" data-tab="users">Utilisateurs</button>
+    <button class="tab-btn" data-tab="logs">Logs</button>
+  </div>
+  <div class="container">
+    <div id="pane-overview" class="pane">
+      <div class="card">
+        <h2>Statistiques</h2>
+        <div class="stats-grid" id="stats-grid">—</div>
+      </div>
+    </div>
+    <div id="pane-access" class="pane hidden"><div class="card"><h2>Accès & sécurité</h2><div id="settings-access">—</div></div></div>
+    <div id="pane-modules" class="pane hidden"><div class="card"><h2>Modules</h2><div id="settings-modules">—</div></div></div>
+    <div id="pane-commerce" class="pane hidden"><div class="card"><h2>Commercialisation</h2><div id="settings-commerce">—</div></div></div>
+    <div id="pane-users" class="pane hidden">
+      <div class="card">
+        <h2>Créer un utilisateur</h2>
+        <div class="form-row">
+          <input id="nu-prenom" placeholder="Prénom">
+          <input id="nu-nom" placeholder="Nom">
+          <input id="nu-email" placeholder="email@exemple.com" type="email">
+          <select id="nu-role"><option value="agent">agent</option><option value="admin">admin</option><option value="visiteur">visiteur</option></select>
+          <button class="btn btn-primary" id="btn-create-user">Créer</button>
+        </div>
+        <p style="font-size:11px;color:#8B7F6E">Mot de passe sera à définir au premier login.</p>
+      </div>
+      <div class="card">
+        <h2>Utilisateurs</h2>
+        <div id="users-table">—</div>
+      </div>
+    </div>
+    <div id="pane-logs" class="pane hidden"><div class="card"><h2>50 derniers logs</h2><div id="logs-table">—</div></div></div>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script>
+const API = '/api';
+const token = localStorage.getItem('ocre_token') || '';
+let adminCode = '';
+let settingsList = [];
+
+function $(id){return document.getElementById(id)}
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(msg, kind='success'){
+  const w = $('toast-wrap');
+  const d = document.createElement('div');
+  d.className = 'toast ' + kind;
+  d.textContent = msg;
+  w.appendChild(d);
+  setTimeout(() => d.remove(), 2200);
+}
+function fetchJson(url, opts={}) {
+  opts.headers = Object.assign({}, opts.headers || {}, {
+    'X-Session-Token': token,
+    'X-Admin-Code': adminCode,
+  });
+  return fetch(url, opts).then(r => r.json());
+}
+
+if (!token) window.location = '/login/';
+
+$('gate-btn').addEventListener('click', validateGate);
+$('gate-code').addEventListener('keydown', e => { if (e.key === 'Enter') validateGate(); });
+
+async function validateGate(){
+  const code = $('gate-code').value.trim();
+  if (!code) return;
+  adminCode = code;
+  const d = await fetchJson(API + '/settings.php?action=verify_admin_code', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({admin_code: code}),
+  });
+  if (!d.ok) {
+    adminCode = '';
+    $('gate-msg').textContent = d.error || 'Code invalide';
+    return;
+  }
+  $('gate').classList.add('hidden');
+  $('dash').classList.remove('hidden');
+  const me = await fetch(API + '/auth.php?action=me', {headers: {'X-Session-Token': token}}).then(r => r.json());
+  if (me && me.ok) $('who').textContent = `${me.user.prenom || ''} ${me.user.nom || ''}`.trim() + ' · ' + me.user.email;
+  loadAll();
+}
+
+document.querySelectorAll('.tab-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.pane').forEach(p => p.classList.add('hidden'));
+    $('pane-' + b.dataset.tab).classList.remove('hidden');
+  });
+});
+
+async function loadAll(){
+  await Promise.all([loadStats(), loadSettings(), loadUsers(), loadLogs()]);
+}
+
+async function loadStats(){
+  const d = await fetchJson(API + '/users.php?action=stats');
+  if (!d.ok) { $('stats-grid').innerHTML = `<p class="err">${escapeHtml(d.error || 'erreur')}</p>`; return; }
+  const s = d;
+  $('stats-grid').innerHTML = [
+    ['Utilisateurs actifs', s.total_users],
+    ['Contacts', s.total_clients],
+    ['Brouillons', s.total_drafts],
+    ['Archivés', s.total_archived],
+    ['Connexions 24h', s.logins_24h],
+  ].map(([l,v]) => `<div class="stat"><div class="stat-value">${v}</div><div class="stat-label">${l}</div></div>`).join('');
+}
+
+async function loadSettings(){
+  const d = await fetchJson(API + '/settings.php?action=list&admin_code=' + encodeURIComponent(adminCode));
+  if (!d.ok) return;
+  settingsList = d.settings || [];
+  renderSettings('access', 'settings-access');
+  renderSettings('modules', 'settings-modules');
+  renderSettings('commerce', 'settings-commerce');
+}
+
+function renderSettings(category, targetId){
+  const el = $(targetId);
+  const rows = settingsList.filter(s => (s.category || '') === category);
+  if (!rows.length) { el.innerHTML = '<p style="color:#8B7F6E;font-size:12px">Aucun réglage dans cette catégorie.</p>'; return; }
+  el.innerHTML = rows.map(r => {
+    const isBool = (r.value === '0' || r.value === '1');
+    const on = r.value === '1';
+    if (isBool) {
+      return `<div class="setting-row">
+        <div>
+          <div class="setting-key">${escapeHtml(r.label || r.key_name)}</div>
+          ${r.description ? `<div class="setting-desc">${escapeHtml(r.description)}</div>` : ''}
+        </div>
+        <div class="switch ${on ? 'on' : ''}" data-key="${escapeHtml(r.key_name)}" data-type="bool"></div>
+      </div>`;
+    }
+    return `<div class="setting-row">
+      <div>
+        <div class="setting-key">${escapeHtml(r.label || r.key_name)}</div>
+        ${r.description ? `<div class="setting-desc">${escapeHtml(r.description)}</div>` : ''}
+      </div>
+      <input class="setting-input" data-key="${escapeHtml(r.key_name)}" value="${escapeHtml(r.value || '')}">
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.switch').forEach(sw => {
+    sw.addEventListener('click', async () => {
+      const key = sw.dataset.key;
+      const newVal = sw.classList.contains('on') ? '0' : '1';
+      sw.classList.toggle('on');
+      const d = await fetchJson(API + '/settings.php?action=update', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({admin_code: adminCode, updates: {[key]: newVal}}),
+      });
+      if (!d.ok) { sw.classList.toggle('on'); toast(d.error || 'erreur', 'error'); }
+      else { toast('Réglage mis à jour'); settingsList = settingsList.map(s => s.key_name === key ? {...s, value: newVal} : s); }
+    });
+  });
+  el.querySelectorAll('.setting-input').forEach(inp => {
+    inp.addEventListener('blur', async () => {
+      const key = inp.dataset.key;
+      const newVal = inp.value;
+      const d = await fetchJson(API + '/settings.php?action=update', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({admin_code: adminCode, updates: {[key]: newVal}}),
+      });
+      if (!d.ok) toast(d.error || 'erreur', 'error'); else toast('Réglage mis à jour');
+    });
+  });
+}
+
+async function loadUsers(){
+  const d = await fetchJson(API + '/users.php?action=list&admin_code=' + encodeURIComponent(adminCode));
+  if (!d.ok) return;
+  const rows = d.users || [];
+  $('users-table').innerHTML = `<table>
+    <tr><th>Email</th><th>Nom</th><th>Rôle</th><th>Actif</th><th>Clients</th><th>Créé</th><th>Dernier login</th><th>Actions</th></tr>
+    ${rows.map(u => `<tr>
+      <td>${escapeHtml(u.email)}</td>
+      <td>${escapeHtml((u.prenom || '') + ' ' + (u.nom || ''))}</td>
+      <td>${escapeHtml(u.role)}</td>
+      <td><div class="switch ${Number(u.active) === 1 ? 'on' : ''}" data-uid="${u.id}" data-type="active"></div></td>
+      <td>${u.nb_clients}</td>
+      <td>${u.created_at || ''}</td>
+      <td>${u.last_login || '—'}</td>
+      <td>
+        <button class="btn btn-ghost" data-act="reset" data-uid="${u.id}">Reset mdp</button>
+      </td>
+    </tr>`).join('')}
+  </table>`;
+  $('users-table').querySelectorAll('.switch[data-type="active"]').forEach(sw => {
+    sw.addEventListener('click', async () => {
+      const uid = sw.dataset.uid;
+      const newActive = sw.classList.contains('on') ? 0 : 1;
+      sw.classList.toggle('on');
+      const d = await fetchJson(API + '/users.php?action=update', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({admin_code: adminCode, id: Number(uid), active: !!newActive}),
+      });
+      if (!d.ok) { sw.classList.toggle('on'); toast(d.error || 'erreur', 'error'); } else toast('Mis à jour');
+    });
+  });
+  $('users-table').querySelectorAll('button[data-act="reset"]').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('Réinitialiser le mot de passe de cet utilisateur ?')) return;
+      const d = await fetchJson(API + '/users.php?action=reset_password', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({admin_code: adminCode, id: Number(b.dataset.uid)}),
+      });
+      if (!d.ok) toast(d.error || 'erreur', 'error'); else toast('Mot de passe réinitialisé');
+    });
+  });
+}
+
+$('btn-create-user').addEventListener('click', async () => {
+  const prenom = $('nu-prenom').value.trim();
+  const nom = $('nu-nom').value.trim();
+  const email = $('nu-email').value.trim();
+  const role = $('nu-role').value;
+  if (!email) { toast('Email requis', 'error'); return; }
+  const d = await fetchJson(API + '/users.php?action=create', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({admin_code: adminCode, prenom, nom, email, role}),
+  });
+  if (!d.ok) { toast(d.error || 'erreur', 'error'); return; }
+  toast('Utilisateur créé');
+  $('nu-prenom').value = ''; $('nu-nom').value = ''; $('nu-email').value = '';
+  loadUsers();
+});
+
+async function loadLogs(){
+  const d = await fetchJson(API + '/users.php?action=logs&limit=50&admin_code=' + encodeURIComponent(adminCode));
+  if (!d.ok) return;
+  const rows = d.logs || [];
+  $('logs-table').innerHTML = `<table>
+    <tr><th>Quand</th><th>Qui</th><th>Action</th><th>Détails</th><th>IP</th></tr>
+    ${rows.map(l => `<tr>
+      <td>${escapeHtml(l.created_at)}</td>
+      <td>${escapeHtml(l.email || '—')}</td>
+      <td>${escapeHtml(l.action)}</td>
+      <td>${escapeHtml(l.details || '')}</td>
+      <td>${escapeHtml(l.ip || '')}</td>
+    </tr>`).join('')}
+  </table>`;
+}
+</script>
+</body>
+</html>

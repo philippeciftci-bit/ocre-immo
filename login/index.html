@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Ocre Immo — Connexion</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',sans-serif;background:#F4EEE6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:#2A2018}
+.card{width:100%;max-width:400px;background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 30px rgba(139,94,60,0.12)}
+.logo-title{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:700;color:#8B5E3C;text-align:center;letter-spacing:.5px}
+.logo-tagline{text-align:center;font-size:13px;color:#8B7F6E;margin-top:4px;margin-bottom:24px}
+.tabs{display:flex;background:#FDFAF7;border-radius:10px;padding:4px;margin-bottom:22px}
+.tab{flex:1;padding:9px;border:none;background:transparent;font-weight:700;color:#999;cursor:pointer;border-radius:7px;font-size:13px;font-family:inherit}
+.tab.active{background:#fff;color:#8B5E3C;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:#8B7F6E;margin-bottom:6px}
+.input{width:100%;padding:11px 13px;border-radius:9px;border:1.5px solid #E8DDD0;background:#FDFAF7;font-size:14px;font-family:inherit;color:#2A2018;outline:none;transition:border-color .15s}
+.input:focus{border-color:#8B5E3C;background:#fff}
+.btn{width:100%;padding:13px;border-radius:10px;background:linear-gradient(135deg,#8B5E3C,#A06B45);color:#fff;font-weight:700;border:none;cursor:pointer;font-size:14px;font-family:inherit;margin-top:4px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.msg{padding:10px 12px;border-radius:8px;font-size:12.5px;margin-top:14px;line-height:1.45}
+.msg-error{background:#FFF0EB;color:#C04B20}
+.msg-info{background:#FFF8E1;color:#8A6D00}
+.msg-success{background:#E8F5EC;color:#2E7D5C}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-title">Ocre Immo</div>
+  <div class="logo-tagline">Connexion</div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-email" type="button">Email</button>
+    <button class="tab" id="tab-test" type="button">Mode test</button>
+  </div>
+
+  <form id="form-email" autocomplete="off">
+    <div class="field">
+      <label for="f-email">Email</label>
+      <input class="input" type="email" id="f-email" autocomplete="username" required>
+    </div>
+    <div class="field">
+      <label id="f-password-label" for="f-password">Mot de passe</label>
+      <input class="input" type="password" id="f-password" autocomplete="current-password" minlength="6" required>
+    </div>
+    <button class="btn" type="submit" id="btn-submit">Se connecter</button>
+  </form>
+
+  <form id="form-test" autocomplete="off" style="display:none;">
+    <div class="field">
+      <label for="f-test-pwd">Mot de passe du mode test</label>
+      <input class="input" type="password" id="f-test-pwd" required>
+    </div>
+    <button class="btn" type="submit">Entrer en mode test</button>
+  </form>
+
+  <div id="msg"></div>
+</div>
+<script>
+const API = '/api';
+let needsPassword = false;
+
+function $(id){return document.getElementById(id)}
+function showMsg(txt, cls){
+  const m = $('msg');
+  m.textContent = txt || '';
+  m.className = txt ? ('msg ' + (cls || 'msg-info')) : '';
+}
+
+function switchTab(which){
+  $('tab-email').classList.toggle('active', which === 'email');
+  $('tab-test').classList.toggle('active', which === 'test');
+  $('form-email').style.display = (which === 'email') ? 'block' : 'none';
+  $('form-test').style.display  = (which === 'test')  ? 'block' : 'none';
+  showMsg('', '');
+}
+$('tab-email').addEventListener('click', () => switchTab('email'));
+$('tab-test').addEventListener('click', () => switchTab('test'));
+
+$('f-email').addEventListener('blur', async (e) => {
+  const email = e.target.value.trim();
+  if (!email) return;
+  try {
+    const r = await fetch(API + '/auth.php?action=check_email', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email})
+    });
+    const d = await r.json();
+    if (d && d.ok) {
+      needsPassword = !!d.needs_password && d.exists;
+      if (d.exists && d.needs_password) {
+        $('f-password-label').textContent = 'Choisir un mot de passe (min 6)';
+        $('f-password').setAttribute('autocomplete', 'new-password');
+        $('f-password').setAttribute('minlength', '6');
+        showMsg("Premier accès : choisis ton mot de passe.", 'msg-info');
+      } else if (d.exists) {
+        $('f-password-label').textContent = 'Mot de passe';
+        $('f-password').setAttribute('autocomplete', 'current-password');
+        showMsg('', '');
+      } else {
+        showMsg("Aucun compte pour cet email. Contacte l'administrateur.", 'msg-error');
+      }
+    }
+  } catch (e) { /* silent */ }
+});
+
+$('form-email').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const email = $('f-email').value.trim();
+  const pwd = $('f-password').value;
+  if (!email || !pwd) return;
+  const btn = $('btn-submit');
+  btn.disabled = true;
+  showMsg('', '');
+  try {
+    if (needsPassword) {
+      const r1 = await fetch(API + '/auth.php?action=set_password', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email, password: pwd})
+      });
+      const d1 = await r1.json();
+      if (!d1.ok) { showMsg(d1.error || 'Erreur', 'msg-error'); btn.disabled = false; return; }
+    }
+    const r = await fetch(API + '/auth.php?action=login', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password: pwd})
+    });
+    const d = await r.json();
+    if (!d.ok) { showMsg(d.error || 'Connexion refusée', 'msg-error'); btn.disabled = false; return; }
+    localStorage.setItem('ocre_token', d.token);
+    localStorage.setItem('ocre_user', JSON.stringify(d.user));
+    showMsg('Connecté, redirection…', 'msg-success');
+    setTimeout(() => { window.location = '/'; }, 300);
+  } catch (e) {
+    showMsg('Erreur réseau', 'msg-error');
+    btn.disabled = false;
+  }
+});
+
+$('form-test').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const pwd = $('f-test-pwd').value;
+  if (!pwd) return;
+  showMsg('', '');
+  try {
+    const r = await fetch(API + '/auth.php?action=test_login', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password: pwd})
+    });
+    const d = await r.json();
+    if (!d.ok) { showMsg(d.error || 'Refusé', 'msg-error'); return; }
+    localStorage.setItem('ocre_token', d.token);
+    localStorage.setItem('ocre_user', JSON.stringify(d.user));
+    window.location = '/';
+  } catch (e) { showMsg('Erreur réseau', 'msg-error'); }
+});
+
+(async () => {
+  const t = localStorage.getItem('ocre_token');
+  if (!t) return;
+  try {
+    const r = await fetch(API + '/auth.php?action=me', {headers: {'X-Session-Token': t}});
+    const d = await r.json();
+    if (d && d.ok) window.location = '/';
+    else localStorage.removeItem('ocre_token');
+  } catch (e) { /* silent */ }
+})();
+</script>
+</body>
+</html>

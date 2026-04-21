@@ -1,0 +1,4 @@
+_prod_backup_*
+*.log
+.env
+.DS_Store
