@@ -6,8 +6,12 @@ setCorsHeaders();
 
 define('UPLOAD_MAX_BYTES', 8 * 1024 * 1024);
 define('UPLOAD_MAX_PER_DOSSIER', 30);
-define('UPLOAD_ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/webp']);
-define('UPLOAD_EXT_MAP', ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp']);
+// V17.6 Section III : PDF accepté en plus des images (pour les docs crédit).
+define('UPLOAD_ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+define('UPLOAD_EXT_MAP', [
+    'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp',
+    'application/pdf' => 'pdf',
+]);
 
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
 
@@ -16,10 +20,12 @@ function uploadsRoot() {
     $root = dirname(__DIR__) . '/uploads';
     if (!is_dir($root)) @mkdir($root, 0755, true);
     $ht = $root . '/.htaccess';
-    if (!file_exists($ht)) {
+    // V17.6 Section III : si htaccess existe mais n'accepte pas pdf → régénère.
+    $current = @file_get_contents($ht) ?: '';
+    if (!$current || stripos($current, 'pdf') === false) {
         @file_put_contents($ht,
-            "# Images only\n" .
-            "<FilesMatch \"\\.(jpg|jpeg|png|webp)$\">\n" .
+            "# Images + PDF only\n" .
+            "<FilesMatch \"\\.(jpg|jpeg|png|webp|pdf)$\">\n" .
             "  Require all granted\n" .
             "</FilesMatch>\n" .
             "<FilesMatch \"\\.(php|phtml|phar|sql|htaccess)$\">\n" .
@@ -93,7 +99,15 @@ switch ($action) {
         }
 
         $ext = UPLOAD_EXT_MAP[$mime];
-        $name = date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
+        // V17.6 Section III : prefix doc-<slug> si document_type fourni (classement par catégorie).
+        $doc_type = trim((string)($_POST['document_type'] ?? ''));
+        $prefix = '';
+        if ($doc_type !== '') {
+            $slug = preg_replace('/[^a-z0-9]+/i', '-', $doc_type);
+            $slug = trim(strtolower($slug), '-');
+            if ($slug !== '') $prefix = 'doc-' . substr($slug, 0, 40) . '-';
+        }
+        $name = $prefix . date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
         $dest = dossierDir($dossier_id) . '/' . $name;
         if (!move_uploaded_file($f['tmp_name'], $dest)) {
             jsonError('Écriture fichier impossible', 500);
