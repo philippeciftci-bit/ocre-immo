@@ -120,6 +120,66 @@ switch ($action) {
         jsonOk(['id' => $id, 'archived' => (bool)$archived]);
     }
 
+    // V17.1 fix-ux-3 — suggestions basées sur les saisies antérieures de l'utilisateur.
+    case 'suggest_city': {
+        $q = trim((string)($_GET['q'] ?? ''));
+        $limit = min(20, max(1, (int)($_GET['limit'] ?? 8)));
+        if ($q === '') {
+            $stmt = db()->prepare(
+                "SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(data, '$.ville')) AS ville
+                 FROM clients WHERE user_id = ? AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.ville')) IS NOT NULL
+                 AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.ville')) != ''
+                 ORDER BY updated_at DESC LIMIT ?"
+            );
+            $stmt->bindValue(1, (int)$user['id'], PDO::PARAM_INT);
+            $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+        } else {
+            $stmt = db()->prepare(
+                "SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(data, '$.ville')) AS ville
+                 FROM clients WHERE user_id = ?
+                 AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.ville')) LIKE ?
+                 AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.ville')) != ''
+                 ORDER BY updated_at DESC LIMIT ?"
+            );
+            $stmt->bindValue(1, (int)$user['id'], PDO::PARAM_INT);
+            $stmt->bindValue(2, $q . '%');
+            $stmt->bindValue(3, $limit, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        $items = array_values(array_filter(array_map(fn($r) => $r['ville'], $stmt->fetchAll())));
+        jsonOk(['items' => $items]);
+    }
+
+    case 'suggest_address': {
+        $q = trim((string)($_GET['q'] ?? ''));
+        $limit = min(20, max(1, (int)($_GET['limit'] ?? 8)));
+        if ($q === '') {
+            $stmt = db()->prepare(
+                "SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(data, '$.adresse')) AS adresse
+                 FROM clients WHERE user_id = ?
+                 AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.adresse')) IS NOT NULL
+                 AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.adresse')) != ''
+                 ORDER BY updated_at DESC LIMIT ?"
+            );
+            $stmt->bindValue(1, (int)$user['id'], PDO::PARAM_INT);
+            $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+        } else {
+            $stmt = db()->prepare(
+                "SELECT DISTINCT JSON_UNQUOTE(JSON_EXTRACT(data, '$.adresse')) AS adresse
+                 FROM clients WHERE user_id = ?
+                 AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.adresse')) LIKE ?
+                 AND JSON_UNQUOTE(JSON_EXTRACT(data, '$.adresse')) != ''
+                 ORDER BY updated_at DESC LIMIT ?"
+            );
+            $stmt->bindValue(1, (int)$user['id'], PDO::PARAM_INT);
+            $stmt->bindValue(2, '%' . $q . '%');
+            $stmt->bindValue(3, $limit, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        $items = array_values(array_filter(array_map(fn($r) => $r['adresse'], $stmt->fetchAll())));
+        jsonOk(['items' => $items]);
+    }
+
     default:
         jsonError('Action inconnue', 404);
 }

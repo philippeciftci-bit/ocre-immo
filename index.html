@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.1-fix-ux-2 -->
+<!-- ocre-v17.1-fix-ux-3 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -177,6 +177,185 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
   );
 }
 
+// V17.1 fix-ux-2 — PhoneField : indicatif pays + masque local + stockage E.164.
+const DIAL_CODES = [
+  {c:'FR', f:'🇫🇷', d:'33'},{c:'MA', f:'🇲🇦', d:'212'},{c:'BE', f:'🇧🇪', d:'32'},
+  {c:'CH', f:'🇨🇭', d:'41'},{c:'LU', f:'🇱🇺', d:'352'},{c:'ES', f:'🇪🇸', d:'34'},
+  {c:'IT', f:'🇮🇹', d:'39'},{c:'PT', f:'🇵🇹', d:'351'},{c:'DE', f:'🇩🇪', d:'49'},
+  {c:'GB', f:'🇬🇧', d:'44'},{c:'US', f:'🇺🇸', d:'1'},{c:'CA', f:'🇨🇦', d:'1'},
+  {c:'AE', f:'🇦🇪', d:'971'},{c:'SA', f:'🇸🇦', d:'966'},{c:'QA', f:'🇶🇦', d:'974'},
+  {c:'SG', f:'🇸🇬', d:'65'},{c:'HK', f:'🇭🇰', d:'852'},{c:'JP', f:'🇯🇵', d:'81'},
+  {c:'TH', f:'🇹🇭', d:'66'},
+];
+function formatLocal(digits, dial) {
+  // FR / dial 33 : "6 12 34 56 78"
+  if (dial === '33' && digits.length > 0) {
+    return digits.replace(/(\d)(\d{2})?(\d{2})?(\d{2})?(\d{2})?/, (_,a,b,c,d,e) => [a,b,c,d,e].filter(Boolean).join(' '));
+  }
+  // US/CA dial 1 : "(555) 123-4567"
+  if (dial === '1' && digits.length > 0) {
+    if (digits.length <= 3) return '(' + digits;
+    if (digits.length <= 6) return '(' + digits.slice(0,3) + ') ' + digits.slice(3);
+    return '(' + digits.slice(0,3) + ') ' + digits.slice(3,6) + '-' + digits.slice(6,10);
+  }
+  // Default : groupes de 2
+  return digits.replace(/(\d{2})/g, '$1 ').trim();
+}
+function PhoneField({label, value, onChange, residenceCountry='', style={}}) {
+  // value en E.164 "+33612345678" → split dial/local
+  const parseE164 = (v) => {
+    if (!v) return {dial:'', local:''};
+    const m = /^\+(\d{1,3})(\d+)$/.exec(v.replace(/\s/g,''));
+    if (!m) return {dial:'', local: v.replace(/\D/g,'')};
+    // Guess dial from DIAL_CODES — prefer longest match
+    for (const len of [3,2,1]) {
+      const candidate = m[1] + m[2].slice(0, Math.max(0, 3 - len));
+      // simpler: match exact against table
+    }
+    // Match greediest dial prefix
+    const full = m[1] + m[2];
+    const sorted = [...DIAL_CODES].sort((a,b) => b.d.length - a.d.length);
+    const hit = sorted.find(dc => full.startsWith(dc.d));
+    if (hit) return {dial: hit.d, local: full.slice(hit.d.length)};
+    return {dial: m[1], local: m[2]};
+  };
+  const initial = parseE164(value);
+  const defaultDial = initial.dial
+    || (DIAL_CODES.find(dc => dc.c === residenceCountry) || {}).d
+    || '33';
+  const [dial, setDial] = React.useState(defaultDial);
+  const [localDigits, setLocalDigits] = React.useState(initial.local);
+  React.useEffect(() => {
+    const p = parseE164(value);
+    if (p.dial) setDial(p.dial);
+    setLocalDigits(p.local);
+  }, [value]);
+
+  const warn = localDigits.length > 0 && localDigits.length < 8;
+  const filled = localDigits.length >= 8;
+  const base = {flex:1, minWidth:0, boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018'};
+
+  function pushE164(d, l) {
+    const clean = l.replace(/\D/g, '').replace(/^0+/, '');
+    if (!clean) onChange('');
+    else onChange('+' + d + clean);
+  }
+  function handleDial(e) {
+    const newDial = e.target.value;
+    setDial(newDial);
+    pushE164(newDial, localDigits);
+  }
+  function handleLocal(e) {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 15);
+    setLocalDigits(raw);
+    pushE164(dial, raw);
+  }
+  const displayLocal = formatLocal(localDigits, dial);
+  const dc = DIAL_CODES.find(x => x.d === dial) || DIAL_CODES[0];
+
+  return (
+    <div style={{marginBottom:10, minWidth:0, ...style}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <div style={{display:'flex', gap:6}}>
+        <select value={dial} onChange={handleDial}
+          style={{...base, flex:'0 0 auto', width:'auto', paddingRight:8, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}>
+          {DIAL_CODES.map(c => <option key={c.c + c.d} value={c.d}>{c.f} +{c.d}</option>)}
+        </select>
+        <input type="tel" inputMode="tel" autoComplete="tel" value={displayLocal} onChange={handleLocal}
+          placeholder={dial === '33' ? '6 12 34 56 78' : (dial === '1' ? '(555) 123-4567' : '…')}
+          style={{...base, ...(filled ? FIELD_FILLED : (warn ? {border:'1.5px solid #D4A437', background:'#FFFBEF'} : FIELD_EMPTY))}}/>
+      </div>
+      {warn && <div style={{fontSize:11, color:'#D4A437', marginTop:2}}>Numéro trop court</div>}
+    </div>
+  );
+}
+
+// V17.1 fix-ux-2 — EmailField : validation visuelle temps réel + icône.
+function EmailField({label, value, onChange, style={}}) {
+  const [touched, setTouched] = React.useState(false);
+  const v = (value || '').trim();
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  const empty = v.length === 0;
+  const showInvalid = !empty && !valid && touched;
+
+  let borderStyle = FIELD_EMPTY;
+  let icon = '';
+  let iconColor = '#8B7F6E';
+  if (empty) { /* neutre */ }
+  else if (valid) { borderStyle = {border:'1.5px solid #4BB77B', background:'#F6FCF8'}; icon = '✓'; iconColor = '#4BB77B'; }
+  else if (showInvalid) { borderStyle = {border:'1.5px solid #D64545', background:'#FEF6F6'}; icon = '✗'; iconColor = '#D64545'; }
+  else { borderStyle = {border:'1.5px solid #D4A437', background:'#FFFBEF'}; icon = '…'; iconColor = '#D4A437'; }
+
+  const base = {width:'100%', boxSizing:'border-box', padding:'9px 36px 9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018'};
+  return (
+    <div style={{marginBottom:10, minWidth:0, ...style}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <div style={{position:'relative'}}>
+        <input type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck="false"
+          value={value || ''} onChange={e => onChange(e.target.value)} onBlur={() => setTouched(true)}
+          placeholder="nom@exemple.com"
+          style={{...base, ...borderStyle}}/>
+        {icon && <span style={{position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', color:iconColor, fontWeight:700, fontSize:16}}>{icon}</span>}
+      </div>
+      {showInvalid && <div style={{fontSize:11, color:'#D64545', marginTop:2}}>Email invalide</div>}
+    </div>
+  );
+}
+
+// V17.1 fix-ux-3 — CitySuggestField : autocomplete basé sur saisies antérieures de l'utilisateur.
+function CitySuggestField({label, value, onChange, suggestAction, style={}, placeholder=''}) {
+  const [open, setOpen] = React.useState(false);
+  const [items, setItems] = React.useState([]);
+  const cacheRef = React.useRef({ts:0, data:[], q:''});
+
+  async function fetchSuggestions(q) {
+    const now = Date.now();
+    if (cacheRef.current.q === q && now - cacheRef.current.ts < 60000) {
+      setItems(cacheRef.current.data);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('ocre_token');
+      const r = await fetch(API + '/clients.php?action=' + suggestAction + '&q=' + encodeURIComponent(q) + '&limit=8',
+        {headers: {'X-Session-Token': token || ''}});
+      const d = await r.json();
+      const arr = (d && d.ok && Array.isArray(d.items)) ? d.items : [];
+      cacheRef.current = {ts: now, data: arr, q};
+      setItems(arr);
+    } catch (e) { setItems([]); }
+  }
+
+  function handleChange(e) {
+    onChange(e.target.value);
+    setOpen(true);
+    fetchSuggestions(e.target.value.trim());
+  }
+  function handleFocus() {
+    setOpen(true);
+    fetchSuggestions(''); // derniers 5-8 saisis
+  }
+  function pick(v) { onChange(v); setOpen(false); }
+
+  const filled = (value || '').trim() !== '';
+  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018'};
+
+  return (
+    <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <input type="text" value={value || ''} onChange={handleChange} onFocus={handleFocus} onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder={placeholder} autoComplete="off"
+        style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
+      {open && items.length > 0 && (
+        <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:200, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
+          {items.map((it, i) => (
+            <div key={i} onMouseDown={() => pick(it)} style={{padding:'8px 12px', fontSize:14, cursor:'pointer', borderBottom:'1px solid #F4EEE6'}}>{it}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Select({label, value, onChange, options, style={}}) {
   const filled = (value !== undefined && value !== null && String(value).trim() !== '');
   return (
@@ -193,13 +372,20 @@ function Select({label, value, onChange, options, style={}}) {
 }
 
 function Stage({title, expanded, onToggle, children}) {
+  // V17.1 fix-ux-3 : chevron qui tourne (transform CSS), transition fluide sur le contenu.
   return (
     <div style={{background:'#fff', borderRadius:12, padding:14, marginBottom:10, border:'1px solid #EDE6DC'}}>
       <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'2px 0'}}>
         <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C'}}>{title}</span>
-        <span style={{fontSize:13, color:'#8B7F6E'}}>{expanded ? '▼' : '▶'}</span>
+        <span style={{fontSize:13, color:'#8B7F6E', display:'inline-block', transition:'transform .2s', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)'}}>▶</span>
       </div>
-      {expanded && <div style={{marginTop:12}}>{children}</div>}
+      <div style={{
+        maxHeight: expanded ? '9999px' : '0',
+        overflow: 'hidden',
+        transition: 'max-height .3s ease, opacity .2s',
+        opacity: expanded ? 1 : 0,
+        marginTop: expanded ? 12 : 0,
+      }}>{children}</div>
     </div>
   );
 }
@@ -494,7 +680,17 @@ function FormView(props) {
   const init = editing || {};
   const [d, setD] = useState(init);
   const [profilType, setProfilType] = useState(init.profil_type || 'Particulier');
-  const [expanded, setExpanded] = useState([true, false, false, false]);
+  // V17.1 fix-ux-3 : auto-open accordéons si champs pré-remplis (brouillon repris).
+  const [expanded, setExpanded] = useState(() => {
+    const init = [true, false, false, false];
+    // Stage II — bien
+    if (d.type_bien || d.surface || d.surface_min || d.chambres_min || d.etage) init[1] = true;
+    // Stage III — financier
+    if (d.budget_min || d.budget_max || d.apport || d.prix_affiche || d.loyer_max || d.loyer_demande || d.rendement_cible) init[2] = true;
+    // Stage IV — complémentaire
+    if (d.notes || d.langue || d.canal || d.origine) init[3] = true;
+    return init;
+  });
 
   function set(k, v) {
     setD(prev => ({...prev, [k]: v}));
@@ -578,13 +774,13 @@ function FormView(props) {
             </>
           )}
           <div style={{display:'flex', gap:8}}>
-            <Field label="Téléphone" value={d.tel} onChange={v => set('tel', v)} style={{flex:1}}/>
-            <Field label="Email" type="email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
+            <PhoneField label="Téléphone" value={d.tel} onChange={v => set('tel', v)} residenceCountry={d.pays_residence || d.nationalite || ''} style={{flex:1}}/>
+            <EmailField label="Email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
           </div>
           <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
           <div style={{display:'flex', gap:8}}>
-            <Field label="Ville" value={d.ville} onChange={v => set('ville', v)} style={{flex:1}}/>
-            <Field label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} style={{flex:2}}/>
+            <CitySuggestField label="Ville" value={d.ville} onChange={v => set('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
+            <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address" style={{flex:2}}/>
           </div>
           <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>
