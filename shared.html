@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<!-- ocre-v17.2-phase2a shared -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Dossier partagé · Ocre Immo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;min-height:100vh}
+.banner{background:#8B5E3C;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;letter-spacing:.5px;text-align:center;text-transform:uppercase}
+.container{max-width:720px;margin:0 auto;padding:16px}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid #EDE6DC}
+h1{font-family:'Cormorant Garamond',serif;font-size:26px;color:#8B5E3C;margin-bottom:4px;font-weight:700}
+h2{font-family:'Cormorant Garamond',serif;font-size:18px;color:#8B5E3C;margin-bottom:10px;font-weight:700}
+.sub{font-size:12px;color:#8B7F6E;margin-bottom:10px}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.5px;background:#FFF3EC;color:#8B5E3C;margin-right:6px}
+.row{display:grid;grid-template-columns:140px 1fr;gap:10px;padding:6px 0;border-bottom:1px dashed #F4EEE6;font-size:13px;align-items:baseline}
+.row:last-child{border-bottom:none}
+.row .k{color:#8B7F6E;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.row .v{color:#2A2018;word-break:break-word}
+.row .v.empty{color:#C4B5A0;font-style:italic}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}
+.photos img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;border:1px solid #E8DDD0;cursor:zoom-in}
+.chip{display:inline-block;padding:3px 9px;border-radius:999px;background:#FFF3EC;color:#8B5E3C;font-size:11px;font-weight:600;margin:2px 4px 2px 0}
+.error{background:#fff;padding:40px 20px;text-align:center;color:#C04B20;font-size:14px;max-width:400px;margin:60px auto;border-radius:12px;border:1px solid #EDE6DC}
+.footer{text-align:center;font-size:11px;color:#8B7F6E;padding:20px 0 30px}
+.footer a{color:#8B5E3C;text-decoration:none;font-weight:700}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
+.lightbox img{max-width:100%;max-height:100%;border-radius:4px}
+.loader{text-align:center;padding:60px;color:#8B7F6E;font-size:13px}
+</style>
+</head>
+<body>
+<div id="root"><div class="loader">Chargement du dossier…</div></div>
+<script>
+const PATH_MATCH = location.pathname.match(/\/s\/([a-f0-9]{16,64})/i);
+const TOKEN = PATH_MATCH ? PATH_MATCH[1] : (new URLSearchParams(location.search).get('t') || '');
+const PROFIL_COLORS = {Acheteur:'#8B5E3C', Vendeur:'#2E4A7A', Locataire:'#2E7D5C', Bailleur:'#C96B2E'};
+const PAYS_LABEL = {MA:'🇲🇦 Maroc', FR:'🇫🇷 France', ES:'🇪🇸 Espagne'};
+const PRIORITE_LABEL = {redhibitoire:'Rédhibitoire', souhaite:'Souhaité', bonus:'Bonus', indifferent:'Indifférent'};
+
+function e(tag, attrs, kids) {
+  const el = document.createElement(tag);
+  if (attrs) for (const k in attrs) {
+    if (k === 'class') el.className = attrs[k];
+    else if (k === 'html') el.innerHTML = attrs[k];
+    else el.setAttribute(k, attrs[k]);
+  }
+  if (kids) for (const c of [].concat(kids)) if (c != null) el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  return el;
+}
+function row(k, v, opts) {
+  const empty = v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+  const val = empty ? '—' : (Array.isArray(v) ? v.join(', ') : String(v));
+  return e('div', {class:'row'}, [
+    e('div', {class:'k'}, k),
+    e('div', {class:'v' + (empty ? ' empty' : '')}, val),
+  ]);
+}
+function range(min, max, unit) {
+  if ((min === undefined || min === '') && (max === undefined || max === '')) return '';
+  const u = unit ? ' ' + unit : '';
+  if (max === '' || max === undefined || max === null) return '≥ ' + min + u;
+  if (min === '' || min === undefined || min === null) return '≤ ' + max + u;
+  return min + ' → ' + max + u;
+}
+function lightbox(url) {
+  const lb = e('div', {class:'lightbox'}, [e('img', {src:url, alt:''})]);
+  lb.onclick = () => document.body.removeChild(lb);
+  document.body.appendChild(lb);
+}
+
+async function load() {
+  const root = document.getElementById('root');
+  if (!TOKEN) {
+    root.innerHTML = '';
+    root.appendChild(e('div', {class:'error'}, 'Lien invalide.'));
+    return;
+  }
+  try {
+    const r = await fetch('/api/share.php?action=get_shared&token=' + encodeURIComponent(TOKEN));
+    const data = await r.json();
+    if (!data || !data.ok) {
+      root.innerHTML = '';
+      root.appendChild(e('div', {class:'error'}, (data && data.error) || 'Lien invalide, expiré ou révoqué.'));
+      return;
+    }
+    render(data);
+  } catch (err) {
+    root.innerHTML = '';
+    root.appendChild(e('div', {class:'error'}, 'Erreur de chargement. Réessayez.'));
+  }
+}
+
+function renderBien(b, isAsking) {
+  if (!b || (!b.pays && !b.type)) return null;
+  const card = e('div', {class:'card'});
+  card.appendChild(e('h2', {}, 'Le bien'));
+  const head = e('div', {class:'sub'});
+  if (b.pays) head.appendChild(e('span', {class:'badge'}, PAYS_LABEL[b.pays] || b.pays));
+  if (b.type) head.appendChild(e('span', {class:'badge'}, b.type));
+  card.appendChild(head);
+
+  card.appendChild(row('Adresse', b.adresse));
+  card.appendChild(row('Ville', b.ville));
+  if (b.gps) card.appendChild(row('GPS', b.gps));
+
+  // Type-specific
+  if (b.type === 'Villa') {
+    if (isAsking) card.appendChild(row('Surface terrain', range(b.terrain_min, b.terrain_max, 'm²')));
+    else if (b.terrain) card.appendChild(row('Surface terrain', b.terrain + ' m²'));
+    if (b.etages_nb || b.etages_nb_min) card.appendChild(row('Étages', isAsking ? range(b.etages_nb_min, b.etages_nb_max) : b.etages_nb));
+  }
+  if (b.type === 'Appartement') {
+    if (b.etage) card.appendChild(row('Étage', b.etage));
+    if (b.total_etages) card.appendChild(row('Étages immeuble', b.total_etages));
+    if (b.charges_mensuelles) card.appendChild(row('Charges / mois', b.charges_mensuelles));
+    if (b.taxe_fonciere) card.appendChild(row('Taxe foncière / an', b.taxe_fonciere));
+  }
+  if (b.type === 'Riad') {
+    if (b.authenticite) card.appendChild(row('Authenticité', b.authenticite));
+    if (isAsking) card.appendChild(row('Patios', range(b.patios_min, b.patios_max)));
+    else {
+      if (b.patios_nb) card.appendChild(row('Patios', b.patios_nb));
+      if (b.terrasse_surface) card.appendChild(row('Terrasse', b.terrasse_surface + ' m²'));
+    }
+    const ornements = ['zellige','tadelakt','bejmat','fontaine','douiria'].filter(k => b[k]);
+    if (ornements.length) card.appendChild(row('Ornements', ornements.join(', ')));
+  }
+
+  // Tronc commun
+  if (isAsking) {
+    card.appendChild(row('Chambres', range(b.chambres_min, b.chambres_max)));
+    card.appendChild(row('SDB', range(b.sdb_min, b.sdb_max)));
+    card.appendChild(row('Surface habitable', range(b.surface_min, b.surface_max, 'm²')));
+  } else {
+    if (b.chambres) card.appendChild(row('Chambres', b.chambres));
+    if (b.sdb) card.appendChild(row('SDB', b.sdb));
+    if (b.surface) card.appendChild(row('Surface', b.surface + ' m²'));
+  }
+  if (b.annee) card.appendChild(row('Année', b.annee));
+
+  // Extérieur
+  const extKeys = ['terrasse','balcon','jardin','piscine'];
+  if (isAsking) {
+    const prios = extKeys.map(k => [k, b[k + '_prio']]).filter(x => x[1] && x[1] !== 'indifferent');
+    if (prios.length) {
+      const wrap = e('div', {});
+      prios.forEach(([k, p]) => wrap.appendChild(e('span', {class:'chip'}, k.charAt(0).toUpperCase() + k.slice(1) + ' · ' + (PRIORITE_LABEL[p] || p))));
+      card.appendChild(row('Extérieur', ''));
+      card.lastChild.querySelector('.v').innerHTML = '';
+      card.lastChild.querySelector('.v').appendChild(wrap);
+      card.lastChild.querySelector('.v').classList.remove('empty');
+    }
+  } else {
+    const yes = extKeys.concat(['parking_bool','cave_bool']).filter(k => b[k]);
+    if (yes.length) {
+      const label = yes.map(k => k.replace('_bool','').replace(/^./, c => c.toUpperCase()));
+      card.appendChild(row('Extérieur', label.join(', ')));
+    }
+  }
+
+  // Énergie / confort
+  if (b.energies && b.energies.length) card.appendChild(row('Raccordements', b.energies));
+  if (b.chauffage_type) card.appendChild(row('Chauffage', b.chauffage_type));
+  const conforts = [];
+  if (b.chauffe_eau_solaire) conforts.push('Chauffe-eau solaire');
+  if (b.climatisation) conforts.push('Climatisation');
+  if (b.ascenseur) conforts.push('Ascenseur');
+  if (conforts.length) card.appendChild(row('Confort', conforts.join(', ')));
+
+  // Documents
+  if (b.pays === 'FR' && (b.dpe || b.ges || b.loi_carrez)) {
+    if (b.dpe) card.appendChild(row('DPE', b.dpe));
+    if (b.ges) card.appendChild(row('GES', b.ges));
+    if (b.loi_carrez) card.appendChild(row('Surface Loi Carrez', b.loi_carrez + ' m²'));
+  }
+  if (b.pays === 'ES' && b.nota_simple) card.appendChild(row('Nota Simple', 'Disponible'));
+  if (b.pays === 'MA' && b.titre_statut) {
+    card.appendChild(row('Statut foncier', b.titre_statut));
+    if (b.titre_statut === 'Titré' && b.titre_num) card.appendChild(row('N° Titre foncier', b.titre_num));
+  }
+  return card;
+}
+
+function renderClient(d) {
+  const card = e('div', {class:'card'});
+  card.appendChild(e('h2', {}, 'Le contact'));
+  const head = e('div', {class:'sub'});
+  const badge = e('span', {class:'badge'}, d.projet || 'Acheteur');
+  badge.style.background = (PROFIL_COLORS[d.projet] || '#8B5E3C') + '22';
+  badge.style.color = PROFIL_COLORS[d.projet] || '#8B5E3C';
+  head.appendChild(badge);
+  if (d.is_investisseur) head.appendChild(e('span', {class:'badge'}, '💎 Investisseur'));
+  card.appendChild(head);
+
+  if (d.profil_type === 'Société') {
+    card.appendChild(row('Raison sociale', d.societe_nom));
+    card.appendChild(row('Forme', d.forme_juridique));
+    card.appendChild(row('Représentant', d.representant));
+    card.appendChild(row('SIRET / ICE', d.siret));
+  } else {
+    card.appendChild(row('Prénom', d.prenom));
+    card.appendChild(row('Nom', d.nom));
+    card.appendChild(row('Nationalité', d.nationalite));
+    if (d.date_naissance) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d.date_naissance);
+      card.appendChild(row('Né le', m ? (m[3] + '/' + m[2] + '/' + m[1]) : d.date_naissance));
+    }
+  }
+  card.appendChild(row('Téléphone', d.tel));
+  card.appendChild(row('Email', d.email));
+  card.appendChild(row('Adresse', d.adresse));
+  card.appendChild(row('Ville', d.ville));
+  card.appendChild(row('Pays résidence', d.pays_residence));
+  return card;
+}
+
+function renderBudget(d) {
+  const card = e('div', {class:'card'});
+  let any = false;
+  card.appendChild(e('h2', {}, 'Budget & conditions'));
+  if (d.projet === 'Acheteur' && (d.budget_min || d.budget_max)) { card.appendChild(row('Budget', range(d.budget_min, d.budget_max))); any = true; }
+  if (d.apport) { card.appendChild(row('Apport', d.apport)); any = true; }
+  if (d.financement) { card.appendChild(row('Financement', d.financement)); any = true; }
+  if (d.projet === 'Vendeur' && d.prix_affiche) { card.appendChild(row('Prix affiché', d.prix_affiche)); any = true; }
+  if (d.projet === 'Locataire' && d.loyer_max) { card.appendChild(row('Loyer max', d.loyer_max)); any = true; }
+  if (d.projet === 'Bailleur') {
+    if (d.loyer_demande) { card.appendChild(row('Loyer demandé', d.loyer_demande)); any = true; }
+    if (d.charges) { card.appendChild(row('Charges', d.charges)); any = true; }
+    if (d.depot) { card.appendChild(row('Dépôt', d.depot)); any = true; }
+  }
+  if (d.is_investisseur && d.rendement_cible) { card.appendChild(row('Rendement cible', d.rendement_cible + ' %')); any = true; }
+  if (!any) return null;
+  return card;
+}
+
+function renderInfos(d) {
+  const card = e('div', {class:'card'});
+  let any = false;
+  card.appendChild(e('h2', {}, 'Infos complémentaires'));
+  if (d.notes) { card.appendChild(row('Notes', d.notes)); any = true; }
+  if (d.langue) { card.appendChild(row('Langue', d.langue)); any = true; }
+  if (d.canal) { card.appendChild(row('Canal', d.canal)); any = true; }
+  if (d.origine) { card.appendChild(row('Origine', d.origine)); any = true; }
+  if (!any) return null;
+  return card;
+}
+
+function renderPhotos(photos) {
+  if (!photos || !photos.length) return null;
+  const card = e('div', {class:'card'});
+  card.appendChild(e('h2', {}, 'Photos · ' + photos.length));
+  const grid = e('div', {class:'photos'});
+  photos.forEach(p => {
+    const img = e('img', {src:p.url, alt:''});
+    img.onclick = () => lightbox(p.url);
+    grid.appendChild(img);
+  });
+  card.appendChild(grid);
+  return card;
+}
+
+function render(data) {
+  const d = data.dossier || {};
+  const root = document.getElementById('root');
+  root.innerHTML = '';
+
+  const banner = e('div', {class:'banner'}, '🔗 Vue partagée · Lecture seule');
+  document.body.insertBefore(banner, root);
+
+  const container = e('div', {class:'container'}, []);
+  const title = (d.profil_type === 'Société' && d.societe_nom)
+    ? d.societe_nom
+    : ((d.prenom || '') + ' ' + (d.nom || '')).trim() || 'Dossier';
+  const header = e('div', {class:'card'});
+  header.appendChild(e('h1', {}, title));
+  const exp = data.expires_at ? new Date(data.expires_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) : '';
+  header.appendChild(e('div', {class:'sub'}, exp ? ('Lien valide jusqu\'au ' + exp) : 'Lien sans expiration'));
+  container.appendChild(header);
+
+  const isAsking = ['Acheteur','Locataire'].includes(d.projet) || d.is_investisseur;
+  [renderClient(d), renderBien(d.bien, isAsking), renderBudget(d), renderInfos(d), renderPhotos(data.photos)]
+    .forEach(c => { if (c) container.appendChild(c); });
+
+  container.appendChild(e('div', {class:'footer'}, [
+    'Propulsé par ',
+    e('a', {href:'https://app.ocre.immo', target:'_blank'}, 'Ocre Immo'),
+  ]));
+  root.appendChild(container);
+}
+
+load();
+</script>
+</body>
+</html>

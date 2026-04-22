@@ -12,6 +12,8 @@ DirectoryIndex index.html
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteBase /
+# V17.2 Phase 2a : /s/<token> → shared.html (lecture seule publique)
+RewriteRule ^s/[a-fA-F0-9]{16,64}/?$ /shared.html [L]
 RewriteCond %{REQUEST_URI} !^/api/
 RewriteCond %{REQUEST_URI} !^/admin/
 RewriteCond %{REQUEST_URI} !^/login/

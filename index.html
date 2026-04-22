@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.1-fix-ux-5 -->
+<!-- ocre-v17.2-phase2a -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -70,6 +70,23 @@ const PAYS = [
 ];
 const FORMES_JURIDIQUES = ['SARL','SA','SAS','EURL','SCI','Autre'];
 const TYPES_BIEN = ['Appartement','Maison','Villa','Riad','Terrain','Commerce','Bureau'];
+
+// V17.2 Phase 2a — pays supportés Section II "Le bien" et types autorisés par pays.
+const PAYS_BIEN = [
+  {c:'MA', f:'🇲🇦', n:'Maroc',   types:['Villa','Appartement','Riad']},
+  {c:'FR', f:'🇫🇷', n:'France',  types:['Villa','Appartement']},
+  {c:'ES', f:'🇪🇸', n:'Espagne', types:['Villa','Appartement']},
+];
+const PRIORITES = [
+  {k:'redhibitoire', l:'Rédhibitoire', c:'#D64545', bg:'#FEF6F6'},
+  {k:'souhaite',     l:'Souhaité',     c:'#4BB77B', bg:'#F6FCF8'},
+  {k:'bonus',        l:'Bonus',        c:'#4A7CBD', bg:'#F4F8FC'},
+  {k:'indifferent',  l:'Indifférent',  c:'#8B7F6E', bg:'#FDFAF7'},
+];
+const ENERGIES = ['Électricité','Gaz','Eau','Internet','Chauffage'];
+const CHAUFFAGE_TYPES = ['Électrique','Gaz','Fioul','Bois / pellets','Pompe à chaleur','Solaire','Central collectif'];
+const TITRE_STATUTS_MA = ['Titré','Réquisition','Melkia','Autre'];
+const AUTHENTICITE_RIAD = ['Authentique','Rénové','Néo-riad'];
 
 const FIELD_FILLED = {border:'1.5px solid #BBA88B', background:'#FFFCF5'};
 const FIELD_EMPTY  = {border:'1.5px solid #E8DDD0', background:'#FDFAF7'};
@@ -462,6 +479,461 @@ function CustomFieldList({sectionKey, d, set}) {
   );
 }
 
+// V17.2 Phase 2a — RangeField : fourchette min / max, max vide = "illimité".
+function RangeField({label, unit='', minValue, maxValue, onMin, onMax}) {
+  const filled = (v) => v !== undefined && v !== null && String(v).trim() !== '';
+  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018'};
+  return (
+    <div style={{marginBottom:10}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}{unit ? ' (' + unit + ')' : ''}</label>}
+      <div style={{display:'flex', gap:8, alignItems:'stretch'}}>
+        <input type="number" inputMode="decimal" value={minValue ?? ''} placeholder="min"
+          onChange={e => onMin(e.target.value)}
+          style={{...base, flex:1, ...(filled(minValue) ? FIELD_FILLED : FIELD_EMPTY)}}/>
+        <div style={{display:'flex', alignItems:'center', color:'#8B7F6E', fontSize:13, padding:'0 2px'}}>→</div>
+        <input type="number" inputMode="decimal" value={maxValue ?? ''} placeholder="max (vide = illimité)"
+          onChange={e => onMax(e.target.value)}
+          style={{...base, flex:1, ...(filled(maxValue) ? FIELD_FILLED : FIELD_EMPTY)}}/>
+      </div>
+    </div>
+  );
+}
+
+// V17.2 Phase 2a — PriorityBoolField : 4 priorités colorées (Acheteur/Locataire).
+function PriorityBoolField({label, value, onChange}) {
+  return (
+    <div style={{marginBottom:10}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <div style={{display:'flex', gap:4, flexWrap:'wrap'}}>
+        {PRIORITES.map(p => {
+          const active = (value === p.k) || (!value && p.k === 'indifferent');
+          return (
+            <button key={p.k} type="button" onClick={() => onChange(p.k)}
+              style={{flex:'1 1 90px', padding:'7px 8px', borderRadius:8,
+                      border:'1.5px solid ' + (active ? p.c : '#E8DDD0'),
+                      background: active ? p.bg : '#FDFAF7',
+                      color: active ? p.c : '#8B7F6E',
+                      fontWeight: active ? 700 : 500, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>{p.l}</button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// V17.2 Phase 2a — MultiSelectChips : sélection multiple par pastilles.
+function MultiSelectChips({label, value, options, onChange}) {
+  const v = Array.isArray(value) ? value : [];
+  function toggle(o) {
+    const next = v.includes(o) ? v.filter(x => x !== o) : [...v, o];
+    onChange(next);
+  }
+  return (
+    <div style={{marginBottom:10}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+        {options.map(o => {
+          const on = v.includes(o);
+          return (
+            <button key={o} type="button" onClick={() => toggle(o)}
+              style={{padding:'6px 10px', borderRadius:999,
+                      border:'1.5px solid ' + (on ? '#8B5E3C' : '#E8DDD0'),
+                      background: on ? '#FFF3EC' : '#FDFAF7',
+                      color: on ? '#8B5E3C' : '#8B7F6E',
+                      fontWeight: on ? 700 : 500, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{o}</button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// V17.2 Phase 2a — BoolChip : interrupteur oui/non simple (Vendeur/Bailleur).
+function BoolChip({label, value, onChange}) {
+  return (
+    <label style={{display:'inline-flex', alignItems:'center', gap:6, padding:'7px 11px', borderRadius:8,
+                    border:'1.5px solid ' + (value ? '#8B5E3C' : '#E8DDD0'),
+                    background: value ? '#FFF3EC' : '#FDFAF7',
+                    color: value ? '#8B5E3C' : '#8B7F6E',
+                    fontWeight: value ? 700 : 500, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6, marginRight:6}}>
+      <input type="checkbox" checked={!!value} onChange={e => onChange(e.target.checked)} style={{margin:0}}/>
+      {label}
+    </label>
+  );
+}
+
+// V17.2 Phase 2a — PhotoUpload : galerie + upload /api/upload.php, max 30, JPEG/PNG/WebP.
+function PhotoUpload({dossierId, showToast}) {
+  const [photos, setPhotos] = React.useState([]);
+  const [uploading, setUploading] = React.useState(false);
+  const inputRef = React.useRef(null);
+
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  React.useEffect(() => {
+    if (!dossierId) return;
+    fetch(API + '/upload.php?action=list&dossier_id=' + dossierId, {headers:{'X-Session-Token': token()}})
+      .then(r => r.json()).then(d => { if (d && d.ok) setPhotos(d.photos || []); })
+      .catch(() => {});
+  }, [dossierId]);
+
+  async function uploadFile(f) {
+    if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); return; }
+    if (photos.length >= 30) { showToast && showToast('Limite 30 photos'); return; }
+    const fd = new FormData();
+    fd.append('action', 'upload');
+    fd.append('dossier_id', dossierId);
+    fd.append('file', f);
+    setUploading(true);
+    try {
+      const r = await fetch(API + '/upload.php?action=upload', {
+        method:'POST', headers:{'X-Session-Token': token()}, body: fd,
+      });
+      const d = await r.json();
+      if (d && d.ok && d.photo) setPhotos(prev => [d.photo, ...prev]);
+      else showToast && showToast(d && d.error ? d.error : 'Échec upload');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setUploading(false);
+  }
+  async function handleFiles(fl) {
+    for (const f of fl) await uploadFile(f);
+    if (inputRef.current) inputRef.current.value = '';
+  }
+  async function removePhoto(name) {
+    if (!confirm('Supprimer cette photo ?')) return;
+    try {
+      const r = await fetch(API + '/upload.php?action=delete', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+        body: JSON.stringify({dossier_id: dossierId, name}),
+      });
+      const d = await r.json();
+      if (d && d.ok) setPhotos(prev => prev.filter(p => p.name !== name));
+    } catch (e) {}
+  }
+
+  return (
+    <div style={{marginBottom:10}}>
+      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:6, textTransform:'uppercase', letterSpacing:.4}}>
+        Photos {photos.length > 0 && <span style={{color:'#8B5E3C'}}>· {photos.length}/30</span>}
+      </label>
+      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6, marginBottom:8}}>
+        {photos.map(p => (
+          <div key={p.name} style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden', border:'1px solid #E8DDD0'}}>
+            <img src={p.url} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+            <button type="button" onClick={() => removePhoto(p.name)}
+              style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(42,32,24,.75)', color:'#fff', fontSize:12, cursor:'pointer', lineHeight:'20px', padding:0}}>×</button>
+          </div>
+        ))}
+        {photos.length < 30 && (
+          <button type="button" onClick={() => inputRef.current && inputRef.current.click()} disabled={uploading || !dossierId}
+            title={!dossierId ? 'Enregistrez d\'abord le dossier' : ''}
+            style={{aspectRatio:'1/1', border:'1.5px dashed #BBA88B', borderRadius:8, background:'#FDFAF7', color:'#8B5E3C', cursor: dossierId ? 'pointer' : 'not-allowed', opacity: dossierId ? 1 : .5, fontSize:24, fontWeight:700}}>
+            {uploading ? '…' : '+'}
+          </button>
+        )}
+      </div>
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple
+        onChange={e => handleFiles(Array.from(e.target.files || []))} style={{display:'none'}}/>
+      {!dossierId && <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic'}}>Enregistrez le dossier une fois pour activer les photos.</div>}
+    </div>
+  );
+}
+
+// V17.2 Phase 2a — ShareMenu : création lien public, copie, partage natif, révocation.
+function ShareMenu({dossierId, dossierName, onClose, showToast}) {
+  const [link, setLink] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [expiresDays, setExpiresDays] = React.useState(7);
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  async function createLink() {
+    if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); return; }
+    setLoading(true);
+    try {
+      const r = await fetch(API + '/share.php?action=create_link', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+        body: JSON.stringify({dossier_id: dossierId, expires_days: expiresDays}),
+      });
+      const d = await r.json();
+      if (d && d.ok) setLink(d);
+      else showToast && showToast(d && d.error ? d.error : 'Échec');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setLoading(false);
+  }
+  async function copy() {
+    if (!link) return;
+    try { await navigator.clipboard.writeText(link.url); showToast && showToast('Lien copié'); } catch (e) {}
+  }
+  async function share() {
+    if (!link) return;
+    if (navigator.share) {
+      try { await navigator.share({title:'Ocre Immo · ' + (dossierName || 'Dossier'), text:'Accès lecture seule ' + expiresDays + 'j', url: link.url}); } catch (e) {}
+    } else { copy(); }
+  }
+  async function revoke() {
+    if (!link || !confirm('Révoquer ce lien ?')) return;
+    try {
+      await fetch(API + '/share.php?action=revoke', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+        body: JSON.stringify({token: link.token}),
+      });
+      setLink(null); showToast && showToast('Lien révoqué');
+    } catch (e) {}
+  }
+
+  return (
+    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.45)', zIndex:200, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:460, borderRadius:'16px 16px 0 0', padding:20, paddingBottom:30}}>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:12}}>Partager le dossier</div>
+        <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14}}>Lien public en <b>lecture seule</b>, expire après {expiresDays} jour{expiresDays > 1 ? 's' : ''}, révocable à tout moment.</div>
+        {!link ? (
+          <>
+            <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase'}}>Durée</label>
+            <div style={{display:'flex', gap:6, marginBottom:14}}>
+              {[1, 7, 30, 90].map(n => (
+                <button key={n} type="button" onClick={() => setExpiresDays(n)}
+                  style={{flex:1, padding:'8px', borderRadius:8, border:'1.5px solid ' + (expiresDays === n ? '#8B5E3C' : '#E8DDD0'),
+                          background: expiresDays === n ? '#FFF3EC' : '#FDFAF7', color: expiresDays === n ? '#8B5E3C' : '#8B7F6E',
+                          fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{n}j</button>
+              ))}
+            </div>
+            <button type="button" onClick={createLink} disabled={loading || !dossierId}
+              style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor: dossierId ? 'pointer' : 'not-allowed', opacity: dossierId ? 1 : .5, fontFamily:'inherit'}}>
+              {loading ? 'Création…' : 'Générer le lien'}
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{background:'#FDFAF7', border:'1.5px solid #BBA88B', borderRadius:8, padding:10, fontSize:12, wordBreak:'break-all', marginBottom:10, color:'#2A2018'}}>{link.url}</div>
+            <div style={{display:'flex', gap:6, marginBottom:10}}>
+              <button type="button" onClick={copy} style={{flex:1, padding:'11px', background:'#FFF3EC', color:'#8B5E3C', border:'1.5px solid #BBA88B', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Copier</button>
+              <button type="button" onClick={share} style={{flex:1, padding:'11px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Partager…</button>
+            </div>
+            <button type="button" onClick={revoke} style={{width:'100%', padding:'9px', background:'#fff', color:'#C04B20', border:'1.5px solid #E8DDD0', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Révoquer ce lien</button>
+          </>
+        )}
+        <button type="button" onClick={onClose} style={{width:'100%', padding:'9px', marginTop:10, background:'transparent', color:'#8B7F6E', border:'none', fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Fermer</button>
+      </div>
+    </div>
+  );
+}
+
+// V17.2 Phase 2a — BienForm : Section II "Le bien", country-first × type-driven.
+function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) {
+  const bien = d.bien || {};
+  function setB(k, v) { set('bien', {...bien, [k]: v}); }
+  // Acheteur/Locataire → mode "recherche" (fourchettes + priorités).
+  // Vendeur/Bailleur → mode "description" (valeurs précises + bools).
+  const askingMode = ['Acheteur','Locataire'].includes(activeProfil);
+  const paysDef = PAYS_BIEN.find(p => p.c === bien.pays);
+  const typesDispo = paysDef ? paysDef.types : [];
+
+  return (
+    <>
+      {/* 1. Pays */}
+      <div style={{marginBottom:10}}>
+        <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays du bien</label>
+        <div style={{display:'flex', gap:6}}>
+          {PAYS_BIEN.map(p => {
+            const active = bien.pays === p.c;
+            return (
+              <button key={p.c} type="button" onClick={() => setB('pays', p.c)}
+                style={{flex:1, padding:'9px 8px', borderRadius:8, border:'1.5px solid ' + (active ? '#8B5E3C' : '#E8DDD0'),
+                        background: active ? '#FFF3EC' : '#FDFAF7', color: active ? '#8B5E3C' : '#8B7F6E',
+                        fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                {p.f} {p.n}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {!bien.pays && <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'6px 0'}}>Choisissez un pays pour voir les types disponibles.</div>}
+
+      {/* 2. Type de bien (filtré par pays) */}
+      {bien.pays && (
+        <div style={{marginBottom:10}}>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Type de bien</label>
+          <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+            {typesDispo.map(t => {
+              const active = bien.type === t;
+              return (
+                <button key={t} type="button" onClick={() => setB('type', t)}
+                  style={{flex:'1 1 28%', padding:'9px 10px', borderRadius:8, border:'1.5px solid ' + (active ? '#8B5E3C' : '#E8DDD0'),
+                          background: active ? '#FFF3EC' : '#FDFAF7', color: active ? '#8B5E3C' : '#8B7F6E',
+                          fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>{t}</button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 3. Adresse + GPS + Ville (une fois pays+type choisis) */}
+      {bien.pays && bien.type && (
+        <>
+          <CitySuggestField label="Adresse / quartier" value={bien.adresse} onChange={v => setB('adresse', v)} suggestAction="suggest_address"/>
+          <div className="row-pair">
+            <CitySuggestField label="Ville" value={bien.ville} onChange={v => setB('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
+            <Field label="GPS (zone, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589" style={{flex:1}}/>
+          </div>
+
+          {/* 4. Champs spécifiques type */}
+          {bien.type === 'Villa' && <VillaFields bien={bien} setB={setB} askingMode={askingMode}/>}
+          {bien.type === 'Appartement' && <AppartFields bien={bien} setB={setB} askingMode={askingMode}/>}
+          {bien.type === 'Riad' && <RiadFields bien={bien} setB={setB} askingMode={askingMode}/>}
+
+          {/* 5. Tronc commun (chambres / sdb / parking / extérieur / énergie) */}
+          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:12, marginBottom:6, letterSpacing:.4}}>Caractéristiques communes</div>
+          {askingMode ? (
+            <>
+              <RangeField label="Chambres" minValue={bien.chambres_min} maxValue={bien.chambres_max} onMin={v => setB('chambres_min', v)} onMax={v => setB('chambres_max', v)}/>
+              <RangeField label="Salles de bain" minValue={bien.sdb_min} maxValue={bien.sdb_max} onMin={v => setB('sdb_min', v)} onMax={v => setB('sdb_max', v)}/>
+              <RangeField label="Surface habitable" unit="m²" minValue={bien.surface_min} maxValue={bien.surface_max} onMin={v => setB('surface_min', v)} onMax={v => setB('surface_max', v)}/>
+            </>
+          ) : (
+            <>
+              <div className="row-pair">
+                <Field label="Chambres" type="number" value={bien.chambres} onChange={v => setB('chambres', v)} style={{flex:1}}/>
+                <Field label="Salles de bain" type="number" value={bien.sdb} onChange={v => setB('sdb', v)} style={{flex:1}}/>
+              </div>
+              <Field label="Surface habitable (m²)" type="number" value={bien.surface} onChange={v => setB('surface', v)}/>
+            </>
+          )}
+          <Field label="Année de construction" type="number" value={bien.annee} onChange={v => setB('annee', v)}/>
+
+          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6}}>Extérieur</div>
+          {askingMode ? (
+            <>
+              <PriorityBoolField label="Terrasse" value={bien.terrasse_prio} onChange={v => setB('terrasse_prio', v)}/>
+              <PriorityBoolField label="Balcon" value={bien.balcon_prio} onChange={v => setB('balcon_prio', v)}/>
+              <PriorityBoolField label="Jardin" value={bien.jardin_prio} onChange={v => setB('jardin_prio', v)}/>
+              <PriorityBoolField label="Piscine" value={bien.piscine_prio} onChange={v => setB('piscine_prio', v)}/>
+              <PriorityBoolField label="Parking / garage" value={bien.parking_prio} onChange={v => setB('parking_prio', v)}/>
+            </>
+          ) : (
+            <div>
+              <BoolChip label="Terrasse" value={bien.terrasse} onChange={v => setB('terrasse', v)}/>
+              <BoolChip label="Balcon" value={bien.balcon} onChange={v => setB('balcon', v)}/>
+              <BoolChip label="Jardin" value={bien.jardin} onChange={v => setB('jardin', v)}/>
+              <BoolChip label="Piscine" value={bien.piscine} onChange={v => setB('piscine', v)}/>
+              <BoolChip label="Parking / garage" value={bien.parking_bool} onChange={v => setB('parking_bool', v)}/>
+              <BoolChip label="Cave" value={bien.cave_bool} onChange={v => setB('cave_bool', v)}/>
+            </div>
+          )}
+
+          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6}}>Énergie & confort</div>
+          <MultiSelectChips label="Raccordements" value={bien.energies} options={ENERGIES} onChange={v => setB('energies', v)}/>
+          <Select label="Type de chauffage" value={bien.chauffage_type} onChange={v => setB('chauffage_type', v)} options={CHAUFFAGE_TYPES}/>
+          <div>
+            <BoolChip label="Chauffe-eau solaire" value={bien.chauffe_eau_solaire} onChange={v => setB('chauffe_eau_solaire', v)}/>
+            <BoolChip label="Climatisation" value={bien.climatisation} onChange={v => setB('climatisation', v)}/>
+            <BoolChip label="Ascenseur" value={bien.ascenseur} onChange={v => setB('ascenseur', v)}/>
+          </div>
+
+          {/* 6. Documents conditionnels */}
+          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6}}>Documents & conformité</div>
+          {bien.pays === 'FR' && (
+            <>
+              <div className="row-pair">
+                <Select label="DPE" value={bien.dpe} onChange={v => setB('dpe', v)} options={['A','B','C','D','E','F','G','Vierge']} style={{flex:1}}/>
+                <Select label="GES" value={bien.ges} onChange={v => setB('ges', v)} options={['A','B','C','D','E','F','G','Vierge']} style={{flex:1}}/>
+              </div>
+              <Field label="Surface Loi Carrez (m²)" type="number" value={bien.loi_carrez} onChange={v => setB('loi_carrez', v)}/>
+            </>
+          )}
+          {bien.pays === 'ES' && (
+            <BoolChip label="Nota Simple disponible" value={bien.nota_simple} onChange={v => setB('nota_simple', v)}/>
+          )}
+          {bien.pays === 'MA' && (
+            <>
+              <Select label="Statut foncier" value={bien.titre_statut} onChange={v => setB('titre_statut', v)} options={TITRE_STATUTS_MA}/>
+              {bien.titre_statut === 'Titré' && (
+                <Field label="N° Titre foncier" value={bien.titre_num} onChange={v => setB('titre_num', v)}/>
+              )}
+            </>
+          )}
+
+          {/* 7. Photos */}
+          <div style={{marginTop:14}}>
+            <PhotoUpload dossierId={dossierId} showToast={showToast}/>
+          </div>
+
+          {/* 8. Acheteur : budget déjà dans Stage III ; ici on laisse juste le Custom fields list */}
+        </>
+      )}
+      <CustomFieldList sectionKey="bien" d={d} set={set}/>
+    </>
+  );
+}
+
+function VillaFields({bien, setB, askingMode}) {
+  return (
+    <>
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:.4}}>Villa</div>
+      {askingMode ? (
+        <>
+          <RangeField label="Surface terrain" unit="m²" minValue={bien.terrain_min} maxValue={bien.terrain_max} onMin={v => setB('terrain_min', v)} onMax={v => setB('terrain_max', v)}/>
+          <RangeField label="Nombre d'étages" minValue={bien.etages_nb_min} maxValue={bien.etages_nb_max} onMin={v => setB('etages_nb_min', v)} onMax={v => setB('etages_nb_max', v)}/>
+        </>
+      ) : (
+        <div className="row-pair">
+          <Field label="Surface terrain (m²)" type="number" value={bien.terrain} onChange={v => setB('terrain', v)} style={{flex:1}}/>
+          <Field label="Nombre d'étages" type="number" value={bien.etages_nb} onChange={v => setB('etages_nb', v)} style={{flex:1}}/>
+        </div>
+      )}
+    </>
+  );
+}
+
+function AppartFields({bien, setB, askingMode}) {
+  return (
+    <>
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:.4}}>Appartement</div>
+      <div className="row-pair">
+        <Select label="Étage" value={bien.etage} onChange={v => setB('etage', v)} options={['RDC','Intermédiaire','Dernier','Peu importe']} style={{flex:1}}/>
+        <Field label="Étages dans l'immeuble" type="number" value={bien.total_etages} onChange={v => setB('total_etages', v)} style={{flex:1}}/>
+      </div>
+      {!askingMode && (
+        <>
+          <div className="row-pair">
+            <Field label="Charges mensuelles" type="number" value={bien.charges_mensuelles} onChange={v => setB('charges_mensuelles', v)} style={{flex:1}}/>
+            <Field label="Taxe foncière / an" type="number" value={bien.taxe_fonciere} onChange={v => setB('taxe_fonciere', v)} style={{flex:1}}/>
+          </div>
+          <div>
+            <BoolChip label="Digicode" value={bien.digicode} onChange={v => setB('digicode', v)}/>
+            <BoolChip label="Gardien" value={bien.gardien} onChange={v => setB('gardien', v)}/>
+            <BoolChip label="Interphone" value={bien.interphone} onChange={v => setB('interphone', v)}/>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function RiadFields({bien, setB, askingMode}) {
+  return (
+    <>
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:.4}}>Riad</div>
+      <Select label="Authenticité" value={bien.authenticite} onChange={v => setB('authenticite', v)} options={AUTHENTICITE_RIAD}/>
+      {askingMode ? (
+        <RangeField label="Nombre de patios" minValue={bien.patios_min} maxValue={bien.patios_max} onMin={v => setB('patios_min', v)} onMax={v => setB('patios_max', v)}/>
+      ) : (
+        <div className="row-pair">
+          <Field label="Nombre de patios" type="number" value={bien.patios_nb} onChange={v => setB('patios_nb', v)} style={{flex:1}}/>
+          <Field label="Surface terrasse (m²)" type="number" value={bien.terrasse_surface} onChange={v => setB('terrasse_surface', v)} style={{flex:1}}/>
+        </div>
+      )}
+      <div>
+        <BoolChip label="Zellige" value={bien.zellige} onChange={v => setB('zellige', v)}/>
+        <BoolChip label="Tadelakt" value={bien.tadelakt} onChange={v => setB('tadelakt', v)}/>
+        <BoolChip label="Bejmat" value={bien.bejmat} onChange={v => setB('bejmat', v)}/>
+        <BoolChip label="Fontaine" value={bien.fontaine} onChange={v => setB('fontaine', v)}/>
+        <BoolChip label="Douiria" value={bien.douiria} onChange={v => setB('douiria', v)}/>
+      </div>
+    </>
+  );
+}
+
 function Stage({title, expanded, onToggle, children}) {
   // V17.1 fix-ux-3 : chevron qui tourne (transform CSS), transition fluide sur le contenu.
   return (
@@ -774,8 +1246,9 @@ function FormView(props) {
   // V17.1 fix-ux-3 : auto-open accordéons si champs pré-remplis (brouillon repris).
   const [expanded, setExpanded] = useState(() => {
     const init = [true, false, false, false];
-    // Stage II — bien
-    if (d.type_bien || d.surface || d.surface_min || d.chambres_min || d.etage) init[1] = true;
+    // Stage II — bien (V17.2 phase2a : d.bien namespace)
+    const b = d.bien || {};
+    if (b.pays || b.type || d.type_bien || d.surface || d.surface_min || d.chambres_min || d.etage) init[1] = true;
     // Stage III — financier
     if (d.budget_min || d.budget_max || d.apport || d.prix_affiche || d.loyer_max || d.loyer_demande || d.rendement_cible) init[2] = true;
     // Stage IV — complémentaire
@@ -794,16 +1267,17 @@ function FormView(props) {
   function toggleStage(i) {
     setExpanded(prev => prev.map((v, idx) => idx === i ? !v : v));
   }
-  function shareClient() {
-    const name = (profilType === 'Société' && d.societe_nom) ? d.societe_nom : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
-    const payload = {title:'Ocre Immo', text: name || activeProfil, url: window.location.origin};
-    if (navigator.share) {
-      navigator.share(payload).catch(() => {});
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.origin);
-      showToast && showToast('Lien copié');
+  const [shareOpen, setShareOpen] = useState(false);
+  function openShare() {
+    if (!editing || !editing.id || String(editing.id).startsWith('tmp-')) {
+      showToast && showToast('Enregistrez d\'abord le dossier');
+      return;
     }
+    setShareOpen(true);
   }
+  const dossierName = (profilType === 'Société' && d.societe_nom)
+    ? d.societe_nom
+    : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
 
   const stageTitle = editing && (d.prenom || d.nom || d.societe_nom)
     ? ((profilType === 'Société' && d.societe_nom) ? d.societe_nom : ((d.prenom || '') + ' ' + (d.nom || '')).trim())
@@ -814,7 +1288,7 @@ function FormView(props) {
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={backToList} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>{stageTitle}</div>
-        <button onClick={shareClient} style={{background:'none', border:'none', cursor:'pointer', padding:4}}><ShareIcon/></button>
+        <button onClick={openShare} style={{background:'none', border:'none', cursor:'pointer', padding:4}} title="Partager"><ShareIcon/></button>
       </div>
 
       <div style={{padding:'10px 14px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
@@ -902,36 +1376,9 @@ function FormView(props) {
         </Stage>
 
         <Stage title={STAGES[activeProfil][1]} expanded={expanded[1]} onToggle={() => toggleStage(1)}>
-          <Select label="Type de bien" value={d.type_bien} onChange={v => set('type_bien', v)} options={TYPES_BIEN}/>
-          {['Acheteur','Locataire'].includes(activeProfil) || isInvestisseur ? (
-            <div style={{display:'flex', gap:8}}>
-              <Field label="Surface min (m²)" type="number" value={d.surface_min} onChange={v => set('surface_min', v)} style={{flex:1}}/>
-              <Field label="Surface max (m²)" type="number" value={d.surface_max} onChange={v => set('surface_max', v)} style={{flex:1}}/>
-            </div>
-          ) : (
-            <Field label="Surface (m²)" type="number" value={d.surface} onChange={v => set('surface', v)}/>
-          )}
-          <div style={{display:'flex', gap:8}}>
-            <Field label="Chambres min" type="number" value={d.chambres_min} onChange={v => set('chambres_min', v)} style={{flex:1}}/>
-            <Field label="Chambres max" type="number" value={d.chambres_max} onChange={v => set('chambres_max', v)} style={{flex:1}}/>
-            <Field label="SDB" type="number" value={d.sdb} onChange={v => set('sdb', v)} style={{flex:1}}/>
-          </div>
-          <Select label="Étage" value={d.etage} onChange={v => set('etage', v)} options={['Peu importe','RDC','Intermédiaire','Dernier']}/>
-          <Field label="Orientation" value={d.orientation} onChange={v => set('orientation', v)}/>
-          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:8, marginBottom:4}}>Extérieur</div>
-          <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-            {['balcon','terrasse','jardin','piscine'].map(ext => (
-              <label key={ext} style={{display:'flex', alignItems:'center', gap:4, padding:'6px 10px', border:'1.5px solid #E8DDD0', borderRadius:8, background:'#FDFAF7', fontSize:12, cursor:'pointer'}}>
-                <input type="checkbox" checked={!!(d.exterieur && d.exterieur[ext])} onChange={e => set('exterieur', {...(d.exterieur || {}), [ext]: e.target.checked})}/>
-                {ext}
-              </label>
-            ))}
-          </div>
-          <div style={{display:'flex', gap:8, marginTop:10}}>
-            <Field label="Parking" value={d.parking} onChange={v => set('parking', v)} style={{flex:1}}/>
-            <Field label="Cave" value={d.cave} onChange={v => set('cave', v)} style={{flex:1}}/>
-          </div>
-          <CustomFieldList sectionKey="recherche" d={d} set={set}/>
+          <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
+            d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
+            showToast={showToast}/>
           <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>
 
@@ -1017,6 +1464,7 @@ function FormView(props) {
       </div>
 
       {toast && <Toast msg={toast}/>}
+      {shareOpen && <ShareMenu dossierId={editing && editing.id} dossierName={dossierName} onClose={() => setShareOpen(false)} showToast={showToast}/>}
     </div>
   );
 }
