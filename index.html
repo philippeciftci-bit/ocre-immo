@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.7-fixes -->
+<!-- ocre-v17.8-map-circle -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1503,10 +1503,51 @@ function BureauFields({bien, setB, askingMode}) {
 // V17.3 Phase 2b — MapPicker Leaflet + OpenStreetMap. Mode précis (marker) ou zone (cercle).
 function MapPicker({bien, setB, showToast}) {
   const mapRef = React.useRef(null);
+  // V17.8 : refs stables pour marker + circle, setRadius live sans recreate.
   const leafletRef = React.useRef({map:null, marker:null, circle:null});
-  const [mode, setMode] = React.useState(bien.gps_mode || 'precis');
-  const [radius, setRadius] = React.useState(bien.gps_radius ? Number(bien.gps_radius) : 1000);
+  const modeRef = React.useRef(bien.gps_mode || 'precis');
+  const radiusRef = React.useRef(bien.gps_radius ? Number(bien.gps_radius) : 1000);
+  const [mode, setMode] = React.useState(modeRef.current);
+  const [radius, setRadius] = React.useState(radiusRef.current);
   const [ready, setReady] = React.useState(typeof window !== 'undefined' && !!window.L);
+
+  const CIRCLE_STYLE = {color:'#B26D3A', fillColor:'#FBF1E4', fillOpacity:.25, weight:2};
+
+  function ensureMarker(L, lat, lng) {
+    const lr = leafletRef.current;
+    if (!lr.marker) {
+      lr.marker = L.marker([lat, lng], {draggable: true}).addTo(lr.map);
+      lr.marker.on('dragend', () => {
+        const p = lr.marker.getLatLng();
+        setB('gps_lat', p.lat.toFixed(6));
+        setB('gps_lng', p.lng.toFixed(6));
+        if (lr.circle) lr.circle.setLatLng(p);
+      });
+    } else {
+      lr.marker.setLatLng([lat, lng]);
+    }
+  }
+  function ensureCircle(L, lat, lng, r) {
+    const lr = leafletRef.current;
+    if (!lr.circle) {
+      lr.circle = L.circle([lat, lng], {radius: r, ...CIRCLE_STYLE}).addTo(lr.map);
+    } else {
+      lr.circle.setLatLng([lat, lng]);
+      lr.circle.setRadius(r);
+    }
+  }
+  function removeCircle() {
+    const lr = leafletRef.current;
+    if (lr.circle) { lr.map.removeLayer(lr.circle); lr.circle = null; }
+  }
+  function place(lat, lng) {
+    const L = window.L;
+    const lr = leafletRef.current;
+    if (!L || !lr.map) return;
+    ensureMarker(L, lat, lng);
+    if (modeRef.current === 'zone') ensureCircle(L, lat, lng, radiusRef.current);
+    else removeCircle();
+  }
 
   React.useEffect(() => {
     let cancelled = false;
@@ -1523,40 +1564,36 @@ function MapPicker({bien, setB, showToast}) {
         attribution: '© OpenStreetMap', maxZoom: 19,
       }).addTo(map);
       leafletRef.current.map = map;
-
-      function place(latlng) {
-        const {lat, lng} = latlng;
+      map.on('click', e => {
+        const {lat, lng} = e.latlng;
         setB('gps_lat', lat.toFixed(6));
         setB('gps_lng', lng.toFixed(6));
-        redraw(lat, lng);
-      }
-      map.on('click', e => place(e.latlng));
-
-      if (bien.gps_lat && bien.gps_lng) redraw(lat, lng);
+        place(lat, lng);
+      });
+      if (bien.gps_lat && bien.gps_lng) place(lat, lng);
     }
-    function redraw(lat, lng) {
-      const L = window.L;
-      const lr = leafletRef.current;
-      if (!lr.map) return;
-      if (lr.marker) { lr.map.removeLayer(lr.marker); lr.marker = null; }
-      if (lr.circle) { lr.map.removeLayer(lr.circle); lr.circle = null; }
-      if (mode === 'precis') {
-        lr.marker = L.marker([lat, lng]).addTo(lr.map);
-      } else {
-        lr.circle = L.circle([lat, lng], {radius: radius, color:'#8B5E3C', fillColor:'#8B5E3C', fillOpacity:.2}).addTo(lr.map);
-      }
-    }
-    leafletRef.current._redraw = redraw;
     tryInit();
     return () => { cancelled = true; };
   }, []);
 
+  // V17.8 : bascule mode (add/removeLayer circle) + setRadius live au changement slider.
   React.useEffect(() => {
-    if (!leafletRef.current._redraw) return;
-    const lat = Number(bien.gps_lat), lng = Number(bien.gps_lng);
-    if (lat && lng) leafletRef.current._redraw(lat, lng);
+    modeRef.current = mode;
+    radiusRef.current = radius;
     setB('gps_mode', mode);
     setB('gps_radius', mode === 'zone' ? radius : '');
+    const L = window.L;
+    const lr = leafletRef.current;
+    if (!L || !lr.map) return;
+    const lat = Number(bien.gps_lat), lng = Number(bien.gps_lng);
+    if (!lat || !lng) return;
+    if (mode === 'zone') {
+      ensureCircle(L, lat, lng, radius);
+      ensureMarker(L, lat, lng);
+    } else {
+      removeCircle();
+      ensureMarker(L, lat, lng);
+    }
   }, [mode, radius]);
 
   function useMyLocation() {
@@ -1568,7 +1605,7 @@ function MapPicker({bien, setB, showToast}) {
         setB('gps_lng', longitude.toFixed(6));
         if (leafletRef.current.map) {
           leafletRef.current.map.setView([latitude, longitude], 15);
-          leafletRef.current._redraw(latitude, longitude);
+          place(latitude, longitude);
         }
       },
       err => showToast && showToast('Position refusée : ' + (err.message || 'erreur')),
