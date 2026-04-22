@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.1-fix-ux-4 -->
+<!-- ocre-v17.1-fix-ux-5 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,6 +17,26 @@ body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;overflow:
 ::-webkit-scrollbar{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+
+/* V17.1 fix-ux-5 : paires 50/50 stackent en mobile portrait < 500px. */
+.row-pair{display:flex;gap:8px}
+@media (max-width: 499px){
+  .row-pair{flex-direction:column;gap:0}
+  .row-pair > *{flex:1 1 auto !important;width:100%}
+}
+/* Unified phone field : cadre unique drapeau+numéro sans coupure visuelle. */
+.phone-unified{display:flex;align-items:stretch;width:100%;box-sizing:border-box;border-radius:8px;overflow:hidden;transition:border-color .15s, background .15s}
+.phone-unified .dial-btn{flex:0 0 auto;display:flex;align-items:center;gap:4px;padding:9px 10px;background:transparent;border:0;cursor:pointer;font:inherit;color:#2A2018;font-size:14px;white-space:nowrap}
+.phone-unified .dial-btn:hover{background:rgba(139,94,60,.06)}
+.phone-unified .divider{flex:0 0 auto;width:1px;background:#E8DDD0;margin:6px 0}
+.phone-unified input{flex:1 1 auto;min-width:0;padding:9px 11px;border:0;outline:none;background:transparent;font:inherit;font-size:14px;color:#2A2018}
+.phone-unified.is-empty{border:1.5px solid #E8DDD0;background:#FDFAF7}
+.phone-unified.is-filled{border:1.5px solid #BBA88B;background:#FFFCF5}
+.phone-unified.is-warn{border:1.5px solid #D4A437;background:#FFFBEF}
+.phone-unified.is-focus{border-color:#8B5E3C !important;background:#fff}
+.phone-popover{position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:#fff;border:1.5px solid #BBA88B;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:100;margin-top:2px}
+.phone-popover .item{padding:10px 12px;font-size:14px;cursor:pointer;border-bottom:1px solid #F4EEE6;display:flex;gap:8px;align-items:center}
+.phone-popover .item:hover{background:#FFF3EC}
 </style>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -233,16 +253,17 @@ function PhoneField({label, value, onChange, residenceCountry='', style={}}) {
 
   const warn = localDigits.length > 0 && localDigits.length < 8;
   const filled = localDigits.length >= 8;
-  const base = {flex:1, minWidth:0, boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018'};
+  const [focused, setFocused] = React.useState(false);
+  const [pickerOpen, setPickerOpen] = React.useState(false);
 
   function pushE164(d, l) {
     const clean = l.replace(/\D/g, '').replace(/^0+/, '');
     if (!clean) onChange('');
     else onChange('+' + d + clean);
   }
-  function handleDial(e) {
-    const newDial = e.target.value;
+  function pickDial(newDial) {
     setDial(newDial);
+    setPickerOpen(false);
     pushE164(newDial, localDigits);
   }
   function handleLocal(e) {
@@ -253,19 +274,37 @@ function PhoneField({label, value, onChange, residenceCountry='', style={}}) {
   const displayLocal = formatLocal(localDigits, dial);
   const dc = DIAL_CODES.find(x => x.d === dial) || DIAL_CODES[0];
 
+  // V17.1 fix-ux-5 : cadre unifié unique (drapeau + numéro), bordure bascule au focus.
+  let stateClass = 'is-empty';
+  if (filled) stateClass = 'is-filled';
+  else if (warn) stateClass = 'is-warn';
+  if (focused) stateClass += ' is-focus';
+
   return (
-    <div style={{marginBottom:10, minWidth:0, ...style}}>
+    <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
-      <div style={{display:'flex', gap:6}}>
-        <select value={dial} onChange={handleDial}
-          style={{...base, flex:'0 0 auto', width:'auto', paddingRight:8, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}>
-          {DIAL_CODES.map(c => <option key={c.c + c.d} value={c.d}>{c.f} +{c.d}</option>)}
-        </select>
+      <div className={'phone-unified ' + stateClass}>
+        <button type="button" className="dial-btn" onClick={() => setPickerOpen(o => !o)}
+          aria-label="Choisir le pays">
+          <span>{dc.f}</span>
+          <span>+{dial}</span>
+          <span style={{fontSize:9, opacity:.6}}>▾</span>
+        </button>
+        <div className="divider"/>
         <input type="tel" inputMode="tel" autoComplete="tel" value={displayLocal} onChange={handleLocal}
-          placeholder={dial === '33' ? '6 12 34 56 78' : (dial === '1' ? '(555) 123-4567' : '…')}
-          style={{...base, ...(filled ? FIELD_FILLED : (warn ? {border:'1.5px solid #D4A437', background:'#FFFBEF'} : FIELD_EMPTY))}}/>
+          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          placeholder={dial === '33' ? '6 12 34 56 78' : (dial === '1' ? '(555) 123-4567' : '…')}/>
       </div>
-      {warn && <div style={{fontSize:11, color:'#D4A437', marginTop:2}}>Numéro trop court</div>}
+      {pickerOpen && (
+        <div className="phone-popover" onMouseDown={e => e.preventDefault()}>
+          {DIAL_CODES.map(c => (
+            <div key={c.c + c.d} className="item" onClick={() => pickDial(c.d)}>
+              <span>{c.f}</span><span style={{fontWeight:600}}>+{c.d}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {warn && !focused && <div style={{fontSize:11, color:'#D4A437', marginTop:2}}>Numéro trop court</div>}
     </div>
   );
 }
@@ -810,24 +849,24 @@ function FormView(props) {
           {profilType === 'Particulier' ? (
             <>
               {/* L1 Prénom / Nom */}
-              <div style={{display:'flex', gap:8}}>
+              <div className="row-pair">
                 <Field label="Prénom" value={d.prenom} onChange={v => set('prenom', v)} style={{flex:1}}/>
                 <Field label="Nom" value={d.nom} onChange={v => set('nom', v)} style={{flex:1}}/>
               </div>
               {/* L2 Tel / Email */}
-              <div style={{display:'flex', gap:8}}>
+              <div className="row-pair">
                 <PhoneField label="Téléphone" value={d.tel} onChange={v => set('tel', v)} residenceCountry={d.pays_residence || d.nationalite || ''} style={{flex:1}}/>
                 <EmailField label="Email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
               </div>
               {/* L3 Adresse full width */}
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
               {/* L4 Ville / Pays résidence */}
-              <div style={{display:'flex', gap:8}}>
+              <div className="row-pair">
                 <CitySuggestField label="Ville" value={d.ville} onChange={v => set('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
                 <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
               </div>
               {/* L5 Date naissance / Nationalité */}
-              <div style={{display:'flex', gap:8}}>
+              <div className="row-pair">
                 <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1}}/>
                 <CountryAutocomplete label="Nationalité" value={d.nationalite} onChange={v => set('nationalite', v)} style={{flex:1}}/>
               </div>
@@ -835,24 +874,24 @@ function FormView(props) {
           ) : (
             <>
               {/* Société : L1 Raison sociale / Forme juridique */}
-              <div style={{display:'flex', gap:8}}>
+              <div className="row-pair">
                 <Field label="Raison sociale" value={d.societe_nom} onChange={v => set('societe_nom', v)} style={{flex:2}}/>
                 <Select label="Forme juridique" value={d.forme_juridique} onChange={v => set('forme_juridique', v)} options={FORMES_JURIDIQUES} style={{flex:1}}/>
               </div>
               {/* L2 SIRET/ICE / Représentant */}
-              <div style={{display:'flex', gap:8}}>
+              <div className="row-pair">
                 <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)} style={{flex:1}}/>
                 <Field label="Représentant" value={d.representant} onChange={v => set('representant', v)} style={{flex:1}}/>
               </div>
               {/* L3 Tel / Email */}
-              <div style={{display:'flex', gap:8}}>
+              <div className="row-pair">
                 <PhoneField label="Téléphone" value={d.tel} onChange={v => set('tel', v)} residenceCountry={d.pays_residence || d.nationalite || ''} style={{flex:1}}/>
                 <EmailField label="Email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
               </div>
               {/* L4 Adresse full */}
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
               {/* L5 Ville / Pays résidence */}
-              <div style={{display:'flex', gap:8}}>
+              <div className="row-pair">
                 <CitySuggestField label="Ville" value={d.ville} onChange={v => set('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
                 <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
               </div>
