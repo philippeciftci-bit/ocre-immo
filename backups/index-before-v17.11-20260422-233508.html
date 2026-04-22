@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.11-matching -->
+<!-- ocre-v17.10-admin-pays -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2117,9 +2117,6 @@ function App() {
   const [isInvestisseur, setIsInvestisseur] = useState(false);
   // V17.10 : compteur de version pour re-render après fetch des pays dynamiques.
   const [countriesVersion, setCountriesVersion] = useState(0);
-  // V17.11 : carte des matches par client_id → {count, max_score}
-  const [matchesById, setMatchesById] = useState({});
-  const [matchFor, setMatchFor] = useState(null);  // client_id pour modal ouvert
 
   useEffect(() => {
     const token = localStorage.getItem('ocre_token');
@@ -2141,10 +2138,6 @@ function App() {
           );
           setClients(migrated);
         }
-        // V17.11 : charge les matches en arrière-plan (non bloquant).
-        fetch(API + '/matching.php?action=find_all_matches', {headers:{'X-Session-Token': token}})
-          .then(r => r.json()).then(d => { if (d && d.ok) setMatchesById(d.matches_by_id || {}); })
-          .catch(() => {});
       } catch (e) { /* silent */ }
       setApiLoading(false);
     })();
@@ -2237,10 +2230,6 @@ function App() {
       isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
       openClient={openClient} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
-      matchesById={matchesById} openMatchModal={setMatchFor}
-      matchFor={matchFor} closeMatchModal={() => setMatchFor(null)}
-      findClientById={(id) => clients.find(c => c.id === id)}
-      setEditingFromMatch={(c) => { setEditing(c); setActiveProfil(c.projet || 'Acheteur'); setIsInvestisseur(c.projet === 'Investisseur' || !!c.is_investisseur); setMatchFor(null); setView('form'); }}
     />
   ) : (
     <FormView
@@ -2420,9 +2409,7 @@ function ListView(props) {
   const {clients, country, setCountry, showArchives, setShowArchives,
          userMenu, setUserMenu, currentUser, logout,
          activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
-         openClient, openNew, toast, openPrefs,
-         matchesById, openMatchModal, matchFor, closeMatchModal,
-         findClientById, setEditingFromMatch} = props;
+         openClient, openNew, toast, openPrefs} = props;
   const pays = PAYS.find(p => p.c === country) || PAYS[0];
   // V17.7 fix-C1 : picker pays dropdown avec recherche (remplace cycle).
   const [paysPickerOpen, setPaysPickerOpen] = useState(false);
@@ -2500,18 +2487,18 @@ function ListView(props) {
         {!showArchives && drafts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
-            {drafts.map(c => <ClientRow key={c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onClick={() => openClient(c)}/>)}
+            {drafts.map(c => <ClientRow key={c.id} c={c} clients={clients} onClick={() => openClient(c)}/>)}
           </>
         )}
         {!showArchives && contacts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'12px 4px 6px'}}>Contacts · {contacts.length}</div>
-            {contacts.map(c => <ClientRow key={c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onClick={() => openClient(c)}/>)}
+            {contacts.map(c => <ClientRow key={c.id} c={c} clients={clients} onClick={() => openClient(c)}/>)}
           </>
         )}
         {showArchives && (
           <>
-            {filtered.map(c => <ClientRow key={c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onClick={() => openClient(c)}/>)}
+            {filtered.map(c => <ClientRow key={c.id} c={c} clients={clients} onClick={() => openClient(c)}/>)}
             {filtered.length === 0 && <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:40}}>Aucune archive</div>}
           </>
         )}
@@ -2528,94 +2515,13 @@ function ListView(props) {
                 fontSize:28, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 20px rgba(139,94,60,0.35)', fontFamily:'inherit'}}>+</button>
 
       {toast && <Toast msg={toast}/>}
-      {matchFor && (
-        <MatchModal clientId={matchFor} clients={clients}
-          findClientById={findClientById}
-          setEditingFromMatch={setEditingFromMatch}
-          onClose={closeMatchModal}/>
-      )}
-    </div>
-  );
-}
-
-// V17.11 — MatchModal : liste des matchs potentiels pour un dossier.
-function MatchModal({clientId, clients, findClientById, setEditingFromMatch, onClose}) {
-  const [loading, setLoading] = React.useState(true);
-  const [matches, setMatches] = React.useState([]);
-  const [error, setError] = React.useState('');
-  const src = findClientById ? findClientById(clientId) : null;
-  const srcName = src ? (
-    src.profil_type === 'Société' && src.societe_nom
-      ? src.societe_nom
-      : ((src.prenom || '') + ' ' + (src.nom || '')).trim() || 'Dossier'
-  ) : 'Dossier';
-  React.useEffect(() => {
-    const token = localStorage.getItem('ocre_token') || '';
-    fetch(API + '/matching.php?action=find_matches&client_id=' + clientId, {headers:{'X-Session-Token': token}})
-      .then(r => r.json())
-      .then(d => {
-        if (d && d.ok) setMatches(d.matches || []);
-        else setError((d && d.error) || 'Erreur');
-        setLoading(false);
-      })
-      .catch(() => { setError('Erreur réseau'); setLoading(false); });
-  }, [clientId]);
-
-  function openMatch(cid) {
-    const c = findClientById ? findClientById(cid) : null;
-    if (c) setEditingFromMatch(c);
-  }
-
-  return (
-    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.55)', zIndex:200, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:520, maxHeight:'85vh', borderRadius:'16px 16px 0 0', padding:18, paddingBottom:24, overflowY:'auto'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:4, textAlign:'center'}}>🎯 Matchs potentiels</div>
-        <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14, textAlign:'center'}}>Pour <b>{srcName}</b></div>
-        {loading && <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:20}}>Chargement…</div>}
-        {error && <div style={{textAlign:'center', color:'#C04B20', fontSize:13, padding:20}}>{error}</div>}
-        {!loading && !error && matches.length === 0 && (
-          <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:20}}>Aucun match pour le moment.</div>
-        )}
-        {matches.map(m => {
-          const s = m.summary;
-          const cname = s.societe_nom || ((s.prenom || '') + ' ' + (s.nom || '')).trim() || 'Sans nom';
-          const col = s.score > 80 ? '#D64545' : '#B26D3A';
-          return (
-            <div key={m.client_id} style={{background:'#FDFAF7', border:'1px solid #EDE6DC', borderRadius:10, padding:12, marginBottom:8}}>
-              <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
-                <span style={{fontWeight:700, fontSize:14, color:'#2A2018', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{cname}</span>
-                <span style={{padding:'3px 9px', borderRadius:999, background: col, color:'#fff', fontSize:10.5, fontWeight:700}}>Score {m.score}</span>
-              </div>
-              <div style={{height:6, background:'#EDE1CC', borderRadius:3, marginBottom:8, overflow:'hidden'}}>
-                <div style={{height:'100%', width: m.score + '%', background: col, transition:'width .3s'}}/>
-              </div>
-              <div style={{fontSize:11, color:'#8B7F6E', marginBottom:6}}>
-                {s.profil} · {s.type || '—'} · {s.quartier || s.ville || '—'}{s.prix ? ' · ' + Number(s.prix).toLocaleString('fr-FR') : ''}
-              </div>
-              <div style={{display:'flex', flexWrap:'wrap', gap:4, marginBottom:8}}>
-                {m.reasons.map((r, i) => (
-                  <span key={i} style={{padding:'2px 8px', borderRadius:999, background:'#FBF1E4', border:'1px solid #E2D8CC', fontSize:10.5, color:'#8B5E3C', fontWeight:600}}>{r}</span>
-                ))}
-              </div>
-              <button type="button" onClick={() => openMatch(m.client_id)}
-                style={{width:'100%', padding:'8px', borderRadius:8, background:'#FFF3EC', color:'#8B5E3C', border:'1.5px solid #BBA88B', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>
-                Voir le dossier →
-              </button>
-            </div>
-          );
-        })}
-        <button type="button" onClick={onClose}
-          style={{width:'100%', padding:'11px', marginTop:6, background:'#FDFAF7', color:'#8B7F6E', border:'1.5px solid #E8DDD0', borderRadius:10, fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
-          Fermer
-        </button>
-      </div>
     </div>
   );
 }
 
 // V17.7 — ClientRow 3 lignes enrichies : nom+cumul / bien·zone·budget / tel·email cliquables.
-// V17.9 — chooser si 2+ tels/emails. V17.11 — badge 🎯 matches.
-function ClientRow({c, onClick, clients, matchInfo, onOpenMatches}) {
+// V17.9 — chooser si 2+ tels/emails.
+function ClientRow({c, onClick, clients}) {
   const [telChooser, setTelChooser] = React.useState(false);
   const [emailChooser, setEmailChooser] = React.useState(false);
   const profil = c.projet || 'Acheteur';
@@ -2706,15 +2612,6 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches}) {
           </div>
         )}
       </div>
-      {matchInfo && matchInfo.count > 0 && (
-        <button type="button" onClick={e => { e.stopPropagation(); onOpenMatches && onOpenMatches(); }}
-          title={matchInfo.count + ' matchs (score max ' + matchInfo.max_score + ')'}
-          style={{flexShrink:0, padding:'4px 9px', borderRadius:999, border:'none',
-                  background: matchInfo.max_score > 80 ? '#D64545' : '#B26D3A',
-                  color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', letterSpacing:.3}}>
-          🎯 {matchInfo.count}
-        </button>
-      )}
       <div style={{color:'#C4B5A0', fontSize:16, flexShrink:0}}>›</div>
       {telChooser && (
         <ContactChooser entries={tels} scheme="tel:" title="Choisir un numéro" onClose={() => setTelChooser(false)}/>
