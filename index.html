@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.1-fix-ux-1 -->
+<!-- ocre-v17.1-fix-ux-2 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -111,6 +111,72 @@ function DateMaskField({label, value, onChange, style={}}) {
     </div>
   );
 }
+// V17.1 — CountryAutocomplete : input text + suggestions filtrées accent-insensitive.
+function normalizeAccent(s) {
+  return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tape un pays…'}) {
+  const allOpts = PAYS.map(p => ({code: p.c, flag: p.f, name: p.n}));
+  const selected = allOpts.find(o => o.code === value);
+  const [display, setDisplay] = React.useState(selected ? (selected.flag + ' ' + selected.name) : '');
+  const [open, setOpen] = React.useState(false);
+  const [filtered, setFiltered] = React.useState(allOpts);
+  React.useEffect(() => {
+    const s = allOpts.find(o => o.code === value);
+    setDisplay(s ? (s.flag + ' ' + s.name) : '');
+  }, [value]);
+
+  const filled = !!selected;
+  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018'};
+
+  function handleChange(e) {
+    const raw = e.target.value;
+    setDisplay(raw);
+    setOpen(true);
+    const n = normalizeAccent(raw);
+    const f = n ? allOpts.filter(o => normalizeAccent(o.name).includes(n) || o.code.toLowerCase().startsWith(n)) : allOpts;
+    setFiltered(f);
+    // Si texte vidé complètement → reset value
+    if (!raw.trim()) onChange('');
+  }
+  function pick(o) {
+    onChange(o.code);
+    setDisplay(o.flag + ' ' + o.name);
+    setOpen(false);
+  }
+  function handleBlur() {
+    // Validation sortie de champ : si display ne matche pas un pays, restore selected ou vide.
+    setTimeout(() => {
+      setOpen(false);
+      const match = allOpts.find(o => normalizeAccent(o.name) === normalizeAccent(display.replace(/^[^A-Za-zÀ-ÿ]+/, '').trim()));
+      if (match) { onChange(match.code); setDisplay(match.flag + ' ' + match.name); }
+      else if (!value) setDisplay('');
+      else { const s = allOpts.find(o => o.code === value); setDisplay(s ? (s.flag + ' ' + s.name) : ''); }
+    }, 150);
+  }
+
+  return (
+    <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <input type="text" value={display} onChange={handleChange} onFocus={() => setOpen(true)} onBlur={handleBlur}
+        placeholder={placeholder} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false"
+        style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
+      {open && (
+        <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:240, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
+          {filtered.length === 0 ? (
+            <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E'}}>Aucun pays trouvé</div>
+          ) : filtered.map(o => (
+            <div key={o.code} onMouseDown={() => pick(o)}
+              style={{padding:'10px 12px', fontSize:14, cursor:'pointer', borderBottom:'1px solid #F4EEE6'}}>
+              {o.flag} {o.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Select({label, value, onChange, options, style={}}) {
   const filled = (value !== undefined && value !== null && String(value).trim() !== '');
   return (
@@ -500,8 +566,7 @@ function FormView(props) {
               </div>
               <div style={{display:'flex', gap:8}}>
                 <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1}}/>
-                <Select label="Nationalité" value={d.nationalite} onChange={v => set('nationalite', v)}
-                  options={PAYS.map(p => ({v: p.c, l: p.f + ' ' + p.n}))} style={{flex:1}}/>
+                <CountryAutocomplete label="Nationalité" value={d.nationalite} onChange={v => set('nationalite', v)} style={{flex:1}}/>
               </div>
             </>
           ) : (
@@ -516,8 +581,7 @@ function FormView(props) {
             <Field label="Téléphone" value={d.tel} onChange={v => set('tel', v)} style={{flex:1}}/>
             <Field label="Email" type="email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
           </div>
-          <Select label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)}
-            options={PAYS.map(p => ({v: p.c, l: p.f + ' ' + p.n}))}/>
+          <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
           <div style={{display:'flex', gap:8}}>
             <Field label="Ville" value={d.ville} onChange={v => set('ville', v)} style={{flex:1}}/>
             <Field label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} style={{flex:2}}/>
