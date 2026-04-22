@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.1-fix-ux-3 -->
+<!-- ocre-v17.1-fix-ux-4 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -367,6 +367,58 @@ function Select({label, value, onChange, options, style={}}) {
         <option value="">—</option>
         {options.map(o => <option key={o.v || o} value={o.v || o}>{o.l || o}</option>)}
       </select>
+    </div>
+  );
+}
+
+// V17.1 fix-ux-4 — CustomFieldList : champs libres par bloc (I..IV).
+// Persistés dans d.custom_fields_<section> = [{label, value}, ...].
+function CustomFieldList({sectionKey, d, set}) {
+  const key = 'custom_fields_' + sectionKey;
+  const list = Array.isArray(d[key]) ? d[key] : [];
+  const newRefs = React.useRef({});
+
+  function updateList(newList) { set(key, newList); }
+  function addField() {
+    const newList = [...list, {label: '', value: ''}];
+    updateList(newList);
+    setTimeout(() => {
+      const idx = newList.length - 1;
+      const el = newRefs.current[idx];
+      if (el) el.focus();
+    }, 60);
+  }
+  function setItem(i, patch) {
+    const newList = list.map((it, j) => j === i ? {...it, ...patch} : it);
+    updateList(newList);
+  }
+  function removeItem(i) {
+    updateList(list.filter((_, j) => j !== i));
+  }
+
+  return (
+    <div style={{marginTop:8, paddingTop: list.length ? 8 : 0, borderTop: list.length ? '1px dashed #EDE6DC' : 'none', position:'relative'}}>
+      {list.map((it, i) => (
+        <div key={i} style={{display:'flex', gap:6, marginBottom:6, alignItems:'center'}}>
+          <input
+            ref={el => { newRefs.current[i] = el; }}
+            type="text" value={it.label || ''} placeholder="Nouveau champ…"
+            onChange={e => setItem(i, {label: e.target.value})}
+            style={{flex:1, minWidth:0, boxSizing:'border-box', padding:'7px 10px', borderRadius:7, fontSize:13, outline:'none', fontFamily:'inherit', color:'#2A2018', border:'1.5px solid #E8DDD0', background:'#FDFAF7'}}/>
+          <input
+            type="text" value={it.value || ''} placeholder="Valeur"
+            onChange={e => setItem(i, {value: e.target.value})}
+            style={{flex:2, minWidth:0, boxSizing:'border-box', padding:'7px 10px', borderRadius:7, fontSize:13, outline:'none', fontFamily:'inherit', color:'#2A2018', border:'1.5px solid ' + (it.value ? '#BBA88B' : '#E8DDD0'), background: it.value ? '#FFFCF5' : '#FDFAF7'}}/>
+          <button type="button" onClick={() => removeItem(i)}
+            title="Supprimer"
+            style={{flex:'0 0 auto', width:28, height:28, borderRadius:14, border:'1px solid #E8DDD0', background:'#fff', color:'#8B7F6E', cursor:'pointer', fontSize:14, lineHeight:'26px', padding:0}}>×</button>
+        </div>
+      ))}
+      <div style={{display:'flex', justifyContent:'flex-end', marginTop:6}}>
+        <button type="button" onClick={addField}
+          title="Ajouter un champ libre"
+          style={{width:32, height:32, borderRadius:16, border:'1.5px solid #8B5E3C', background:'#FFF3EC', color:'#8B5E3C', cursor:'pointer', fontSize:18, fontWeight:700, lineHeight:'28px', padding:0, boxShadow:'0 1px 3px rgba(139,94,60,.12)'}}>+</button>
+      </div>
     </div>
   );
 }
@@ -754,12 +806,27 @@ function FormView(props) {
                         fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{t}</button>
             ))}
           </div>
+          {/* V17.1 fix-ux-4 : grille 5 lignes strictes, unique pour tous profils. */}
           {profilType === 'Particulier' ? (
             <>
+              {/* L1 Prénom / Nom */}
               <div style={{display:'flex', gap:8}}>
                 <Field label="Prénom" value={d.prenom} onChange={v => set('prenom', v)} style={{flex:1}}/>
                 <Field label="Nom" value={d.nom} onChange={v => set('nom', v)} style={{flex:1}}/>
               </div>
+              {/* L2 Tel / Email */}
+              <div style={{display:'flex', gap:8}}>
+                <PhoneField label="Téléphone" value={d.tel} onChange={v => set('tel', v)} residenceCountry={d.pays_residence || d.nationalite || ''} style={{flex:1}}/>
+                <EmailField label="Email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
+              </div>
+              {/* L3 Adresse full width */}
+              <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
+              {/* L4 Ville / Pays résidence */}
+              <div style={{display:'flex', gap:8}}>
+                <CitySuggestField label="Ville" value={d.ville} onChange={v => set('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
+                <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
+              </div>
+              {/* L5 Date naissance / Nationalité */}
               <div style={{display:'flex', gap:8}}>
                 <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1}}/>
                 <CountryAutocomplete label="Nationalité" value={d.nationalite} onChange={v => set('nationalite', v)} style={{flex:1}}/>
@@ -767,21 +834,31 @@ function FormView(props) {
             </>
           ) : (
             <>
-              <Field label="Raison sociale" value={d.societe_nom} onChange={v => set('societe_nom', v)}/>
-              <Select label="Forme juridique" value={d.forme_juridique} onChange={v => set('forme_juridique', v)} options={FORMES_JURIDIQUES}/>
-              <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)}/>
-              <Field label="Représentant" value={d.representant} onChange={v => set('representant', v)}/>
+              {/* Société : L1 Raison sociale / Forme juridique */}
+              <div style={{display:'flex', gap:8}}>
+                <Field label="Raison sociale" value={d.societe_nom} onChange={v => set('societe_nom', v)} style={{flex:2}}/>
+                <Select label="Forme juridique" value={d.forme_juridique} onChange={v => set('forme_juridique', v)} options={FORMES_JURIDIQUES} style={{flex:1}}/>
+              </div>
+              {/* L2 SIRET/ICE / Représentant */}
+              <div style={{display:'flex', gap:8}}>
+                <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)} style={{flex:1}}/>
+                <Field label="Représentant" value={d.representant} onChange={v => set('representant', v)} style={{flex:1}}/>
+              </div>
+              {/* L3 Tel / Email */}
+              <div style={{display:'flex', gap:8}}>
+                <PhoneField label="Téléphone" value={d.tel} onChange={v => set('tel', v)} residenceCountry={d.pays_residence || d.nationalite || ''} style={{flex:1}}/>
+                <EmailField label="Email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
+              </div>
+              {/* L4 Adresse full */}
+              <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
+              {/* L5 Ville / Pays résidence */}
+              <div style={{display:'flex', gap:8}}>
+                <CitySuggestField label="Ville" value={d.ville} onChange={v => set('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
+                <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
+              </div>
             </>
           )}
-          <div style={{display:'flex', gap:8}}>
-            <PhoneField label="Téléphone" value={d.tel} onChange={v => set('tel', v)} residenceCountry={d.pays_residence || d.nationalite || ''} style={{flex:1}}/>
-            <EmailField label="Email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
-          </div>
-          <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
-          <div style={{display:'flex', gap:8}}>
-            <CitySuggestField label="Ville" value={d.ville} onChange={v => set('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
-            <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address" style={{flex:2}}/>
-          </div>
+          <CustomFieldList sectionKey="client" d={d} set={set}/>
           <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>
 
@@ -815,6 +892,7 @@ function FormView(props) {
             <Field label="Parking" value={d.parking} onChange={v => set('parking', v)} style={{flex:1}}/>
             <Field label="Cave" value={d.cave} onChange={v => set('cave', v)} style={{flex:1}}/>
           </div>
+          <CustomFieldList sectionKey="recherche" d={d} set={set}/>
           <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>
 
@@ -855,6 +933,7 @@ function FormView(props) {
               <Field label="Horizon d'investissement (ans)" type="number" value={d.horizon} onChange={v => set('horizon', v)}/>
             </>
           )}
+          <CustomFieldList sectionKey="financement" d={d} set={set}/>
           <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>
 
@@ -877,6 +956,7 @@ function FormView(props) {
           </div>
           <Field label="Origine contact" value={d.origine} onChange={v => set('origine', v)}/>
           <Field label="Options" value={d.options} onChange={v => set('options', v)}/>
+          <CustomFieldList sectionKey="remarques" d={d} set={set}/>
           <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>
 
