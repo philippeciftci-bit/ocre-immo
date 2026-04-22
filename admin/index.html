@@ -83,6 +83,7 @@ tr:hover td{background:#FDFAF7}
     <button class="tab-btn" data-tab="modules">Modules</button>
     <button class="tab-btn" data-tab="commerce">Commercialisation</button>
     <button class="tab-btn" data-tab="users">Utilisateurs</button>
+    <button class="tab-btn" data-tab="countries">Pays</button>
     <button class="tab-btn" data-tab="logs">Logs</button>
   </div>
   <div class="container">
@@ -110,6 +111,13 @@ tr:hover td{background:#FDFAF7}
       <div class="card">
         <h2>Utilisateurs</h2>
         <div id="users-table">—</div>
+      </div>
+    </div>
+    <div id="pane-countries" class="pane hidden">
+      <div class="card">
+        <h2>Pays autorisés</h2>
+        <p style="font-size:12px;color:#8B7F6E;margin-bottom:10px">Active ou désactive les pays affichables dans l'app (sélecteur pays, fiche bien, téléphone…). Trier par ordre croissant.</p>
+        <div id="countries-table">—</div>
       </div>
     </div>
     <div id="pane-logs" class="pane hidden"><div class="card"><h2>50 derniers logs</h2><div id="logs-table">—</div></div></div>
@@ -178,7 +186,56 @@ document.querySelectorAll('.tab-btn').forEach(b => {
 });
 
 async function loadAll(){
-  await Promise.all([loadStats(), loadSettings(), loadUsers(), loadLogs()]);
+  await Promise.all([loadStats(), loadSettings(), loadUsers(), loadLogs(), loadCountries()]);
+}
+
+async function loadCountries(){
+  const d = await fetchJson(API + '/countries.php?action=list_all');
+  if (!d.ok) { $('countries-table').innerHTML = `<p class="err">${escapeHtml(d.error || 'erreur')}</p>`; return; }
+  const rows = d.countries || [];
+  $('countries-table').innerHTML = `<table>
+    <tr><th>Code</th><th>Drapeau</th><th>Nom</th><th>Devise</th><th>Symbole</th><th>+Tel</th><th>Ordre</th><th>Activé</th></tr>
+    ${rows.map(c => `<tr>
+      <td style="font-weight:700">${escapeHtml(c.code)}</td>
+      <td><input class="setting-input cc-in" data-code="${c.code}" data-field="flag_emoji" value="${escapeHtml(c.flag_emoji || '')}" style="width:50px;text-align:center"></td>
+      <td><input class="setting-input cc-in" data-code="${c.code}" data-field="name" value="${escapeHtml(c.name || '')}"></td>
+      <td><input class="setting-input cc-in" data-code="${c.code}" data-field="currency" value="${escapeHtml(c.currency || '')}" style="width:60px"></td>
+      <td><input class="setting-input cc-in" data-code="${c.code}" data-field="devise_symbol" value="${escapeHtml(c.devise_symbol || '')}" style="width:60px"></td>
+      <td><input class="setting-input cc-in" data-code="${c.code}" data-field="phone_prefix" value="${escapeHtml(c.phone_prefix || '')}" style="width:60px"></td>
+      <td><input class="setting-input cc-in" data-code="${c.code}" data-field="sort_order" value="${escapeHtml(c.sort_order || '')}" style="width:60px" type="number"></td>
+      <td><div class="switch ${Number(c.enabled) === 1 ? 'on' : ''}" data-code="${c.code}" data-type="country-toggle"></div></td>
+    </tr>`).join('')}
+  </table>`;
+  $('countries-table').querySelectorAll('.switch[data-type="country-toggle"]').forEach(sw => {
+    sw.addEventListener('click', async () => {
+      const code = sw.dataset.code;
+      const enabled = sw.classList.contains('on') ? 0 : 1;
+      sw.classList.toggle('on');
+      const d = await fetchJson(API + '/countries.php?action=toggle', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({code, enabled}),
+      });
+      if (!d.ok) { sw.classList.toggle('on'); toast(d.error || 'erreur', 'error'); } else toast(code + ' ' + (enabled ? 'activé' : 'désactivé'));
+    });
+  });
+  $('countries-table').querySelectorAll('.cc-in').forEach(inp => {
+    inp.addEventListener('blur', async () => {
+      const code = inp.dataset.code;
+      const row = rows.find(r => r.code === code);
+      if (!row) return;
+      const patch = {};
+      inp.closest('tr').querySelectorAll('.cc-in').forEach(i => {
+        const v = i.value;
+        patch[i.dataset.field] = i.dataset.field === 'sort_order' ? Number(v) || 100 : v;
+      });
+      const payload = {...row, ...patch, enabled: Number(row.enabled) ? 1 : 0};
+      const d = await fetchJson(API + '/countries.php?action=update', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+      if (!d.ok) toast(d.error || 'erreur', 'error'); else toast('Pays mis à jour');
+    });
+  });
 }
 
 async function loadStats(){

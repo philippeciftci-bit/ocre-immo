@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.10-admin-pays -->
+<!-- ocre-v17.9-multi-types -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -113,20 +113,26 @@ const BASCULES = {
   Locataire: ['Acheteur'],
   Curieux: []
 };
-// V17.10 : PAYS / PAYS_BIEN / DIAL_CODES désormais chargés dynamiquement depuis /api/countries.php.
-// Les valeurs initiales ci-dessous sont un fallback si le fetch échoue au démarrage.
-let PAYS = [
-  {c:'MA',f:'🇲🇦',d:'MAD',n:'Maroc'},{c:'FR',f:'🇫🇷',d:'€',n:'France'},
+const PAYS = [
+  {c:'MA',f:'🇲🇦',d:'MAD',n:'Maroc'},{c:'FR',f:'🇫🇷',d:'EUR',n:'France'},
+  {c:'ES',f:'🇪🇸',d:'EUR',n:'Espagne'},{c:'IT',f:'🇮🇹',d:'EUR',n:'Italie'},
+  {c:'PT',f:'🇵🇹',d:'EUR',n:'Portugal'},{c:'DE',f:'🇩🇪',d:'EUR',n:'Allemagne'},
+  {c:'BE',f:'🇧🇪',d:'EUR',n:'Belgique'},{c:'CH',f:'🇨🇭',d:'CHF',n:'Suisse'},
+  {c:'GB',f:'🇬🇧',d:'GBP',n:'UK'},{c:'US',f:'🇺🇸',d:'USD',n:'USA'},
+  {c:'CA',f:'🇨🇦',d:'CAD',n:'Canada'},{c:'AE',f:'🇦🇪',d:'AED',n:'Émirats'},
+  {c:'SA',f:'🇸🇦',d:'SAR',n:'Arabie S.'},{c:'QA',f:'🇶🇦',d:'QAR',n:'Qatar'},
+  {c:'SG',f:'🇸🇬',d:'SGD',n:'Singapour'},{c:'HK',f:'🇭🇰',d:'HKD',n:'HK'},
+  {c:'JP',f:'🇯🇵',d:'JPY',n:'Japon'},{c:'TH',f:'🇹🇭',d:'THB',n:'Thaïlande'}
 ];
 const FORMES_JURIDIQUES = ['SARL','SA','SAS','EURL','SCI','Autre'];
 const TYPES_BIEN = ['Appartement','Maison','Villa','Riad','Terrain','Commerce','Bureau'];
 
-// V17.4 UX v3 — types étendus.
+// V17.4 UX v3 — types étendus : +Terrain industriel / Ferme / Bureau-plateau, renommage Industriel → Bâtiment industriel.
 const ALL_TYPES_BIEN = ['Villa','Appartement','Riad','Maison','Terrain','Commerce','Bâtiment industriel','Terrain industriel','Ferme','Bureau / plateau'];
-// V17.10 : reconstruit dynamiquement à partir des countries enabled (Riad uniquement si MA).
-let PAYS_BIEN = [
-  {c:'MA', f:'🇲🇦', n:'Maroc',  types: ALL_TYPES_BIEN},
-  {c:'FR', f:'🇫🇷', n:'France', types: ALL_TYPES_BIEN.filter(t => t !== 'Riad')},
+const PAYS_BIEN = [
+  {c:'MA', f:'🇲🇦', n:'Maroc',   types:['Villa','Appartement','Riad','Maison','Terrain','Commerce','Bâtiment industriel','Terrain industriel','Ferme','Bureau / plateau']},
+  {c:'FR', f:'🇫🇷', n:'France',  types:['Villa','Appartement','Maison','Terrain','Commerce','Bâtiment industriel','Terrain industriel','Ferme','Bureau / plateau']},
+  {c:'ES', f:'🇪🇸', n:'Espagne', types:['Villa','Appartement','Maison','Terrain','Commerce','Bâtiment industriel','Terrain industriel','Ferme','Bureau / plateau']},
 ];
 const TERRAIN_NATURES = ['Constructible','Agricole','Activité','Loisir'];
 const COMMERCE_EMPLACEMENTS = ['N°1','N°1 bis','N°2'];
@@ -367,26 +373,15 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
 }
 
 // V17.1 fix-ux-2 — PhoneField : indicatif pays + masque local + stockage E.164.
-// V17.10 : reconstruit dynamiquement depuis countries enabled.
-let DIAL_CODES = [
-  {c:'FR', f:'🇫🇷', d:'33'}, {c:'MA', f:'🇲🇦', d:'212'},
+const DIAL_CODES = [
+  {c:'FR', f:'🇫🇷', d:'33'},{c:'MA', f:'🇲🇦', d:'212'},{c:'BE', f:'🇧🇪', d:'32'},
+  {c:'CH', f:'🇨🇭', d:'41'},{c:'LU', f:'🇱🇺', d:'352'},{c:'ES', f:'🇪🇸', d:'34'},
+  {c:'IT', f:'🇮🇹', d:'39'},{c:'PT', f:'🇵🇹', d:'351'},{c:'DE', f:'🇩🇪', d:'49'},
+  {c:'GB', f:'🇬🇧', d:'44'},{c:'US', f:'🇺🇸', d:'1'},{c:'CA', f:'🇨🇦', d:'1'},
+  {c:'AE', f:'🇦🇪', d:'971'},{c:'SA', f:'🇸🇦', d:'966'},{c:'QA', f:'🇶🇦', d:'974'},
+  {c:'SG', f:'🇸🇬', d:'65'},{c:'HK', f:'🇭🇰', d:'852'},{c:'JP', f:'🇯🇵', d:'81'},
+  {c:'TH', f:'🇹🇭', d:'66'},
 ];
-
-// V17.10 : loader async des pays admin-configurables. Override PAYS / PAYS_BIEN / DIAL_CODES.
-async function loadCountriesFromServer() {
-  try {
-    const r = await fetch('/api/countries.php?action=list').then(r => r.json());
-    if (!r || !r.ok || !Array.isArray(r.countries) || !r.countries.length) return false;
-    const cs = r.countries;
-    PAYS = cs.map(c => ({c: c.code, f: c.flag_emoji, d: c.devise_symbol || c.currency, n: c.name}));
-    PAYS_BIEN = cs.map(c => ({
-      c: c.code, f: c.flag_emoji, n: c.name,
-      types: c.code === 'MA' ? ALL_TYPES_BIEN : ALL_TYPES_BIEN.filter(t => t !== 'Riad'),
-    }));
-    DIAL_CODES = cs.filter(c => c.phone_prefix).map(c => ({c: c.code, f: c.flag_emoji, d: c.phone_prefix}));
-    return true;
-  } catch (e) { return false; }
-}
 function formatLocal(digits, dial) {
   // FR / dial 33 : "6 12 34 56 78"
   if (dial === '33' && digits.length > 0) {
@@ -2115,16 +2110,12 @@ function App() {
   const [formKey, setFormKey] = useState(0);
   const [activeProfil, setActiveProfil] = useState('Acheteur');
   const [isInvestisseur, setIsInvestisseur] = useState(false);
-  // V17.10 : compteur de version pour re-render après fetch des pays dynamiques.
-  const [countriesVersion, setCountriesVersion] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem('ocre_token');
     if (!token) { window.location = '/login/'; return; }
     (async () => {
       try {
-        await loadCountriesFromServer();
-        setCountriesVersion(v => v + 1);
         const me = await fetch(API + '/auth.php?action=me', {headers: {'X-Session-Token': token}}).then(r => r.json());
         if (!me || !me.ok) { localStorage.removeItem('ocre_token'); window.location = '/login/'; return; }
         setCurrentUser(me.user);
@@ -2886,14 +2877,14 @@ function FormView(props) {
             </>
           )}
           <CustomFieldList sectionKey="client" d={d} set={set}/>
-          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer l'étape</button>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>
 
         {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][1]} expanded={expanded[1]} onToggle={() => toggleStage(1)}>
           <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
             d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
             showToast={showToast}/>
-          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer l'étape</button>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>}
 
         {/* V17.6 Section III : FinancementForm pour Acheteur/Investisseur, fields legacy pour Vendeur/Bailleur/Locataire, masqué pour Curieux. */}
@@ -2927,7 +2918,7 @@ function FormView(props) {
             </>
           )}
           <CustomFieldList sectionKey="financement" d={d} set={set}/>
-          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer l'étape</button>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>}
 
         <Stage title={STAGES[activeProfil][3] || 'IV. Remarques'} expanded={expanded[3]} onToggle={() => toggleStage(3)}>
@@ -2950,7 +2941,7 @@ function FormView(props) {
           <Field label="Origine contact" value={d.origine} onChange={v => set('origine', v)}/>
           <Field label="Options" value={d.options} onChange={v => set('options', v)}/>
           <CustomFieldList sectionKey="remarques" d={d} set={set}/>
-          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer l'étape</button>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>
 
         <div style={{display:'flex', gap:8, alignItems:'center', marginTop:12, marginBottom:24}}>
