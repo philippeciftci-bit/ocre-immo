@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.2-phase2a -->
+<!-- ocre-v17.3-phase2b -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -10,6 +10,8 @@
 <title>Ocre Immo</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><rect width='180' height='180' rx='36' fill='%238B5E3C'/><text x='90' y='130' text-anchor='middle' font-family='Georgia' font-weight='bold' font-size='90' fill='white'>O</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;overflow:hidden;height:100vh;height:100dvh}
@@ -71,12 +73,17 @@ const PAYS = [
 const FORMES_JURIDIQUES = ['SARL','SA','SAS','EURL','SCI','Autre'];
 const TYPES_BIEN = ['Appartement','Maison','Villa','Riad','Terrain','Commerce','Bureau'];
 
-// V17.2 Phase 2a — pays supportés Section II "Le bien" et types autorisés par pays.
+// V17.2 Phase 2a / V17.3 Phase 2b — types étendus (Maison / Terrain / Commerce / Industriel).
 const PAYS_BIEN = [
-  {c:'MA', f:'🇲🇦', n:'Maroc',   types:['Villa','Appartement','Riad']},
-  {c:'FR', f:'🇫🇷', n:'France',  types:['Villa','Appartement']},
-  {c:'ES', f:'🇪🇸', n:'Espagne', types:['Villa','Appartement']},
+  {c:'MA', f:'🇲🇦', n:'Maroc',   types:['Villa','Appartement','Riad','Maison','Terrain','Commerce','Industriel']},
+  {c:'FR', f:'🇫🇷', n:'France',  types:['Villa','Appartement','Maison','Terrain','Commerce','Industriel']},
+  {c:'ES', f:'🇪🇸', n:'Espagne', types:['Villa','Appartement','Maison','Terrain','Commerce','Industriel']},
 ];
+const TERRAIN_NATURES = ['Constructible','Agricole','Activité','Loisir'];
+const COMMERCE_EMPLACEMENTS = ['N°1','N°1 bis','N°2'];
+const COMMERCE_BAIL = ['Bail seul','Murs seuls','Bail + Murs'];
+const MAISON_CONFIGS = ['Plain-pied','Étages'];
+const ICPE_CLASSEMENTS = ['Non classé','Déclaration','Enregistrement','Autorisation','Seveso seuil bas','Seveso seuil haut'];
 const PRIORITES = [
   {k:'redhibitoire', l:'Rédhibitoire', c:'#D64545', bg:'#FEF6F6'},
   {k:'souhaite',     l:'Souhaité',     c:'#4BB77B', bg:'#F6FCF8'},
@@ -701,6 +708,14 @@ function ShareMenu({dossierId, dossierName, onClose, showToast}) {
               style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor: dossierId ? 'pointer' : 'not-allowed', opacity: dossierId ? 1 : .5, fontFamily:'inherit'}}>
               {loading ? 'Création…' : 'Générer le lien'}
             </button>
+            {/* V17.3 Phase 2b : export PDF (print-to-PDF navigateur) */}
+            <button type="button" onClick={() => {
+                const t = localStorage.getItem('ocre_token') || '';
+                window.open(API + '/export.php?action=pdf&dossier_id=' + dossierId + '&token=' + encodeURIComponent(t), '_blank');
+              }} disabled={!dossierId}
+              style={{width:'100%', padding:'11px', marginTop:8, background:'#FFF3EC', color:'#8B5E3C', border:'1.5px solid #BBA88B', borderRadius:10, fontWeight:700, fontSize:13, cursor: dossierId ? 'pointer' : 'not-allowed', opacity: dossierId ? 1 : .5, fontFamily:'inherit'}}>
+              📄 Exporter en PDF
+            </button>
           </>
         ) : (
           <>
@@ -774,15 +789,22 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           <CitySuggestField label="Adresse / quartier" value={bien.adresse} onChange={v => setB('adresse', v)} suggestAction="suggest_address"/>
           <div className="row-pair">
             <CitySuggestField label="Ville" value={bien.ville} onChange={v => setB('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
-            <Field label="GPS (zone, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589" style={{flex:1}}/>
+            <Field label="GPS (texte, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589" style={{flex:1}}/>
           </div>
+          {/* V17.3 Phase 2b : carte interactive (fallback sur champ texte ci-dessus) */}
+          <MapPicker bien={bien} setB={setB} showToast={showToast}/>
 
           {/* 4. Champs spécifiques type */}
           {bien.type === 'Villa' && <VillaFields bien={bien} setB={setB} askingMode={askingMode}/>}
           {bien.type === 'Appartement' && <AppartFields bien={bien} setB={setB} askingMode={askingMode}/>}
           {bien.type === 'Riad' && <RiadFields bien={bien} setB={setB} askingMode={askingMode}/>}
+          {bien.type === 'Maison' && <MaisonFields bien={bien} setB={setB} askingMode={askingMode}/>}
+          {bien.type === 'Terrain' && <TerrainFields bien={bien} setB={setB} askingMode={askingMode}/>}
+          {bien.type === 'Commerce' && <CommerceFields bien={bien} setB={setB} askingMode={askingMode}/>}
+          {bien.type === 'Industriel' && <IndustrielFields bien={bien} setB={setB} askingMode={askingMode}/>}
 
-          {/* 5. Tronc commun (chambres / sdb / parking / extérieur / énergie) */}
+          {/* 5. Tronc commun (chambres / sdb / parking / extérieur / énergie) — seulement habitable */}
+          {['Villa','Appartement','Riad','Maison'].includes(bien.type) && <>
           <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:12, marginBottom:6, letterSpacing:.4}}>Caractéristiques communes</div>
           {askingMode ? (
             <>
@@ -829,6 +851,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             <BoolChip label="Climatisation" value={bien.climatisation} onChange={v => setB('climatisation', v)}/>
             <BoolChip label="Ascenseur" value={bien.ascenseur} onChange={v => setB('ascenseur', v)}/>
           </div>
+          </>}
 
           {/* 6. Documents conditionnels */}
           <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6}}>Documents & conformité</div>
@@ -931,6 +954,273 @@ function RiadFields({bien, setB, askingMode}) {
         <BoolChip label="Douiria" value={bien.douiria} onChange={v => setB('douiria', v)}/>
       </div>
     </>
+  );
+}
+
+// V17.3 Phase 2b — Maison (plain-pied / étages + cave/combles/garage).
+function MaisonFields({bien, setB, askingMode}) {
+  return (
+    <>
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:.4}}>Maison</div>
+      <div style={{marginBottom:10}}>
+        <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Configuration</label>
+        <div style={{display:'flex', gap:6}}>
+          {MAISON_CONFIGS.map(cfg => {
+            const active = bien.maison_config === cfg;
+            return (
+              <button key={cfg} type="button" onClick={() => setB('maison_config', cfg)}
+                style={{flex:1, padding:'9px 8px', borderRadius:8, border:'1.5px solid ' + (active ? '#8B5E3C' : '#E8DDD0'),
+                        background: active ? '#FFF3EC' : '#FDFAF7', color: active ? '#8B5E3C' : '#8B7F6E',
+                        fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{cfg}</button>
+            );
+          })}
+        </div>
+      </div>
+      {bien.maison_config === 'Étages' && (
+        askingMode
+          ? <RangeField label="Nombre de niveaux" minValue={bien.niveaux_min} maxValue={bien.niveaux_max} onMin={v => setB('niveaux_min', v)} onMax={v => setB('niveaux_max', v)}/>
+          : <Field label="Nombre de niveaux" type="number" value={bien.niveaux} onChange={v => setB('niveaux', v)}/>
+      )}
+      {askingMode
+        ? <RangeField label="Surface habitable totale" unit="m²" minValue={bien.habitable_totale_min} maxValue={bien.habitable_totale_max} onMin={v => setB('habitable_totale_min', v)} onMax={v => setB('habitable_totale_max', v)}/>
+        : <Field label="Surface habitable totale (m²)" type="number" value={bien.habitable_totale} onChange={v => setB('habitable_totale', v)}/>
+      }
+      {askingMode
+        ? <RangeField label="Terrain" unit="m²" minValue={bien.terrain_min} maxValue={bien.terrain_max} onMin={v => setB('terrain_min', v)} onMax={v => setB('terrain_max', v)}/>
+        : <Field label="Terrain (m²)" type="number" value={bien.terrain} onChange={v => setB('terrain', v)}/>
+      }
+      <div>
+        {askingMode ? (
+          <>
+            <PriorityBoolField label="Sous-sol" value={bien.sous_sol_prio} onChange={v => setB('sous_sol_prio', v)}/>
+            <PriorityBoolField label="Combles aménagés" value={bien.combles_prio} onChange={v => setB('combles_prio', v)}/>
+            <PriorityBoolField label="Garage" value={bien.garage_prio} onChange={v => setB('garage_prio', v)}/>
+          </>
+        ) : (
+          <>
+            <BoolChip label="Sous-sol" value={bien.sous_sol} onChange={v => setB('sous_sol', v)}/>
+            <BoolChip label="Combles aménagés" value={bien.combles_amenages} onChange={v => setB('combles_amenages', v)}/>
+            <BoolChip label="Garage" value={bien.garage} onChange={v => setB('garage', v)}/>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+// V17.3 Phase 2b — Terrain (constructible / agricole / activité / loisir).
+function TerrainFields({bien, setB, askingMode}) {
+  const isConstructible = bien.terrain_nature === 'Constructible';
+  return (
+    <>
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:.4}}>Terrain</div>
+      <Select label="Nature du terrain" value={bien.terrain_nature} onChange={v => setB('terrain_nature', v)} options={TERRAIN_NATURES}/>
+      {askingMode
+        ? <RangeField label="Surface" unit="m²" minValue={bien.terrain_surface_min} maxValue={bien.terrain_surface_max} onMin={v => setB('terrain_surface_min', v)} onMax={v => setB('terrain_surface_max', v)}/>
+        : <Field label="Surface (m²)" type="number" value={bien.terrain_surface} onChange={v => setB('terrain_surface', v)}/>
+      }
+      {isConstructible && (
+        <>
+          <div className="row-pair">
+            <Field label="COS / CES" value={bien.cos_ces} onChange={v => setB('cos_ces', v)} placeholder="ex: 0.4 / 0.6" style={{flex:1}}/>
+            <Field label="Hauteur max (m)" type="number" value={bien.hauteur_max} onChange={v => setB('hauteur_max', v)} style={{flex:1}}/>
+          </div>
+        </>
+      )}
+      <div className="row-pair">
+        <Field label="Forme du terrain" value={bien.forme_terrain} onChange={v => setB('forme_terrain', v)} placeholder="rectangulaire, en L…" style={{flex:1}}/>
+        <Field label="Pente" value={bien.pente} onChange={v => setB('pente', v)} placeholder="plat, faible, fort…" style={{flex:1}}/>
+      </div>
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:6, marginBottom:6}}>Viabilisation</div>
+      <div>
+        {askingMode ? (
+          <>
+            <PriorityBoolField label="Eau de ville" value={bien.eau_ville_prio} onChange={v => setB('eau_ville_prio', v)}/>
+            <PriorityBoolField label="Électricité" value={bien.electricite_prio} onChange={v => setB('electricite_prio', v)}/>
+            <PriorityBoolField label="Tout-à-l'égout" value={bien.egout_prio} onChange={v => setB('egout_prio', v)}/>
+            <PriorityBoolField label="Gaz de ville" value={bien.gaz_ville_prio} onChange={v => setB('gaz_ville_prio', v)}/>
+            <PriorityBoolField label="Accès routier" value={bien.acces_routier_prio} onChange={v => setB('acces_routier_prio', v)}/>
+          </>
+        ) : (
+          <>
+            <BoolChip label="Eau de ville" value={bien.eau_ville} onChange={v => setB('eau_ville', v)}/>
+            <BoolChip label="Électricité" value={bien.electricite} onChange={v => setB('electricite', v)}/>
+            <BoolChip label="Tout-à-l'égout" value={bien.egout} onChange={v => setB('egout', v)}/>
+            <BoolChip label="Gaz de ville" value={bien.gaz_ville} onChange={v => setB('gaz_ville', v)}/>
+            <BoolChip label="Accès routier" value={bien.acces_routier} onChange={v => setB('acces_routier', v)}/>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+// V17.3 Phase 2b — Commerce.
+function CommerceFields({bien, setB, askingMode}) {
+  return (
+    <>
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:.4}}>Commerce</div>
+      {askingMode ? (
+        <>
+          <RangeField label="Surface de vente" unit="m²" minValue={bien.surface_vente_min} maxValue={bien.surface_vente_max} onMin={v => setB('surface_vente_min', v)} onMax={v => setB('surface_vente_max', v)}/>
+          <RangeField label="Surface de stockage" unit="m²" minValue={bien.surface_stockage_min} maxValue={bien.surface_stockage_max} onMin={v => setB('surface_stockage_min', v)} onMax={v => setB('surface_stockage_max', v)}/>
+          <RangeField label="Vitrine linéaire" unit="m" minValue={bien.vitrine_min} maxValue={bien.vitrine_max} onMin={v => setB('vitrine_min', v)} onMax={v => setB('vitrine_max', v)}/>
+        </>
+      ) : (
+        <>
+          <div className="row-pair">
+            <Field label="Surface vente (m²)" type="number" value={bien.surface_vente} onChange={v => setB('surface_vente', v)} style={{flex:1}}/>
+            <Field label="Surface stockage (m²)" type="number" value={bien.surface_stockage} onChange={v => setB('surface_stockage', v)} style={{flex:1}}/>
+          </div>
+          <Field label="Vitrine linéaire (m)" type="number" value={bien.vitrine_lineaire} onChange={v => setB('vitrine_lineaire', v)}/>
+        </>
+      )}
+      <Select label="Emplacement" value={bien.emplacement} onChange={v => setB('emplacement', v)} options={COMMERCE_EMPLACEMENTS}/>
+      <Select label="Bail / Murs" value={bien.bail_ou_murs} onChange={v => setB('bail_ou_murs', v)} options={COMMERCE_BAIL}/>
+      <Field label="Activité autorisée" value={bien.activite_autorisee} onChange={v => setB('activite_autorisee', v)} placeholder="toutes, restauration exclue…"/>
+      <Field label="Flux piétons (estimation / jour)" type="number" value={bien.flux_pietons} onChange={v => setB('flux_pietons', v)}/>
+    </>
+  );
+}
+
+// V17.3 Phase 2b — Industriel.
+function IndustrielFields({bien, setB, askingMode}) {
+  return (
+    <>
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:.4}}>Industriel</div>
+      {askingMode ? (
+        <>
+          <RangeField label="Bâti" unit="m²" minValue={bien.bati_min} maxValue={bien.bati_max} onMin={v => setB('bati_min', v)} onMax={v => setB('bati_max', v)}/>
+          <RangeField label="Terrain" unit="m²" minValue={bien.terrain_ind_min} maxValue={bien.terrain_ind_max} onMin={v => setB('terrain_ind_min', v)} onMax={v => setB('terrain_ind_max', v)}/>
+          <RangeField label="Hauteur sous plafond" unit="m" minValue={bien.hauteur_plafond_min} maxValue={bien.hauteur_plafond_max} onMin={v => setB('hauteur_plafond_min', v)} onMax={v => setB('hauteur_plafond_max', v)}/>
+        </>
+      ) : (
+        <>
+          <div className="row-pair">
+            <Field label="Bâti (m²)" type="number" value={bien.bati} onChange={v => setB('bati', v)} style={{flex:1}}/>
+            <Field label="Terrain (m²)" type="number" value={bien.terrain_ind} onChange={v => setB('terrain_ind', v)} style={{flex:1}}/>
+          </div>
+          <Field label="Hauteur sous plafond (m)" type="number" value={bien.hauteur_plafond} onChange={v => setB('hauteur_plafond', v)}/>
+        </>
+      )}
+      <div className="row-pair">
+        <Field label="Quais de chargement" type="number" value={bien.quais_chargement} onChange={v => setB('quais_chargement', v)} style={{flex:1}}/>
+        <Field label="Puissance élec (kVA)" type="number" value={bien.puissance_electrique} onChange={v => setB('puissance_electrique', v)} style={{flex:1}}/>
+      </div>
+      <div>
+        <BoolChip label="Monte-charge" value={bien.monte_charge} onChange={v => setB('monte_charge', v)}/>
+      </div>
+      <Select label="Classement ICPE" value={bien.icpe} onChange={v => setB('icpe', v)} options={ICPE_CLASSEMENTS}/>
+    </>
+  );
+}
+
+// V17.3 Phase 2b — MapPicker Leaflet + OpenStreetMap. Mode précis (marker) ou zone (cercle).
+function MapPicker({bien, setB, showToast}) {
+  const mapRef = React.useRef(null);
+  const leafletRef = React.useRef({map:null, marker:null, circle:null});
+  const [mode, setMode] = React.useState(bien.gps_mode || 'precis');
+  const [radius, setRadius] = React.useState(bien.gps_radius ? Number(bien.gps_radius) : 1000);
+  const [ready, setReady] = React.useState(typeof window !== 'undefined' && !!window.L);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    function tryInit() {
+      if (cancelled) return;
+      if (!window.L) { setTimeout(tryInit, 200); return; }
+      setReady(true);
+      if (!mapRef.current || leafletRef.current.map) return;
+      const L = window.L;
+      const lat = Number(bien.gps_lat) || 33.5731;  // Casablanca fallback
+      const lng = Number(bien.gps_lng) || -7.5898;
+      const map = L.map(mapRef.current).setView([lat, lng], bien.gps_lat ? 14 : 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19,
+      }).addTo(map);
+      leafletRef.current.map = map;
+
+      function place(latlng) {
+        const {lat, lng} = latlng;
+        setB('gps_lat', lat.toFixed(6));
+        setB('gps_lng', lng.toFixed(6));
+        redraw(lat, lng);
+      }
+      map.on('click', e => place(e.latlng));
+
+      if (bien.gps_lat && bien.gps_lng) redraw(lat, lng);
+    }
+    function redraw(lat, lng) {
+      const L = window.L;
+      const lr = leafletRef.current;
+      if (!lr.map) return;
+      if (lr.marker) { lr.map.removeLayer(lr.marker); lr.marker = null; }
+      if (lr.circle) { lr.map.removeLayer(lr.circle); lr.circle = null; }
+      if (mode === 'precis') {
+        lr.marker = L.marker([lat, lng]).addTo(lr.map);
+      } else {
+        lr.circle = L.circle([lat, lng], {radius: radius, color:'#8B5E3C', fillColor:'#8B5E3C', fillOpacity:.2}).addTo(lr.map);
+      }
+    }
+    leafletRef.current._redraw = redraw;
+    tryInit();
+    return () => { cancelled = true; };
+  }, []);
+
+  React.useEffect(() => {
+    if (!leafletRef.current._redraw) return;
+    const lat = Number(bien.gps_lat), lng = Number(bien.gps_lng);
+    if (lat && lng) leafletRef.current._redraw(lat, lng);
+    setB('gps_mode', mode);
+    setB('gps_radius', mode === 'zone' ? radius : '');
+  }, [mode, radius]);
+
+  function useMyLocation() {
+    if (!navigator.geolocation) { showToast && showToast('Géolocalisation non supportée'); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const {latitude, longitude} = pos.coords;
+        setB('gps_lat', latitude.toFixed(6));
+        setB('gps_lng', longitude.toFixed(6));
+        if (leafletRef.current.map) {
+          leafletRef.current.map.setView([latitude, longitude], 15);
+          leafletRef.current._redraw(latitude, longitude);
+        }
+      },
+      err => showToast && showToast('Position refusée : ' + (err.message || 'erreur')),
+      {enableHighAccuracy:true, timeout:10000}
+    );
+  }
+
+  if (!ready && typeof window !== 'undefined' && !window.L) {
+    return <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'10px 0'}}>Carte indisponible — utilisez le champ GPS texte ci-dessus.</div>;
+  }
+
+  return (
+    <div style={{marginTop:6, marginBottom:10}}>
+      <div style={{display:'flex', gap:6, marginBottom:6}}>
+        <button type="button" onClick={() => setMode('precis')}
+          style={{flex:1, padding:'7px 8px', borderRadius:8, border:'1.5px solid ' + (mode === 'precis' ? '#8B5E3C' : '#E8DDD0'),
+                  background: mode === 'precis' ? '#FFF3EC' : '#FDFAF7', color: mode === 'precis' ? '#8B5E3C' : '#8B7F6E',
+                  fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>📍 Précis</button>
+        <button type="button" onClick={() => setMode('zone')}
+          style={{flex:1, padding:'7px 8px', borderRadius:8, border:'1.5px solid ' + (mode === 'zone' ? '#8B5E3C' : '#E8DDD0'),
+                  background: mode === 'zone' ? '#FFF3EC' : '#FDFAF7', color: mode === 'zone' ? '#8B5E3C' : '#8B7F6E',
+                  fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>⭕ Zone</button>
+        <button type="button" onClick={useMyLocation}
+          style={{padding:'7px 10px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFFCF5', color:'#8B5E3C', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>📱 Ma position</button>
+      </div>
+      {mode === 'zone' && (
+        <div style={{marginBottom:6, display:'flex', alignItems:'center', gap:8}}>
+          <label style={{fontSize:11, color:'#8B7F6E', fontWeight:600, textTransform:'uppercase'}}>Rayon</label>
+          <input type="range" min="500" max="2000" step="100" value={radius} onChange={e => setRadius(Number(e.target.value))} style={{flex:1}}/>
+          <span style={{fontSize:12, color:'#2A2018', fontWeight:700, minWidth:60, textAlign:'right'}}>{radius} m</span>
+        </div>
+      )}
+      <div ref={mapRef} style={{height:260, width:'100%', borderRadius:10, border:'1px solid #EDE6DC', overflow:'hidden'}}/>
+      {bien.gps_lat && bien.gps_lng && (
+        <div style={{fontSize:11, color:'#8B7F6E', marginTop:4, fontFamily:'monospace'}}>{bien.gps_lat}, {bien.gps_lng}</div>
+      )}
+    </div>
   );
 }
 
