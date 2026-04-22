@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.4-ux-v3 -->
+<!-- ocre-v17.3-phase2b -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,57 +14,18 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;overflow:hidden;height:100vh;height:100dvh;font-size:13px}
+body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;overflow:hidden;height:100vh;height:100dvh}
 #root{height:100%}
 ::-webkit-scrollbar{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 
-/* V17.4 UX v3 : densité mobile — labels, cartes, tuiles, chips. */
-label.ocre-lbl{display:block;font-size:11px;font-weight:600;color:#8B7F6E;margin-bottom:4px;text-transform:uppercase;letter-spacing:1.2px}
-input, select, textarea, button { font-size:13px }
-
-/* V17.4 UX v3 : style sélection unifié — .state-selected partout (chips profil, tuiles pays/type/équipements, check-rows). */
-.state-default{background:#FFF;border:1.5px solid #EDE1CC;color:#2A2018;font-weight:500;transition:all .15s}
-.state-selected{background:#FBF1E4 !important;border:2px solid #B26D3A !important;color:#8B4E22 !important;font-weight:600 !important;padding-top:calc(var(--ocre-pad-y,7px) - 1px) !important;padding-bottom:calc(var(--ocre-pad-y,7px) - 1px) !important;padding-left:calc(var(--ocre-pad-x,10px) - 1px) !important;padding-right:calc(var(--ocre-pad-x,10px) - 1px) !important}
-
 /* V17.1 fix-ux-5 : paires 50/50 stackent en mobile portrait < 500px. */
-.row-pair{display:flex;gap:6px}
+.row-pair{display:flex;gap:8px}
 @media (max-width: 499px){
   .row-pair{flex-direction:column;gap:0}
   .row-pair > *{flex:1 1 auto !important;width:100%}
 }
-
-/* V17.4 UX v3 : chips profil wrap 2 lignes, jamais de scroll horizontal. */
-.profils-row{display:flex;gap:4px;flex-wrap:wrap;padding:0}
-.profil-chip{padding:6px 11px;border-radius:999px;cursor:pointer;font-family:inherit;font-size:12px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;--ocre-pad-y:6px;--ocre-pad-x:11px}
-
-/* V17.4 UX v3 : tuiles pays / type — grille 1fr 1fr gap 6px. */
-.tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.tile-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.ocre-tile{padding:8px 10px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;min-height:42px;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;--ocre-pad-y:8px;--ocre-pad-x:10px}
-
-/* V17.4 UX v3 : check-row binaire (Piscine, Ascenseur). */
-.check-row{display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;margin:0 4px 4px 0;min-height:36px;--ocre-pad-y:8px;--ocre-pad-x:11px}
-.check-row input[type=checkbox]{display:none}
-.check-row .mark{width:16px;height:16px;border-radius:4px;border:1.5px solid #EDE1CC;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:transparent;background:#FFF;flex-shrink:0}
-.check-row.state-selected .mark{background:#B26D3A;border-color:#B26D3A;color:#FFF}
-
-/* V17.4 UX v3 : card standard. */
-.ocre-card{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #EDE6DC}
-
-/* V17.4 UX v3 : statut foncier MA — 3 états couleurs notaire. */
-.foncier-titre{background:#E8F5EC !important;border:1.5px solid #B8DEC4 !important;color:#3E8B5E !important}
-.foncier-titre.state-selected{background:#D3ECD8 !important;border:2px solid #3E8B5E !important;color:#2A6B44 !important;font-weight:700 !important}
-.foncier-requisition{background:#FFF5E0 !important;border:1.5px solid #EBD38F !important;color:#D4A437 !important}
-.foncier-requisition.state-selected{background:#F9E7BC !important;border:2px solid #D4A437 !important;color:#9C7A1F !important;font-weight:700 !important}
-.foncier-moulkia{background:#FFE8E8 !important;border:1.5px solid #F0BEBE !important;color:#C04848 !important}
-.foncier-moulkia.state-selected{background:#F7CFCF !important;border:2px solid #C04848 !important;color:#8C2D2D !important;font-weight:700 !important}
-
-/* V17.4 UX v3 : banner bascule profil. */
-.bascule-banner{background:#FFF9F0;border:1px solid #F0E3CB;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:12px;color:#8B7F6E;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.bascule-banner .bascule-btn{background:#FFF;border:1px solid #E8DDD0;color:#8B5E3C;padding:4px 10px;border-radius:999px;font-weight:700;font-size:11px;cursor:pointer;font-family:inherit}
-.bascule-banner .bascule-btn:hover{background:#FFF3EC}
 /* Unified phone field : cadre unique drapeau+numéro sans coupure visuelle. */
 .phone-unified{display:flex;align-items:stretch;width:100%;box-sizing:border-box;border-radius:8px;overflow:hidden;transition:border-color .15s, background .15s}
 .phone-unified .dial-btn{flex:0 0 auto;display:flex;align-items:center;gap:4px;padding:9px 10px;background:transparent;border:0;cursor:pointer;font:inherit;color:#2A2018;font-size:14px;white-space:nowrap}
@@ -89,29 +50,14 @@ input, select, textarea, button { font-size:13px }
 const {useState, useEffect, useRef} = React;
 const API = '/api';
 
-// V17.4 UX v3 : ordre strict Acheteur / Vendeur / Investisseur / Bailleur / Locataire / Curieux.
-const PROFILS_ORDER = ['Acheteur','Vendeur','Investisseur','Bailleur','Locataire','Curieux'];
-const PROFILS = {
-  Acheteur:'#8B5E3C', Vendeur:'#2E4A7A', Investisseur:'#6B3F8E',
-  Bailleur:'#C96B2E', Locataire:'#2E7D5C', Curieux:'#8B7F6E'
-};
-const BADGES = {Acheteur:'ACH', Vendeur:'VDR', Investisseur:'INV', Bailleur:'BAI', Locataire:'LOC', Curieux:'CUR'};
+const PROFILS = {Acheteur:'#8B5E3C', Vendeur:'#2E4A7A', Locataire:'#2E7D5C', Bailleur:'#C96B2E'};
+const INVEST = '#6B3F8E';
+const BADGES = {Acheteur:'ACH', Vendeur:'VDR', Locataire:'LOC', Bailleur:'BAI'};
 const STAGES = {
-  Acheteur:     ["I. L'Acheteur","II. Le bien recherché","III. Budget & financement","IV. Infos complémentaires"],
-  Vendeur:      ["I. Le Vendeur","II. Le bien à vendre","III. Prix & conditions","IV. Infos complémentaires"],
-  Investisseur: ["I. L'Investisseur","II. Le bien ciblé","III. Budget & rendement","IV. Infos complémentaires"],
-  Bailleur:     ["I. Le Bailleur","II. Le bien à louer","III. Loyer & conditions","IV. Infos complémentaires"],
-  Locataire:    ["I. Le Locataire","II. Le bien recherché","III. Loyer & garanties","IV. Infos complémentaires"],
-  Curieux:      ["I. Identité","","","IV. Remarques"]
-};
-// V17.4 : suggestions "Aussi…" selon profil courant.
-const BASCULES = {
-  Acheteur: ['Vendeur','Investisseur'],
-  Vendeur: ['Acheteur','Bailleur'],
-  Investisseur: ['Acheteur','Bailleur'],
-  Bailleur: ['Vendeur','Investisseur'],
-  Locataire: ['Acheteur'],
-  Curieux: []
+  Acheteur:  ["I. L'Acheteur","II. Le bien recherché","III. Budget & financement","IV. Infos complémentaires"],
+  Vendeur:   ["I. Le Vendeur","II. Le bien à vendre","III. Prix & conditions","IV. Infos complémentaires"],
+  Locataire: ["I. Le Locataire","II. Le bien recherché","III. Loyer & garanties","IV. Infos complémentaires"],
+  Bailleur:  ["I. Le Bailleur","II. Le bien à louer","III. Loyer & conditions","IV. Infos complémentaires"]
 };
 const PAYS = [
   {c:'MA',f:'🇲🇦',d:'MAD',n:'Maroc'},{c:'FR',f:'🇫🇷',d:'EUR',n:'France'},
@@ -127,46 +73,17 @@ const PAYS = [
 const FORMES_JURIDIQUES = ['SARL','SA','SAS','EURL','SCI','Autre'];
 const TYPES_BIEN = ['Appartement','Maison','Villa','Riad','Terrain','Commerce','Bureau'];
 
-// V17.4 UX v3 — types étendus : +Terrain industriel / Ferme / Bureau-plateau, renommage Industriel → Bâtiment industriel.
-const ALL_TYPES_BIEN = ['Villa','Appartement','Riad','Maison','Terrain','Commerce','Bâtiment industriel','Terrain industriel','Ferme','Bureau / plateau'];
+// V17.2 Phase 2a / V17.3 Phase 2b — types étendus (Maison / Terrain / Commerce / Industriel).
 const PAYS_BIEN = [
-  {c:'MA', f:'🇲🇦', n:'Maroc',   types:['Villa','Appartement','Riad','Maison','Terrain','Commerce','Bâtiment industriel','Terrain industriel','Ferme','Bureau / plateau']},
-  {c:'FR', f:'🇫🇷', n:'France',  types:['Villa','Appartement','Maison','Terrain','Commerce','Bâtiment industriel','Terrain industriel','Ferme','Bureau / plateau']},
-  {c:'ES', f:'🇪🇸', n:'Espagne', types:['Villa','Appartement','Maison','Terrain','Commerce','Bâtiment industriel','Terrain industriel','Ferme','Bureau / plateau']},
+  {c:'MA', f:'🇲🇦', n:'Maroc',   types:['Villa','Appartement','Riad','Maison','Terrain','Commerce','Industriel']},
+  {c:'FR', f:'🇫🇷', n:'France',  types:['Villa','Appartement','Maison','Terrain','Commerce','Industriel']},
+  {c:'ES', f:'🇪🇸', n:'Espagne', types:['Villa','Appartement','Maison','Terrain','Commerce','Industriel']},
 ];
 const TERRAIN_NATURES = ['Constructible','Agricole','Activité','Loisir'];
 const COMMERCE_EMPLACEMENTS = ['N°1','N°1 bis','N°2'];
 const COMMERCE_BAIL = ['Bail seul','Murs seuls','Bail + Murs'];
 const MAISON_CONFIGS = ['Plain-pied','Étages'];
 const ICPE_CLASSEMENTS = ['Non classé','Déclaration','Enregistrement','Autorisation','Seveso seuil bas','Seveso seuil haut'];
-// V17.4 UX v3 — enrichissement Maroc.
-const TITRE_STATUTS_MA_V3 = [
-  {k:'Titré',       l:'🟢 Titré',       cls:'foncier-titre'},
-  {k:'Réquisition', l:'🟠 Réquisition', cls:'foncier-requisition'},
-  {k:'Moulkia',     l:'🔴 Moulkia',     cls:'foncier-moulkia'},
-];
-const DOCS_MA = [
-  'Titre foncier ANCFCC','Permis d\'habiter','Note agence urbaine (terrain nu)',
-  'Quitus fiscal','Certificat propriété','Radiation RC (si pro)'
-];
-const QUARTIERS_MARRAKECH = [
-  'Médina','Gueliz','Hivernage','Palmeraie','Prestigia','Bab Taghzout','Annakhil',
-  'Targa','Semlalia','Amerchich','Route de Fès','Route de Casablanca','Route d\'Ourika'
-];
-const EQUIP_EXT_MA = [
-  'Piscine','Puits','Photovoltaïque','Hammam','Jardin','Verger / orangers','Kasbah','Parking','Portail auto'
-];
-const ARCHI_INT_MA = [
-  'Patio','Fontaine','Tadelakt','Zellige','Cheminée','B\'hou','Moucharabieh',
-  'Plafond cèdre','Terrasse vue Atlas','Solarium','Jacuzzi','Spa'
-];
-const RACCORDEMENTS = [
-  'Électricité réseau','Photovoltaïque','Gaz ville','Gaz bouteille','Eau ville','Puits',
-  'Égout','Fosse septique','Fibre','ADSL','Aucun'
-];
-const ENERGIE_CLIMAT = [
-  'Chauffe-eau solaire','Climatisation','Chauffage central','Cheminée','PAC piscine','Pompe puits'
-];
 const PRIORITES = [
   {k:'redhibitoire', l:'Rédhibitoire', c:'#D64545', bg:'#FEF6F6'},
   {k:'souhaite',     l:'Souhaité',     c:'#4BB77B', bg:'#F6FCF8'},
@@ -502,33 +419,6 @@ function CitySuggestField({label, value, onChange, suggestAction, style={}, plac
   );
 }
 
-// V17.4 UX v3 — StaticSuggestField : autocomplete sur liste locale (ex: quartiers Marrakech).
-function StaticSuggestField({label, value, onChange, suggestions, placeholder='', style={}}) {
-  const [open, setOpen] = React.useState(false);
-  const filled = (value || '').trim() !== '';
-  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:13, outline:'none', fontFamily:'inherit', color:'#2A2018'};
-  const q = (value || '').trim().toLowerCase();
-  const items = q
-    ? suggestions.filter(s => s.toLowerCase().includes(q))
-    : suggestions.slice(0, 10);
-  return (
-    <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
-      {label && <label className="ocre-lbl">{label}</label>}
-      <input type="text" value={value || ''} onChange={e => { onChange(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder={placeholder} autoComplete="off"
-        style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
-      {open && items.length > 0 && (
-        <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:200, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:50, marginTop:2}}>
-          {items.map((it, i) => (
-            <div key={i} onMouseDown={() => { onChange(it); setOpen(false); }} style={{padding:'8px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F4EEE6'}}>{it}</div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Select({label, value, onChange, options, style={}}) {
   const filled = (value !== undefined && value !== null && String(value).trim() !== '');
   return (
@@ -638,7 +528,7 @@ function PriorityBoolField({label, value, onChange}) {
   );
 }
 
-// V17.4 UX v3 — MultiSelectChips : tuiles multi utilisant .state-selected unifié.
+// V17.2 Phase 2a — MultiSelectChips : sélection multiple par pastilles.
 function MultiSelectChips({label, value, options, onChange}) {
   const v = Array.isArray(value) ? value : [];
   function toggle(o) {
@@ -647,14 +537,17 @@ function MultiSelectChips({label, value, options, onChange}) {
   }
   return (
     <div style={{marginBottom:10}}>
-      {label && <label className="ocre-lbl">{label}</label>}
-      <div style={{display:'flex', gap:4, flexWrap:'wrap'}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
         {options.map(o => {
           const on = v.includes(o);
           return (
             <button key={o} type="button" onClick={() => toggle(o)}
-              className={on ? 'state-selected' : 'state-default'}
-              style={{padding:'7px 11px', borderRadius:999, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{o}</button>
+              style={{padding:'6px 10px', borderRadius:999,
+                      border:'1.5px solid ' + (on ? '#8B5E3C' : '#E8DDD0'),
+                      background: on ? '#FFF3EC' : '#FDFAF7',
+                      color: on ? '#8B5E3C' : '#8B7F6E',
+                      fontWeight: on ? 700 : 500, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{o}</button>
           );
         })}
       </div>
@@ -662,12 +555,15 @@ function MultiSelectChips({label, value, options, onChange}) {
   );
 }
 
-// V17.4 UX v3 — BoolChip check-row avec ✓ (Piscine, Ascenseur…).
+// V17.2 Phase 2a — BoolChip : interrupteur oui/non simple (Vendeur/Bailleur).
 function BoolChip({label, value, onChange}) {
   return (
-    <label className={'check-row ' + (value ? 'state-selected' : 'state-default')}>
-      <input type="checkbox" checked={!!value} onChange={e => onChange(e.target.checked)}/>
-      <span className="mark">✓</span>
+    <label style={{display:'inline-flex', alignItems:'center', gap:6, padding:'7px 11px', borderRadius:8,
+                    border:'1.5px solid ' + (value ? '#8B5E3C' : '#E8DDD0'),
+                    background: value ? '#FFF3EC' : '#FDFAF7',
+                    color: value ? '#8B5E3C' : '#8B7F6E',
+                    fontWeight: value ? 700 : 500, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6, marginRight:6}}>
+      <input type="checkbox" checked={!!value} onChange={e => onChange(e.target.checked)} style={{margin:0}}/>
       {label}
     </label>
   );
@@ -837,90 +733,64 @@ function ShareMenu({dossierId, dossierName, onClose, showToast}) {
   );
 }
 
-// V17.4 UX v3 — PickerDropdown : sélecteur custom avec recherche (pattern CountryAutocomplete).
-function PickerDropdown({label, value, displayValue, options, onChange, placeholder='Choisir…', disabled=false}) {
-  const [open, setOpen] = React.useState(false);
-  const [query, setQuery] = React.useState('');
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setQuery(''); } }
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, []);
-  const filtered = query.trim()
-    ? options.filter(o => normalizeAccent(o.l).includes(normalizeAccent(query)))
-    : options;
-  return (
-    <div ref={ref} style={{position:'relative'}}>
-      {label && <label className="ocre-lbl">{label}</label>}
-      <button type="button" onClick={() => !disabled && setOpen(!open)} disabled={disabled}
-        className={'ocre-tile ' + (value ? 'state-selected' : 'state-default')}
-        style={{width:'100%', justifyContent:'space-between', padding:'10px 12px', opacity: disabled ? .5 : 1, cursor: disabled ? 'not-allowed' : 'pointer'}}>
-        <span>{displayValue || placeholder}</span>
-        <span style={{fontSize:10, opacity:.6}}>▾</span>
-      </button>
-      {open && !disabled && (
-        <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:260, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:50, marginTop:2}}>
-          {options.length > 5 && (
-            <input type="text" value={query} onChange={e => setQuery(e.target.value)}
-              placeholder="Rechercher…" autoFocus autoCapitalize="off" autoCorrect="off"
-              style={{width:'100%', padding:'8px 11px', border:'none', borderBottom:'1px solid #F4EEE6', outline:'none', fontSize:13, fontFamily:'inherit'}}/>
-          )}
-          {filtered.length === 0 ? (
-            <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E'}}>Aucun résultat</div>
-          ) : filtered.map(o => (
-            <div key={o.k} onMouseDown={() => { onChange(o.k); setOpen(false); setQuery(''); }}
-              style={{padding:'10px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F4EEE6', background: o.k === value ? '#FBF1E4' : '#fff'}}>
-              {o.l}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // V17.2 Phase 2a — BienForm : Section II "Le bien", country-first × type-driven.
 function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) {
   const bien = d.bien || {};
   function setB(k, v) { set('bien', {...bien, [k]: v}); }
-  // V17.4 UX v3 : Acheteur/Locataire/Investisseur → mode "recherche" (fourchettes + priorités).
-  //               Vendeur/Bailleur → mode "description" (valeurs précises + bools).
-  const askingMode = ['Acheteur','Locataire','Investisseur'].includes(activeProfil);
+  // Acheteur/Locataire → mode "recherche" (fourchettes + priorités).
+  // Vendeur/Bailleur → mode "description" (valeurs précises + bools).
+  const askingMode = ['Acheteur','Locataire'].includes(activeProfil);
   const paysDef = PAYS_BIEN.find(p => p.c === bien.pays);
   const typesDispo = paysDef ? paysDef.types : [];
 
   return (
     <>
-      {/* V17.4 UX v3 : ligne 1 — Pays + Type en grid 2-col avec dropdowns custom. */}
-      <div className="tile-grid" style={{marginBottom:10}}>
-        <PickerDropdown label="Pays du bien"
-          value={bien.pays}
-          displayValue={bien.pays ? ((PAYS_BIEN.find(p => p.c === bien.pays) || {}).f + ' ' + (PAYS_BIEN.find(p => p.c === bien.pays) || {}).n) : ''}
-          options={PAYS_BIEN.map(p => ({k: p.c, l: p.f + ' ' + p.n}))}
-          onChange={v => setB('pays', v)} placeholder="Choisir…"/>
-        <PickerDropdown label="Type de bien"
-          value={bien.type}
-          displayValue={bien.type || ''}
-          options={typesDispo.map(t => ({k: t, l: t}))}
-          onChange={v => setB('type', v)} placeholder={bien.pays ? 'Choisir…' : 'Choisir un pays'}
-          disabled={!bien.pays}/>
+      {/* 1. Pays */}
+      <div style={{marginBottom:10}}>
+        <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays du bien</label>
+        <div style={{display:'flex', gap:6}}>
+          {PAYS_BIEN.map(p => {
+            const active = bien.pays === p.c;
+            return (
+              <button key={p.c} type="button" onClick={() => setB('pays', p.c)}
+                style={{flex:1, padding:'9px 8px', borderRadius:8, border:'1.5px solid ' + (active ? '#8B5E3C' : '#E8DDD0'),
+                        background: active ? '#FFF3EC' : '#FDFAF7', color: active ? '#8B5E3C' : '#8B7F6E',
+                        fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                {p.f} {p.n}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      {!bien.pays && <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'2px 0 6px'}}>Choisissez un pays pour voir les types disponibles.</div>}
+
+      {!bien.pays && <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'6px 0'}}>Choisissez un pays pour voir les types disponibles.</div>}
+
+      {/* 2. Type de bien (filtré par pays) */}
+      {bien.pays && (
+        <div style={{marginBottom:10}}>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Type de bien</label>
+          <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+            {typesDispo.map(t => {
+              const active = bien.type === t;
+              return (
+                <button key={t} type="button" onClick={() => setB('type', t)}
+                  style={{flex:'1 1 28%', padding:'9px 10px', borderRadius:8, border:'1.5px solid ' + (active ? '#8B5E3C' : '#E8DDD0'),
+                          background: active ? '#FFF3EC' : '#FDFAF7', color: active ? '#8B5E3C' : '#8B7F6E',
+                          fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>{t}</button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 3. Adresse + GPS + Ville (une fois pays+type choisis) */}
       {bien.pays && bien.type && (
         <>
-          <CitySuggestField label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)} suggestAction="suggest_address"/>
+          <CitySuggestField label="Adresse / quartier" value={bien.adresse} onChange={v => setB('adresse', v)} suggestAction="suggest_address"/>
           <div className="row-pair">
             <CitySuggestField label="Ville" value={bien.ville} onChange={v => setB('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
-            {bien.pays === 'MA' ? (
-              <StaticSuggestField label="Quartier" value={bien.quartier} onChange={v => setB('quartier', v)} suggestions={QUARTIERS_MARRAKECH} placeholder="Palmeraie, Gueliz…" style={{flex:1}}/>
-            ) : (
-              <Field label="GPS (texte, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589" style={{flex:1}}/>
-            )}
+            <Field label="GPS (texte, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589" style={{flex:1}}/>
           </div>
-          {bien.pays === 'MA' && <Field label="GPS (texte, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589"/>}
           {/* V17.3 Phase 2b : carte interactive (fallback sur champ texte ci-dessus) */}
           <MapPicker bien={bien} setB={setB} showToast={showToast}/>
 
@@ -931,10 +801,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           {bien.type === 'Maison' && <MaisonFields bien={bien} setB={setB} askingMode={askingMode}/>}
           {bien.type === 'Terrain' && <TerrainFields bien={bien} setB={setB} askingMode={askingMode}/>}
           {bien.type === 'Commerce' && <CommerceFields bien={bien} setB={setB} askingMode={askingMode}/>}
-          {(bien.type === 'Bâtiment industriel' || bien.type === 'Industriel') && <IndustrielFields bien={bien} setB={setB} askingMode={askingMode}/>}
-          {bien.type === 'Terrain industriel' && <TerrainFields bien={bien} setB={setB} askingMode={askingMode} forceNature="Activité"/>}
-          {bien.type === 'Ferme' && <FermeFields bien={bien} setB={setB} askingMode={askingMode}/>}
-          {bien.type === 'Bureau / plateau' && <BureauFields bien={bien} setB={setB} askingMode={askingMode}/>}
+          {bien.type === 'Industriel' && <IndustrielFields bien={bien} setB={setB} askingMode={askingMode}/>}
 
           {/* 5. Tronc commun (chambres / sdb / parking / extérieur / énergie) — seulement habitable */}
           {['Villa','Appartement','Riad','Maison'].includes(bien.type) && <>
@@ -976,29 +843,18 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             </div>
           )}
 
-          {/* V17.4 UX v3 : raccordements étendus (universel). */}
-          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:1.2}}>Raccordements</div>
-          <MultiSelectChips value={bien.raccordements} options={RACCORDEMENTS} onChange={v => setB('raccordements', v)}/>
-
-          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:6, marginBottom:6, letterSpacing:1.2}}>Énergie & climat</div>
-          <MultiSelectChips value={bien.energie_climat} options={ENERGIE_CLIMAT} onChange={v => setB('energie_climat', v)}/>
+          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6}}>Énergie & confort</div>
+          <MultiSelectChips label="Raccordements" value={bien.energies} options={ENERGIES} onChange={v => setB('energies', v)}/>
+          <Select label="Type de chauffage" value={bien.chauffage_type} onChange={v => setB('chauffage_type', v)} options={CHAUFFAGE_TYPES}/>
           <div>
+            <BoolChip label="Chauffe-eau solaire" value={bien.chauffe_eau_solaire} onChange={v => setB('chauffe_eau_solaire', v)}/>
+            <BoolChip label="Climatisation" value={bien.climatisation} onChange={v => setB('climatisation', v)}/>
             <BoolChip label="Ascenseur" value={bien.ascenseur} onChange={v => setB('ascenseur', v)}/>
           </div>
           </>}
 
-          {/* V17.4 UX v3 : équipements extérieur MA + intérieur marocain (pays MA uniquement). */}
-          {bien.pays === 'MA' && ['Villa','Riad','Maison','Ferme'].includes(bien.type) && (
-            <>
-              <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:1.2}}>Équipements extérieur (Maroc)</div>
-              <MultiSelectChips value={bien.equip_ext_ma} options={EQUIP_EXT_MA} onChange={v => setB('equip_ext_ma', v)}/>
-              <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:6, marginBottom:6, letterSpacing:1.2}}>Architecture marocaine</div>
-              <MultiSelectChips value={bien.archi_int_ma} options={ARCHI_INT_MA} onChange={v => setB('archi_int_ma', v)}/>
-            </>
-          )}
-
           {/* 6. Documents conditionnels */}
-          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:1.2}}>Documents & conformité</div>
+          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6}}>Documents & conformité</div>
           {bien.pays === 'FR' && (
             <>
               <div className="row-pair">
@@ -1013,25 +869,10 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           )}
           {bien.pays === 'MA' && (
             <>
-              {/* V17.4 UX v3 : statut foncier MA — 3 tuiles colorées standard notaire. */}
-              <div style={{marginBottom:10}}>
-                <label className="ocre-lbl">Statut foncier</label>
-                <div className="tile-grid-3">
-                  {TITRE_STATUTS_MA_V3.map(s => {
-                    const active = bien.titre_statut === s.k;
-                    return (
-                      <button key={s.k} type="button" onClick={() => setB('titre_statut', s.k)}
-                        className={'ocre-tile ' + s.cls + (active ? ' state-selected' : '')}>
-                        {s.l}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              {bien.titre_statut === 'Titré' && <Field label="N° Titre foncier" value={bien.titre_num} onChange={v => setB('titre_num', v)}/>}
-              {bien.titre_statut === 'Réquisition' && <Field label="N° Réquisition" value={bien.requisition_num} onChange={v => setB('requisition_num', v)}/>}
-              <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:6, marginBottom:6, letterSpacing:1.2}}>Documents Maroc</div>
-              <MultiSelectChips value={bien.docs_ma} options={DOCS_MA} onChange={v => setB('docs_ma', v)}/>
+              <Select label="Statut foncier" value={bien.titre_statut} onChange={v => setB('titre_statut', v)} options={TITRE_STATUTS_MA}/>
+              {bien.titre_statut === 'Titré' && (
+                <Field label="N° Titre foncier" value={bien.titre_num} onChange={v => setB('titre_num', v)}/>
+              )}
             </>
           )}
 
@@ -1168,15 +1009,12 @@ function MaisonFields({bien, setB, askingMode}) {
 }
 
 // V17.3 Phase 2b — Terrain (constructible / agricole / activité / loisir).
-function TerrainFields({bien, setB, askingMode, forceNature}) {
-  React.useEffect(() => {
-    if (forceNature && bien.terrain_nature !== forceNature) setB('terrain_nature', forceNature);
-  }, [forceNature]);
+function TerrainFields({bien, setB, askingMode}) {
   const isConstructible = bien.terrain_nature === 'Constructible';
   return (
     <>
-      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:1.2}}>{forceNature ? 'Terrain ' + forceNature.toLowerCase() : 'Terrain'}</div>
-      {!forceNature && <Select label="Nature du terrain" value={bien.terrain_nature} onChange={v => setB('terrain_nature', v)} options={TERRAIN_NATURES}/>}
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:.4}}>Terrain</div>
+      <Select label="Nature du terrain" value={bien.terrain_nature} onChange={v => setB('terrain_nature', v)} options={TERRAIN_NATURES}/>
       {askingMode
         ? <RangeField label="Surface" unit="m²" minValue={bien.terrain_surface_min} maxValue={bien.terrain_surface_max} onMin={v => setB('terrain_surface_min', v)} onMax={v => setB('terrain_surface_max', v)}/>
         : <Field label="Surface (m²)" type="number" value={bien.terrain_surface} onChange={v => setB('terrain_surface', v)}/>
@@ -1273,63 +1111,6 @@ function IndustrielFields({bien, setB, askingMode}) {
         <BoolChip label="Monte-charge" value={bien.monte_charge} onChange={v => setB('monte_charge', v)}/>
       </div>
       <Select label="Classement ICPE" value={bien.icpe} onChange={v => setB('icpe', v)} options={ICPE_CLASSEMENTS}/>
-    </>
-  );
-}
-
-// V17.4 UX v3 — Ferme (exploitation agricole).
-function FermeFields({bien, setB, askingMode}) {
-  return (
-    <>
-      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:1.2}}>Ferme</div>
-      {askingMode ? (
-        <>
-          <RangeField label="Terrain" unit="ha" minValue={bien.ferme_terrain_min} maxValue={bien.ferme_terrain_max} onMin={v => setB('ferme_terrain_min', v)} onMax={v => setB('ferme_terrain_max', v)}/>
-          <RangeField label="Bâti exploitation" unit="m²" minValue={bien.ferme_bati_min} maxValue={bien.ferme_bati_max} onMin={v => setB('ferme_bati_min', v)} onMax={v => setB('ferme_bati_max', v)}/>
-          <RangeField label="Habitation" unit="m²" minValue={bien.ferme_habitable_min} maxValue={bien.ferme_habitable_max} onMin={v => setB('ferme_habitable_min', v)} onMax={v => setB('ferme_habitable_max', v)}/>
-        </>
-      ) : (
-        <>
-          <div className="row-pair">
-            <Field label="Terrain (ha)" type="number" value={bien.ferme_terrain} onChange={v => setB('ferme_terrain', v)} style={{flex:1}}/>
-            <Field label="Bâti (m²)" type="number" value={bien.ferme_bati} onChange={v => setB('ferme_bati', v)} style={{flex:1}}/>
-          </div>
-          <Field label="Habitation (m²)" type="number" value={bien.ferme_habitable} onChange={v => setB('ferme_habitable', v)}/>
-        </>
-      )}
-      <Field label="Activité / production" value={bien.ferme_activite} onChange={v => setB('ferme_activite', v)} placeholder="oliviers, maraîchage, élevage…"/>
-      <div>
-        <BoolChip label="Bâtiments agricoles" value={bien.ferme_batiments} onChange={v => setB('ferme_batiments', v)}/>
-        <BoolChip label="Forage / puits" value={bien.ferme_puits} onChange={v => setB('ferme_puits', v)}/>
-        <BoolChip label="Irrigation" value={bien.ferme_irrigation} onChange={v => setB('ferme_irrigation', v)}/>
-        <BoolChip label="Logement ouvriers" value={bien.ferme_logement_ouvriers} onChange={v => setB('ferme_logement_ouvriers', v)}/>
-      </div>
-    </>
-  );
-}
-
-// V17.4 UX v3 — Bureau / plateau.
-function BureauFields({bien, setB, askingMode}) {
-  return (
-    <>
-      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:1.2}}>Bureau / plateau</div>
-      {askingMode ? (
-        <RangeField label="Surface" unit="m²" minValue={bien.bureau_surface_min} maxValue={bien.bureau_surface_max} onMin={v => setB('bureau_surface_min', v)} onMax={v => setB('bureau_surface_max', v)}/>
-      ) : (
-        <Field label="Surface (m²)" type="number" value={bien.bureau_surface} onChange={v => setB('bureau_surface', v)}/>
-      )}
-      <div className="row-pair">
-        <Field label="Nombre de postes" type="number" value={bien.bureau_postes} onChange={v => setB('bureau_postes', v)} style={{flex:1}}/>
-        <Field label="Étage" value={bien.bureau_etage} onChange={v => setB('bureau_etage', v)} style={{flex:1}}/>
-      </div>
-      <Select label="Agencement" value={bien.bureau_agencement} onChange={v => setB('bureau_agencement', v)} options={['Open space','Cloisonné','Mixte','À diviser']}/>
-      <div>
-        <BoolChip label="Climatisation" value={bien.bureau_clim} onChange={v => setB('bureau_clim', v)}/>
-        <BoolChip label="Faux-plafond" value={bien.bureau_faux_plafond} onChange={v => setB('bureau_faux_plafond', v)}/>
-        <BoolChip label="Faux-plancher" value={bien.bureau_faux_plancher} onChange={v => setB('bureau_faux_plancher', v)}/>
-        <BoolChip label="Accès PMR" value={bien.bureau_pmr} onChange={v => setB('bureau_pmr', v)}/>
-        <BoolChip label="Parking visiteurs" value={bien.bureau_parking_visiteurs} onChange={v => setB('bureau_parking_visiteurs', v)}/>
-      </div>
     </>
   );
 }
@@ -1505,13 +1286,7 @@ function App() {
         const st = await fetch(API + '/auth.php?action=status').then(r => r.json()).catch(() => null);
         if (st && st.ok) setAppSettings(st);
         const cl = await fetch(API + '/clients.php?action=list', {headers: {'X-Session-Token': token}}).then(r => r.json());
-        if (cl && cl.ok) {
-          // V17.4 UX v3 : migration douce — is_investisseur true devient profil "Investisseur".
-          const migrated = (cl.clients || []).map(c =>
-            c.is_investisseur && c.projet !== 'Investisseur' ? {...c, projet: 'Investisseur'} : c
-          );
-          setClients(migrated);
-        }
+        if (cl && cl.ok) setClients(cl.clients || []);
       } catch (e) { /* silent */ }
       setApiLoading(false);
     })();
@@ -1564,9 +1339,8 @@ function App() {
   }
   function openClient(c) {
     setEditing(c);
-    const profil = c.projet || 'Acheteur';
-    setActiveProfil(profil);
-    setIsInvestisseur(profil === 'Investisseur' || !!c.is_investisseur);
+    setActiveProfil(c.projet || 'Acheteur');
+    setIsInvestisseur(!!c.is_investisseur);
     setView('form');
   }
   function openNew() {
@@ -1672,14 +1446,20 @@ function ListView(props) {
       />
 
       <div style={{padding:'10px 14px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
-        <div className="profils-row">
-          {PROFILS_ORDER.map(p => {
+        <div style={{display:'flex', gap:6, overflowX:'auto', paddingBottom:4}}>
+          {Object.keys(PROFILS).map(p => {
             const active = p === activeProfil;
             return (
               <button key={p} onClick={() => setActiveProfil(p)}
-                className={'profil-chip ' + (active ? 'state-selected' : 'state-default')}>{p}</button>
+                style={{padding:'6px 12px', borderRadius:999, border:'1.5px solid ' + (active ? PROFILS[p] : '#E8DDD0'),
+                        background: active ? PROFILS[p] : '#FDFAF7', color: active ? '#fff' : '#999',
+                        fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>{p}</button>
             );
           })}
+          <button onClick={() => setIsInvestisseur(!isInvestisseur)}
+            style={{padding:'6px 12px', borderRadius:999, border:'1.5px solid ' + (isInvestisseur ? INVEST : '#E8DDD0'),
+                    background: isInvestisseur ? INVEST : '#FDFAF7', color: isInvestisseur ? '#fff' : '#999',
+                    fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>💎 Investisseur</button>
         </div>
         <div style={{fontSize:11, color:'#8B7F6E', marginTop:6, letterSpacing:.3}}>{countText}</div>
       </div>
@@ -1688,18 +1468,18 @@ function ListView(props) {
         {!showArchives && drafts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
-            {drafts.map(c => <ClientRow key={c.id} c={c} clients={clients} onClick={() => openClient(c)}/>)}
+            {drafts.map(c => <ClientRow key={c.id} c={c} onClick={() => openClient(c)}/>)}
           </>
         )}
         {!showArchives && contacts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'12px 4px 6px'}}>Contacts · {contacts.length}</div>
-            {contacts.map(c => <ClientRow key={c.id} c={c} clients={clients} onClick={() => openClient(c)}/>)}
+            {contacts.map(c => <ClientRow key={c.id} c={c} onClick={() => openClient(c)}/>)}
           </>
         )}
         {showArchives && (
           <>
-            {filtered.map(c => <ClientRow key={c.id} c={c} clients={clients} onClick={() => openClient(c)}/>)}
+            {filtered.map(c => <ClientRow key={c.id} c={c} onClick={() => openClient(c)}/>)}
             {filtered.length === 0 && <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:40}}>Aucune archive</div>}
           </>
         )}
@@ -1720,28 +1500,19 @@ function ListView(props) {
   );
 }
 
-function ClientRow({c, onClick, clients}) {
-  const profil = c.projet || 'Acheteur';
-  const col = PROFILS[profil] || PROFILS.Acheteur;
-  const badge = BADGES[profil] || 'ACH';
+function ClientRow({c, onClick}) {
+  const col = c.is_investisseur ? INVEST : (PROFILS[c.projet] || PROFILS.Acheteur);
+  const badge = c.is_investisseur ? 'INV' : (BADGES[c.projet] || 'ACH');
   const name = (c.profil_type === 'Société' && c.societe_nom)
     ? c.societe_nom
     : ((c.prenom || '') + ' ' + (c.nom || '')).trim() || 'Sans nom';
   const sub = c.tel || c.email || '';
-  // V17.4 UX v3 : badge cumul si dossier lié.
-  const linkedIds = Array.isArray(c.linked_dossiers) ? c.linked_dossiers : [];
-  const linkedProfils = linkedIds
-    .map(id => (clients || []).find(x => x.id === id))
-    .filter(Boolean)
-    .map(x => x.projet || 'Acheteur');
-  const cumul = linkedProfils.length > 0 ? [profil, ...linkedProfils].join(' · ') : '';
   return (
     <div onClick={onClick} style={{background:'#fff', padding:'10px 12px', borderRadius:10, marginBottom:8, display:'flex', alignItems:'center', gap:12, cursor:'pointer', border:'1px solid #EDE6DC'}}>
       <div style={{width:38, height:38, borderRadius:8, background:col, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, letterSpacing:.5, flexShrink:0}}>{badge}</div>
       <div style={{flex:1, minWidth:0}}>
-        <div style={{fontWeight:700, fontSize:13, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{name}</div>
+        <div style={{fontWeight:700, fontSize:14, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{name}</div>
         <div style={{fontSize:11, color:'#8B7F6E'}}>{sub || '—'}</div>
-        {cumul && <div style={{fontSize:10, color:'#B26D3A', fontWeight:700, letterSpacing:.3, marginTop:2}}>🔗 {cumul}</div>}
       </div>
       <div style={{color:'#C4B5A0', fontSize:16}}>›</div>
     </div>
@@ -1778,13 +1549,8 @@ function FormView(props) {
   function set(k, v) {
     setD(prev => ({...prev, [k]: v}));
   }
-  // V17.4 UX v3 : Investisseur est désormais un profil à part entière — on sync le bool legacy.
-  useEffect(() => {
-    const wantInvest = activeProfil === 'Investisseur';
-    if (wantInvest !== isInvestisseur) setIsInvestisseur(wantInvest);
-  }, [activeProfil]);
   function commit(k, v) {
-    const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
+    const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
     setD(next);
     handleSaveLocal(next);
   }
@@ -1803,43 +1569,6 @@ function FormView(props) {
     ? d.societe_nom
     : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
 
-  // V17.4 UX v3 : bascule profil — crée un dossier lié (même identité, nouveau projet).
-  async function createLinkedDossier(newProfil) {
-    const base = {
-      profil_type: profilType,
-      prenom: d.prenom, nom: d.nom, societe_nom: d.societe_nom, forme_juridique: d.forme_juridique,
-      representant: d.representant, siret: d.siret,
-      tel: d.tel, email: d.email, adresse: d.adresse, ville: d.ville, pays_residence: d.pays_residence,
-      nationalite: d.nationalite, date_naissance: d.date_naissance,
-      projet: newProfil,
-      is_investisseur: newProfil === 'Investisseur',
-      linked_dossiers: editing && editing.id && !String(editing.id).startsWith('tmp-') ? [editing.id] : [],
-    };
-    const token = localStorage.getItem('ocre_token');
-    try {
-      const r = await fetch(API + '/clients.php?action=save', {
-        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token},
-        body: JSON.stringify({client: base}),
-      });
-      const j = await r.json();
-      if (j && j.ok && j.client) {
-        // Retrolink : ajouter le nouvel id au dossier courant.
-        if (editing && editing.id && !String(editing.id).startsWith('tmp-')) {
-          const mine = Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [];
-          if (!mine.includes(j.client.id)) {
-            const next = [...mine, j.client.id];
-            commit('linked_dossiers', next);
-          }
-        }
-        showToast && showToast('Dossier ' + newProfil + ' créé');
-        // Reload the new dossier in the form
-        setTimeout(() => window.location.reload(), 600);
-      } else {
-        showToast && showToast(j && j.error ? j.error : 'Échec création');
-      }
-    } catch (e) { showToast && showToast('Erreur réseau'); }
-  }
-
   const stageTitle = editing && (d.prenom || d.nom || d.societe_nom)
     ? ((profilType === 'Société' && d.societe_nom) ? d.societe_nom : ((d.prenom || '') + ' ' + (d.nom || '')).trim())
     : ('Nouveau ' + activeProfil);
@@ -1853,26 +1582,21 @@ function FormView(props) {
       </div>
 
       <div style={{padding:'10px 14px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
-        <div className="profils-row">
-          {PROFILS_ORDER.map(p => {
+        <div style={{display:'flex', gap:6, overflowX:'auto', paddingBottom:4}}>
+          {Object.keys(PROFILS).map(p => {
             const active = p === activeProfil;
             return (
               <button key={p} onClick={() => setActiveProfil(p)}
-                className={'profil-chip ' + (active ? 'state-selected' : 'state-default')}>{p}</button>
+                style={{padding:'6px 12px', borderRadius:999, border:'1.5px solid ' + (active ? PROFILS[p] : '#E8DDD0'),
+                        background: active ? PROFILS[p] : '#FDFAF7', color: active ? '#fff' : '#999',
+                        fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>{p}</button>
             );
           })}
+          <button onClick={() => setIsInvestisseur(!isInvestisseur)}
+            style={{padding:'6px 12px', borderRadius:999, border:'1.5px solid ' + (isInvestisseur ? INVEST : '#E8DDD0'),
+                    background: isInvestisseur ? INVEST : '#FDFAF7', color: isInvestisseur ? '#fff' : '#999',
+                    fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>💎 Investisseur</button>
         </div>
-        {/* V17.4 UX v3 : banner bascule profil */}
-        {BASCULES[activeProfil] && BASCULES[activeProfil].length > 0 && (
-          <div className="bascule-banner">
-            <span>🔄 Aussi… Cette personne veut peut-être aussi</span>
-            {BASCULES[activeProfil].map(p => (
-              <button key={p} type="button" className="bascule-btn" onClick={() => createLinkedDossier(p)}>
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       <div style={{flex:1, overflowY:'auto', padding:12}}>
@@ -1941,14 +1665,14 @@ function FormView(props) {
           <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
         </Stage>
 
-        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][1]} expanded={expanded[1]} onToggle={() => toggleStage(1)}>
+        <Stage title={STAGES[activeProfil][1]} expanded={expanded[1]} onToggle={() => toggleStage(1)}>
           <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
             d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
             showToast={showToast}/>
           <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
-        </Stage>}
+        </Stage>
 
-        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][2]} expanded={expanded[2]} onToggle={() => toggleStage(2)}>
+        <Stage title={STAGES[activeProfil][2]} expanded={expanded[2]} onToggle={() => toggleStage(2)}>
           {activeProfil === 'Acheteur' && (
             <>
               <div style={{display:'flex', gap:8}}>
@@ -1987,9 +1711,9 @@ function FormView(props) {
           )}
           <CustomFieldList sectionKey="financement" d={d} set={set}/>
           <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer le stage</button>
-        </Stage>}
+        </Stage>
 
-        <Stage title={STAGES[activeProfil][3] || 'IV. Remarques'} expanded={expanded[3]} onToggle={() => toggleStage(3)}>
+        <Stage title={STAGES[activeProfil][3]} expanded={expanded[3]} onToggle={() => toggleStage(3)}>
           <div style={{marginBottom:10}}>
             <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Notes</label>
             <textarea value={d.notes || ''} onChange={e => set('notes', e.target.value)}
