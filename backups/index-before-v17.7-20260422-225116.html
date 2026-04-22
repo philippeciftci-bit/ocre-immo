@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.7-fixes -->
+<!-- ocre-v17.6-section3 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -595,104 +595,6 @@ function StaticSuggestField({label, value, onChange, suggestions, placeholder=''
       )}
     </div>
   );
-}
-
-// V17.7 — TelephoneMulti : multi entrées, label + numéro + primary star + remove.
-const TEL_LABELS = ['Perso','Pro','Mobile','Fixe','Autre'];
-const EMAIL_LABELS = ['Perso','Pro','Autre'];
-function TelephoneMulti({value, onChange, residenceCountry}) {
-  const list = Array.isArray(value) ? value : [];
-  function update(i, patch) { onChange(list.map((x, j) => j === i ? {...x, ...patch} : x)); }
-  function removeEntry(i) {
-    const next = list.filter((_, j) => j !== i);
-    if (next.length && !next.some(x => x.primary)) next[0] = {...next[0], primary: true};
-    onChange(next);
-  }
-  function setPrimary(i) { onChange(list.map((x, j) => ({...x, primary: j === i}))); }
-  function add() {
-    if (list.length >= 4) return;
-    onChange([...list, {label:'Mobile', valeur:'', primary: list.length === 0}]);
-  }
-  return (
-    <div style={{marginBottom:10}}>
-      <label className="ocre-lbl">Téléphones</label>
-      {list.length === 0 && (
-        <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', marginBottom:6}}>Aucun numéro — Ajoute-en un.</div>
-      )}
-      {list.map((entry, i) => (
-        <div key={i} style={{display:'flex', gap:4, marginBottom:6, alignItems:'flex-end'}}>
-          <div style={{flex:'0 0 92px'}}>
-            <Select value={entry.label} onChange={v => update(i, {label: v})} options={TEL_LABELS} style={{marginBottom:0}}/>
-          </div>
-          <div style={{flex:1, minWidth:0}}>
-            <PhoneField value={entry.valeur} onChange={v => update(i, {valeur: v})} residenceCountry={residenceCountry} style={{marginBottom:0}}/>
-          </div>
-          <button type="button" onClick={() => setPrimary(i)} title={entry.primary ? 'Primaire' : 'Définir primaire'}
-            style={{width:32, height:38, padding:0, borderRadius:8, border:'1.5px solid ' + (entry.primary ? '#B26D3A' : '#E8DDD0'), background: entry.primary ? '#FBF1E4' : '#FFF', color: entry.primary ? '#B26D3A' : '#8B7F6E', fontSize:14, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>★</button>
-          <button type="button" onClick={() => removeEntry(i)} title="Supprimer"
-            style={{width:28, height:38, padding:0, borderRadius:8, border:'1px solid #E8DDD0', background:'#fff', color:'#8B7F6E', fontSize:14, cursor:'pointer', flexShrink:0}}>×</button>
-        </div>
-      ))}
-      {list.length < 4 && (
-        <button type="button" onClick={add}
-          style={{padding:'6px 11px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFF3EC', color:'#8B5E3C', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un numéro</button>
-      )}
-    </div>
-  );
-}
-
-function EmailMulti({value, onChange}) {
-  const list = Array.isArray(value) ? value : [];
-  function update(i, patch) { onChange(list.map((x, j) => j === i ? {...x, ...patch} : x)); }
-  function removeEntry(i) {
-    const next = list.filter((_, j) => j !== i);
-    if (next.length && !next.some(x => x.primary)) next[0] = {...next[0], primary: true};
-    onChange(next);
-  }
-  function setPrimary(i) { onChange(list.map((x, j) => ({...x, primary: j === i}))); }
-  function add() {
-    if (list.length >= 4) return;
-    onChange([...list, {label:'Perso', valeur:'', primary: list.length === 0}]);
-  }
-  return (
-    <div style={{marginBottom:10}}>
-      <label className="ocre-lbl">Emails</label>
-      {list.length === 0 && (
-        <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', marginBottom:6}}>Aucun email — Ajoutes-en un.</div>
-      )}
-      {list.map((entry, i) => (
-        <div key={i} style={{display:'flex', gap:4, marginBottom:6, alignItems:'flex-end'}}>
-          <div style={{flex:'0 0 92px'}}>
-            <Select value={entry.label} onChange={v => update(i, {label: v})} options={EMAIL_LABELS} style={{marginBottom:0}}/>
-          </div>
-          <div style={{flex:1, minWidth:0}}>
-            <EmailField value={entry.valeur} onChange={v => update(i, {valeur: v})} style={{marginBottom:0}}/>
-          </div>
-          <button type="button" onClick={() => setPrimary(i)} title={entry.primary ? 'Primaire' : 'Définir primaire'}
-            style={{width:32, height:38, padding:0, borderRadius:8, border:'1.5px solid ' + (entry.primary ? '#B26D3A' : '#E8DDD0'), background: entry.primary ? '#FBF1E4' : '#FFF', color: entry.primary ? '#B26D3A' : '#8B7F6E', fontSize:14, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>★</button>
-          <button type="button" onClick={() => removeEntry(i)} title="Supprimer"
-            style={{width:28, height:38, padding:0, borderRadius:8, border:'1px solid #E8DDD0', background:'#fff', color:'#8B7F6E', fontSize:14, cursor:'pointer', flexShrink:0}}>×</button>
-        </div>
-      ))}
-      {list.length < 4 && (
-        <button type="button" onClick={add}
-          style={{padding:'6px 11px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFF3EC', color:'#8B5E3C', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un email</button>
-      )}
-    </div>
-  );
-}
-
-// V17.7 — format tel E.164 → display lisible pour ClientRow.
-function formatTelPretty(e164) {
-  if (!e164) return '';
-  const m = /^\+(\d{1,3})(\d+)$/.exec(String(e164).replace(/\s/g, ''));
-  if (!m) return e164;
-  const sorted = [...DIAL_CODES].sort((a, b) => b.d.length - a.d.length);
-  const full = m[1] + m[2];
-  const hit = sorted.find(dc => full.startsWith(dc.d));
-  if (!hit) return '+' + m[1] + ' ' + m[2];
-  const local = full.slice(hit.d.length);
-  return '+' + hit.d + ' ' + formatLocal(local, hit.d);
 }
 
 function Select({label, value, onChange, options, style={}}) {
@@ -2378,83 +2280,30 @@ function ListView(props) {
   );
 }
 
-// V17.7 — ClientRow 3 lignes enrichies : nom+cumul / bien·zone·budget / tel·email cliquables.
 function ClientRow({c, onClick, clients}) {
   const profil = c.projet || 'Acheteur';
   const col = PROFILS[profil] || PROFILS.Acheteur;
   const badge = BADGES[profil] || 'ACH';
-  const isSociete = c.profil_type === 'Société';
-  const name = isSociete
-    ? (c.societe_nom || 'Société')
-    : (((c.prenom || '') + ' ' + (c.nom || '').toUpperCase()).trim() || 'Sans nom');
-
-  const bien = c.bien || {};
-  const typeBien = bien.type || '';
-  const zone = bien.quartier || bien.ville || c.ville || '';
-  const currency = bien.pays === 'MA' ? 'MAD' : '€';
-  const fmt = n => { const x = Number(n); if (!x) return ''; return x.toLocaleString('fr-FR'); };
-
-  let budgetStr = '';
-  if (profil === 'Acheteur' || profil === 'Investisseur') {
-    const f = (c.financement && typeof c.financement === 'object') ? c.financement : {};
-    const b = f.budget_total || c.budget_max || c.budget_min;
-    if (b) budgetStr = fmt(b) + ' ' + currency;
-  } else if (profil === 'Vendeur' && c.prix_affiche) {
-    budgetStr = fmt(c.prix_affiche) + ' ' + currency;
-  } else if (profil === 'Bailleur' && c.loyer_demande) {
-    budgetStr = fmt(c.loyer_demande) + ' ' + currency + '/mois';
-  } else if (profil === 'Locataire' && c.loyer_max) {
-    budgetStr = '≤ ' + fmt(c.loyer_max) + ' ' + currency + '/mois';
-  }
-  const metaParts = [typeBien, zone, budgetStr].filter(s => s && s.length);
-  const meta = metaParts.join(' · ');
-
-  // tel/email primary (migration auto à la volée pour legacy)
-  const tels = Array.isArray(c.tels) && c.tels.length > 0
-    ? c.tels
-    : (c.tel ? [{label:'Perso', valeur:c.tel, primary:true}] : []);
-  const emails = Array.isArray(c.emails) && c.emails.length > 0
-    ? c.emails
-    : (c.email ? [{label:'Perso', valeur:c.email, primary:true}] : []);
-  const primaryTel = tels.find(t => t.primary) || tels[0];
-  const primaryEmail = emails.find(t => t.primary) || emails[0];
-
-  // Badge cumul si dossiers liés
+  const name = (c.profil_type === 'Société' && c.societe_nom)
+    ? c.societe_nom
+    : ((c.prenom || '') + ' ' + (c.nom || '')).trim() || 'Sans nom';
+  const sub = c.tel || c.email || '';
+  // V17.4 UX v3 : badge cumul si dossier lié.
   const linkedIds = Array.isArray(c.linked_dossiers) ? c.linked_dossiers : [];
   const linkedProfils = linkedIds
     .map(id => (clients || []).find(x => x.id === id))
     .filter(Boolean)
     .map(x => x.projet || 'Acheteur');
-  const cumul = linkedProfils.join(' · ');
-
+  const cumul = linkedProfils.length > 0 ? [profil, ...linkedProfils].join(' · ') : '';
   return (
-    <div onClick={onClick} style={{background:'#fff', padding:'12px 14px', borderRadius:10, marginBottom:8, display:'flex', alignItems:'center', gap:12, cursor:'pointer', border:'1px solid #EDE6DC'}}>
-      <div style={{width:40, height:40, borderRadius:8, background:col, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, letterSpacing:.5, flexShrink:0}}>{badge}</div>
+    <div onClick={onClick} style={{background:'#fff', padding:'10px 12px', borderRadius:10, marginBottom:8, display:'flex', alignItems:'center', gap:12, cursor:'pointer', border:'1px solid #EDE6DC'}}>
+      <div style={{width:38, height:38, borderRadius:8, background:col, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, letterSpacing:.5, flexShrink:0}}>{badge}</div>
       <div style={{flex:1, minWidth:0}}>
-        {/* Ligne 1 : nom + cumul */}
-        <div style={{display:'flex', alignItems:'baseline', gap:6, marginBottom:2, minWidth:0}}>
-          <span style={{fontWeight:700, fontSize:13.5, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flex:'0 1 auto', minWidth:0}}>{name}</span>
-          {cumul && <span style={{fontSize:10, color:'#B26D3A', fontWeight:700, flexShrink:0}}>· 🔗 {cumul}</span>}
-        </div>
-        {/* Ligne 2 : bien · zone · budget (masquée pour Curieux) */}
-        {profil !== 'Curieux' && meta && (
-          <div style={{fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginBottom:2}}>{meta}</div>
-        )}
-        {/* Ligne 3 : tel + email cliquables (tap-to-call / tap-to-mail) */}
-        {(primaryTel || primaryEmail) && (
-          <div style={{fontSize:11, display:'flex', gap:10, flexWrap:'wrap'}}>
-            {primaryTel && primaryTel.valeur && (
-              <a href={'tel:' + primaryTel.valeur} onClick={e => e.stopPropagation()}
-                style={{color:'#8B5E3C', textDecoration:'none', fontWeight:600}}>📞 {formatTelPretty(primaryTel.valeur)}</a>
-            )}
-            {primaryEmail && primaryEmail.valeur && (
-              <a href={'mailto:' + primaryEmail.valeur} onClick={e => e.stopPropagation()}
-                style={{color:'#8B5E3C', textDecoration:'none', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'60%'}}>✉️ {primaryEmail.valeur}</a>
-            )}
-          </div>
-        )}
+        <div style={{fontWeight:700, fontSize:13, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{name}</div>
+        <div style={{fontSize:11, color:'#8B7F6E'}}>{sub || '—'}</div>
+        {cumul && <div style={{fontSize:10, color:'#B26D3A', fontWeight:700, letterSpacing:.3, marginTop:2}}>🔗 {cumul}</div>}
       </div>
-      <div style={{color:'#C4B5A0', fontSize:16, flexShrink:0}}>›</div>
+      <div style={{color:'#C4B5A0', fontSize:16}}>›</div>
     </div>
   );
 }
@@ -2498,78 +2347,6 @@ function FormView(props) {
     const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
     setD(next);
     handleSaveLocal(next);
-  }
-
-  // V17.7 fix-B1 — AUTO-SAVE BROUILLON : debounce 1.5s + onBlur flush + sendBeacon unload/pagehide + flush navigation retour.
-  const saveTimerRef = useRef(null);
-  const latestRef = useRef(d);
-  useEffect(() => { latestRef.current = d; }, [d]);
-  // V17.7 migration auto : d.tel/d.email legacy → d.tels[]/d.emails[] multi.
-  useEffect(() => {
-    if (!Array.isArray(d.tels) && d.tel) set('tels', [{label:'Perso', valeur: d.tel, primary: true}]);
-    if (!Array.isArray(d.emails) && d.email) set('emails', [{label:'Perso', valeur: d.email, primary: true}]);
-  }, []);
-  // V17.7 : sync d.tel/d.email = primary de d.tels/d.emails (pour compat Sheet + ClientRow legacy).
-  useEffect(() => {
-    if (Array.isArray(d.tels)) {
-      const p = d.tels.find(x => x.primary) || d.tels[0];
-      const legacy = p ? p.valeur : '';
-      if ((d.tel || '') !== legacy) set('tel', legacy);
-    }
-  }, [d.tels]);
-  useEffect(() => {
-    if (Array.isArray(d.emails)) {
-      const p = d.emails.find(x => x.primary) || d.emails[0];
-      const legacy = p ? p.valeur : '';
-      if ((d.email || '') !== legacy) set('email', legacy);
-    }
-  }, [d.emails]);
-
-  function pushNow() {
-    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
-    const payload = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
-    handleSaveLocal(payload);
-  }
-  function beaconSave() {
-    try {
-      const token = localStorage.getItem('ocre_token') || '';
-      const payload = {client: {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'}};
-      const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
-      navigator.sendBeacon(API + '/clients.php?action=save&token=' + encodeURIComponent(token), blob);
-    } catch (e) {}
-  }
-  // Debounce 1.5s sur les changements de d/profilType/activeProfil.
-  useEffect(() => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      const payload = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
-      handleSaveLocal(payload);
-      saveTimerRef.current = null;
-    }, 1500);
-    return () => { if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; } };
-  }, [d, profilType, activeProfil]);
-  // Flush immédiat au blur d'un input (focusout bubbles).
-  useEffect(() => {
-    function onFocusOut(e) {
-      if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)) return;
-      if (saveTimerRef.current) { pushNow(); }
-    }
-    document.addEventListener('focusout', onFocusOut);
-    return () => document.removeEventListener('focusout', onFocusOut);
-  }, [profilType, activeProfil]);
-  // sendBeacon au déchargement (PWA swipe-back, onglet fermé, pagehide iOS).
-  useEffect(() => {
-    window.addEventListener('beforeunload', beaconSave);
-    window.addEventListener('pagehide', beaconSave);
-    return () => {
-      window.removeEventListener('beforeunload', beaconSave);
-      window.removeEventListener('pagehide', beaconSave);
-    };
-  }, [profilType, activeProfil]);
-  // Flush avant navigation retour (flèche ←).
-  function backToListFlushed() {
-    pushNow();
-    backToList();
   }
   function toggleStage(i) {
     setExpanded(prev => prev.map((v, idx) => idx === i ? !v : v));
@@ -2630,7 +2407,7 @@ function FormView(props) {
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
-        <button onClick={backToListFlushed} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <button onClick={backToList} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>{stageTitle}</div>
         <button onClick={openShare} style={{background:'none', border:'none', cursor:'pointer', padding:4}} title="Partager"><ShareIcon/></button>
       </div>
@@ -2676,9 +2453,11 @@ function FormView(props) {
                 <Field label="Prénom" value={d.prenom} onChange={v => set('prenom', v)} style={{flex:1}}/>
                 <Field label="Nom" value={d.nom} onChange={v => set('nom', v)} style={{flex:1}}/>
               </div>
-              {/* L2 Tel / Email multi */}
-              <TelephoneMulti value={d.tels} onChange={v => set('tels', v)} residenceCountry={d.pays_residence || d.nationalite || ''}/>
-              <EmailMulti value={d.emails} onChange={v => set('emails', v)}/>
+              {/* L2 Tel / Email */}
+              <div className="row-pair">
+                <PhoneField label="Téléphone" value={d.tel} onChange={v => set('tel', v)} residenceCountry={d.pays_residence || d.nationalite || ''} style={{flex:1}}/>
+                <EmailField label="Email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
+              </div>
               {/* L3 Adresse full width */}
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
               {/* L4 Ville / Pays résidence */}
@@ -2704,9 +2483,11 @@ function FormView(props) {
                 <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)} style={{flex:1}}/>
                 <Field label="Représentant" value={d.representant} onChange={v => set('representant', v)} style={{flex:1}}/>
               </div>
-              {/* L3 Tel / Email multi */}
-              <TelephoneMulti value={d.tels} onChange={v => set('tels', v)} residenceCountry={d.pays_residence || d.nationalite || ''}/>
-              <EmailMulti value={d.emails} onChange={v => set('emails', v)}/>
+              {/* L3 Tel / Email */}
+              <div className="row-pair">
+                <PhoneField label="Téléphone" value={d.tel} onChange={v => set('tel', v)} residenceCountry={d.pays_residence || d.nationalite || ''} style={{flex:1}}/>
+                <EmailField label="Email" value={d.email} onChange={v => set('email', v)} style={{flex:1}}/>
+              </div>
               {/* L4 Adresse full */}
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
               {/* L5 Ville / Pays résidence */}
