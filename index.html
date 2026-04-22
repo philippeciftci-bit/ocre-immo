@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.4-ux-v3 -->
+<!-- ocre-v17.5-phase2c -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1591,6 +1591,9 @@ function App() {
     );
   }
 
+  if (view === 'prefs') {
+    return <PrefsView currentUser={currentUser} onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
+  }
   return view === 'list' ? (
     <ListView
       clients={clients} country={country} setCountry={setCountry}
@@ -1600,6 +1603,7 @@ function App() {
       activeProfil={activeProfil} setActiveProfil={setActiveProfil}
       isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
       openClient={openClient} openNew={openNew} toast={toast}
+      openPrefs={() => { setUserMenu(false); setView('prefs'); }}
     />
   ) : (
     <FormView
@@ -1614,7 +1618,142 @@ function App() {
   );
 }
 
-function Header({left, center, right, userMenu, setUserMenu, currentUser, logout}) {
+// V17.5 Phase 2c — écran Préférences : sync Google Sheet.
+function PrefsView({currentUser, onBack, showToast, toast}) {
+  const [prefs, setPrefs] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(API + '/clients.php?action=sync_prefs_get', {headers:{'X-Session-Token': token()}});
+        const d = await r.json();
+        if (d && d.ok) setPrefs(d);
+        else setPrefs({sync_enabled:false, sync_email:'', sheet_id:'', sheet_url:null});
+      } catch (e) { setPrefs({sync_enabled:false, sync_email:'', sheet_id:'', sheet_url:null}); }
+      setLoading(false);
+    })();
+  }, []);
+
+  async function save() {
+    if (prefs.sync_enabled && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(prefs.sync_email || '')) {
+      showToast && showToast('Email Google invalide');
+      return;
+    }
+    setSaving(true);
+    try {
+      const r = await fetch(API + '/clients.php?action=update_sync_prefs', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+        body: JSON.stringify({
+          sync_enabled: prefs.sync_enabled ? 1 : 0,
+          sync_email: prefs.sync_email,
+          sheet_url: prefs.sheet_url_input || '',
+        }),
+      });
+      const d = await r.json();
+      if (d && d.ok) {
+        showToast && showToast(prefs.sync_enabled ? 'Sync activée' : 'Sync désactivée');
+        // Reload prefs pour refléter sheet_id persisté
+        const fresh = await fetch(API + '/clients.php?action=sync_prefs_get', {headers:{'X-Session-Token': token()}}).then(r => r.json());
+        if (fresh && fresh.ok) setPrefs({...fresh, sheet_url_input: ''});
+      }
+      else showToast && showToast((d && d.error) || 'Échec');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setSaving(false);
+  }
+  async function syncNow() {
+    setSyncing(true);
+    try {
+      const r = await fetch(API + '/clients.php?action=sync_now', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+        body: JSON.stringify({}),
+      });
+      const d = await r.json();
+      if (d && d.ok) showToast && showToast('Sync en cours (vérifie Google Sheets dans ~15 s)');
+      else showToast && showToast((d && d.error) || 'Sync impossible');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setSyncing(false);
+  }
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Préférences</div>
+        <div style={{width:32}}/>
+      </div>
+      <div style={{flex:1, overflowY:'auto', padding:14}}>
+        {loading ? (
+          <div style={{textAlign:'center', color:'#8B7F6E', padding:40}}>Chargement…</div>
+        ) : (
+          <div className="ocre-card">
+            <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, color:'#8B5E3C', fontWeight:700, marginBottom:6}}>Sync Google Sheet</div>
+            <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14, lineHeight:1.5}}>
+              Ocre peut maintenir un Google Sheet à jour avec tous tes dossiers.
+              Le Sheet est partagé en Éditeur avec ton compte Google ; seul toi y as accès.
+              Les brouillons sont colorés en orange.
+            </div>
+            <label className="ocre-lbl">Activer la sync</label>
+            <div style={{display:'flex', gap:6, marginBottom:12}}>
+              {[{v:true, l:'Activée'}, {v:false, l:'Désactivée'}].map(o => {
+                const active = !!prefs.sync_enabled === o.v;
+                return (
+                  <button key={String(o.v)} type="button" onClick={() => setPrefs({...prefs, sync_enabled: o.v})}
+                    className={'ocre-tile ' + (active ? 'state-selected' : 'state-default')}
+                    style={{flex:1}}>{o.l}</button>
+                );
+              })}
+            </div>
+            <EmailField label="Email Google (compte qui recevra le partage)"
+              value={prefs.sync_email}
+              onChange={v => setPrefs({...prefs, sync_email: v})}/>
+
+            {prefs.sync_enabled && !prefs.sheet_id && prefs.service_account_email && (
+              <div style={{marginTop:6, marginBottom:10, padding:'10px 12px', background:'#FFF9F0', border:'1px solid #F0E3CB', borderRadius:10, fontSize:12, color:'#2A2018', lineHeight:1.55}}>
+                <div style={{fontWeight:700, marginBottom:6, color:'#8B5E3C'}}>Créer ton Sheet en 3 étapes</div>
+                <ol style={{margin:0, paddingLeft:18}}>
+                  <li>Sur Google Drive → <b>Nouveau → Google Sheets vide</b></li>
+                  <li>Partage → <b>Ajouter des personnes</b> → colle :
+                    <div style={{background:'#FFF', padding:'6px 8px', borderRadius:6, margin:'4px 0', fontFamily:'monospace', fontSize:11, wordBreak:'break-all', border:'1px solid #EDE1CC'}}>{prefs.service_account_email}</div>
+                    avec rôle <b>Éditeur</b>.
+                  </li>
+                  <li>Copie l'URL du Sheet (barre d'adresse) et colle ci-dessous :</li>
+                </ol>
+              </div>
+            )}
+            <Field label="URL du Google Sheet (coller ici la 1ère fois)"
+              value={prefs.sheet_url_input || ''} placeholder="https://docs.google.com/spreadsheets/d/..."
+              onChange={v => setPrefs({...prefs, sheet_url_input: v})}/>
+
+            <button type="button" onClick={save} disabled={saving}
+              style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit', marginTop:6}}>
+              {saving ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+            {prefs.sheet_url && (
+              <div style={{marginTop:14, padding:'10px 12px', background:'#FDFAF7', border:'1.5px solid #BBA88B', borderRadius:8, fontSize:12}}>
+                <div style={{fontSize:11, color:'#8B7F6E', fontWeight:600, textTransform:'uppercase', letterSpacing:1.2, marginBottom:4}}>Ton Sheet</div>
+                <a href={prefs.sheet_url} target="_blank" rel="noopener" style={{color:'#8B5E3C', fontWeight:700, wordBreak:'break-all', textDecoration:'none'}}>{prefs.sheet_url}</a>
+                {prefs.sheet_created_at && <div style={{fontSize:11, color:'#8B7F6E', marginTop:4}}>Créé le {new Date(prefs.sheet_created_at).toLocaleDateString('fr-FR')}</div>}
+              </div>
+            )}
+            {prefs.sync_enabled && prefs.sync_email && prefs.sheet_id && (
+              <button type="button" onClick={syncNow} disabled={syncing}
+                style={{width:'100%', padding:'11px', background:'#FFF3EC', color:'#8B5E3C', border:'1.5px solid #BBA88B', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit', marginTop:10}}>
+                {syncing ? '⏳ Sync en cours…' : '🔄 Sync maintenant'}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      {toast && <Toast msg={toast}/>}
+    </div>
+  );
+}
+
+function Header({left, center, right, userMenu, setUserMenu, currentUser, logout, openPrefs}) {
   return (
     <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, position:'relative'}}>
@@ -1629,6 +1768,9 @@ function Header({left, center, right, userMenu, setUserMenu, currentUser, logout
             {currentUser.role === 'admin' && (
               <a href="/admin/" style={{display:'block', background:'#FFF3EC', color:'#8B5E3C', padding:'7px 10px', borderRadius:7, fontWeight:700, fontSize:12, textAlign:'center', textDecoration:'none', marginBottom:6}}>⚙ Dashboard Admin</a>
             )}
+            {openPrefs && (
+              <button onClick={openPrefs} style={{width:'100%', padding:'7px 10px', background:'#FFF3EC', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>⚙ Préférences sync</button>
+            )}
             <button onClick={logout} style={{width:'100%', padding:'7px 10px', background:'#FDFAF7', color:'#C04B20', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Se déconnecter</button>
           </div>
         )}
@@ -1641,7 +1783,7 @@ function ListView(props) {
   const {clients, country, setCountry, showArchives, setShowArchives,
          userMenu, setUserMenu, currentUser, logout,
          activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
-         openClient, openNew, toast} = props;
+         openClient, openNew, toast, openPrefs} = props;
   const pays = PAYS.find(p => p.c === country) || PAYS[0];
   function cycleCountry() {
     const i = PAYS.findIndex(p => p.c === country);
@@ -1668,7 +1810,7 @@ function ListView(props) {
             <ArchiveIcon color={showArchives ? '#C96B2E' : '#8B5E3C'}/>
           </button>
         }
-        userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout}
+        userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs}
       />
 
       <div style={{padding:'10px 14px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>

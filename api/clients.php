@@ -6,6 +6,47 @@ $user = requireAuth();
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
 $input = getInput();
 
+// V17.5 Phase 2c — helpers queue sync Google Sheet.
+function ensureSyncSchema() {
+    static $done = false;
+    if ($done) return;
+    try {
+        foreach ([
+            "ALTER TABLE users ADD COLUMN sync_enabled TINYINT NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN sync_email VARCHAR(255) NULL",
+            "ALTER TABLE users ADD COLUMN sheet_id VARCHAR(100) NULL",
+            "ALTER TABLE users ADD COLUMN sheet_created_at DATETIME NULL",
+        ] as $sql) {
+            try { db()->exec($sql); } catch (Exception $e) {}
+        }
+        db()->exec("CREATE TABLE IF NOT EXISTS ocre_sync_queue (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            dossier_id INT NULL,
+            action VARCHAR(20) NOT NULL DEFAULT 'upsert',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            processed_at DATETIME NULL,
+            error TEXT NULL,
+            INDEX idx_user (user_id),
+            INDEX idx_pending (processed_at, created_at)
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    } catch (Exception $e) {}
+    $done = true;
+}
+function enqueueSync($user_id, $dossier_id = null, $action = 'upsert') {
+    ensureSyncSchema();
+    try {
+        $chk = db()->prepare("SELECT sync_enabled FROM users WHERE id = ? LIMIT 1");
+        $chk->execute([$user_id]);
+        $u = $chk->fetch();
+        if (!$u || (int)$u['sync_enabled'] !== 1) return;
+        $stmt = db()->prepare(
+            "INSERT INTO ocre_sync_queue (user_id, dossier_id, action) VALUES (?, ?, ?)"
+        );
+        $stmt->execute([$user_id, $dossier_id, $action]);
+    } catch (Exception $e) { /* silent */ }
+}
+
 function computeIsDraft($d) {
     $tel = trim((string)($d['tel'] ?? ''));
     $email = trim((string)($d['email'] ?? ''));
@@ -99,6 +140,8 @@ switch ($action) {
         $c['id'] = $id;
         $c['is_draft'] = (bool)$is_draft;
         $c['archived'] = (bool)$archived;
+        // V17.5 Phase 2c : enqueue sync Google Sheet si user sync_enabled.
+        enqueueSync((int)$user['id'], $id, 'upsert');
         jsonOk(['client' => $c]);
     }
 
@@ -108,7 +151,67 @@ switch ($action) {
         $stmt = db()->prepare("DELETE FROM clients WHERE id = ? AND user_id = ?");
         $stmt->execute([$id, $user['id']]);
         logAction((int)$user['id'], 'client_delete', "id=$id");
+        enqueueSync((int)$user['id'], $id, 'delete');
         jsonOk(['deleted' => $id]);
+    }
+
+    case 'sync_prefs_get': {
+        ensureSyncSchema();
+        $stmt = db()->prepare("SELECT sync_enabled, sync_email, sheet_id, sheet_created_at FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$user['id']]);
+        $r = $stmt->fetch() ?: [];
+        $sheet_url = !empty($r['sheet_id']) ? ('https://docs.google.com/spreadsheets/d/' . $r['sheet_id']) : null;
+        jsonOk([
+            'sync_enabled' => (bool)(int)($r['sync_enabled'] ?? 0),
+            'sync_email' => $r['sync_email'] ?? '',
+            'sheet_id' => $r['sheet_id'] ?? '',
+            'sheet_url' => $sheet_url,
+            'sheet_created_at' => $r['sheet_created_at'] ?? null,
+            // V17.5 Phase 2c : SA email que l'user doit inviter en Editor sur son Sheet.
+            'service_account_email' => 'ocre-vps-sync@my-project-test-400021.iam.gserviceaccount.com',
+        ]);
+    }
+
+    case 'update_sync_prefs': {
+        ensureSyncSchema();
+        $enabled = !empty($input['sync_enabled']) ? 1 : 0;
+        $email = substr(trim((string)($input['sync_email'] ?? '')), 0, 255);
+        // V17.5 Phase 2c : Gmail perso bloque création Sheet par SA (quota=0).
+        // L'user doit créer manuellement un Sheet et le partager avec le SA.
+        // Il colle l'URL ici → on extrait l'ID.
+        $sheet_url = trim((string)($input['sheet_url'] ?? ''));
+        $sheet_id = null;
+        if ($sheet_url !== '') {
+            if (preg_match('#/spreadsheets/d/([a-zA-Z0-9_-]{20,})#', $sheet_url, $m)) {
+                $sheet_id = $m[1];
+            } elseif (preg_match('#^[a-zA-Z0-9_-]{20,}$#', $sheet_url)) {
+                $sheet_id = $sheet_url; // ID seul collé
+            } else {
+                jsonError('URL Google Sheet invalide (attendu: https://docs.google.com/spreadsheets/d/…)');
+            }
+        }
+        if ($enabled && !filter_var($email, FILTER_VALIDATE_EMAIL)) jsonError('Email Google invalide');
+        if ($sheet_id) {
+            $stmt = db()->prepare("UPDATE users SET sync_enabled = ?, sync_email = ?, sheet_id = ?, sheet_created_at = COALESCE(sheet_created_at, NOW()) WHERE id = ?");
+            $stmt->execute([$enabled, $email ?: null, $sheet_id, $user['id']]);
+        } else {
+            $stmt = db()->prepare("UPDATE users SET sync_enabled = ?, sync_email = ? WHERE id = ?");
+            $stmt->execute([$enabled, $email ?: null, $user['id']]);
+        }
+        if ($enabled) enqueueSync((int)$user['id'], null, 'full_sync');
+        jsonOk(['sync_enabled' => (bool)$enabled, 'sync_email' => $email, 'sheet_id' => $sheet_id]);
+    }
+
+    case 'sync_now': {
+        // Force a full-sync trigger, même si déjà activé.
+        ensureSyncSchema();
+        $chk = db()->prepare("SELECT sync_enabled, sync_email FROM users WHERE id = ? LIMIT 1");
+        $chk->execute([$user['id']]);
+        $u = $chk->fetch();
+        if (!$u || !(int)$u['sync_enabled']) jsonError('Sync non activée');
+        if (!$u['sync_email']) jsonError('Email Google manquant');
+        enqueueSync((int)$user['id'], null, 'full_sync');
+        jsonOk(['queued' => true]);
     }
 
     case 'archive': {
