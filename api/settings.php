@@ -25,9 +25,12 @@ switch ($action) {
         $updates = $input['updates'] ?? [];
         if (!is_array($updates) || !$updates) jsonError('updates requis');
         $count = 0;
+        // V17.14 : masque la valeur en log si clé sensible.
+        $sensitive = ['anthropic_api_key', 'admin_code'];
         foreach ($updates as $k => $v) {
             setSetting((string)$k, (string)$v);
-            logAction((int)$admin['id'], 'setting_update', "$k=$v");
+            $logVal = in_array($k, $sensitive, true) ? '***' : (string)$v;
+            logAction((int)$admin['id'], 'setting_update', "$k=$logVal");
             $count++;
         }
         jsonOk(['updated' => $count]);

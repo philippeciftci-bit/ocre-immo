@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.14-import-url -->
+<!-- ocre-v17.13-bottomsheet -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2397,17 +2397,6 @@ function App() {
         setView('form');
       }}/>;
   }
-  if (view === 'import_url') {
-    return <ImportUrlView onBack={() => setView('list')}
-      showToast={showToast} toast={toast}
-      onCreated={(newClient) => {
-        setClients(prev => [newClient, ...prev]);
-        setEditing(newClient);
-        setActiveProfil(newClient.projet || 'Vendeur');
-        setIsInvestisseur(newClient.projet === 'Investisseur' || !!newClient.is_investisseur);
-        setView('form');
-      }}/>;
-  }
   return view === 'list' ? (
     <ListView
       clients={clients} country={country} setCountry={setCountry}
@@ -2419,7 +2408,6 @@ function App() {
       openClient={openClient} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
       openDictation={() => setView('dictation')}
-      openImportUrl={() => setView('import_url')}
       matchesById={matchesById} openMatchModal={setMatchFor}
       matchFor={matchFor} closeMatchModal={() => setMatchFor(null)}
       findClientById={(id) => clients.find(c => c.id === id)}
@@ -2439,138 +2427,6 @@ function App() {
 }
 
 // V17.5 Phase 2c — écran Préférences : sync Google Sheet.
-// V17.14 — ImportUrlView : analyse URL annonce immo + création brouillon auto.
-function ImportUrlView({onBack, onCreated, showToast, toast}) {
-  const [url, setUrl] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-  const [result, setResult] = React.useState(null);
-  const [creating, setCreating] = React.useState(false);
-
-  async function analyse() {
-    const u = url.trim();
-    if (!u) return;
-    setLoading(true);
-    setResult(null);
-    const token = localStorage.getItem('ocre_token') || '';
-    try {
-      const r = await fetch(API + '/import_url.php?action=extract', {
-        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token},
-        body: JSON.stringify({url: u}),
-      });
-      const d = await r.json();
-      if (d && d.ok) setResult(d.extracted);
-      else showToast && showToast((d && d.error) || 'Échec extraction');
-    } catch (e) { showToast && showToast('Erreur réseau'); }
-    setLoading(false);
-  }
-
-  async function createDraft() {
-    if (!result) return;
-    setCreating(true);
-    const token = localStorage.getItem('ocre_token') || '';
-    const now = new Date().toISOString();
-    const client = {
-      profil_type: 'Particulier',
-      projet: 'Vendeur',
-      from_url_import: true,
-      source_url: result.source_url || url,
-      source_domain: result.source_domain,
-      url_imported_at: now,
-      notes: result.description_clean || result.description || '',
-    };
-    if (result.prix) client.prix_affiche = result.prix;
-    const bien = {};
-    if (result.pays_bien) bien.pays = result.pays_bien;
-    if (result.ville_bien) bien.ville = result.ville_bien;
-    if (result.quartier_bien) bien.quartier = result.quartier_bien;
-    if (Array.isArray(result.types_bien) && result.types_bien.length) { bien.types = result.types_bien; bien.type = result.types_bien[0]; }
-    if (result.surface) bien.surface = result.surface;
-    if (result.chambres) bien.chambres = result.chambres;
-    if (result.sdb) bien.sdb = result.sdb;
-    if (Object.keys(bien).length) client.bien = bien;
-    try {
-      const r = await fetch(API + '/clients.php?action=save', {
-        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token},
-        body: JSON.stringify({client}),
-      });
-      const d = await r.json();
-      if (d && d.ok && d.client) {
-        onCreated && onCreated(d.client);
-        showToast && showToast('Brouillon créé depuis URL');
-      } else showToast && showToast((d && d.error) || 'Échec sauvegarde');
-    } catch (e) { showToast && showToast('Erreur réseau'); }
-    setCreating(false);
-  }
-
-  const photos = result && Array.isArray(result.photos) ? result.photos.slice(0, 5) : [];
-
-  return (
-    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
-      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
-        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
-        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Importer depuis une URL</div>
-      </div>
-      <div style={{flex:1, overflowY:'auto', padding:14}}>
-        <div className="ocre-card">
-          <label className="ocre-lbl">Lien de l'annonce</label>
-          <input type="url" value={url} onChange={e => setUrl(e.target.value)}
-            placeholder="https://www.mubawab.ma/fr/a/..."
-            autoCapitalize="off" autoCorrect="off" spellCheck="false"
-            style={{width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid #EDE1CC', background:'#FDFAF7', fontSize:13, outline:'none', fontFamily:'inherit', color:'#2A2018', marginBottom:6}}/>
-          <div style={{fontSize:10.5, color:'#8B7F6E', fontStyle:'italic', marginBottom:10}}>Domaines supportés : Mubawab, Avito, Sarouty, ImmoMaroc, AgenceImmo (MA) · SeLoger, LeBonCoin, PAP, ImmoScout, Bien-ici, Century21, Guy Hoquet, Orpi (FR).</div>
-          <button type="button" onClick={analyse} disabled={!url.trim() || loading}
-            style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
-            {loading ? 'Analyse… ~10s' : '📥 Analyser'}
-          </button>
-        </div>
-
-        {loading && (
-          <div style={{textAlign:'center', padding:30, color:'#8B7F6E'}}>
-            <div style={{width:36, height:36, border:'3px solid #E8DDD0', borderTopColor:'#8B5E3C', borderRadius:'50%', animation:'spin 0.7s linear infinite', margin:'0 auto 10px'}}/>
-            Extraction en cours…
-          </div>
-        )}
-
-        {result && (
-          <div className="ocre-card">
-            <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:8}}>
-              <span style={{padding:'3px 9px', borderRadius:999, background: result.extraction_mode === 'ai' ? '#E8F5EC' : '#FFF5E0', color: result.extraction_mode === 'ai' ? '#3E8B5E' : '#D4A437', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>
-                {result.extraction_mode === 'ai' ? '🤖 IA' : '📐 Heuristique'}
-              </span>
-              <span style={{fontSize:11, color:'#8B7F6E'}}>{result.source_domain || ''}</span>
-            </div>
-            {result.title && <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#2A2018', marginBottom:6, lineHeight:1.3}}>{result.title}</div>}
-            <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:10}}>
-              {result.prix && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{Number(result.prix).toLocaleString('fr-FR')} {result.devise || ''}</span>}
-              {Array.isArray(result.types_bien) && result.types_bien.length > 0 && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{result.types_bien.join(' · ')}</span>}
-              {result.surface && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{result.surface} m²</span>}
-              {result.chambres && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{result.chambres} ch.</span>}
-              {result.ville_bien && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{result.ville_bien}{result.quartier_bien ? ' · ' + result.quartier_bien : ''}</span>}
-            </div>
-            {photos.length > 0 && (
-              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6, marginBottom:10}}>
-                {photos.map((u, i) => (
-                  <img key={i} src={u} alt="" style={{width:'100%', aspectRatio:'1/1', objectFit:'cover', borderRadius:8, border:'1px solid #E8DDD0'}}/>
-                ))}
-              </div>
-            )}
-            {(result.description_clean || result.description) && (
-              <div style={{fontSize:12, color:'#2A2018', lineHeight:1.5, marginBottom:10, whiteSpace:'pre-wrap', maxHeight:150, overflowY:'auto', background:'#FDFAF7', padding:10, borderRadius:8, border:'1px solid #EDE1CC'}}>
-                {result.description_clean || result.description}
-              </div>
-            )}
-            <button type="button" onClick={createDraft} disabled={creating}
-              style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
-              {creating ? 'Création…' : '✓ Créer le brouillon (Vendeur)'}
-            </button>
-          </div>
-        )}
-      </div>
-      {toast && <Toast msg={toast}/>}
-    </div>
-  );
-}
-
 // V17.12 — DictationView : Web Speech API + extraction Claude Haiku + création brouillon.
 function DictationView({onBack, onCreated, showToast, toast}) {
   const [listening, setListening] = React.useState(false);
@@ -3038,13 +2894,9 @@ function ListView(props) {
         )}
       </div>
 
-      {/* V17.14 : FAB triple vertical — import URL / dictée / saisie */}
-      <button onClick={() => props.openImportUrl && props.openImportUrl()} title="Importer depuis une URL"
-        style={{position:'fixed', bottom: 24 + 56 + 10 + 52 + 10, right:22, width:52, height:52, borderRadius:'50%',
-                background:'#FFF', color:'#8B5E3C', border:'2px solid #B26D3A',
-                fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(139,94,60,0.25)', fontFamily:'inherit'}}>📥</button>
+      {/* V17.12 : 2 FAB — ✏️ saisir classique + 🎤 dicter */}
       <button onClick={() => props.openDictation()} title="Dicter un contact"
-        style={{position:'fixed', bottom: 24 + 56 + 10, right:22, width:52, height:52, borderRadius:'50%',
+        style={{position:'fixed', bottom:24, right:86, width:52, height:52, borderRadius:'50%',
                 background:'#FFF', color:'#8B5E3C', border:'2px solid #B26D3A',
                 fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(139,94,60,0.25)', fontFamily:'inherit'}}>🎤</button>
       <button onClick={openNew} title="Saisir un contact"

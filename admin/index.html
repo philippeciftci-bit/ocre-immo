@@ -84,6 +84,7 @@ tr:hover td{background:#FDFAF7}
     <button class="tab-btn" data-tab="commerce">Commercialisation</button>
     <button class="tab-btn" data-tab="users">Utilisateurs</button>
     <button class="tab-btn" data-tab="countries">Pays</button>
+    <button class="tab-btn" data-tab="apikeys">API</button>
     <button class="tab-btn" data-tab="logs">Logs</button>
   </div>
   <div class="container">
@@ -118,6 +119,23 @@ tr:hover td{background:#FDFAF7}
         <h2>Pays autorisés</h2>
         <p style="font-size:12px;color:#8B7F6E;margin-bottom:10px">Active ou désactive les pays affichables dans l'app (sélecteur pays, fiche bien, téléphone…). Trier par ordre croissant.</p>
         <div id="countries-table">—</div>
+      </div>
+    </div>
+    <div id="pane-apikeys" class="pane hidden">
+      <div class="card">
+        <h2>Paramètres API</h2>
+        <p style="font-size:12px;color:#8B7F6E;margin-bottom:12px">Clés API externes. Non exposées publiquement.</p>
+        <div id="apikey-anthropic">
+          <label style="display:block;font-size:11px;font-weight:600;color:#8B7F6E;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Clé API Anthropic (Claude Haiku)</label>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+            <input id="ak-anthropic" type="password" placeholder="sk-ant-api..." style="flex:1;padding:10px 12px;border-radius:8px;border:1.5px solid #E8DDD0;background:#FDFAF7;font-family:monospace;font-size:13px;outline:none">
+            <button class="btn btn-ghost" id="ak-show">👁</button>
+            <button class="btn btn-primary" id="ak-test">Tester</button>
+            <button class="btn btn-primary" id="ak-save">Sauver</button>
+          </div>
+          <div id="ak-status" style="font-size:12px;color:#8B7F6E">Chargement…</div>
+          <p style="font-size:11px;color:#8B7F6E;margin-top:10px">Utilisée par la dictée vocale (extraction JSON FR) et l'import URL (structuration HTML). Sans clé, fallback heuristique PHP pour dictée, parsing OG/JSON-LD pour URL.</p>
+        </div>
       </div>
     </div>
     <div id="pane-logs" class="pane hidden"><div class="card"><h2>50 derniers logs</h2><div id="logs-table">—</div></div></div>
@@ -186,8 +204,52 @@ document.querySelectorAll('.tab-btn').forEach(b => {
 });
 
 async function loadAll(){
-  await Promise.all([loadStats(), loadSettings(), loadUsers(), loadLogs(), loadCountries()]);
+  await Promise.all([loadStats(), loadSettings(), loadUsers(), loadLogs(), loadCountries(), loadApiKeys()]);
 }
+
+async function loadApiKeys(){
+  // Charge la clé actuelle (juste si présente, masquée) depuis settings
+  const d = await fetchJson(API + '/settings.php?action=list&admin_code=' + encodeURIComponent(adminCode));
+  if (d && d.ok) {
+    const row = (d.settings || []).find(s => s.key_name === 'anthropic_api_key');
+    if (row && row.value) {
+      $('ak-anthropic').value = row.value;
+      $('ak-status').innerHTML = '<span style="color:#3E8B5E">●</span> Clé configurée — teste pour vérifier sa validité.';
+    } else {
+      $('ak-status').innerHTML = '<span style="color:#D4A437">●</span> Aucune clé — dictée en mode fallback heuristique PHP (partielle).';
+    }
+  }
+}
+
+$('ak-show').addEventListener('click', () => {
+  const inp = $('ak-anthropic');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+});
+
+$('ak-test').addEventListener('click', async () => {
+  const key = $('ak-anthropic').value.trim();
+  if (!key) { $('ak-status').innerHTML = '<span style="color:#D4A437">●</span> Saisis une clé avant de tester.'; return; }
+  $('ak-status').innerHTML = '<span style="color:#8B7F6E">●</span> Test en cours…';
+  const d = await fetchJson(API + '/dictation.php?action=test_key', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({api_key: key}),
+  });
+  if (d && d.ok && d.valid) $('ak-status').innerHTML = '<span style="color:#3E8B5E">✓</span> Clé valide (HTTP ' + d.http_code + ')';
+  else $('ak-status').innerHTML = '<span style="color:#D64545">✗</span> Clé invalide (HTTP ' + (d && d.http_code) + ')';
+});
+
+$('ak-save').addEventListener('click', async () => {
+  const key = $('ak-anthropic').value.trim();
+  const d = await fetchJson(API + '/settings.php?action=update', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({admin_code: adminCode, updates: {anthropic_api_key: key}}),
+  });
+  if (d && d.ok) {
+    toast('Clé sauvegardée');
+    $('ak-status').innerHTML = '<span style="color:#3E8B5E">●</span> Clé sauvegardée — Claude activé pour dictée + import URL.';
+  } else toast(d && d.error ? d.error : 'Erreur', 'error');
+});
 
 async function loadCountries(){
   const d = await fetchJson(API + '/countries.php?action=list_all');

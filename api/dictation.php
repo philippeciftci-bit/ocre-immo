@@ -1,7 +1,6 @@
 <?php
-// V17.12 — extraction structurée d'une note vocale via Claude Haiku.
-// Clé API lue depuis settings.anthropic_api_key ou env ANTHROPIC_API_KEY.
-// Fallback {raw_text} si clé absente ou erreur API.
+// V17.12 / V17.14 — extraction structurée d'une note vocale.
+// Claude Haiku si clé dispo, sinon fallback PHP heuristique (prénoms, villes, mots-clés, regex budget).
 require_once __DIR__ . '/db.php';
 setCorsHeaders();
 
@@ -11,26 +10,84 @@ $input = getInput();
 
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 const SYSTEM_PROMPT = <<<'PROMPT'
-Tu extrais des infos structurées d'une note vocale d'un agent immobilier en français. Réponds UNIQUEMENT en JSON valide, null si non mentionné, PAS de texte avant ou après. Schéma :
-{
-  "prenom": string|null,
-  "nom": string|null,
-  "societe_nom": string|null,
-  "profil": "Acheteur"|"Vendeur"|"Investisseur"|"Bailleur"|"Locataire"|"Curieux"|null,
-  "types_bien": [string]|null,   // Villa/Appartement/Riad/Maison/Terrain/Commerce/Ferme/Bureau / plateau/Bâtiment industriel/Terrain industriel
-  "pays_bien": "MA"|"FR"|"ES"|"BE"|string|null,
-  "ville_bien": string|null,
-  "quartier_bien": string|null,
-  "budget_min": number|null,
-  "budget_max": number|null,
-  "devise": "MAD"|"EUR"|"USD"|string|null,
-  "pays_residence": string|null,
-  "tel": string|null,
-  "email": string|null,
-  "notes_libres": string|null
-}
-Convertis "500k" → 500000, "1,8M" → 1800000, "5 millions" → 5000000. Pour budget non-fourchette (ex "budget 500k€"), remplis budget_max=500000 et laisse budget_min=null.
+Tu extrais des informations structurées d'une note vocale d'un agent immobilier (français). Tu retournes UNIQUEMENT un JSON valide, sans texte autour, sans markdown.
+
+Règles :
+- Un prénom seul (Marc, Sophie, Ahmed) → prenom
+- Prénom + Nom (Marc Dupont) → prenom + nom
+- 'monsieur X' / 'madame Y' → nom=X/Y
+- 'cherche'/'veut acheter'/'recherche' → profil=Acheteur
+- 'vend'/'met en vente' → profil=Vendeur
+- 'veut louer' (côté locataire) → profil=Locataire
+- 'loue'/'propose à la location' → profil=Bailleur
+- 'investit'/'investisseur' → profil=Investisseur
+- Villes MA (Marrakech Casablanca Rabat Tanger Agadir Fès Essaouira) → pays_bien=MA
+- Villes FR (Paris Lyon Nantes Bordeaux Marseille Nice Toulouse) → pays_bien=FR
+- '500k'/'500 000'/'500.000' → 500000 (nombre pur)
+- 'euros'/'€' → devise=EUR ; 'dirhams'/'MAD'/'DH' → devise=MAD
+- Quartiers Marrakech (Palmeraie Hivernage Gueliz Médina Prestigia Ourika Targa Annakhil) → quartier_bien
+- 'villa'/'maison' → types_bien=[Villa]/[Maison] ; 'riad'→[Riad] ; 'appartement'→[Appartement] ; 'terrain'→[Terrain]
+
+Schéma JSON (null si non mentionné) :
+{prenom,nom,societe_nom,profil,types_bien,pays_bien,ville_bien,quartier_bien,budget_min,budget_max,devise,pays_residence,tel,email,notes_libres}
+
+EXEMPLE :
+Input: 'Marc cherche une villa à Marrakech route d'Ourika budget 500000 euros vit en France'
+Output: {"prenom":"Marc","nom":null,"profil":"Acheteur","types_bien":["Villa"],"pays_bien":"MA","ville_bien":"Marrakech","quartier_bien":"Ourika","budget_max":500000,"devise":"EUR","pays_residence":"FR"}
 PROMPT;
+
+// V17.14 : listes embedded pour fallback heuristique.
+const PRENOMS_FR_TOP = [
+    'Marc','Jean','Pierre','Paul','Jacques','Michel','Philippe','André','Louis','Thomas',
+    'François','Nicolas','Daniel','Alain','Christophe','Olivier','Julien','Laurent','Vincent','Antoine',
+    'Mathieu','Guillaume','Sébastien','Stéphane','David','Alexandre','Bernard','Patrick','Éric','Hugo',
+    'Maxime','Arthur','Lucas','Théo','Léo','Enzo','Clément','Nathan','Romain','Adrien',
+    'Gabriel','Mathis','Ethan','Sacha','Raphaël','Noah','Jules','Timothée','Martin','Florian',
+    'Marie','Sophie','Julie','Anne','Catherine','Isabelle','Laurence','Sylvie','Nathalie','Valérie',
+    'Sandrine','Céline','Hélène','Véronique','Christine','Françoise','Émilie','Aurélie','Camille','Pauline',
+    'Claire','Léa','Chloé','Manon','Sarah','Océane','Charlotte','Lucie','Louise','Emma',
+    'Zoé','Jade','Lola','Inès','Juliette','Alice','Éléonore','Margaux','Clémence','Laura',
+    'Mélanie','Caroline','Aurore','Delphine','Maud','Magali','Sabrina','Amandine','Élodie','Virginie',
+    'Baptiste','Quentin','Benjamin','Simon','Léon','Samuel','Matthieu','Yann','Loïc','Damien',
+];
+const PRENOMS_MA_TOP = [
+    'Ahmed','Mohamed','Mohammed','Youssef','Karim','Hicham','Mehdi','Omar','Rachid','Abdellatif',
+    'Abdelaziz','Brahim','Khalid','Said','Mustapha','Hassan','Hamza','Anas','Othmane','Zakaria',
+    'Amine','Ayoub','Bilal','Driss','Fahd','Fouad','Ilyas','Ismail','Jamal','Malik',
+    'Nabil','Nizar','Reda','Saad','Tarik','Walid','Yahya','Yassine','Fatima','Zineb',
+    'Aicha','Khadija','Salma','Sara','Meryem','Hanane','Ikram','Imane','Kenza','Latifa',
+    'Laila','Najat','Nawal','Nadia','Rim','Soukaina','Siham','Sophia','Yasmina','Zahra',
+    'Amira','Sofia','Wissal','Houda','Saida','Malika','Naima','Hind','Samira','Mouna',
+    'Karima','Soumia','Dounia','Oumaima','Rania','Rabia','Amina','Mariam','Noor','Nour',
+];
+const VILLES_MA = [
+    'Marrakech','Marrakesh','Casablanca','Rabat','Tanger','Agadir','Fès','Fez','Essaouira',
+    'Meknès','Oujda','Tétouan','Kenitra','Safi','El Jadida','Nador','Larache','Ouarzazate',
+    'Chefchaouen','Ifrane','Béni Mellal','Mohammedia','Dakhla','Laâyoune',
+];
+const VILLES_FR = [
+    'Paris','Lyon','Marseille','Toulouse','Nice','Nantes','Bordeaux','Lille','Strasbourg','Montpellier',
+    'Rennes','Reims','Le Havre','Saint-Étienne','Toulon','Grenoble','Dijon','Angers','Nîmes','Villeurbanne',
+    'Clermont-Ferrand','Le Mans','Aix-en-Provence','Brest','Tours','Amiens','Limoges','Annecy','Perpignan','Metz',
+    'Besançon','Orléans','Mulhouse','Rouen','Caen','Nancy','Saint-Denis','Argenteuil','Poitiers','Versailles',
+    'Chamonix','Biarritz','Bayonne','Pau','Cannes','Antibes','Avignon','Cassis','Saint-Tropez','Deauville',
+];
+const QUARTIERS_MARRAKECH = [
+    'Médina','Gueliz','Hivernage','Palmeraie','Prestigia','Bab Taghzout','Annakhil',
+    'Targa','Semlalia','Amerchich','Route de Fès','Route de Casablanca','Route d\'Ourika','Ourika',
+];
+const TYPE_KEYWORDS = [
+    'villa' => 'Villa',
+    'appartement' => 'Appartement',
+    'appart' => 'Appartement',
+    'riad' => 'Riad',
+    'maison' => 'Maison',
+    'terrain' => 'Terrain',
+    'commerce' => 'Commerce',
+    'ferme' => 'Ferme',
+    'bureau' => 'Bureau / plateau',
+    'plateau' => 'Bureau / plateau',
+];
 
 function getAnthropicKey() {
     $k = getSetting('anthropic_api_key', '');
@@ -75,12 +132,102 @@ function callClaude($transcript) {
     if (!$j || empty($j['content'])) return ['error' => 'no_content'];
     $text = '';
     foreach ($j['content'] as $c) if (($c['type'] ?? '') === 'text') $text .= $c['text'];
-    // On cherche le premier {...} JSON dans la réponse.
     if (preg_match('/\{[\s\S]*\}/', $text, $m)) {
         $extracted = json_decode($m[0], true);
         if (is_array($extracted)) return ['extracted' => $extracted, 'raw' => $text];
     }
     return ['error' => 'parse_failed', 'raw' => $text];
+}
+
+// V17.14 : fallback heuristique PHP pur si pas de clé ou Claude KO.
+function heuristicExtract($transcript) {
+    $out = [
+        'prenom' => null, 'nom' => null, 'societe_nom' => null, 'profil' => null,
+        'types_bien' => null, 'pays_bien' => null, 'ville_bien' => null, 'quartier_bien' => null,
+        'budget_min' => null, 'budget_max' => null, 'devise' => null,
+        'pays_residence' => null, 'tel' => null, 'email' => null, 'notes_libres' => null,
+    ];
+    $t = $transcript;
+    $lower = mb_strtolower($t);
+
+    // Profil
+    if (preg_match('/\b(cherche|veut\s+acheter|recherche|à\s+la\s+recherche)\b/iu', $t)) $out['profil'] = 'Acheteur';
+    elseif (preg_match('/\b(vend|met(\s+en)?\s+vente|vendre)\b/iu', $t)) $out['profil'] = 'Vendeur';
+    elseif (preg_match('/\binvesti(sseur|t|r)\b/iu', $t)) $out['profil'] = 'Investisseur';
+    elseif (preg_match('/\bveut\s+louer\b/iu', $t)) $out['profil'] = 'Locataire';
+    elseif (preg_match('/\b(loue|propose\s+(à|a)\s+la\s+location|met(\s+en)?\s+location)\b/iu', $t)) $out['profil'] = 'Bailleur';
+
+    // Prénom : premier mot capitalisé qui matche une liste connue.
+    $all_prenoms = array_merge(PRENOMS_FR_TOP, PRENOMS_MA_TOP);
+    $prenom_set = array_flip(array_map('mb_strtolower', $all_prenoms));
+    if (preg_match_all('/\b([A-ZÀ-Ý][a-zà-ÿ]+)\b/u', $t, $mm)) {
+        $words = $mm[1];
+        foreach ($words as $i => $w) {
+            if (isset($prenom_set[mb_strtolower($w)])) {
+                $out['prenom'] = $w;
+                // Mot suivant capitalisé = nom potentiel (heuristique simple)
+                if (isset($words[$i + 1]) && !isset($prenom_set[mb_strtolower($words[$i + 1])])) {
+                    $out['nom'] = $words[$i + 1];
+                }
+                break;
+            }
+        }
+    }
+    // 'monsieur X' / 'madame Y' → nom de famille
+    if (preg_match('/\bmonsieur\s+([A-ZÀ-Ý][a-zà-ÿ]+)/iu', $t, $mm)) { $out['nom'] = $mm[1]; }
+    elseif (preg_match('/\bmadame\s+([A-ZÀ-Ý][a-zà-ÿ]+)/iu', $t, $mm)) { $out['nom'] = $mm[1]; }
+
+    // Villes + pays_bien
+    foreach (VILLES_MA as $v) {
+        if (mb_stripos($t, $v) !== false) { $out['ville_bien'] = $v; $out['pays_bien'] = 'MA'; break; }
+    }
+    if (!$out['ville_bien']) {
+        foreach (VILLES_FR as $v) {
+            if (mb_stripos($t, $v) !== false) { $out['ville_bien'] = $v; $out['pays_bien'] = 'FR'; break; }
+        }
+    }
+    // Quartiers Marrakech
+    foreach (QUARTIERS_MARRAKECH as $q) {
+        if (mb_stripos($t, $q) !== false) { $out['quartier_bien'] = $q; break; }
+    }
+    // Pays résidence : "vit en France" / "vit au Maroc"
+    if (preg_match('/\bvit\s+(?:en|au|aux|à)\s+(France|Maroc|Espagne|Belgique|Suisse)/iu', $t, $mm)) {
+        $map = ['France' => 'FR', 'Maroc' => 'MA', 'Espagne' => 'ES', 'Belgique' => 'BE', 'Suisse' => 'CH'];
+        $out['pays_residence'] = $map[ucfirst(mb_strtolower($mm[1]))] ?? null;
+    }
+    // Types bien
+    $types = [];
+    foreach (TYPE_KEYWORDS as $kw => $t_label) {
+        if (mb_stripos($lower, $kw) !== false && !in_array($t_label, $types, true)) $types[] = $t_label;
+    }
+    if ($types) $out['types_bien'] = $types;
+
+    // Budget : "500k", "500 000", "500.000", "1,8M", "1.8 million"
+    // priorité : "500k" ou "500 000 euros/DH"
+    if (preg_match('/(\d+(?:[.,]\d+)?)\s*(k|M|million|millions)\b/iu', $t, $mm)) {
+        $n = (float)str_replace(',', '.', $mm[1]);
+        $mult = strtolower(substr($mm[2], 0, 1));
+        if ($mult === 'k') $n *= 1000;
+        else if ($mult === 'm') $n *= 1000000;
+        $out['budget_max'] = (int)$n;
+    } elseif (preg_match('/(\d[\d\s\.]{3,}\d)\s*(euros?|€|dirhams?|MAD|DH)/iu', $t, $mm)) {
+        $raw = preg_replace('/[^\d]/', '', $mm[1]);
+        if ($raw) $out['budget_max'] = (int)$raw;
+    }
+    // Devise
+    if (preg_match('/\b(euros?|€|EUR)\b/iu', $t)) $out['devise'] = 'EUR';
+    elseif (preg_match('/\b(dirhams?|MAD|DH|DHs)\b/iu', $t)) $out['devise'] = 'MAD';
+
+    // Tel : format international simple
+    if (preg_match('/\+\d{1,3}[\s.\-]?\d[\d\s.\-]{6,}/', $t, $mm)) $out['tel'] = trim($mm[0]);
+    // Email
+    if (preg_match('/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i', $t, $mm)) $out['email'] = $mm[0];
+
+    // Compter combien de champs ont été extraits — si <2, autant retourner null
+    $filled = 0;
+    foreach ($out as $v) if ($v !== null && $v !== [] && $v !== '') $filled++;
+    if ($filled === 0) return null;
+    return $out;
 }
 
 switch ($action) {
@@ -92,7 +239,17 @@ switch ($action) {
         if (isset($r['extracted'])) {
             jsonOk(['extracted' => $r['extracted'], 'transcript' => $transcript, 'mode' => 'ai']);
         }
-        // Fallback : pas de clé OU API KO → renvoie raw_text pour brouillon manuel.
+        // V17.14 : fallback heuristique PHP au lieu du raw_text brut.
+        $heur = heuristicExtract($transcript);
+        if ($heur) {
+            jsonOk([
+                'extracted' => $heur,
+                'transcript' => $transcript,
+                'mode' => 'heuristic',
+                'ai_error' => $r['error'] ?? 'no_key',
+            ]);
+        }
+        // Ultime fallback : transcript brut
         jsonOk([
             'extracted' => null,
             'raw_text' => $transcript,
@@ -103,8 +260,34 @@ switch ($action) {
     }
 
     case 'has_key': {
-        // Debug : l'utilisateur peut check si la clé est configurée.
         jsonOk(['has_key' => (bool)getAnthropicKey()]);
+    }
+
+    case 'test_key': {
+        // Admin : teste la validité d'une clé donnée sans la sauvegarder.
+        requireAdmin();
+        $test_key = trim((string)($input['api_key'] ?? ''));
+        if (!$test_key) jsonError('api_key requise');
+        $ch = curl_init('https://api.anthropic.com/v1/messages');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode([
+                'model' => CLAUDE_MODEL, 'max_tokens' => 1,
+                'messages' => [['role' => 'user', 'content' => 'Hi']],
+            ]),
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'x-api-key: ' . $test_key,
+                'anthropic-version: 2023-06-01',
+            ],
+            CURLOPT_TIMEOUT => 15,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $valid = $code >= 200 && $code < 300;
+        jsonOk(['valid' => $valid, 'http_code' => $code, 'response_snippet' => substr((string)$resp, 0, 200)]);
     }
 
     default:
