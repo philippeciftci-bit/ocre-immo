@@ -31,7 +31,9 @@ Pour creer_rdv / creer_todo / noter_interaction :
 - priority : "urgent"/"vite" → high ; "quand j'aurai le temps" → low ; sinon medium
 - reminder_min_before : défaut 60. "1h avant" → 60. "30 min avant" → 30. "1 jour avant" → 1440.
 
-Pour creer_dossier, utilise tout le schéma précédent : {prenom,nom,societe_nom,profil,types_bien,pays_bien,ville_bien,quartier_bien,budget_min,budget_max,devise,pays_residence,tel,email,notes_libres}.
+Pour creer_dossier, utilise le schéma enrichi V18.6 : {prenom,nom,societe_nom,profil_type,profil,types_bien,pays_bien,ville_bien,quartier_bien,usage_bien,adresse_rue,code_postal,ville_residence,pays_residence,nationalite,budget_min,budget_max,devise,tel,email,notes_libres}.
+
+Règles V18.6 : adresse_rue ("18 rue X"), code_postal (5 chiffres), ville_residence (où il vit, distinct de ville_bien où il cherche), usage_bien (airbnb/investissement_locatif/residence_principale/residence_secondaire/saisonnier), profil_type=Société dès qu'une raison sociale est mentionnée. Si "Airbnb" → profil="Investisseur" + usage_bien="airbnb".
 
 Tolérance fautes reconnaissance vocale (Maroc/France) :
 - 'Arade'/'arabe' contexte MA → Riad
@@ -74,7 +76,18 @@ Règles :
 - 'villa'/'maison' → types_bien=[Villa]/[Maison] ; 'riad'→[Riad] ; 'appartement'→[Appartement] ; 'terrain'→[Terrain]
 
 Schéma JSON (null si non mentionné) :
-{prenom,nom,societe_nom,profil,types_bien,pays_bien,ville_bien,quartier_bien,budget_min,budget_max,devise,pays_residence,tel,email,notes_libres}
+{prenom,nom,societe_nom,profil_type,profil,types_bien,pays_bien,ville_bien,quartier_bien,usage_bien,adresse_rue,code_postal,ville_residence,pays_residence,nationalite,budget_min,budget_max,devise,tel,email,notes_libres}
+
+Règles V18.6 nouveaux champs :
+- "numéro X rue/avenue/boulevard Y", "habite au X rue Y" → adresse_rue ("18 rue Eugénie Cotton")
+- "44800", "75015", "13001" — code postal FR 5 chiffres ou MA 5 chiffres → code_postal
+- "vit à Saint-Herblain", "habite à Nantes" — distingue ville_residence (où il vit) de ville_bien (où il cherche le bien)
+- "Airbnb"/"location courte durée"/"saisonnière" → usage_bien="airbnb"
+- "investissement locatif"/"pour louer"/"rendement"/"investir" → usage_bien="investissement_locatif"
+- "résidence principale"/"y habiter"/"pour habiter" → usage_bien="residence_principale"
+- "résidence secondaire"/"vacances" → usage_bien="residence_secondaire"
+- Si "société X conciergerie/immobilière/SARL/SAS"/"sa société X" → societe_nom="X" (avec son nom complet, ex "Sophie Conciergerie") + profil_type="Société". Le profil reste celui détecté (Investisseur si Airbnb).
+- "investit dans"/"acquérir pour louer" → profil="Investisseur" + usage_bien="investissement_locatif"
 
 IMPORTANT — TOLÉRANCE FAUTES RECONNAISSANCE VOCALE :
 La dictée passe par une reco vocale Safari iPad imparfaite. Corrige intelligemment selon le contexte immobilier Maroc/France :
@@ -102,6 +115,10 @@ Output: {"prenom":"Marc","nom":null,"profil":"Acheteur","types_bien":["Villa"],"
 EXEMPLE 2 (fautes reco) :
 Input: 'Ahmed cherche une arade dans le Régali à Marakèche 2 millions de dirhams numéro 06 12 34 56 78'
 Output: {"prenom":"Ahmed","nom":null,"profil":"Acheteur","types_bien":["Riad"],"pays_bien":"MA","ville_bien":"Marrakech","quartier_bien":"Gueliz","budget_max":2000000,"devise":"MAD","tel":"+212612345678"}
+
+EXEMPLE 3 (V18.6 — investisseur Société + Airbnb + adresse complète) :
+Input: 'Sophie qui vit à Nantes au 18 rue Eugénie Cotton 44800 Saint-Herblain, qui a 500 000 euros de budget pour acheter un Riad ou une villa à Marrakech pour faire de l\'Airbnb, et ils ont une société de conciergerie Sophie conciergerie'
+Output: {"prenom":"Sophie","societe_nom":"Sophie Conciergerie","profil_type":"Société","profil":"Investisseur","types_bien":["Riad","Villa"],"pays_bien":"MA","ville_bien":"Marrakech","usage_bien":"airbnb","adresse_rue":"18 rue Eugénie Cotton","code_postal":"44800","ville_residence":"Saint-Herblain","pays_residence":"FR","budget_max":500000,"devise":"EUR"}
 PROMPT;
 
 // V17.14 : listes embedded pour fallback heuristique.
