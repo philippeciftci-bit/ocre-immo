@@ -31,9 +31,32 @@ Règles :
 Schéma JSON (null si non mentionné) :
 {prenom,nom,societe_nom,profil,types_bien,pays_bien,ville_bien,quartier_bien,budget_min,budget_max,devise,pays_residence,tel,email,notes_libres}
 
+IMPORTANT — TOLÉRANCE FAUTES RECONNAISSANCE VOCALE :
+La dictée passe par une reco vocale Safari iPad imparfaite. Corrige intelligemment selon le contexte immobilier Maroc/France :
+- 'Arade'/'arabe'/'arad'/'arrad'/'ariad'/'a rad' (contexte Maroc) → Riad
+- 'Régali'/'régalie'/'regaly'/'régaly'/'régale' → Gueliz (quartier Marrakech)
+- 'Agdal'/'Agdale' → Agdal (Rabat)
+- 'Palmerai'/'palmerée'/'palmraie' → Palmeraie
+- 'Hyvernage'/'ivernage' → Hivernage
+- 'Medina'/'médine' → Médina
+- 'Marakèche'/'Marrakèche'/'Maraqèche'/'Marakech' → Marrakech
+- 'Essaouira'/'sauveur'/'sauira' (contexte MA) → Essaouira
+- 'Yvie'/'y vit'/'hive'/'il live' → 'il vit'
+- 'Casa blanca'/'casablanca'/'casa' (contexte MA seul) → Casablanca
+- 'Beaune hacker'/'bonaker'/'bonne hacker' → Bon Aker / quartier MA
+- 'Prestigia'/'prestigial'/'prestigias' → Prestigia
+- 'madame X' / 'monsieur Y' / 'mister Z' / 'mrs W' → nom=X/Y/Z/W
+- Si un mot semble incohérent mais qu'un terme phonétiquement proche fait sens dans l'immobilier Maroc/France, corrige.
+- Utilise ton jugement contextuel : 'cherche une Arade à Marrakech à rénover' → types_bien=[Riad], pays_bien=MA, notes="à rénover"
+- Normalise les numéros FR en format E.164 : '06 88 28 48 77' → '+33688284877', MA : '06 12 34 56 78' sans préfixe dans contexte MA → '+212612345678'.
+
 EXEMPLE :
 Input: 'Marc cherche une villa à Marrakech route d'Ourika budget 500000 euros vit en France'
 Output: {"prenom":"Marc","nom":null,"profil":"Acheteur","types_bien":["Villa"],"pays_bien":"MA","ville_bien":"Marrakech","quartier_bien":"Ourika","budget_max":500000,"devise":"EUR","pays_residence":"FR"}
+
+EXEMPLE 2 (fautes reco) :
+Input: 'Ahmed cherche une arade dans le Régali à Marakèche 2 millions de dirhams numéro 06 12 34 56 78'
+Output: {"prenom":"Ahmed","nom":null,"profil":"Acheteur","types_bien":["Riad"],"pays_bien":"MA","ville_bien":"Marrakech","quartier_bien":"Gueliz","budget_max":2000000,"devise":"MAD","tel":"+212612345678"}
 PROMPT;
 
 // V17.14 : listes embedded pour fallback heuristique.

@@ -2578,14 +2578,19 @@ function ImportUrlView({onBack, onCreated, showToast, toast}) {
 }
 
 // V17.12 — DictationView : Web Speech API + extraction Claude Haiku + création brouillon.
+// V17.15 J1 — finalBufferRef persistant (pas de perte à la pause) + auto-restart onend + erreurs tolérantes.
 function DictationView({onBack, onCreated, showToast, toast}) {
   const [listening, setListening] = React.useState(false);
   const [supported, setSupported] = React.useState(true);
   const [interim, setInterim] = React.useState('');
   const [finalText, setFinalText] = React.useState('');
   const [editable, setEditable] = React.useState('');
-  const [phase, setPhase] = React.useState('record'); // record | edit | extracting | done
+  const [phase, setPhase] = React.useState('record');
   const recogRef = React.useRef(null);
+  // V17.15 J1 : refs pour contourner les stale closures + buffer persistant.
+  const finalBufferRef = React.useRef('');
+  const listeningRef = React.useRef(false);
+  const stoppedByUserRef = React.useRef(false);
 
   React.useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2595,37 +2600,69 @@ function DictationView({onBack, onCreated, showToast, toast}) {
     r.continuous = true;
     r.interimResults = true;
     r.onresult = (e) => {
-      let itxt = '', ftxt = finalText;
+      let itxt = '';
+      // APPEND au buffer persistant pour chaque isFinal (jamais overwrite).
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const res = e.results[i];
-        if (res.isFinal) ftxt += (ftxt ? ' ' : '') + res[0].transcript.trim();
-        else itxt += res[0].transcript;
+        const txt = (res[0] && res[0].transcript) ? res[0].transcript.trim() : '';
+        if (!txt) continue;
+        if (res.isFinal) {
+          finalBufferRef.current = finalBufferRef.current
+            ? finalBufferRef.current + ' ' + txt
+            : txt;
+        } else {
+          itxt += (itxt ? ' ' : '') + txt;
+        }
       }
       setInterim(itxt);
-      if (ftxt !== finalText) setFinalText(ftxt);
+      setFinalText(finalBufferRef.current);
     };
     r.onerror = (e) => {
+      // Ignorer les erreurs 'bénignes' causées par les silences / fin naturelle.
+      const benign = ['no-speech', 'aborted', 'audio-capture-timeout'];
+      if (benign.includes(e.error)) return;
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         showToast && showToast('Microphone refusé');
+        stoppedByUserRef.current = true;
+        listeningRef.current = false;
+        setListening(false);
+      }
+      // Pour les autres (network, aborted par OS), onend gèrera le restart.
+    };
+    r.onend = () => {
+      // Si l'utilisateur n'a PAS stoppé volontairement → redémarre auto (continuité malgré pauses).
+      if (listeningRef.current && !stoppedByUserRef.current) {
+        try { setTimeout(() => { try { r.start(); } catch(_){} }, 120); return; }
+        catch (_) {}
       }
       setListening(false);
     };
-    r.onend = () => setListening(false);
     recogRef.current = r;
     return () => { try { r.stop(); } catch (_) {} };
   }, []);
 
   function toggleListen() {
     if (!recogRef.current) return;
-    if (listening) { recogRef.current.stop(); setListening(false); }
-    else {
+    if (listening) {
+      stoppedByUserRef.current = true;
+      listeningRef.current = false;
+      try { recogRef.current.stop(); } catch(_) {}
+      setListening(false);
+    } else {
+      stoppedByUserRef.current = false;
+      listeningRef.current = true;
       try { recogRef.current.start(); setListening(true); }
-      catch (e) { showToast && showToast('Impossible de démarrer'); }
+      catch (e) { listeningRef.current = false; showToast && showToast('Impossible de démarrer'); }
     }
   }
   function goEdit() {
-    if (listening) { try { recogRef.current.stop(); } catch(_) {} setListening(false); }
-    const txt = (finalText + ' ' + interim).trim();
+    if (listening) {
+      stoppedByUserRef.current = true;
+      listeningRef.current = false;
+      try { recogRef.current.stop(); } catch(_) {}
+      setListening(false);
+    }
+    const txt = ((finalBufferRef.current || finalText) + ' ' + interim).trim();
     setEditable(txt);
     setInterim('');
     setPhase('edit');
@@ -2761,7 +2798,7 @@ function DictationView({onBack, onCreated, showToast, toast}) {
             <textarea value={editable} onChange={e => setEditable(e.target.value)}
               style={{width:'100%', minHeight:200, padding:12, borderRadius:10, border:'1.5px solid #BBA88B', background:'#fff', fontFamily:'Cormorant Garamond,serif', fontSize:16, lineHeight:1.5, outline:'none', color:'#2A2018', resize:'vertical'}}/>
             <div style={{display:'flex', gap:8}}>
-              <button onClick={() => { setPhase('record'); }}
+              <button onClick={() => { finalBufferRef.current = ''; setFinalText(''); setInterim(''); setPhase('record'); }}
                 style={{flex:'0 0 auto', padding:'11px 14px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>← Re-dicter</button>
               <button onClick={extract}
                 style={{flex:1, padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
