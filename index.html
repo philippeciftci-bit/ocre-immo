@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.17-downloads-staging -->
+<!-- ocre-v18.18-downloads-images -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3149,11 +3149,21 @@ function App() {
         setView('downloads');
       }}/>;
   }
+  if (view === 'import_image') {
+    return <ImportImageView onBack={() => setView('downloads')}
+      showToast={showToast} toast={toast}
+      onCreated={(newClient) => {
+        setStaged(prev => [newClient, ...prev]);
+        setStagedCount(n => n + 1);
+        setView('downloads');
+      }}/>;
+  }
   if (view === 'downloads') {
     return <DownloadsView onBack={() => setView('list')}
       showToast={showToast} toast={toast}
       staged={staged} clients={clients}
       openImportUrl={() => setView('import_url')}
+      openImportImage={() => setView('import_image')}
       openClient={(c) => { openClient(c); }}/>;
   }
   const banner = showInstallBanner && <InstallPwaBanner aboveActionBar={view === 'list'} onClose={() => { setShowInstallBanner(false); localStorage.setItem('ocre_install_dismissed_v18','1'); }}/>;
@@ -3468,6 +3478,241 @@ function ImportUrlView({onBack, onCreated, showToast, toast}) {
               <button type="button" onClick={() => { setResult(null); setManualNote(''); }}
                 style={{flex:1, padding:'10px', background:'#FDFAF7', color:'var(--ocre-brand)', border:'1.5px solid var(--border-input)', borderRadius:10, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>🔄 Analyser un autre lien</button>
             </div>
+          </div>
+        )}
+      </div>
+      {toast && <Toast msg={toast}/>}
+    </div>
+  );
+}
+
+// V18.18 — ImportImageView : extraction d'annonce depuis une image (capture WhatsApp/SMS,
+// photo annonce papier/panneau). Flow : upload/capture/paste → preview → POST import_image.php
+// action=extract → preview JSON + thumbnail → "Créer brouillon" → clients.php save is_staged=1.
+function ImportImageView({onBack, onCreated, showToast, toast}) {
+  const [file, setFile] = React.useState(null);
+  const [previewUrl, setPreviewUrl] = React.useState(null);
+  const [extracting, setExtracting] = React.useState(false);
+  const [creating, setCreating] = React.useState(false);
+  const [result, setResult] = React.useState(null);       // payload retourné par extract
+  const [imagePath, setImagePath] = React.useState(null); // path serveur pour api/image.php
+  const fileInputCam = React.useRef(null);
+  const fileInputGal = React.useRef(null);
+  const token = localStorage.getItem('ocre_token');
+
+  function pickFile(f) {
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { showToast && showToast('Image trop grande (max 10 Mo)'); return; }
+    setFile(f);
+    setPreviewUrl(URL.createObjectURL(f));
+    setResult(null);
+    setImagePath(null);
+  }
+  function clearFile() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setFile(null);
+    setPreviewUrl(null);
+    setResult(null);
+    setImagePath(null);
+  }
+
+  // Paste handler (iPad/desktop) : colle une image depuis le presse-papiers.
+  React.useEffect(() => {
+    function onPaste(e) {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.startsWith('image/')) {
+          const f = items[i].getAsFile();
+          if (f) { pickFile(f); e.preventDefault(); break; }
+        }
+      }
+    }
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, []);
+
+  // Resize canvas côté client si >1600px avant upload (économise bande passante).
+  async function downscaleIfNeeded(original) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(original);
+      img.onload = () => {
+        const max = 1600;
+        if (img.width <= max) { URL.revokeObjectURL(url); resolve(original); return; }
+        const scale = max / img.width;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(url);
+          if (!blob) { resolve(original); return; }
+          resolve(new File([blob], (original.name || 'image').replace(/\.\w+$/, '') + '.jpg', {type:'image/jpeg'}));
+        }, 'image/jpeg', 0.88);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(original); };
+      img.src = url;
+    });
+  }
+
+  async function doExtract() {
+    if (!file) return;
+    setExtracting(true);
+    try {
+      const uploadFile = await downscaleIfNeeded(file);
+      const fd = new FormData();
+      fd.append('image', uploadFile);
+      const r = await fetch(API + '/import_image.php?action=extract', {
+        method:'POST',
+        headers:{'X-Session-Token': token},
+        body: fd,
+      });
+      const d = await r.json();
+      if (d && d.ok) {
+        setResult(d.extracted || {});
+        setImagePath(d.image_path || null);
+      } else {
+        showToast && showToast((d && d.error) || 'Extraction échouée');
+      }
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setExtracting(false);
+  }
+
+  async function doCreate() {
+    if (!result) return;
+    setCreating(true);
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const r = result;
+    const annonceurNom = r.annonceur_nom || '';
+    const isPro = r.annonceur_type === 'professionnel';
+    const client = {
+      profil_type: isPro ? 'Société' : 'Particulier',
+      projet: 'Vendeur',
+      // V18.17/v18.18 — staging image.
+      is_staged: true,
+      import_type: 'image',
+      import_source: 'image',
+      import_image_url: imagePath,                                 // chemin relatif uploads/
+      import_source_type: r.source_type || 'capture_autre',
+      import_source_context: r.source_context || '',
+      import_ai_raw_response: r._raw_model ? {model: r._raw_model} : null,
+      staged_at: now,
+      image_imported_at: now,
+    };
+    if (isPro && annonceurNom) client.societe_nom = annonceurNom;
+    else if (annonceurNom) client.prenom = annonceurNom;
+    if (r.annonceur_tel_mentionne) { client.tel = r.annonceur_tel_mentionne; client.tels = [{label:'Principal', valeur:r.annonceur_tel_mentionne, primary:true}]; }
+    if (r.annonceur_email_mentionne) { client.email = r.annonceur_email_mentionne; client.emails = [{label:'Principal', valeur:r.annonceur_email_mentionne, primary:true}]; }
+    if (r.description_complete || r.titre) client.notes = [r.titre, r.description_complete].filter(Boolean).join('\n\n');
+    const bien = {};
+    if (r.pays_bien) bien.pays = r.pays_bien;
+    if (r.ville_bien) bien.ville = r.ville_bien;
+    if (r.quartier_bien) bien.quartier = r.quartier_bien;
+    if (Array.isArray(r.types_bien) && r.types_bien.length) { bien.types = r.types_bien; bien.type = r.types_bien[0]; }
+    if (r.titre) bien.titre = r.titre;
+    if (r.description_complete) bien.description = r.description_complete;
+    const sH = r.surface_habitable || r.surface;
+    if (sH) { bien.surface = sH; bien.surface_habitable = sH; }
+    if (r.surface_terrain) bien.surface_terrain = r.surface_terrain;
+    if (r.nombre_pieces) bien.pieces = r.nombre_pieces;
+    if (r.nombre_chambres) bien.chambres = r.nombre_chambres;
+    if (r.nombre_sdb) bien.sdb = r.nombre_sdb;
+    if (r.etage != null) bien.etage = r.etage;
+    if (r.dpe_class) bien.dpe = r.dpe_class;
+    if (r.dpe_ges) bien.ges = r.dpe_ges;
+    if (r.annee_construction) bien.annee_construction = r.annee_construction;
+    if (r.neuf_ancien) bien.neuf_ancien = r.neuf_ancien;
+    // L'image importée devient photo primaire du bien (visible colonne Photo Sheet après promote).
+    if (imagePath) bien.photos = ['/api/image.php?path=' + encodeURIComponent(imagePath)];
+    if (Object.keys(bien).length) client.bien = bien;
+    if (r.prix) { client.financement = {prix_affiche: r.prix, devise: r.devise || '€'}; client.prix_affiche = r.prix; }
+    if (r.code_postal) client.code_postal = r.code_postal;
+
+    try {
+      const resp = await fetch(API + '/clients.php?action=save', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token},
+        body: JSON.stringify({client}),
+      });
+      const d = await resp.json();
+      if (d && d.ok && d.client) {
+        onCreated && onCreated(d.client);
+        showToast && showToast('Brouillon créé depuis image');
+      } else showToast && showToast((d && d.error) || 'Échec sauvegarde');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setCreating(false);
+  }
+
+  const sourceTypeLabels = {sms:'💬 SMS', whatsapp:'🟢 WhatsApp', screenshot_web:'🖥 Capture web', photo_annonce_papier:'📄 Annonce papier', photo_panneau:'🪧 Panneau', capture_autre:'📸 Image'};
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>📸 Importer un document</div>
+        <div style={{width:28}}/>
+      </div>
+
+      <div style={{flex:1, overflowY:'auto', padding:14}}>
+        <div style={{fontSize:12, color:'#8B7F6E', marginBottom:12, lineHeight:1.45}}>
+          Capture WhatsApp/SMS, photo annonce papier, fiche agence, panneau « À vendre ». L'analyse extrait automatiquement prix, surface, localisation, et contact si visible.
+        </div>
+
+        {!file && (
+          <div style={{display:'flex', flexDirection:'column', gap:8, marginBottom:14}}>
+            <input ref={fileInputCam} type="file" accept="image/*" capture="environment" style={{display:'none'}}
+              onChange={e => pickFile(e.target.files && e.target.files[0])}/>
+            <input ref={fileInputGal} type="file" accept="image/*" style={{display:'none'}}
+              onChange={e => pickFile(e.target.files && e.target.files[0])}/>
+            <button onClick={() => fileInputCam.current && fileInputCam.current.click()}
+              style={{padding:'14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+              📷 Prendre une photo
+            </button>
+            <button onClick={() => fileInputGal.current && fileInputGal.current.click()}
+              style={{padding:'12px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #BBA88B', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+              🖼️ Choisir depuis la galerie
+            </button>
+            <div style={{fontSize:11, color:'#8B7F6E', textAlign:'center', padding:'6px 4px'}}>
+              … ou colle une image depuis le presse-papiers (iPad/desktop)
+            </div>
+          </div>
+        )}
+
+        {file && previewUrl && (
+          <div style={{marginBottom:14}}>
+            <div style={{position:'relative', background:'#fff', border:'1px solid #EDE6DC', borderRadius:10, overflow:'hidden'}}>
+              <img src={previewUrl} alt="" style={{display:'block', width:'100%', maxHeight:400, objectFit:'contain', background:'#000'}}/>
+              <button onClick={clearFile}
+                style={{position:'absolute', top:8, right:8, background:'rgba(42,32,24,.85)', color:'#fff', border:'none', borderRadius:20, padding:'5px 10px', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>
+                ✕ Changer
+              </button>
+            </div>
+            {!result && (
+              <button onClick={doExtract} disabled={extracting}
+                style={{marginTop:10, width:'100%', padding:'13px', background: extracting ? '#BBA88B' : 'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor: extracting ? 'wait' : 'pointer', fontFamily:'inherit'}}>
+                {extracting ? '⏳ Analyse en cours ~5s…' : '🤖 Extraire les informations'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {result && (
+          <div style={{background:'#fff', border:'1px solid #EDE6DC', borderRadius:10, padding:12, marginBottom:14}}>
+            <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, marginBottom:8}}>
+              Extraction · {sourceTypeLabels[result.source_type] || '📸 Image'}
+            </div>
+            {result.source_context && <div style={{fontSize:12, color:'#2A2018', fontStyle:'italic', marginBottom:8}}>« {result.source_context} »</div>}
+            <div style={{fontSize:12, color:'#2A2018', lineHeight:1.5}}>
+              {result.titre && <div><b>🏠 {result.titre}</b></div>}
+              {(result.types_bien || result.ville_bien) && <div>{(result.types_bien || []).join(' · ')}{result.ville_bien ? ' · ' + result.ville_bien : ''}{result.quartier_bien ? ' (' + result.quartier_bien + ')' : ''}</div>}
+              {result.prix && <div><b>💰 {Number(result.prix).toLocaleString('fr-FR')} {result.devise || '€'}</b></div>}
+              {(result.surface_habitable || result.nombre_pieces) && <div>{result.surface_habitable ? result.surface_habitable + ' m²' : ''}{result.surface_habitable && result.nombre_pieces ? ' · ' : ''}{result.nombre_pieces ? result.nombre_pieces + ' pièces' : ''}</div>}
+              {result.annonceur_nom && <div style={{marginTop:6, color:'#8B7F6E'}}>👤 {result.annonceur_nom}{result.annonceur_tel_mentionne ? ' · ' + result.annonceur_tel_mentionne : ''}</div>}
+            </div>
+            <button onClick={doCreate} disabled={creating}
+              style={{marginTop:12, width:'100%', padding:'13px', background: creating ? '#BBA88B' : 'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor: creating ? 'wait' : 'pointer', fontFamily:'inherit'}}>
+              {creating ? '⏳ Création…' : '✓ Créer brouillon téléchargement'}
+            </button>
           </div>
         )}
       </div>
@@ -4766,11 +5011,32 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     onOpenSection && onOpenSection(c, idx);
   }
 
+  // V18.18 — imports staged : distinction 🔗 Lien vs 📸 Document. Thumbnail si image.
+  const isStagedRow = !!c.is_staged;
+  const importType = c.import_type || (c.from_url_import ? 'url' : null);
+  const importImageUrl = c.import_image_url ? ('/api' + (c.import_image_url.indexOf('/api') === 0 ? c.import_image_url.slice(4) : '/image.php?path=' + encodeURIComponent(c.import_image_url))) : null;
+  const sourceTypeLabels = {sms:'💬 SMS', whatsapp:'🟢 WhatsApp', screenshot_web:'🖥 Capture web', photo_annonce_papier:'📄 Annonce papier', photo_panneau:'🪧 Panneau', capture_autre:'📸 Image'};
+  const sourceChip = isStagedRow
+    ? (importType === 'image'
+        ? (sourceTypeLabels[c.import_source_type] || '📸 Image')
+        : (importType === 'url' ? ('🔗 ' + (c.source_domain || 'Lien')) : null))
+    : null;
+
   return (
     <div className="client-row-card" onClick={onClick}>
       <div className="client-row-head" style={{background: tint}}>
-        <div className="client-row-badge" style={{background: col}}>{badge}</div>
+        {isStagedRow && importType === 'image' && importImageUrl ? (
+          <div className="client-row-badge" style={{background:'#F4EFE5', padding:0, overflow:'hidden'}}>
+            <img src={importImageUrl} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}
+              onError={e => { e.target.style.display = 'none'; }}/>
+          </div>
+        ) : (
+          <div className="client-row-badge" style={{background: col}}>{badge}</div>
+        )}
         <div className="client-row-name">{name}</div>
+        {sourceChip && (
+          <div style={{fontSize:10, color: importType === 'image' ? '#8B6B1E' : '#B26D3A', fontWeight:700, flexShrink:0, background:'#fff', border:'1px solid #E8DDD0', borderRadius:10, padding:'2px 7px', whiteSpace:'nowrap'}}>{sourceChip}</div>
+        )}
         {linkedBadges.length > 0 && (
           <div style={{fontSize:9, color:col, fontWeight:700, flexShrink:0, letterSpacing:.3}}>🔗 {linkedBadges.join('·')}</div>
         )}
@@ -5217,7 +5483,7 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
 
 // V18.17 — DownloadsView : page dédiée aux téléchargements (annonces importées non validées).
 // Affiche les is_staged=1, avec entrée d'import URL et explication du flux.
-function DownloadsView({onBack, staged, clients, openClient, openImportUrl, showToast, toast}) {
+function DownloadsView({onBack, staged, clients, openClient, openImportUrl, openImportImage, showToast, toast}) {
   const n = (staged || []).length;
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
@@ -5234,7 +5500,11 @@ function DownloadsView({onBack, staged, clients, openClient, openImportUrl, show
       <div style={{padding:'10px 12px 6px', display:'flex', gap:8, flexWrap:'wrap'}}>
         <button onClick={openImportUrl}
           style={{flex:'1 1 160px', minWidth:0, padding:'12px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
-          🔗 Importer depuis une URL
+          🔗 Lien URL
+        </button>
+        <button onClick={openImportImage}
+          style={{flex:'1 1 160px', minWidth:0, padding:'12px', background:'linear-gradient(135deg,#A06B45,#8B6B1E)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+          📸 Document image
         </button>
       </div>
 
@@ -5267,9 +5537,17 @@ function FormView(props) {
          clients, openExistingDossier, initialExpandedSection,
          promoteStaged, deleteStaged} = props;
   // V18.17 — dossier en mode staging (vient de la page Téléchargements).
+  // V18.18 — distinction URL vs image (banner + thumbnail + overlay fullscreen).
   const isStaged = !!(editing && editing.is_staged);
+  const stagedType = editing && (editing.import_type || (editing.from_url_import ? 'url' : null));
   const stagedSource = editing && (editing.source_domain || editing.source_url || '');
   const stagedUrl = editing && editing.source_url;
+  const stagedImagePath = editing && editing.import_image_url;
+  const stagedImageUrl = stagedImagePath
+    ? (stagedImagePath.indexOf('/api') === 0 ? stagedImagePath : '/api/image.php?path=' + encodeURIComponent(stagedImagePath))
+    : null;
+  const stagedContext = editing && editing.import_source_context;
+  const [imageOverlay, setImageOverlay] = useState(false);
   const init = editing || {};
   const [d, setD] = useState(init);
   const [profilType, setProfilType] = useState(init.profil_type || 'Particulier');
@@ -5537,17 +5815,40 @@ function FormView(props) {
         <button onClick={openShare} style={{background:'none', border:'none', cursor:'pointer', padding:4}} title="Partager"><ShareIcon/></button>
       </div>
 
-      {/* V18.17 — banner mode staging (téléchargement non validé). */}
+      {/* V18.17/V18.18 — banner mode staging. URL → lien origine. Image → thumbnail + contexte. */}
       {isStaged && (
         <div style={{background:'#FFF3EC', border:'1px solid #BBA88B', borderLeft:'4px solid #8B5E3C', padding:'10px 14px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+          {stagedType === 'image' && stagedImageUrl && (
+            <button type="button" onClick={() => setImageOverlay(true)}
+              style={{flexShrink:0, width:56, height:56, borderRadius:8, overflow:'hidden', border:'1px solid #BBA88B', padding:0, cursor:'zoom-in', background:'#000'}}>
+              <img src={stagedImageUrl} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
+                onError={e => { e.target.style.display='none'; }}/>
+            </button>
+          )}
           <div style={{flex:1, minWidth:200, fontSize:12, color:'#2A2018', lineHeight:1.4}}>
-            <b>📥 Annonce téléchargée{stagedSource ? ' depuis ' + stagedSource : ''}.</b><br/>
-            <span style={{color:'#8B7F6E'}}>Modifie librement puis <b>enregistre</b> pour l'ajouter à tes dossiers.</span>
+            <b>{stagedType === 'image' ? '📸 Document importé' : '📥 Annonce téléchargée'}{stagedSource ? ' depuis ' + stagedSource : ''}.</b><br/>
+            {stagedContext ? <span style={{color:'#8B7F6E'}}>Contexte : <i>« {stagedContext} »</i></span>
+                           : <span style={{color:'#8B7F6E'}}>Modifie librement puis <b>enregistre</b> pour l'ajouter à tes dossiers.</span>}
           </div>
           {stagedUrl && (
             <a href={stagedUrl} target="_blank" rel="noopener"
               style={{background:'none', border:'1px solid #BBA88B', borderRadius:8, padding:'5px 9px', fontSize:11, color:'#8B5E3C', fontWeight:700, textDecoration:'none', whiteSpace:'nowrap'}}>🔗 Voir l'annonce originale</a>
           )}
+          {stagedType === 'image' && stagedImageUrl && !stagedUrl && (
+            <a href={stagedImageUrl} target="_blank" rel="noopener"
+              style={{background:'none', border:'1px solid #BBA88B', borderRadius:8, padding:'5px 9px', fontSize:11, color:'#8B5E3C', fontWeight:700, textDecoration:'none', whiteSpace:'nowrap'}}>🔗 Image originale</a>
+          )}
+        </div>
+      )}
+      {/* V18.18 — overlay fullscreen image staging. */}
+      {isStaged && imageOverlay && stagedImageUrl && (
+        <div onClick={() => setImageOverlay(false)}
+          style={{position:'fixed', inset:0, background:'rgba(0,0,0,.92)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', cursor:'zoom-out', padding:20}}>
+          <img src={stagedImageUrl} alt="" style={{maxWidth:'100%', maxHeight:'100%', objectFit:'contain'}}/>
+          <button onClick={() => setImageOverlay(false)}
+            style={{position:'absolute', top:16, right:16, background:'rgba(255,255,255,.15)', color:'#fff', border:'1px solid rgba(255,255,255,.3)', borderRadius:20, padding:'6px 12px', fontSize:13, cursor:'pointer', fontFamily:'inherit', fontWeight:700}}>
+            ✕ Fermer
+          </button>
         </div>
       )}
 
