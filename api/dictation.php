@@ -150,12 +150,12 @@ function heuristicExtract($transcript) {
     $t = $transcript;
     $lower = mb_strtolower($t);
 
-    // Profil
-    if (preg_match('/\b(cherche|veut\s+acheter|recherche|à\s+la\s+recherche)\b/iu', $t)) $out['profil'] = 'Acheteur';
-    elseif (preg_match('/\b(vend|met(\s+en)?\s+vente|vendre)\b/iu', $t)) $out['profil'] = 'Vendeur';
-    elseif (preg_match('/\binvesti(sseur|t|r)\b/iu', $t)) $out['profil'] = 'Investisseur';
-    elseif (preg_match('/\bveut\s+louer\b/iu', $t)) $out['profil'] = 'Locataire';
-    elseif (preg_match('/\b(loue|propose\s+(à|a)\s+la\s+location|met(\s+en)?\s+location)\b/iu', $t)) $out['profil'] = 'Bailleur';
+    // Profil — élargi V17.15
+    if (preg_match('/\bveut\s+louer\b|\bcherche\s+(à|a)\s+louer\b/iu', $t)) $out['profil'] = 'Locataire';
+    elseif (preg_match('/\binvesti(sseur|t|r|ssement)\b|investissement\s+locatif/iu', $t)) $out['profil'] = 'Investisseur';
+    elseif (preg_match('/\b(cherche|veut\s+acheter|recherche|acqu(é|e)rir|(à|a)\s+la\s+recherche|(à|a)\s+acheter)\b/iu', $t)) $out['profil'] = 'Acheteur';
+    elseif (preg_match('/\b(vend|(à|a)\s+vendre|met(\s+en)?\s+vente|vendre|souhaite\s+vendre)\b/iu', $t)) $out['profil'] = 'Vendeur';
+    elseif (preg_match('/\b(loue|propose\s+(à|a|en)\s+(la\s+)?location|met(\s+en)?\s+location)\b/iu', $t)) $out['profil'] = 'Bailleur';
 
     // Prénom : premier mot capitalisé qui matche une liste connue.
     $all_prenoms = array_merge(PRENOMS_FR_TOP, PRENOMS_MA_TOP);
@@ -202,15 +202,23 @@ function heuristicExtract($transcript) {
     }
     if ($types) $out['types_bien'] = $types;
 
-    // Budget : "500k", "500 000", "500.000", "1,8M", "1.8 million"
-    // priorité : "500k" ou "500 000 euros/DH"
-    if (preg_match('/(\d+(?:[.,]\d+)?)\s*(k|M|million|millions)\b/iu', $t, $mm)) {
+    // Budget — V17.15 : gère "500k", "500 000", "500.000", "1,8M", "1 million et demi", "1 200 000 MAD"
+    // "un million et demi" / "un million cinq cents mille"
+    if (preg_match('/\bun\s+million\s+et\s+demi\b/iu', $t)) {
+        $out['budget_max'] = 1500000;
+    } elseif (preg_match('/\b(deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s+millions?\b/iu', $t, $mm)) {
+        $map = ['deux'=>2,'trois'=>3,'quatre'=>4,'cinq'=>5,'six'=>6,'sept'=>7,'huit'=>8,'neuf'=>9,'dix'=>10];
+        $out['budget_max'] = ($map[mb_strtolower($mm[1])] ?? 1) * 1000000;
+    } elseif (preg_match('/(\d+(?:[.,]\d+)?)\s*(k|M|million|millions)\b/iu', $t, $mm)) {
         $n = (float)str_replace(',', '.', $mm[1]);
         $mult = strtolower(substr($mm[2], 0, 1));
         if ($mult === 'k') $n *= 1000;
         else if ($mult === 'm') $n *= 1000000;
         $out['budget_max'] = (int)$n;
-    } elseif (preg_match('/(\d[\d\s\.]{3,}\d)\s*(euros?|€|dirhams?|MAD|DH)/iu', $t, $mm)) {
+    } elseif (preg_match('/(\d[\d\s\.]{3,}\d)\s*(euros?|€|dirhams?|MAD|DH|DHs)/iu', $t, $mm)) {
+        $raw = preg_replace('/[^\d]/', '', $mm[1]);
+        if ($raw) $out['budget_max'] = (int)$raw;
+    } elseif (preg_match('/\bbudget\s+(\d[\d\s\.]{2,}\d)/iu', $t, $mm)) {
         $raw = preg_replace('/[^\d]/', '', $mm[1]);
         if ($raw) $out['budget_max'] = (int)$raw;
     }
@@ -218,8 +226,33 @@ function heuristicExtract($transcript) {
     if (preg_match('/\b(euros?|€|EUR)\b/iu', $t)) $out['devise'] = 'EUR';
     elseif (preg_match('/\b(dirhams?|MAD|DH|DHs)\b/iu', $t)) $out['devise'] = 'MAD';
 
-    // Tel : format international simple
-    if (preg_match('/\+\d{1,3}[\s.\-]?\d[\d\s.\-]{6,}/', $t, $mm)) $out['tel'] = trim($mm[0]);
+    // Tel — V17.15 : normalisation FR/MA en E.164.
+    // FR : 06 88 28 48 77 → +33688284877
+    if (preg_match('/(?:(?:\+|00)33[\s.-]?|0)\s*([1-9])(?:[\s.-]*(\d{2})){4}/u', $t, $mm)) {
+        // Reconstruit les 10 chiffres
+        preg_match_all('/\d/', $mm[0], $dg);
+        $digits = implode('', $dg[0]);
+        // Si commence par 33, enlève-le
+        if (strpos($digits, '33') === 0 && strlen($digits) >= 11) $digits = substr($digits, 2);
+        if (strlen($digits) >= 10 && $digits[0] === '0') $digits = substr($digits, 1);
+        if (strlen($digits) === 9 && in_array($digits[0], ['1','2','3','4','5','6','7','8','9'])) {
+            $out['tel'] = '+33' . $digits;
+        }
+    }
+    // MA : +212 6XX XX XX XX ou 06XX XX XX XX avec pattern MA
+    if (!$out['tel'] && preg_match('/(?:(?:\+|00)212[\s.-]?|0)\s*([5-7])(?:[\s.-]*\d){8}/u', $t, $mm)) {
+        preg_match_all('/\d/', $mm[0], $dg);
+        $digits = implode('', $dg[0]);
+        if (strpos($digits, '212') === 0 && strlen($digits) >= 12) $digits = substr($digits, 3);
+        if (strlen($digits) >= 10 && $digits[0] === '0') $digits = substr($digits, 1);
+        if (strlen($digits) === 9) {
+            $out['tel'] = '+212' . $digits;
+        }
+    }
+    // Fallback international brut.
+    if (!$out['tel'] && preg_match('/\+\d{1,3}[\s.\-]?\d[\d\s.\-]{6,}/', $t, $mm)) {
+        $out['tel'] = preg_replace('/[^\d+]/', '', $mm[0]);
+    }
     // Email
     if (preg_match('/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i', $t, $mm)) $out['email'] = $mm[0];
 

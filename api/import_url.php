@@ -8,12 +8,8 @@ $user = requireAuth();
 $action = $_GET['action'] ?? '';
 $input = getInput();
 
-const ALLOWED_DOMAINS = [
-    'mubawab.ma', 'avito.ma', 'sarouty.ma', 'immomaroc.ma', 'agenceimmo.ma',
-    'seloger.com', 'leboncoin.fr', 'pap.fr', 'immoscout.fr', 'bien-ici.com',
-    'century21.fr', 'guy-hoquet.com', 'orpi.com',
-];
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
+// V17.15 I3 : plus de whitelist — toute URL https valide acceptée (domaine FQDN).
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 
 function getAnthropicKey() {
@@ -33,11 +29,13 @@ function domainFromUrl($url) {
     return $h;
 }
 
-function domainAllowed($url) {
-    $h = domainFromUrl($url);
-    if (!$h) return false;
-    foreach (ALLOWED_DOMAINS as $d) if ($h === $d || str_ends_with($h, '.' . $d)) return true;
-    return false;
+function urlValid($url) {
+    if (!filter_var($url, FILTER_VALIDATE_URL)) return false;
+    $scheme = parse_url($url, PHP_URL_SCHEME);
+    if (!in_array($scheme, ['http', 'https'], true)) return false;
+    $host = parse_url($url, PHP_URL_HOST);
+    if (!$host || !preg_match('/\.[a-z]{2,}$/i', $host)) return false;
+    return true;
 }
 
 function fetchHtml($url) {
@@ -45,13 +43,18 @@ function fetchHtml($url) {
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS => 4,
-        CURLOPT_TIMEOUT => 15,
-        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_MAXREDIRS => 5,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_USERAGENT => UA,
+        CURLOPT_ENCODING => '',
         CURLOPT_HTTPHEADER => [
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language: fr-FR,fr;q=0.9,en;q=0.8',
+            'Accept-Encoding: gzip, deflate, br',
+            'Cache-Control: no-cache',
+            'Pragma: no-cache',
+            'Upgrade-Insecure-Requests: 1',
         ],
         CURLOPT_SSL_VERIFYPEER => true,
     ]);
@@ -59,7 +62,10 @@ function fetchHtml($url) {
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err = curl_error($ch);
     curl_close($ch);
-    if ($err || $code >= 400 || !$body) return ['error' => 'fetch_failed (http ' . $code . ')'];
+    if ($err) return ['error' => 'Erreur réseau : ' . $err];
+    if ($code === 403 || $code === 429) return ['error' => 'Site bloque l\'extraction automatique (HTTP ' . $code . '), copier-coller manuel nécessaire', 'http_code' => $code];
+    if ($code >= 400) return ['error' => 'Page indisponible (HTTP ' . $code . ')', 'http_code' => $code];
+    if (!$body) return ['error' => 'Contenu vide'];
     return ['html' => $body, 'http_code' => $code];
 }
 
@@ -79,9 +85,21 @@ function parseJsonLd($html) {
 
 function parseMetaOG($html) {
     $out = [];
-    if (preg_match_all('#<meta[^>]+property=["\']og:([a-z_:]+)["\'][^>]+content=["\']([^"\']*)["\']#i', $html, $m, PREG_SET_ORDER)) {
-        foreach ($m as $row) $out[$row[1]] = html_entity_decode($row[2], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    // OpenGraph
+    if (preg_match_all('#<meta[^>]+property=["\'](og:[a-z_:]+|product:[a-z_:]+)["\'][^>]+content=["\']([^"\']*)["\']#i', $html, $m, PREG_SET_ORDER)) {
+        foreach ($m as $row) {
+            $k = preg_replace('/^og:|^product:/', '', $row[1]);
+            if (!isset($out[$k])) $out[$k] = html_entity_decode($row[2], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
     }
+    // Twitter Card
+    if (preg_match_all('#<meta[^>]+name=["\'](twitter:[a-z_:]+)["\'][^>]+content=["\']([^"\']*)["\']#i', $html, $m, PREG_SET_ORDER)) {
+        foreach ($m as $row) {
+            $k = preg_replace('/^twitter:/', '', $row[1]);
+            if (!isset($out[$k])) $out[$k] = html_entity_decode($row[2], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+    }
+    // Meta standard
     if (preg_match_all('#<meta[^>]+name=["\']([a-z_:]+)["\'][^>]+content=["\']([^"\']*)["\']#i', $html, $m, PREG_SET_ORDER)) {
         foreach ($m as $row) {
             $k = $row[1];
@@ -90,24 +108,41 @@ function parseMetaOG($html) {
     }
     // <title> fallback
     if (preg_match('#<title[^>]*>(.*?)</title>#is', $html, $mt)) $out['_title'] = trim(html_entity_decode(strip_tags($mt[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    // <h1> fallback
+    if (preg_match('#<h1[^>]*>(.*?)</h1>#is', $html, $mh)) $out['_h1'] = trim(html_entity_decode(strip_tags($mh[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     return $out;
 }
 
-function heuristicExtract($og, $jld, $html) {
-    $title = $og['title'] ?? $og['_title'] ?? '';
-    $description = $og['description'] ?? '';
-    // Photos : og:image + jsonld.image
+// V17.15 I3 : extrait jusqu'à 10 images depuis le HTML (og + <img> significatifs).
+function extractPhotos($html, $og, $jld) {
     $photos = [];
     foreach (['image','image:url','image:secure_url'] as $k) if (!empty($og[$k])) $photos[] = $og[$k];
     foreach ($jld as $g) {
         if (!empty($g['image'])) {
             $im = is_array($g['image']) ? $g['image'] : [$g['image']];
-            foreach ($im as $u) if (is_string($u)) $photos[] = $u;
-            else if (is_array($u) && !empty($u['url'])) $photos[] = $u['url'];
+            foreach ($im as $u) {
+                if (is_string($u)) $photos[] = $u;
+                else if (is_array($u) && !empty($u['url'])) $photos[] = $u['url'];
+            }
+        }
+    }
+    // Images significatives : classes contenant photo/gallery/image ou width >= 300
+    if (preg_match_all('#<img[^>]+src=["\']([^"\']+)["\'][^>]*>#i', $html, $mm)) {
+        foreach ($mm[1] as $src) {
+            if (!preg_match('#^https?://#i', $src)) continue;
+            if (preg_match('#\.(svg|gif)(\?|$)#i', $src)) continue;
+            if (preg_match('#(logo|icon|favicon|avatar|sprite|placeholder)#i', $src)) continue;
+            $photos[] = $src;
         }
     }
     $photos = array_values(array_unique(array_filter($photos)));
-    $photos = array_slice($photos, 0, 5);
+    return array_slice($photos, 0, 10);
+}
+
+function heuristicExtract($og, $jld, $html) {
+    $title = $og['title'] ?? $og['_title'] ?? $og['_h1'] ?? '';
+    $description = $og['description'] ?? '';
+    $photos = extractPhotos($html, $og, $jld);
 
     // Prix
     $prix = null; $devise = null;
@@ -115,6 +150,9 @@ function heuristicExtract($og, $jld, $html) {
         if (!empty($g['offers']['price'])) { $prix = (float)$g['offers']['price']; }
         if (!empty($g['offers']['priceCurrency'])) { $devise = $g['offers']['priceCurrency']; }
     }
+    // Meta price amount
+    if (!$prix && !empty($og['price:amount'])) { $prix = (float)$og['price:amount']; }
+    if (!$devise && !empty($og['price:currency'])) { $devise = $og['price:currency']; }
     if (!$prix) {
         $txt = strip_tags($html);
         if (preg_match('/(\d[\d\s\.\,]{3,})\s*(€|EUR|euros?|DH|MAD|dirhams?)/iu', $txt, $pm)) {
@@ -212,21 +250,22 @@ function claudeStructure($html, $url, $apiKey) {
 switch ($action) {
     case 'extract': {
         $url = trim((string)($input['url'] ?? ''));
-        if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) jsonError('URL invalide');
-        if (!domainAllowed($url)) jsonError('Domaine non autorisé : ' . domainFromUrl($url), 400);
+        // V17.15 I3 : plus de whitelist, toute URL http/https FQDN valide acceptée.
+        if (!$url || !urlValid($url)) jsonError('URL invalide');
         $f = fetchHtml($url);
-        if (!empty($f['error'])) jsonError($f['error'], 502);
+        if (!empty($f['error'])) jsonError($f['error'], $f['http_code'] ?? 502);
         $html = $f['html'];
         $og = parseMetaOG($html);
         $jld = parseJsonLd($html);
         $heur = heuristicExtract($og, $jld, $html);
+        $hasAny = array_filter($heur, fn($v) => $v !== null && $v !== '' && $v !== []);
         // Si clé Claude dispo, structure via Haiku (plus précis).
         $key = getAnthropicKey();
         $ai = null;
         if ($key) {
             $ai = claudeStructure($html, $url, $key);
         }
-        // Merge : Claude a priorité sur les champs qu'il remplit, heuristique comble les trous.
+        // Merge : Claude a priorité, heuristique comble.
         $merged = is_array($ai) ? array_filter($ai, fn($v) => $v !== null && $v !== '') : [];
         foreach ($heur as $k => $v) {
             if ($v === null || $v === '' || (is_array($v) && !$v)) continue;
@@ -237,6 +276,13 @@ switch ($action) {
         $merged['source_url'] = $url;
         $merged['source_domain'] = domainFromUrl($url);
         $merged['extraction_mode'] = $key && $ai ? 'ai' : 'heuristic';
+        // Si rien d'intéressant extrait → prévenir l'user
+        $interestingKeys = ['title','prix','types_bien','ville_bien'];
+        $hasAny2 = false;
+        foreach ($interestingKeys as $k) if (!empty($merged[$k])) { $hasAny2 = true; break; }
+        if (!$hasAny2) {
+            $merged['warning'] = 'Aucune info significative détectée sur cette page. Copier-coller manuel recommandé.';
+        }
         jsonOk(['extracted' => $merged]);
     }
 
