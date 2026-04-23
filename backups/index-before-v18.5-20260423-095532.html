@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.5-fab-horizontal-bottom -->
+<!-- ocre-v18.4-dictee-assistant -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2425,12 +2425,10 @@ function isIOS() {
   return /iP(hone|od|ad)/.test(navigator.platform || '') || /iPad|iPhone|iPod/.test(navigator.userAgent || '');
 }
 
-function InstallPwaBanner({onClose, aboveActionBar}) {
+function InstallPwaBanner({onClose}) {
   const ios = isIOS();
-  // V18.5 — si la barre d'actions est visible (vue liste), pousser le bandeau au-dessus.
-  const bottomOffset = aboveActionBar ? 'calc(80px + env(safe-area-inset-bottom, 0px))' : '0';
   return (
-    <div style={{position:'fixed', bottom:bottomOffset, left:0, right:0, background:'#FBF1E4', borderTop:'2px solid #B26D3A', padding:'12px 14px', zIndex:50, fontSize:13, color:'#2A2018', boxShadow:'0 -4px 12px rgba(0,0,0,.08)'}}>
+    <div style={{position:'fixed', bottom:0, left:0, right:0, background:'#FBF1E4', borderTop:'2px solid #B26D3A', padding:'12px 14px', zIndex:50, fontSize:13, color:'#2A2018', boxShadow:'0 -4px 12px rgba(0,0,0,.08)'}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10}}>
         <div style={{flex:1}}>
           <div style={{fontWeight:700, color:'#8B5E3C', marginBottom:4}}>📲 Installer Ocre sur l'écran d'accueil</div>
@@ -2632,7 +2630,7 @@ function App() {
         setView('form');
       }}/>;
   }
-  const banner = showInstallBanner && <InstallPwaBanner aboveActionBar={view === 'list'} onClose={() => { setShowInstallBanner(false); localStorage.setItem('ocre_install_dismissed_v18','1'); }}/>;
+  const banner = showInstallBanner && <InstallPwaBanner onClose={() => { setShowInstallBanner(false); localStorage.setItem('ocre_install_dismissed_v18','1'); }}/>;
   return (<>{view === 'list' ? (
     <ListView
       clients={clients} country={country} setCountry={setCountry}
@@ -3427,7 +3425,7 @@ function ListView(props) {
         <div style={{fontSize:11, color:'#8B7F6E', marginTop:6, letterSpacing:.3}}>{countText}</div>
       </div>
 
-      <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(96px + env(safe-area-inset-bottom, 0px))'}}>
+      <div style={{flex:1, overflowY:'auto', padding:12}}>
         {!showArchives && drafts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
@@ -3453,24 +3451,19 @@ function ListView(props) {
         )}
       </div>
 
-      {/* V18.5 — Barre d'actions horizontale fixed-bottom (iPhone-friendly). */}
-      <div style={{position:'fixed', bottom:0, left:0, right:0, zIndex:40,
-                   background:'#fff', borderTop:'1px solid #E8DDD0', boxShadow:'0 -2px 8px rgba(139,94,60,.05)',
-                   padding:'12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) 16px',
-                   display:'flex', justifyContent:'space-around', alignItems:'center', gap:12}}>
-        <button onClick={() => props.openImportUrl && props.openImportUrl()} title="Importer depuis une URL"
-          style={{width:52, height:52, borderRadius:'50%', background:'#FBF1E4', color:'#8B5E3C', border:'2px solid #B26D3A',
-                  fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(139,94,60,0.18)', fontFamily:'inherit',
-                  display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>📥</button>
-        <button onClick={() => props.openDictation()} title="Dicter un contact"
-          style={{width:52, height:52, borderRadius:'50%', background:'#FBF1E4', color:'#8B5E3C', border:'2px solid #B26D3A',
-                  fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(139,94,60,0.18)', fontFamily:'inherit',
-                  display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>🎤</button>
-        <button onClick={openNew} title="Saisir un contact"
-          style={{width:56, height:56, borderRadius:'50%', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none',
-                  fontSize:28, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 20px rgba(139,94,60,0.35)', fontFamily:'inherit',
-                  display:'flex', alignItems:'center', justifyContent:'center', padding:0, lineHeight:1}}>+</button>
-      </div>
+      {/* V17.14 : FAB triple vertical — import URL / dictée / saisie */}
+      <button onClick={() => props.openImportUrl && props.openImportUrl()} title="Importer depuis une URL"
+        style={{position:'fixed', bottom: 24 + 56 + 10 + 52 + 10, right:22, width:52, height:52, borderRadius:'50%',
+                background:'#FFF', color:'#8B5E3C', border:'2px solid #B26D3A',
+                fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(139,94,60,0.25)', fontFamily:'inherit'}}>📥</button>
+      <button onClick={() => props.openDictation()} title="Dicter un contact"
+        style={{position:'fixed', bottom: 24 + 56 + 10, right:22, width:52, height:52, borderRadius:'50%',
+                background:'#FFF', color:'#8B5E3C', border:'2px solid #B26D3A',
+                fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 14px rgba(139,94,60,0.25)', fontFamily:'inherit'}}>🎤</button>
+      <button onClick={openNew} title="Saisir un contact"
+        style={{position:'fixed', bottom:24, right:20, width:56, height:56, borderRadius:'50%',
+                background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none',
+                fontSize:28, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 20px rgba(139,94,60,0.35)', fontFamily:'inherit'}}>+</button>
 
       {toast && <Toast msg={toast}/>}
       {matchFor && (
