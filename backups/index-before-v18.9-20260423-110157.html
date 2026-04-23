@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.9-compact-contrast -->
+<!-- ocre-v18.8-geoloc-progressive -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,18 +13,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
 <style>
-/* V18.9 — palette unifiée + contraste WCAG AA. */
-:root{
-  --text-primary:#2A2018;
-  --text-secondary:#5A4E3D;
-  --text-hint:#8B7F6E;
-  --border-input:#C9B79A;
-  --border-subtle:#E8DDD0;
-  --ocre-primary:#B26D3A;
-  --ocre-brand:#8B5E3C;
-  --ocre-bg-soft:#FBF1E4;
-  --ocre-bg-ultralight:#FDF8F0;
-}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;overflow:hidden;height:100vh;height:100dvh;font-size:13px}
 #root{height:100%}
@@ -47,10 +35,9 @@ input, select, textarea, button { font-size:13px }
   .row-pair > *{flex:1 1 auto !important;width:100%}
 }
 
-/* V18.9 — chips profil scroll horizontal single-line (gain 40px hauteur iPhone). */
-.profils-row{display:flex;gap:5px;flex-wrap:nowrap;padding:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
-.profils-row::-webkit-scrollbar{display:none}
-.profil-chip{padding:6px 12px;border-radius:14px;cursor:pointer;font-family:inherit;font-size:12px;min-height:30px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;scroll-snap-align:start;white-space:nowrap;--ocre-pad-y:6px;--ocre-pad-x:12px}
+/* V17.4 UX v3 : chips profil wrap 2 lignes, jamais de scroll horizontal. */
+.profils-row{display:flex;gap:4px;flex-wrap:wrap;padding:0}
+.profil-chip{padding:6px 11px;border-radius:999px;cursor:pointer;font-family:inherit;font-size:12px;min-height:32px;display:inline-flex;align-items:center;justify-content:center;--ocre-pad-y:6px;--ocre-pad-x:11px}
 
 /* V17.4 UX v3 : tuiles pays / type — grille 1fr 1fr gap 6px. */
 .tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -4041,9 +4028,8 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
 }
 
 function Header({left, center, right, userMenu, setUserMenu, currentUser, logout, openPrefs}) {
-  // V18.9 — compact iPhone : padding 6px 12px (vs 10px 14px), hauteur ~44px.
   return (
-    <div style={{background:'#fff', borderBottom:'1px solid var(--border-subtle)', padding:'6px 12px', position:'sticky', top:0, zIndex:10}}>
+    <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, position:'relative'}}>
         <div>{left}</div>
         <div onClick={() => setUserMenu && setUserMenu(!userMenu)} style={{cursor:'pointer', textAlign:'center', flex:1}}>{center}</div>
@@ -4102,8 +4088,8 @@ function ListView(props) {
         left={
           <div ref={paysBtnRef} style={{position:'relative'}}>
             <button onClick={() => setPaysPickerOpen(o => !o)}
-              style={{background:'transparent', border:'1px solid var(--border-input)', borderRadius:8, padding:'3px 8px', fontSize:12, fontWeight:600, color:'var(--text-primary)', cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:3}}>
-              <span style={{fontSize:14}}>{pays.f}</span> {pays.d}
+              style={{background:'#FDFAF7', border:'1.5px solid #E2D8CC', borderRadius:10, padding:'5px 10px', fontSize:13, fontWeight:600, color:'#2A2018', cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:4}}>
+              {pays.f} {pays.d}
               <span style={{fontSize:9, opacity:.6}}>▾</span>
             </button>
             {paysPickerOpen && (
@@ -4125,7 +4111,7 @@ function ListView(props) {
             )}
           </div>
         }
-        center={<div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'var(--ocre-brand)', letterSpacing:.3, fontStyle:'italic'}}>Ocre Immo</div>}
+        center={<div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', letterSpacing:.5}}>Ocre Immo</div>}
         right={
           <button onClick={() => setShowArchives(!showArchives)} style={{background:'none', border:'none', cursor:'pointer', padding:4}} title={showArchives ? 'Voir contacts' : 'Voir archives'}>
             <ArchiveIcon color={showArchives ? '#C96B2E' : '#8B5E3C'}/>
@@ -4134,9 +4120,8 @@ function ListView(props) {
         userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs}
       />
 
-      {/* V18.9 — barre filtres compacte single-line scroll horizontal. countText déplacé en mini-texte à droite. */}
-      <div style={{padding:'6px 10px', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:8}}>
-        <div className="profils-row" style={{flex:1, minWidth:0}}>
+      <div style={{padding:'10px 14px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
+        <div className="profils-row">
           {PROFILS_ORDER.map(p => {
             const active = p === activeProfil;
             return (
@@ -4145,7 +4130,7 @@ function ListView(props) {
             );
           })}
         </div>
-        <div style={{fontSize:10, color:'var(--text-secondary)', whiteSpace:'nowrap', flexShrink:0, fontWeight:600}}>{showArchives ? filtered.length + ' arch.' : drafts.length + 'b · ' + contacts.length + 'c'}</div>
+        <div style={{fontSize:11, color:'#8B7F6E', marginTop:6, letterSpacing:.3}}>{countText}</div>
       </div>
 
       <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(96px + env(safe-area-inset-bottom, 0px))'}}>
