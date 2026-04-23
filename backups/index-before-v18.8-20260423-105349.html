@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.8-geoloc-progressive -->
+<!-- ocre-v18.7-accordion-progressive -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1323,12 +1323,14 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
       {/* V18.7 — Étape 2 progressive : révélée après pays + au moins 1 type cochés. */}
       <AnimatedReveal show={!!(bien.pays && anyType)}>
         <>
-          {/* V18.8 — Ville (CitySuggestField historique) puis DistrictPicker dynamique Overpass. */}
+          <CitySuggestField label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)} suggestAction="suggest_address"/>
           <div className="row-pair">
             <CitySuggestField label="Ville" value={bien.ville} onChange={v => setB('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
-            <DistrictPicker ville={bien.ville} pays={bien.pays}
-              value={bien.quartier} onChange={v => setB('quartier', v)}
-              fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
+            {bien.pays === 'MA' ? (
+              <StaticSuggestField label="Quartier" value={bien.quartier} onChange={v => setB('quartier', v)} suggestions={QUARTIERS_MARRAKECH} placeholder="Palmeraie, Gueliz…" style={{flex:1}}/>
+            ) : (
+              <Field label="GPS (texte, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589" style={{flex:1}}/>
+            )}
           </div>
           {bien.pays === 'MA' && <Field label="GPS (texte, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589"/>}
           {/* V17.3 Phase 2b : carte interactive (fallback sur champ texte ci-dessus) */}
@@ -1766,26 +1768,6 @@ const GEOCODE_FALLBACK = {
 const PAYS_NOM = {MA:'Maroc', FR:'France', ES:'Espagne', IT:'Italie', PT:'Portugal',
   BE:'Belgique', CH:'Suisse', DE:'Allemagne', GB:'Royaume-Uni', US:'États-Unis',
   CA:'Canada', NL:'Pays-Bas', LU:'Luxembourg'};
-// V18.8 — coords centres pays pour flyTo cascade (zoom 6 niveau pays).
-const PAYS_CENTERS = {
-  MA: [31.7917, -7.0926], FR: [46.2276, 2.2137], ES: [40.4637, -3.7492],
-  IT: [41.8719, 12.5674], PT: [39.3999, -8.2245], BE: [50.5039, 4.4699],
-  CH: [46.8182, 8.2275], DE: [51.1657, 10.4515], GB: [55.3781, -3.4360],
-  US: [37.0902, -95.7129], CA: [56.1304, -106.3468], NL: [52.1326, 5.2913],
-  LU: [49.8153, 6.1296], TN: [33.8869, 9.5375], DZ: [28.0339, 1.6596],
-  EG: [26.0975, 31.2357], SN: [14.4974, -14.4524], AE: [23.4241, 53.8478],
-};
-// V18.8 — quartiers pinnés (populaires) en haut du picker pour les villes principales.
-const PINNED_DISTRICTS = {
-  'marrakech|MA': ['Médina','Gueliz','Hivernage','Palmeraie','Prestigia','Annakhil','Targa','Ourika'],
-  'casablanca|MA': ['Maarif','Ain Diab','Anfa','Bourgogne','Palmier','Gauthier','Racine','Bouskoura','Californie'],
-  'rabat|MA': ['Agdal','Hay Riad','Souissi','Hassan','Médina','Yacoub El Mansour'],
-  'tanger|MA': ['Malabata','Marshan','Iberia','Ville Nouvelle','Médina','Charf'],
-  'agadir|MA': ['Founty','Talborjt','Hay Mohammadi','Sonaba','Anza'],
-  'paris|FR': ['1er','2e','3e','4e','5e','6e','7e','8e','16e','17e','Marais','Saint-Germain'],
-  'lyon|FR': ['Presqu\'île','Vieux Lyon','Croix-Rousse','Confluence','Brotteaux','Part-Dieu'],
-  'nantes|FR': ['Centre','Île de Nantes','Hauts-Pavés','Saint-Félix','Erdre','Doulon'],
-};
 function geocodeCacheGet(key) {
   try {
     const raw = localStorage.getItem('ocre_geocode_v1::' + key);
@@ -1832,247 +1814,9 @@ async function geocodeNominatim(ville, pays, quartier) {
   return null;
 }
 
-// V18.8 — Overpass : récupère les quartiers d'une ville (admin_level 9/10 + place suburb/neighbourhood).
-async function fetchDistrictsOverpass(ville, pays) {
-  if (!ville) return null;
-  const cacheKey = 'ocre_districts_v1::' + ville.toLowerCase().trim() + '|' + pays;
-  try {
-    const raw = localStorage.getItem(cacheKey);
-    if (raw) {
-      const o = JSON.parse(raw);
-      if (o && o.ts && (Date.now() - o.ts) < 30 * 86400 * 1000 && Array.isArray(o.list)) return o.list;
-    }
-  } catch (e) {}
-  const query = `[out:json][timeout:15];
-area["name"="${ville.replace(/"/g,'\\"')}"]["admin_level"~"^[6-8]$"]->.a;
-(
-  node["place"~"^(suburb|neighbourhood|quarter|district|locality)$"](area.a);
-  relation["admin_level"~"^(9|10)$"](area.a);
-  relation["place"~"^(suburb|neighbourhood|quarter|district)$"](area.a);
-  way["place"~"^(suburb|neighbourhood|quarter|district)$"](area.a);
-);
-out center tags;`;
-  try {
-    const r = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: 'data=' + encodeURIComponent(query),
-    });
-    if (!r.ok) throw new Error('http ' + r.status);
-    const j = await r.json();
-    if (!j.elements) throw new Error('no elements');
-    const seen = new Set();
-    const list = [];
-    for (const el of j.elements) {
-      const name = el.tags && (el.tags.name || el.tags['name:fr']);
-      if (!name) continue;
-      const k = name.toLowerCase().trim();
-      if (seen.has(k)) continue;
-      seen.add(k);
-      list.push(name);
-    }
-    list.sort((a, b) => a.localeCompare(b, 'fr'));
-    try { localStorage.setItem(cacheKey, JSON.stringify({ts: Date.now(), list})); } catch (e) {}
-    return list;
-  } catch (e) {
-    return null;
-  }
-}
-
-// V18.8 — DistrictPicker bottom-sheet : Overpass + cache + pinned + fallback hardcoded.
-function DistrictPicker({ville, pays, value, onChange, fallbackList}) {
-  const [open, setOpen] = React.useState(false);
-  const [list, setList] = React.useState(null);
-  const [loading, setLoading] = React.useState(false);
-  const [search, setSearch] = React.useState('');
-  const pinned = PINNED_DISTRICTS[(ville || '').toLowerCase() + '|' + pays] || [];
-
-  async function loadList() {
-    if (!ville) return;
-    setLoading(true);
-    let r = await fetchDistrictsOverpass(ville, pays);
-    if (!r || r.length === 0) r = fallbackList || [];
-    // Dédup avec pinned
-    const all = Array.from(new Set([...pinned, ...r]));
-    setList(all);
-    setLoading(false);
-  }
-  React.useEffect(() => { if (open && !list) loadList(); }, [open]);
-
-  const filtered = list
-    ? list.filter(d => !search || d.toLowerCase().includes(search.toLowerCase()))
-    : [];
-
-  return (
-    <div style={{flex:1}}>
-      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Quartier</label>
-      <div onClick={() => ville && setOpen(true)}
-        style={{padding:'9px 11px', borderRadius:8, border:'1.5px solid ' + (value ? '#BBA88B' : '#E8DDD0'),
-                background: !ville ? '#F4EEE6' : (value ? '#FFFCF5' : '#FDFAF7'),
-                fontSize:14, cursor: ville ? 'pointer' : 'not-allowed', color: value ? '#2A2018' : '#B5A78F',
-                fontFamily:'inherit', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-        <span>{value || (ville ? 'Choisir un quartier…' : 'Saisir d\'abord la ville')}</span>
-        <span style={{color:'#8B7F6E'}}>▾</span>
-      </div>
-      {open && (
-        <div className="bsheet-overlay" onClick={() => setOpen(false)}>
-          <div className="bsheet" onClick={e => e.stopPropagation()}>
-            <div className="bsheet-handle"/>
-            <div className="bsheet-head">
-              <div className="bsheet-title">Quartiers de {ville}</div>
-              <button type="button" className="bsheet-close" onClick={() => setOpen(false)}>×</button>
-            </div>
-            <div className="bsheet-search">
-              <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder={loading ? 'Chargement quartiers…' : 'Rechercher (ex: Gueliz, Maarif)'}/>
-            </div>
-            <div className="bsheet-list">
-              {loading && <div className="bsheet-empty">Chargement (Overpass OpenStreetMap)…</div>}
-              {!loading && pinned.length > 0 && !search && <div className="bsheet-group-hdr">Populaires</div>}
-              {!loading && !search && pinned.map(d => (
-                <div key={'p-'+d} className={'bsheet-item ' + (value === d ? 'selected' : '')}
-                  onClick={() => { onChange(d); setOpen(false); setSearch(''); }}>
-                  <span className="check">{value === d ? '✓' : ''}</span>
-                  <span>{d}</span>
-                </div>
-              ))}
-              {!loading && filtered.length > 0 && (search || pinned.length === 0) && <div className="bsheet-group-hdr">Tous ({filtered.length})</div>}
-              {!loading && filtered.filter(d => !pinned.includes(d) || search).map(d => (
-                <div key={d} className={'bsheet-item ' + (value === d ? 'selected' : '')}
-                  onClick={() => { onChange(d); setOpen(false); setSearch(''); }}>
-                  <span className="check">{value === d ? '✓' : ''}</span>
-                  <span>{d}</span>
-                </div>
-              ))}
-              {!loading && list && filtered.length === 0 && (
-                <div className="bsheet-empty">
-                  Aucun résultat.
-                  <div style={{marginTop:10}}>
-                    <button type="button" onClick={() => { onChange(search); setOpen(false); }}
-                      style={{padding:'8px 14px', background:'#FBF1E4', color:'#8B5E3C', border:'1.5px solid #B26D3A', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
-                      Saisir « {search} »
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// V18.8 — LocationAutocomplete : Nominatim search debounce 500ms biaisé sur viewbox ville/quartier.
-const LOC_TYPE_ICON = {road:'🛣️', highway:'🛣️', shop:'🏪', amenity:'🏪', restaurant:'🍽️', tourism:'🏨', hotel:'🏨', historic:'🏛️', place:'📍'};
-
-function LocationAutocomplete({label, value, onChange, onPick, ville, pays, quartier}) {
-  const [q, setQ] = React.useState(value || '');
-  const [results, setResults] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [open, setOpen] = React.useState(false);
-  const tRef = React.useRef(null);
-  React.useEffect(() => { setQ(value || ''); }, [value]);
-
-  async function search(query) {
-    if (!query || query.length < 3) { setResults([]); return; }
-    setLoading(true);
-    try {
-      const paysName = PAYS_NOM[pays] || pays || '';
-      const ctx = [quartier, ville, paysName].filter(Boolean).join(', ');
-      const fullQ = ctx ? (query + ', ' + ctx) : query;
-      const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=10&addressdetails=1&extratags=1&accept-language=fr&q=' + encodeURIComponent(fullQ);
-      const r = await fetch(url, {headers:{'Accept':'application/json'}});
-      if (r.ok) {
-        const j = await r.json();
-        setResults(Array.isArray(j) ? j : []);
-      }
-    } catch (e) {}
-    setLoading(false);
-  }
-  function onInput(v) {
-    setQ(v); onChange && onChange(v); setOpen(true);
-    if (tRef.current) clearTimeout(tRef.current);
-    tRef.current = setTimeout(() => search(v), 500);
-  }
-  function pickResult(r) {
-    const addr = r.address || {};
-    const road = [addr.house_number, addr.road].filter(Boolean).join(' ');
-    const display = road || r.display_name || r.name;
-    setQ(display);
-    setOpen(false);
-    setResults([]);
-    onPick && onPick({
-      lat: parseFloat(r.lat), lng: parseFloat(r.lon),
-      adresse: display,
-      ville: addr.city || addr.town || addr.village || addr.municipality,
-      quartier: addr.suburb || addr.neighbourhood || addr.quarter,
-      code_postal: addr.postcode,
-      pays: addr.country_code ? addr.country_code.toUpperCase() : null,
-      raw: r,
-    });
-  }
-  function iconFor(r) {
-    const c = (r.class || '').toLowerCase();
-    if (LOC_TYPE_ICON[c]) return LOC_TYPE_ICON[c];
-    if (c === 'shop' || c === 'amenity') {
-      const t = (r.type || '').toLowerCase();
-      if (t === 'restaurant' || t === 'cafe' || t === 'fast_food') return '🍽️';
-      if (t === 'hotel' || t === 'motel') return '🏨';
-      return '🏪';
-    }
-    return LOC_TYPE_ICON[c] || '📍';
-  }
-
-  return (
-    <div style={{position:'relative', marginBottom:10}}>
-      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label || 'Adresse, rue, lieu-dit ou commerce'}</label>
-      <input value={q} onChange={e => onInput(e.target.value)} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)}
-        placeholder={ville ? 'Avenue Mohammed V, Café Argana…' : 'Saisis d\'abord la ville'}
-        style={{width:'100%', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018',
-                border:'1.5px solid ' + (q ? '#BBA88B' : '#E8DDD0'), background: q ? '#FFFCF5' : '#FDFAF7'}}/>
-      {open && (loading || results.length > 0) && (
-        <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:300, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:60, marginTop:2}}>
-          {loading && <div style={{padding:12, fontSize:12, color:'#8B7F6E'}}>Recherche…</div>}
-          {!loading && results.map((r, i) => (
-            <div key={i} onMouseDown={e => e.preventDefault()} onClick={() => pickResult(r)}
-              style={{padding:'10px 12px', cursor:'pointer', borderBottom: i < results.length - 1 ? '1px solid #F4EEE6' : 'none', fontSize:13, display:'flex', alignItems:'center', gap:8}}>
-              <span style={{fontSize:16, flexShrink:0}}>{iconFor(r)}</span>
-              <div style={{flex:1, minWidth:0}}>
-                <div style={{fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{r.display_name}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// V18.8 — reverse geocoding Nominatim : lat/lon → adresse complète.
-async function reverseGeocodeNominatim(lat, lng) {
-  try {
-    const url = 'https://nominatim.openstreetmap.org/reverse?format=json&accept-language=fr&addressdetails=1&zoom=18&lat=' + lat + '&lon=' + lng;
-    const r = await fetch(url, {headers:{'Accept':'application/json'}});
-    if (!r.ok) return null;
-    const j = await r.json();
-    if (!j || !j.address) return null;
-    const a = j.address;
-    return {
-      adresse: [a.house_number, a.road].filter(Boolean).join(' ') || j.display_name,
-      ville: a.city || a.town || a.village || a.municipality || null,
-      quartier: a.suburb || a.neighbourhood || a.quarter || null,
-      code_postal: a.postcode || null,
-      pays: a.country_code ? a.country_code.toUpperCase() : null,
-      display_name: j.display_name,
-    };
-  } catch (e) { return null; }
-}
-
 // V17.3 Phase 2b — MapPicker Leaflet + OpenStreetMap. Mode précis (marker) ou zone (cercle).
 // V18.0 — Auto-centrage carte sur ville+quartier du bien via Nominatim, cache localStorage,
 // fallback hardcodé MA/FR. Respecte position manuelle (drag/clic/GPS) via gps_source.
-// V18.8 — Cascade flyTo (pays z6 → ville z12 → quartier z14 → adresse z17), rayon slider live (50-5000m), reverse-geocoding Ma position.
 function MapPicker({bien, setB, showToast}) {
   const mapRef = React.useRef(null);
   // V17.8 : refs stables pour marker + circle, setRadius live sans recreate.
@@ -2180,126 +1924,60 @@ function MapPicker({bien, setB, showToast}) {
     }
   }, [mode, radius]);
 
-  // V18.0 + V18.8 — Auto-centrage cascade : pays z6 → ville z12 → quartier z14 → adresse z17 (flyTo 1s).
+  // V18.0 — Auto-centrage Nominatim quand ville/pays/quartier change. Debounce 800ms.
   // N'écrase JAMAIS gps_source='manual' ou 'gps' (drag, clic, géoloc utilisateur).
   React.useEffect(() => {
-    const pays = (bien.pays || '').trim();
     const ville = (bien.ville || '').trim();
-    const quartier = (bien.quartier || '').trim();
-    if (!pays) return;
+    const pays = (bien.pays || '').trim();
+    if (!ville || !pays) return;
     if (bien.gps_source === 'manual' || bien.gps_source === 'gps') return;
     let cancelled = false;
     const t = setTimeout(async () => {
+      const r = await geocodeNominatim(ville, pays, bien.quartier);
+      if (cancelled || !r) return;
       const lr = leafletRef.current;
-      if (!lr || !lr.map) return;
-      // Cascade : si quartier → précis ; sinon ville → ville ; sinon pays → centre pays.
-      if (quartier && ville) {
-        const r = await geocodeNominatim(ville, pays, quartier);
-        if (cancelled) return;
-        if (r) {
-          const lat = Number(r.lat.toFixed(6)), lng = Number(r.lng.toFixed(6));
-          if (!bien.gps_source || bien.gps_source === 'geocode') {
-            setB('gps_lat', lat.toFixed(6)); setB('gps_lng', lng.toFixed(6)); setB('gps_source', 'geocode');
-          }
-          lr.map.flyTo([lat, lng], 14, {duration: 1.0});
-          if (window.L) place(lat, lng);
-          return;
-        }
+      const lat = Number(r.lat.toFixed(6));
+      const lng = Number(r.lng.toFixed(6));
+      // Écrit seulement si pas déjà manuellement posé.
+      if (!bien.gps_source || bien.gps_source === 'geocode') {
+        setB('gps_lat', lat.toFixed(6));
+        setB('gps_lng', lng.toFixed(6));
+        setB('gps_source', 'geocode');
       }
-      if (ville) {
-        const r = await geocodeNominatim(ville, pays, '');
-        if (cancelled) return;
-        if (r) {
-          const lat = Number(r.lat.toFixed(6)), lng = Number(r.lng.toFixed(6));
-          if (!bien.gps_source || bien.gps_source === 'geocode') {
-            setB('gps_lat', lat.toFixed(6)); setB('gps_lng', lng.toFixed(6)); setB('gps_source', 'geocode');
-          }
-          lr.map.flyTo([lat, lng], 12, {duration: 1.0});
-          if (window.L) place(lat, lng);
-          return;
-        }
+      // Recentre la carte (zoom 15 si quartier précis, 13 sinon).
+      if (lr && lr.map) {
+        const zoom = bien.quartier ? 15 : 13;
+        lr.map.setView([lat, lng], zoom);
+        if (window.L) place(lat, lng);
       }
-      // Pays seul → centre pays z6.
-      const c = PAYS_CENTERS[pays];
-      if (c) {
-        lr.map.flyTo(c, 6, {duration: 1.0});
-      }
-    }, 600);
+    }, 800);
     return () => { cancelled = true; clearTimeout(t); };
   }, [bien.ville, bien.pays, bien.quartier]);
 
-  // V18.8 — Ma position + reverse geocoding Nominatim → pré-remplit adresse/ville/quartier/CP/pays.
-  async function useMyLocation() {
+  function useMyLocation() {
     if (!navigator.geolocation) { showToast && showToast('Géolocalisation non supportée'); return; }
-    showToast && showToast('📍 Localisation…');
     navigator.geolocation.getCurrentPosition(
-      async pos => {
+      pos => {
         const {latitude, longitude} = pos.coords;
         setB('gps_lat', latitude.toFixed(6));
         setB('gps_lng', longitude.toFixed(6));
-        setB('gps_source', 'gps');
-        // Mode auto : Précis avec rayon 50m (on est sur place).
-        setMode('precis');
+        setB('gps_source', 'gps'); // V18.0 : géoloc utilisateur = manuelle, prioritaire.
         if (leafletRef.current.map) {
-          leafletRef.current.map.flyTo([latitude, longitude], 17, {duration: 0.8});
+          leafletRef.current.map.setView([latitude, longitude], 15);
           place(latitude, longitude);
-        }
-        // Reverse geocoding pour pré-remplir.
-        const rev = await reverseGeocodeNominatim(latitude, longitude);
-        if (rev) {
-          if (rev.adresse) setB('adresse', rev.adresse);
-          if (rev.ville) setB('ville', rev.ville);
-          if (rev.quartier) setB('quartier', rev.quartier);
-          if (rev.code_postal) setB('code_postal', rev.code_postal);
-          if (rev.pays && !bien.pays) setB('pays', rev.pays);
-          showToast && showToast('📍 Position : ' + (rev.adresse || rev.display_name || 'enregistrée'));
-        } else {
-          showToast && showToast('📍 Position GPS enregistrée');
         }
       },
       err => showToast && showToast('Position refusée : ' + (err.message || 'erreur')),
-      {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+      {enableHighAccuracy:true, timeout:10000}
     );
-  }
-  // V18.8 — pick depuis LocationAutocomplete : set GPS + adresse + flyTo z17.
-  function applyLocationPick(pick) {
-    if (!pick) return;
-    setB('gps_lat', pick.lat.toFixed(6));
-    setB('gps_lng', pick.lng.toFixed(6));
-    setB('gps_source', 'manual');
-    if (pick.adresse) setB('adresse', pick.adresse);
-    if (pick.code_postal) setB('code_postal', pick.code_postal);
-    if (leafletRef.current.map) {
-      leafletRef.current.map.flyTo([pick.lat, pick.lng], 17, {duration: 0.8});
-      place(pick.lat, pick.lng);
-    }
-    showToast && showToast('📍 ' + (pick.adresse || 'Position enregistrée'));
   }
 
   if (!ready && typeof window !== 'undefined' && !window.L) {
     return <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'10px 0'}}>Carte indisponible — utilisez le champ GPS texte ci-dessus.</div>;
   }
 
-  // V18.8 — breadcrumb "Pays › Ville › Quartier › Adresse" sticky au-dessus carte.
-  const paysFlag = (PAYS_BIEN.find(p => p.c === bien.pays) || {}).f || '';
-  const crumbs = [paysFlag + (paysFlag ? ' ' : '') + (bien.pays || ''), bien.ville, bien.quartier, bien.adresse].filter(Boolean);
-
   return (
     <div style={{marginTop:6, marginBottom:10}}>
-      {/* V18.8 — Autocomplete adresse/rue/lieu/commerce (Nominatim biaisé sur ville). */}
-      {bien.ville && (
-        <LocationAutocomplete value={bien.adresse} onChange={v => setB('adresse', v)} onPick={applyLocationPick}
-          ville={bien.ville} pays={bien.pays} quartier={bien.quartier}
-          label="Adresse, rue, lieu-dit ou commerce"/>
-      )}
-      {/* V18.8 — breadcrumb cascade sticky */}
-      {crumbs.length > 0 && (
-        <div style={{display:'flex', alignItems:'center', gap:6, padding:'8px 10px', background:'#FBF1E4', border:'1px solid #E8DDD0', borderRadius:8, marginBottom:6, fontSize:12, color:'#5C4A3A', fontWeight:600, overflow:'hidden'}}>
-          <span style={{flex:1, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-            {crumbs.map((c, i) => <span key={i}>{i > 0 && <span style={{color:'#B5A78F', margin:'0 4px'}}>›</span>}{c}</span>)}
-          </span>
-        </div>
-      )}
       <div style={{display:'flex', gap:6, marginBottom:6}}>
         <button type="button" onClick={() => setMode('precis')}
           style={{flex:1, padding:'7px 8px', borderRadius:8, border:'1.5px solid ' + (mode === 'precis' ? '#8B5E3C' : '#E8DDD0'),
@@ -2315,15 +1993,11 @@ function MapPicker({bien, setB, showToast}) {
       {mode === 'zone' && (
         <div style={{marginBottom:6, display:'flex', alignItems:'center', gap:8}}>
           <label style={{fontSize:11, color:'#8B7F6E', fontWeight:600, textTransform:'uppercase'}}>Rayon</label>
-          {/* V18.8 — slider 50-5000m, oninput live (chaque pixel) → setRadius immédiat → useEffect met à jour L.circle.setRadius(). */}
-          <input type="range" min="50" max="5000" step="50" value={radius}
-            onChange={e => setRadius(Number(e.target.value))}
-            onInput={e => setRadius(Number(e.target.value))}
-            style={{flex:1}}/>
-          <span style={{fontSize:12, color:'#2A2018', fontWeight:700, minWidth:70, textAlign:'right'}}>{radius >= 1000 ? (radius/1000).toFixed(radius % 1000 === 0 ? 0 : 1) + ' km' : radius + ' m'}</span>
+          <input type="range" min="500" max="2000" step="100" value={radius} onChange={e => setRadius(Number(e.target.value))} style={{flex:1}}/>
+          <span style={{fontSize:12, color:'#2A2018', fontWeight:700, minWidth:60, textAlign:'right'}}>{radius} m</span>
         </div>
       )}
-      <div ref={mapRef} style={{height:300, width:'100%', borderRadius:10, border:'1px solid #EDE6DC', overflow:'hidden'}}/>
+      <div ref={mapRef} style={{height:260, width:'100%', borderRadius:10, border:'1px solid #EDE6DC', overflow:'hidden'}}/>
       {bien.gps_lat && bien.gps_lng && (
         <div style={{fontSize:11, color:'#8B7F6E', marginTop:4, fontFamily:'monospace'}}>{bien.gps_lat}, {bien.gps_lng}</div>
       )}
