@@ -9,6 +9,51 @@ $action = $_GET['action'] ?? '';
 $input = getInput();
 
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
+
+// V18.4 — prompt classification d'intention pour assistant vocal multi-actions.
+const SYSTEM_PROMPT_V2 = <<<'PROMPT'
+Tu es un assistant vocal pour un agent immobilier. Analyse la transcription FRANÇAIS et retourne UNIQUEMENT un JSON valide :
+{
+  "intent": "creer_dossier" | "creer_rdv" | "creer_todo" | "noter_interaction" | "recherche_dossier",
+  "data": { ... selon l'intent ... }
+}
+
+Règles détection intent :
+- "j'ai rencontré X", "nouveau client X", "X cherche Y", "X veut acheter/vendre/louer" → creer_dossier (data = champs dossier comme avant)
+- "rappelle-moi de", "il faut que je", "ne pas oublier de", "tâche :" → creer_todo (data = {client_ref, title, due_relatif, priority})
+- "rendez-vous avec X", "visite demain", "appeler X lundi", "RDV X", "programme un rendez-vous" → creer_rdv (data = {client_ref, type:'rdv'|'appel'|'visite'|'email', titre, when_relatif, location, notes, reminder_min_before})
+- "appelé X aujourd'hui", "X m'a dit que", "visité le bien de X", "envoyé email à X" → noter_interaction (data = {client_ref, kind:'note'|'appel_entrant'|'appel_sortant'|'email_envoye'|'email_recu'|'visite'|'sms', content})
+- "dossier de X", "où en est X", "trouve X" → recherche_dossier (data = {client_ref})
+
+Pour creer_rdv / creer_todo / noter_interaction :
+- "client_ref" = nom OU prénom mentionné (ex: "Marc", "Sophie Dupont", "M. Belkhayat")
+- "when_relatif" / "due_relatif" : transforme en datetime ISO (YYYY-MM-DDTHH:MM:00) en utilisant la date_ref_iso fournie. Ex: "demain 15h" + date_ref=2026-04-23 → "2026-04-24T15:00:00". "lundi prochain 10h" → calcule le lundi suivant.
+- priority : "urgent"/"vite" → high ; "quand j'aurai le temps" → low ; sinon medium
+- reminder_min_before : défaut 60. "1h avant" → 60. "30 min avant" → 30. "1 jour avant" → 1440.
+
+Pour creer_dossier, utilise tout le schéma précédent : {prenom,nom,societe_nom,profil,types_bien,pays_bien,ville_bien,quartier_bien,budget_min,budget_max,devise,pays_residence,tel,email,notes_libres}.
+
+Tolérance fautes reconnaissance vocale (Maroc/France) :
+- 'Arade'/'arabe' contexte MA → Riad
+- 'Régali'/'régalie' → Gueliz
+- 'Marakèche'/'Maraqèche' → Marrakech
+- 'monsieur X'/'madame Y' → nom de famille
+- Numéros FR → +33XXXXXXXXX, MA → +212XXXXXXXXX
+
+EXEMPLES :
+Input: "Rappelle-moi d'appeler Marc demain"
+Output: {"intent":"creer_todo","data":{"client_ref":"Marc","title":"Appeler Marc","due_relatif":"demain","priority":"medium"}}
+
+Input: "Visite du riad avec Sophie Dupont lundi 15h"
+Output: {"intent":"creer_rdv","data":{"client_ref":"Sophie Dupont","type":"visite","titre":"Visite du riad","when_relatif":"lundi 15h","reminder_min_before":60}}
+
+Input: "Appelé Ahmed ce matin il confirme la visite de jeudi"
+Output: {"intent":"noter_interaction","data":{"client_ref":"Ahmed","kind":"appel_sortant","content":"Confirme la visite de jeudi"}}
+
+Input: "Marc Belkhayat cherche un riad à Marrakech Gueliz 2 millions de dirhams"
+Output: {"intent":"creer_dossier","data":{"prenom":"Marc","nom":"Belkhayat","profil":"Acheteur","types_bien":["Riad"],"pays_bien":"MA","ville_bien":"Marrakech","quartier_bien":"Gueliz","budget_max":2000000,"devise":"MAD"}}
+PROMPT;
+
 const SYSTEM_PROMPT = <<<'PROMPT'
 Tu extrais des informations structurées d'une note vocale d'un agent immobilier (français). Tu retournes UNIQUEMENT un JSON valide, sans texte autour, sans markdown.
 
@@ -286,7 +331,77 @@ function heuristicExtract($transcript) {
     return $out;
 }
 
+// V18.4 — variante extract avec classification intent.
+function callClaudeIntent($transcript, $date_ref_iso) {
+    $key = getAnthropicKey();
+    if (!$key) return ['error' => 'no_key'];
+    $userMsg = "Date de référence : $date_ref_iso\n\nTranscription :\n$transcript";
+    $payload = [
+        'model' => CLAUDE_MODEL,
+        'max_tokens' => 800,
+        'system' => SYSTEM_PROMPT_V2,
+        'messages' => [['role' => 'user', 'content' => $userMsg]],
+    ];
+    $ch = curl_init('https://api.anthropic.com/v1/messages');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'x-api-key: ' . $key,
+            'anthropic-version: 2023-06-01',
+        ],
+        CURLOPT_TIMEOUT => 30,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    if ($err) return ['error' => 'curl: ' . $err];
+    if ($code >= 400) return ['error' => 'http ' . $code];
+    $j = json_decode($resp, true);
+    if (!$j || empty($j['content'])) return ['error' => 'no_content'];
+    $text = '';
+    foreach ($j['content'] as $c) if (($c['type'] ?? '') === 'text') $text .= $c['text'];
+    if (preg_match('/\{[\s\S]*\}/', $text, $m)) {
+        $parsed = json_decode($m[0], true);
+        if (is_array($parsed) && isset($parsed['intent'])) return ['parsed' => $parsed];
+    }
+    return ['error' => 'parse_failed', 'raw' => $text];
+}
+
 switch ($action) {
+    case 'extract_v2': {
+        $transcript = trim((string)($input['transcript'] ?? ''));
+        if (!$transcript) jsonError('transcript requis');
+        if (mb_strlen($transcript) > 4000) $transcript = mb_substr($transcript, 0, 4000);
+        $date_ref = (string)($input['date_ref_iso'] ?? date('c'));
+        $r = callClaudeIntent($transcript, $date_ref);
+        if (isset($r['parsed'])) {
+            jsonOk(['intent' => $r['parsed']['intent'], 'data' => $r['parsed']['data'] ?? [], 'transcript' => $transcript, 'mode' => 'ai']);
+        }
+        // Fallback heuristique : si phrase contient "rappelle", "rendez-vous", "appelé"… on devine intent.
+        $low = mb_strtolower($transcript);
+        $intent = 'creer_dossier';
+        $data = [];
+        if (preg_match('/\b(rappelle|tâche|à\s+faire|n\'oublie\s+pas)\b/u', $low)) {
+            $intent = 'creer_todo';
+            $data = ['title' => $transcript];
+        } elseif (preg_match('/\b(rendez-vous|rdv|visite|appeler)\b/u', $low)) {
+            $intent = 'creer_rdv';
+            $data = ['titre' => $transcript, 'type' => preg_match('/visite/', $low) ? 'visite' : (preg_match('/appel/', $low) ? 'appel' : 'rdv')];
+        } elseif (preg_match('/\b(appelé|envoyé|m\'a\s+dit)\b/u', $low)) {
+            $intent = 'noter_interaction';
+            $data = ['kind' => preg_match('/appel/', $low) ? 'appel_sortant' : 'note', 'content' => $transcript];
+        } else {
+            // Heuristique dossier classique
+            $heur = heuristicExtract($transcript);
+            if ($heur) { $data = $heur; }
+        }
+        jsonOk(['intent' => $intent, 'data' => $data, 'transcript' => $transcript, 'mode' => 'heuristic', 'ai_error' => $r['error'] ?? 'no_key']);
+    }
+
     case 'extract': {
         $transcript = trim((string)($input['transcript'] ?? ''));
         if (!$transcript) jsonError('transcript requis');
