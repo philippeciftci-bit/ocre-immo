@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.0-schema-k1 -->
+<!-- ocre-v17.15-fixes-critiques -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1703,77 +1703,7 @@ function BureauFields({bien, setB, askingMode}) {
   );
 }
 
-// V18.0 — Géocodage Nominatim avec cache localStorage + fallback villes hardcodées MA/FR.
-const GEOCODE_FALLBACK = {
-  // Maroc
-  'marrakech|MA': [31.6295, -7.9811], 'casablanca|MA': [33.5731, -7.5898],
-  'rabat|MA': [34.0209, -6.8416], 'tanger|MA': [35.7595, -5.8340],
-  'agadir|MA': [30.4278, -9.5981], 'essaouira|MA': [31.5125, -9.7749],
-  'fès|MA': [34.0181, -5.0078], 'fes|MA': [34.0181, -5.0078],
-  'meknès|MA': [33.8935, -5.5473], 'meknes|MA': [33.8935, -5.5473],
-  'oujda|MA': [34.6814, -1.9086], 'tétouan|MA': [35.5785, -5.3684],
-  'ouarzazate|MA': [30.9189, -6.8934], 'chefchaouen|MA': [35.1714, -5.2697],
-  // France
-  'paris|FR': [48.8566, 2.3522], 'lyon|FR': [45.7640, 4.8357],
-  'nantes|FR': [47.2184, -1.5536], 'bordeaux|FR': [44.8378, -0.5792],
-  'marseille|FR': [43.2965, 5.3698], 'nice|FR': [43.7102, 7.2620],
-  'toulouse|FR': [43.6047, 1.4442], 'lille|FR': [50.6292, 3.0573],
-  'strasbourg|FR': [48.5734, 7.7521], 'montpellier|FR': [43.6108, 3.8767],
-  'rennes|FR': [48.1173, -1.6778], 'reims|FR': [49.2583, 4.0317],
-  'cannes|FR': [43.5528, 7.0174], 'biarritz|FR': [43.4832, -1.5586],
-};
-const PAYS_NOM = {MA:'Maroc', FR:'France', ES:'Espagne', IT:'Italie', PT:'Portugal',
-  BE:'Belgique', CH:'Suisse', DE:'Allemagne', GB:'Royaume-Uni', US:'États-Unis',
-  CA:'Canada', NL:'Pays-Bas', LU:'Luxembourg'};
-function geocodeCacheGet(key) {
-  try {
-    const raw = localStorage.getItem('ocre_geocode_v1::' + key);
-    if (!raw) return null;
-    const o = JSON.parse(raw);
-    if (!o || !o.lat || !o.lng) return null;
-    return o;
-  } catch (e) { return null; }
-}
-function geocodeCacheSet(key, lat, lng, source) {
-  try { localStorage.setItem('ocre_geocode_v1::' + key, JSON.stringify({lat, lng, source, ts: Date.now()})); } catch (e) {}
-}
-function geocodeFallback(ville, pays) {
-  const k = (ville || '').toLowerCase().trim() + '|' + (pays || '');
-  const hit = GEOCODE_FALLBACK[k];
-  return hit ? {lat: hit[0], lng: hit[1], source: 'fallback'} : null;
-}
-async function geocodeNominatim(ville, pays, quartier) {
-  const paysName = PAYS_NOM[pays] || pays || '';
-  const q = (quartier ? (quartier + ', ') : '') + (ville || '') + (paysName ? (', ' + paysName) : '');
-  const cacheKey = q.toLowerCase().replace(/\s+/g, ' ').trim();
-  const cached = geocodeCacheGet(cacheKey);
-  if (cached) return cached;
-  try {
-    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=fr&q=' + encodeURIComponent(q);
-    const r = await fetch(url, {headers: {'Accept': 'application/json'}});
-    if (!r.ok) throw new Error('http ' + r.status);
-    const j = await r.json();
-    if (Array.isArray(j) && j.length > 0 && j[0].lat && j[0].lon) {
-      const lat = Number(j[0].lat), lng = Number(j[0].lon);
-      const out = {lat, lng, source: 'nominatim'};
-      geocodeCacheSet(cacheKey, lat, lng, 'nominatim');
-      return out;
-    }
-  } catch (e) { /* fallback */ }
-  // Fallback ville seule (sans quartier)
-  if (quartier) {
-    const fb = geocodeFallback(ville, pays);
-    if (fb) { geocodeCacheSet(cacheKey, fb.lat, fb.lng, 'fallback'); return fb; }
-  } else {
-    const fb = geocodeFallback(ville, pays);
-    if (fb) { geocodeCacheSet(cacheKey, fb.lat, fb.lng, 'fallback'); return fb; }
-  }
-  return null;
-}
-
 // V17.3 Phase 2b — MapPicker Leaflet + OpenStreetMap. Mode précis (marker) ou zone (cercle).
-// V18.0 — Auto-centrage carte sur ville+quartier du bien via Nominatim, cache localStorage,
-// fallback hardcodé MA/FR. Respecte position manuelle (drag/clic/GPS) via gps_source.
 function MapPicker({bien, setB, showToast}) {
   const mapRef = React.useRef(null);
   // V17.8 : refs stables pour marker + circle, setRadius live sans recreate.
@@ -1794,7 +1724,6 @@ function MapPicker({bien, setB, showToast}) {
         const p = lr.marker.getLatLng();
         setB('gps_lat', p.lat.toFixed(6));
         setB('gps_lng', p.lng.toFixed(6));
-        setB('gps_source', 'manual'); // V18.0 : drag = manuel, n'est plus écrasable par geocode.
         if (lr.circle) lr.circle.setLatLng(p);
       });
     } else {
@@ -1831,19 +1760,9 @@ function MapPicker({bien, setB, showToast}) {
       setReady(true);
       if (!mapRef.current || leafletRef.current.map) return;
       const L = window.L;
-      // V18.0 — Init centre : (1) gps_lat manuel, (2) cache localStorage ville+pays, (3) fallback hardcodé, (4) Casablanca.
-      let lat = Number(bien.gps_lat);
-      let lng = Number(bien.gps_lng);
-      let initZoom = bien.gps_lat ? 14 : 10;
-      if (!bien.gps_lat && bien.ville && bien.pays) {
-        const paysName = PAYS_NOM[bien.pays] || bien.pays;
-        const cacheKey = ((bien.quartier ? bien.quartier + ', ' : '') + bien.ville + ', ' + paysName).toLowerCase().replace(/\s+/g,' ').trim();
-        const cached = geocodeCacheGet(cacheKey);
-        const fb = cached || geocodeFallback(bien.ville, bien.pays);
-        if (fb) { lat = fb.lat; lng = fb.lng; initZoom = bien.quartier ? 15 : 13; }
-      }
-      if (!lat || !lng) { lat = 33.5731; lng = -7.5898; }
-      const map = L.map(mapRef.current).setView([lat, lng], initZoom);
+      const lat = Number(bien.gps_lat) || 33.5731;  // Casablanca fallback
+      const lng = Number(bien.gps_lng) || -7.5898;
+      const map = L.map(mapRef.current).setView([lat, lng], bien.gps_lat ? 14 : 10);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap', maxZoom: 19,
       }).addTo(map);
@@ -1852,7 +1771,6 @@ function MapPicker({bien, setB, showToast}) {
         const {lat, lng} = e.latlng;
         setB('gps_lat', lat.toFixed(6));
         setB('gps_lng', lng.toFixed(6));
-        setB('gps_source', 'manual'); // V18.0 : clic = manuel.
         place(lat, lng);
       });
       if (bien.gps_lat && bien.gps_lng) place(lat, lng);
@@ -1881,36 +1799,6 @@ function MapPicker({bien, setB, showToast}) {
     }
   }, [mode, radius]);
 
-  // V18.0 — Auto-centrage Nominatim quand ville/pays/quartier change. Debounce 800ms.
-  // N'écrase JAMAIS gps_source='manual' ou 'gps' (drag, clic, géoloc utilisateur).
-  React.useEffect(() => {
-    const ville = (bien.ville || '').trim();
-    const pays = (bien.pays || '').trim();
-    if (!ville || !pays) return;
-    if (bien.gps_source === 'manual' || bien.gps_source === 'gps') return;
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      const r = await geocodeNominatim(ville, pays, bien.quartier);
-      if (cancelled || !r) return;
-      const lr = leafletRef.current;
-      const lat = Number(r.lat.toFixed(6));
-      const lng = Number(r.lng.toFixed(6));
-      // Écrit seulement si pas déjà manuellement posé.
-      if (!bien.gps_source || bien.gps_source === 'geocode') {
-        setB('gps_lat', lat.toFixed(6));
-        setB('gps_lng', lng.toFixed(6));
-        setB('gps_source', 'geocode');
-      }
-      // Recentre la carte (zoom 15 si quartier précis, 13 sinon).
-      if (lr && lr.map) {
-        const zoom = bien.quartier ? 15 : 13;
-        lr.map.setView([lat, lng], zoom);
-        if (window.L) place(lat, lng);
-      }
-    }, 800);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [bien.ville, bien.pays, bien.quartier]);
-
   function useMyLocation() {
     if (!navigator.geolocation) { showToast && showToast('Géolocalisation non supportée'); return; }
     navigator.geolocation.getCurrentPosition(
@@ -1918,7 +1806,6 @@ function MapPicker({bien, setB, showToast}) {
         const {latitude, longitude} = pos.coords;
         setB('gps_lat', latitude.toFixed(6));
         setB('gps_lng', longitude.toFixed(6));
-        setB('gps_source', 'gps'); // V18.0 : géoloc utilisateur = manuelle, prioritaire.
         if (leafletRef.current.map) {
           leafletRef.current.map.setView([latitude, longitude], 15);
           place(latitude, longitude);
