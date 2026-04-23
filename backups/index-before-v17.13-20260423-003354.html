@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v17.13-bottomsheet -->
+<!-- ocre-v17.12-dictation -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -60,25 +60,6 @@ input, select, textarea, button { font-size:13px }
 .foncier-requisition.state-selected{background:#F9E7BC !important;border:2px solid #D4A437 !important;color:#9C7A1F !important;font-weight:700 !important}
 .foncier-moulkia{background:#FFE8E8 !important;border:1.5px solid #F0BEBE !important;color:#C04848 !important}
 .foncier-moulkia.state-selected{background:#F7CFCF !important;border:2px solid #C04848 !important;color:#8C2D2D !important;font-weight:700 !important}
-
-/* V17.13 : bottom-sheet mobile pour pickers (plein écran 75vh). */
-@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.bsheet-overlay{position:fixed;inset:0;background:rgba(42,32,24,.5);z-index:200;animation:fadeIn .2s ease-out;display:flex;align-items:flex-end;justify-content:center}
-.bsheet{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:560px;height:75vh;display:flex;flex-direction:column;animation:slideUp .25s ease-out;padding-bottom:env(safe-area-inset-bottom,0)}
-.bsheet-handle{width:40px;height:4px;background:#E2D8CC;border-radius:2px;margin:8px auto 0;flex-shrink:0}
-.bsheet-head{padding:10px 14px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:1px solid #EDE6DC}
-.bsheet-title{flex:1;font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:#8B5E3C;text-align:center}
-.bsheet-close{width:32px;height:32px;border-radius:16px;border:none;background:#F4EEE6;color:#8B7F6E;font-size:16px;cursor:pointer;font-family:inherit;padding:0;display:flex;align-items:center;justify-content:center}
-.bsheet-search{padding:10px 14px;border-bottom:1px solid #F4EEE6;flex-shrink:0;background:#FDFAF7}
-.bsheet-search input{width:100%;padding:10px 14px;border:1.5px solid #EDE1CC;border-radius:10px;font-size:14px;outline:none;font-family:inherit;background:#fff}
-.bsheet-list{flex:1;overflow-y:auto}
-.bsheet-item{padding:13px 16px;cursor:pointer;font-size:15px;border-bottom:1px solid #F4EEE6;display:flex;align-items:center;gap:10px;background:#fff}
-.bsheet-item.selected{background:#FBF1E4;color:#8B4E22;font-weight:700}
-.bsheet-item .check{width:20px;height:20px;border-radius:4px;border:1.5px solid #E2D8CC;display:inline-flex;align-items:center;justify-content:center;color:transparent;background:#fff;flex-shrink:0;font-size:12px;font-weight:700}
-.bsheet-item.selected .check{background:#B26D3A;border-color:#B26D3A;color:#fff}
-.bsheet-empty{padding:30px 20px;text-align:center;color:#8B7F6E;font-size:13px}
-.bsheet-foot{padding:10px 14px 14px;border-top:1px solid #EDE6DC;flex-shrink:0;background:#fff}
-.bsheet-group-hdr{padding:6px 16px;background:#F4EEE6;font-size:10px;color:#8B7F6E;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;position:sticky;top:0}
 
 /* V17.4 UX v3 : banner bascule profil. */
 .bascule-banner{background:#FFF9F0;border:1px solid #F0E3CB;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:12px;color:#8B7F6E;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -329,8 +310,6 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
   const [display, setDisplay] = React.useState(selected ? (selected.flag + ' ' + selected.name) : '');
   const [open, setOpen] = React.useState(false);
   const [filtered, setFiltered] = React.useState(allOpts);
-  const [query, setQuery] = React.useState('');
-  const isMobile = useIsMobile();
   React.useEffect(() => {
     const s = allOpts.find(o => o.code === value);
     setDisplay(s ? (s.flag + ' ' + s.name) : '');
@@ -346,16 +325,16 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
     const n = normalizeAccent(raw);
     const f = n ? allOpts.filter(o => normalizeAccent(o.name).includes(n) || o.code.toLowerCase().startsWith(n)) : allOpts;
     setFiltered(f);
+    // Si texte vidé complètement → reset value
     if (!raw.trim()) onChange('');
   }
   function pick(o) {
     onChange(o.code);
     setDisplay(o.flag + ' ' + o.name);
     setOpen(false);
-    setQuery('');
   }
   function handleBlur() {
-    if (isMobile) return;
+    // Validation sortie de champ : si display ne matche pas un pays, restore selected ou vide.
     setTimeout(() => {
       setOpen(false);
       const match = allOpts.find(o => normalizeAccent(o.name) === normalizeAccent(display.replace(/^[^A-Za-zÀ-ÿ]+/, '').trim()));
@@ -365,41 +344,13 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
     }, 150);
   }
 
-  const mobileFiltered = query.trim()
-    ? allOpts.filter(o => normalizeAccent(o.name).includes(normalizeAccent(query)) || o.code.toLowerCase().startsWith(query.toLowerCase()))
-    : allOpts;
-
   return (
     <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
-      {isMobile ? (
-        <button type="button" onClick={() => setOpen(true)}
-          style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY), textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer'}}>
-          <span>{display || placeholder}</span>
-          <span style={{fontSize:10, opacity:.6}}>▾</span>
-        </button>
-      ) : (
-        <input type="text" value={display} onChange={handleChange} onFocus={() => setOpen(true)} onBlur={handleBlur}
-          placeholder={placeholder} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false"
-          style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
-      )}
-      {open && (isMobile ? (
-        <BottomSheet title={label || 'Pays'} onClose={() => { setOpen(false); setQuery(''); }}>
-          <div className="bsheet-search">
-            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" autoCapitalize="off" autoCorrect="off"/>
-          </div>
-          <div className="bsheet-list">
-            {mobileFiltered.length === 0 ? <div className="bsheet-empty">Aucun pays trouvé</div>
-              : mobileFiltered.map(o => (
-                <div key={o.code} className={'bsheet-item ' + (o.code === value ? 'selected' : '')} onClick={() => pick(o)}>
-                  <span style={{fontSize:18}}>{o.flag}</span>
-                  <span style={{flex:1}}>{o.name}</span>
-                  {o.code === value && <span style={{color:'#B26D3A', fontWeight:700}}>✓</span>}
-                </div>
-              ))}
-          </div>
-        </BottomSheet>
-      ) : (
+      <input type="text" value={display} onChange={handleChange} onFocus={() => setOpen(true)} onBlur={handleBlur}
+        placeholder={placeholder} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false"
+        style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
+      {open && (
         <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:240, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
           {filtered.length === 0 ? (
             <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E'}}>Aucun pays trouvé</div>
@@ -410,7 +361,7 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
             </div>
           ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -1074,55 +1025,19 @@ function ShareMenu({dossierId, dossierName, onClose, showToast}) {
   );
 }
 
-// V17.13 — useIsMobile : bascule responsive < 768px.
-function useIsMobile() {
-  const [m, setM] = React.useState(typeof window !== 'undefined' && window.innerWidth < 768);
-  React.useEffect(() => {
-    function onR() { setM(window.innerWidth < 768); }
-    window.addEventListener('resize', onR);
-    return () => window.removeEventListener('resize', onR);
-  }, []);
-  return m;
-}
-
-// V17.13 — BottomSheet générique pour pickers mobile.
-function BottomSheet({title, onClose, children}) {
-  React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
-  return (
-    <div className="bsheet-overlay" onClick={onClose}>
-      <div className="bsheet" onClick={e => e.stopPropagation()}>
-        <div className="bsheet-handle"/>
-        <div className="bsheet-head">
-          <span style={{width:32}}/>
-          <div className="bsheet-title">{title || '—'}</div>
-          <button type="button" className="bsheet-close" onClick={onClose} aria-label="Fermer">✕</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// V17.4 UX v3 — PickerDropdown : sélecteur custom avec recherche (pattern CountryAutocomplete). V17.13 : bottom-sheet sur mobile.
+// V17.4 UX v3 — PickerDropdown : sélecteur custom avec recherche (pattern CountryAutocomplete).
 function PickerDropdown({label, value, displayValue, options, onChange, placeholder='Choisir…', disabled=false}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const ref = React.useRef(null);
-  const isMobile = useIsMobile();
   React.useEffect(() => {
-    if (isMobile) return;
     function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setQuery(''); } }
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [isMobile]);
+  }, []);
   const filtered = query.trim()
     ? options.filter(o => normalizeAccent(o.l).includes(normalizeAccent(query)))
     : options;
-  function pick(k) { onChange(k); setOpen(false); setQuery(''); }
-  function close() { setOpen(false); setQuery(''); }
   return (
     <div ref={ref} style={{position:'relative'}}>
       {label && <label className="ocre-lbl">{label}</label>}
@@ -1132,24 +1047,7 @@ function PickerDropdown({label, value, displayValue, options, onChange, placehol
         <span>{displayValue || placeholder}</span>
         <span style={{fontSize:10, opacity:.6}}>▾</span>
       </button>
-      {open && !disabled && (isMobile ? (
-        <BottomSheet title={label || 'Choisir'} onClose={close}>
-          {options.length > 5 && (
-            <div className="bsheet-search">
-              <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" autoFocus autoCapitalize="off" autoCorrect="off"/>
-            </div>
-          )}
-          <div className="bsheet-list">
-            {filtered.length === 0 ? <div className="bsheet-empty">Aucun résultat</div>
-              : filtered.map(o => (
-                <div key={o.k} className={'bsheet-item ' + (o.k === value ? 'selected' : '')} onClick={() => pick(o.k)}>
-                  <span style={{flex:1}}>{o.l}</span>
-                  {o.k === value && <span style={{color:'#B26D3A', fontWeight:700}}>✓</span>}
-                </div>
-              ))}
-          </div>
-        </BottomSheet>
-      ) : (
+      {open && !disabled && (
         <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:320, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:50, marginTop:2}}>
           {options.length > 5 && (
             <input type="text" value={query} onChange={e => setQuery(e.target.value)}
@@ -1159,30 +1057,27 @@ function PickerDropdown({label, value, displayValue, options, onChange, placehol
           {filtered.length === 0 ? (
             <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E'}}>Aucun résultat</div>
           ) : filtered.map(o => (
-            <div key={o.k} onMouseDown={() => pick(o.k)}
+            <div key={o.k} onMouseDown={() => { onChange(o.k); setOpen(false); setQuery(''); }}
               style={{padding:'10px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F4EEE6', background: o.k === value ? '#FBF1E4' : '#fff'}}>
               {o.l}
             </div>
           ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
-// V17.9 — MultiPicker : sélection multiple avec checkbox, pas de fermeture auto. V17.13 : bottom-sheet sur mobile.
+// V17.9 — MultiPicker : sélection multiple avec checkbox, pas de fermeture auto.
 function MultiPicker({label, values, options, onChange, placeholder='Choisir…', disabled=false}) {
   const arr = Array.isArray(values) ? values : [];
   const [open, setOpen] = React.useState(false);
-  const [query, setQuery] = React.useState('');
   const ref = React.useRef(null);
-  const isMobile = useIsMobile();
   React.useEffect(() => {
-    if (isMobile) return;
     function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [isMobile]);
+  }, []);
   function toggle(k) {
     if (arr.includes(k)) onChange(arr.filter(x => x !== k));
     else onChange([...arr, k]);
@@ -1190,9 +1085,6 @@ function MultiPicker({label, values, options, onChange, placeholder='Choisir…'
   const display = arr.length === 0 ? placeholder
     : arr.length <= 2 ? arr.join(' · ')
     : arr[0] + ' + ' + (arr.length - 1);
-  const filtered = query.trim()
-    ? options.filter(o => normalizeAccent(o.l).includes(normalizeAccent(query)))
-    : options;
   return (
     <div ref={ref} style={{position:'relative', marginBottom:10}}>
       {label && <label className="ocre-lbl">{label}</label>}
@@ -1202,33 +1094,7 @@ function MultiPicker({label, values, options, onChange, placeholder='Choisir…'
         <span>{display}</span>
         <span style={{fontSize:10, opacity:.6}}>▾</span>
       </button>
-      {open && !disabled && (isMobile ? (
-        <BottomSheet title={label || 'Choisir'} onClose={() => { setOpen(false); setQuery(''); }}>
-          {options.length > 5 && (
-            <div className="bsheet-search">
-              <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" autoCapitalize="off" autoCorrect="off"/>
-            </div>
-          )}
-          <div className="bsheet-list">
-            {filtered.length === 0 ? <div className="bsheet-empty">Aucun résultat</div>
-              : filtered.map(o => {
-                const on = arr.includes(o.k);
-                return (
-                  <div key={o.k} className={'bsheet-item ' + (on ? 'selected' : '')} onClick={() => toggle(o.k)}>
-                    <span className="check">{on ? '✓' : ''}</span>
-                    <span style={{flex:1}}>{o.l}</span>
-                  </div>
-                );
-              })}
-          </div>
-          <div className="bsheet-foot">
-            <button type="button" onClick={() => { setOpen(false); setQuery(''); }}
-              style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
-              Valider ({arr.length} sélectionné{arr.length > 1 ? 's' : ''})
-            </button>
-          </div>
-        </BottomSheet>
-      ) : (
+      {open && !disabled && (
         <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:320, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:50, marginTop:2}}>
           {options.map(o => {
             const on = arr.includes(o.k);
@@ -1241,7 +1107,7 @@ function MultiPicker({label, values, options, onChange, placeholder='Choisir…'
             );
           })}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -1866,20 +1732,16 @@ function BanqueSelect({label, value, onChange, pays}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const ref = React.useRef(null);
-  const isMobile = useIsMobile();
   React.useEffect(() => {
-    if (isMobile) return;
     function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setQuery(''); } }
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [isMobile]);
+  }, []);
   const filtered = query.trim()
     ? flat.filter(o => normalizeAccent(o.l).includes(normalizeAccent(query)))
     : flat;
   const byGroup = {};
   filtered.forEach(o => { (byGroup[o.group] ||= []).push(o); });
-  function pick(k) { onChange(k); setOpen(false); setQuery(''); }
-  function close() { setOpen(false); setQuery(''); }
   return (
     <div ref={ref} style={{position:'relative', marginBottom:10}}>
       {label && <label className="ocre-lbl">{label}</label>}
@@ -1889,28 +1751,7 @@ function BanqueSelect({label, value, onChange, pays}) {
         <span>{value || 'Choisir une banque…'}</span>
         <span style={{fontSize:10, opacity:.6}}>▾</span>
       </button>
-      {open && (isMobile ? (
-        <BottomSheet title={label || 'Banque'} onClose={close}>
-          <div className="bsheet-search">
-            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" autoCapitalize="off" autoCorrect="off"/>
-          </div>
-          <div className="bsheet-list">
-            {Object.keys(byGroup).length === 0
-              ? <div className="bsheet-empty">Aucune banque trouvée</div>
-              : Object.entries(byGroup).map(([g, items]) => (
-                <div key={g}>
-                  <div className="bsheet-group-hdr">{g}</div>
-                  {items.map(o => (
-                    <div key={o.k} className={'bsheet-item ' + (o.k === value ? 'selected' : '')} onClick={() => pick(o.k)}>
-                      <span style={{flex:1}}>{o.l}</span>
-                      {o.k === value && <span style={{color:'#B26D3A', fontWeight:700}}>✓</span>}
-                    </div>
-                  ))}
-                </div>
-              ))}
-          </div>
-        </BottomSheet>
-      ) : (
+      {open && (
         <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:300, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:50, marginTop:2}}>
           <input type="text" value={query} onChange={e => setQuery(e.target.value)}
             placeholder="Rechercher…" autoFocus autoCapitalize="off" autoCorrect="off"
@@ -1921,7 +1762,7 @@ function BanqueSelect({label, value, onChange, pays}) {
             <div key={g}>
               <div style={{padding:'6px 12px', background:'#F4EEE6', fontSize:10, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:1.2, fontWeight:700}}>{g}</div>
               {items.map(o => (
-                <div key={o.k} onMouseDown={() => pick(o.k)}
+                <div key={o.k} onMouseDown={() => { onChange(o.k); setOpen(false); setQuery(''); }}
                   style={{padding:'10px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F4EEE6', background: o.k === value ? '#FBF1E4' : '#fff'}}>
                   {o.l}
                 </div>
@@ -1929,7 +1770,7 @@ function BanqueSelect({label, value, onChange, pays}) {
             </div>
           ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
