@@ -35,6 +35,19 @@ function ensureSchema() {
         INDEX idx_user (user_id),
         INDEX idx_pending (processed_at, created_at)
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    // V18.13 — audit log sync bidirectionnelle Sheet→App
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sheet_sync_log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        client_id INT NULL,
+        field_changed VARCHAR(60) NOT NULL,
+        old_value VARCHAR(255) NULL,
+        new_value VARCHAR(255) NULL,
+        source ENUM('sheet_to_app','app_to_sheet') NOT NULL DEFAULT 'sheet_to_app',
+        ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_ts (user_id, ts),
+        INDEX idx_client (client_id)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 }
 
 requireVpsIp();
@@ -142,6 +155,50 @@ switch ($action) {
             db()->prepare("INSERT INTO ocre_sync_queue (user_id, action) VALUES (?, 'full_sync')")->execute([$u['id']]);
         }
         jsonOk(['user_id' => (int)$u['id'], 'sync_enabled' => (bool)$enabled, 'sync_email' => $sync_email]);
+    }
+
+    // V18.13 — liste users avec sheet_id (worker read-back).
+    case 'sync_users_with_sheet': {
+        $stmt = db()->query(
+            "SELECT id, sheet_id, sync_email FROM users
+             WHERE sync_enabled = 1 AND sheet_id IS NOT NULL AND sheet_id != ''"
+        );
+        jsonOk(['users' => $stmt->fetchAll()]);
+    }
+
+    // V18.13 — applique un changement profil détecté Sheet → DB.
+    case 'apply_profil_change': {
+        $user_id = (int)($input['user_id'] ?? 0);
+        $client_id = (int)($input['client_id'] ?? 0);
+        $new_profil = (string)($input['new_profil'] ?? '');
+        if (!$user_id || !$client_id || !$new_profil) jsonError('user_id+client_id+new_profil requis');
+        $valid = ['Acheteur','Vendeur','Investisseur','Bailleur','Locataire','Curieux'];
+        if (!in_array($new_profil, $valid, true)) jsonError('profil invalide : ' . $new_profil);
+        $st = db()->prepare("SELECT projet, data FROM clients WHERE id = ? AND user_id = ? LIMIT 1");
+        $st->execute([$client_id, $user_id]);
+        $r = $st->fetch();
+        if (!$r) jsonError('client introuvable ou non-owné', 404);
+        $old = $r['projet'] ?? '';
+        if ($old === $new_profil) jsonOk(['changed' => false, 'reason' => 'same']);
+        db()->beginTransaction();
+        try {
+            db()->prepare("UPDATE clients SET projet = ?, is_investisseur = ?, updated_at = NOW() WHERE id = ? AND user_id = ?")
+                ->execute([$new_profil, $new_profil === 'Investisseur' ? 1 : 0, $client_id, $user_id]);
+            $cur = json_decode($r['data'] ?: '{}', true) ?: [];
+            $cur['projet'] = $new_profil;
+            $cur['profil_sheet_overridden'] = true;
+            $cur['profil_sheet_overridden_at'] = date('c');
+            db()->prepare("UPDATE clients SET data = ? WHERE id = ?")
+                ->execute([json_encode($cur, JSON_UNESCAPED_UNICODE), $client_id]);
+            db()->prepare(
+                "INSERT INTO sheet_sync_log (user_id, client_id, field_changed, old_value, new_value, source) VALUES (?, ?, 'projet', ?, ?, 'sheet_to_app')"
+            )->execute([$user_id, $client_id, $old, $new_profil]);
+            db()->commit();
+        } catch (Throwable $e) {
+            db()->rollBack();
+            jsonError('UPDATE échoué: ' . $e->getMessage(), 500);
+        }
+        jsonOk(['changed' => true, 'old' => $old, 'new' => $new_profil]);
     }
 
     case 'log_error': {
