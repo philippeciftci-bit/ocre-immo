@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.7-accordion-progressive -->
+<!-- ocre-v18.6-whisper-bullets -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1261,67 +1261,24 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
   const hasHabitable = types.some(t => HABITABLE_TYPES.includes(t));
   const anyType = types.length > 0;
 
-  // V18.7 — toggle un type dans la liste (checkbox visible).
-  function toggleType(t) {
-    const cur = Array.isArray(bien.types) ? bien.types : (bien.type ? [bien.type] : []);
-    const next = cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t];
-    setB('types', next);
-    setB('type', next[0] || '');
-  }
-
   return (
     <>
-      {/* V17.9 : Pays + Type(s) en 1 ligne. V18.7 : Type(s) en checkboxes visibles 2 cols + chips × en haut. */}
+      {/* V17.9 : Pays + Type(s) en 1 ligne chacun, pleine largeur, dropdown maxHeight 320px. */}
       <PickerDropdown label="Pays du bien"
         value={bien.pays}
         displayValue={bien.pays ? ((PAYS_BIEN.find(p => p.c === bien.pays) || {}).f + ' ' + (PAYS_BIEN.find(p => p.c === bien.pays) || {}).n) : ''}
         options={PAYS_BIEN.map(p => ({k: p.c, l: p.f + ' ' + p.n}))}
         onChange={v => setB('pays', v)} placeholder="Choisir…"/>
-
-      {bien.pays && (
-        <div style={{marginBottom:10}}>
-          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:6, textTransform:'uppercase', letterSpacing:.4}}>
-            Types de bien (cochez un ou plusieurs)
-          </label>
-          {/* Chips sélectionnés en haut avec × */}
-          {types.length > 0 && (
-            <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:8}}>
-              {types.map(t => (
-                <button key={t} type="button" onClick={() => toggleType(t)}
-                  style={{padding:'5px 10px', background:'#FBF1E4', border:'1.5px solid #B26D3A', borderRadius:999,
-                          fontSize:12, fontWeight:700, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit',
-                          display:'inline-flex', alignItems:'center', gap:5}}>
-                  {t} <span style={{fontSize:14, lineHeight:1, color:'#B26D3A'}}>×</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {/* Checkboxes 2 cols mobile */}
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:6}}>
-            {typesDispo.map(t => {
-              const checked = types.includes(t);
-              return (
-                <label key={t} style={{display:'flex', alignItems:'center', gap:8, padding:'10px 12px',
-                                       background: checked ? '#FBF1E4' : '#FDFAF7',
-                                       border: '1.5px solid ' + (checked ? '#B26D3A' : '#E8DDD0'),
-                                       borderRadius:8, fontSize:13, fontWeight: checked ? 700 : 500,
-                                       color: checked ? '#8B4E22' : '#2A2018', cursor:'pointer', fontFamily:'inherit'}}>
-                  <span style={{width:18, height:18, borderRadius:4, border:'1.5px solid ' + (checked ? '#B26D3A' : '#C4B5A0'),
-                                background: checked ? '#B26D3A' : '#fff',
-                                display:'inline-flex', alignItems:'center', justifyContent:'center',
-                                color:'#fff', fontSize:12, fontWeight:800, flexShrink:0}}>{checked ? '✓' : ''}</span>
-                  <input type="checkbox" checked={checked} onChange={() => toggleType(t)} style={{display:'none'}}/>
-                  <span style={{flex:1, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{t}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <MultiPicker label="Type(s) de bien"
+        values={types}
+        options={typesDispo.map(t => ({k: t, l: t}))}
+        onChange={v => { setB('types', v); setB('type', v[0] || ''); }}
+        placeholder={bien.pays ? 'Choisir…' : 'Choisir un pays'}
+        disabled={!bien.pays}/>
       {!bien.pays && <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'2px 0 6px'}}>Choisissez un pays pour voir les types disponibles.</div>}
 
-      {/* V18.7 — Étape 2 progressive : révélée après pays + au moins 1 type cochés. */}
-      <AnimatedReveal show={!!(bien.pays && anyType)}>
+      {/* 3. Adresse + GPS + Ville (une fois pays+type choisis) */}
+      {bien.pays && anyType && (
         <>
           <CitySuggestField label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)} suggestAction="suggest_address"/>
           <div className="row-pair">
@@ -1454,7 +1411,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
 
           {/* 8. Acheteur : budget déjà dans Stage III ; ici on laisse juste le Custom fields list */}
         </>
-      </AnimatedReveal>
+      )}
       <CustomFieldList sectionKey="bien" d={d} set={set}/>
     </>
   );
@@ -2380,49 +2337,22 @@ function FinancementForm({activeProfil, d, set, dossierId, showToast}) {
   );
 }
 
-// V18.7 — Stage accordéon strict + status badge + ligne stats compacte fermé.
-function Stage({title, expanded, onToggle, children, status, summary}) {
-  // status : 'complete' (✓ vert) | 'partial' (… orange) | 'empty' (— gris)
-  const badge = status === 'complete'
-    ? {char:'✓', color:'#3E8B5E', bg:'#E8F5EC'}
-    : status === 'partial'
-      ? {char:'…', color:'#D4A437', bg:'#FFF5E0'}
-      : {char:'—', color:'#B5A78F', bg:'#F4EEE6'};
+function Stage({title, expanded, onToggle, children}) {
+  // V17.1 fix-ux-3 : chevron qui tourne (transform CSS), transition fluide sur le contenu.
   return (
-    <div style={{background:'#fff', borderRadius:12, padding:'12px 14px', marginBottom:10, border:'1px solid #EDE6DC'}}>
-      <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'2px 0'}}>
-        <div style={{flex:1, minWidth:0}}>
-          <div style={{display:'flex', alignItems:'center', gap:8}}>
-            <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{title}</span>
-            <span title={status === 'complete' ? 'Section complète' : status === 'partial' ? 'Section partielle' : 'Section vide'}
-              style={{display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:9, background: badge.bg, color: badge.color, fontSize:11, fontWeight:800, flexShrink:0}}>{badge.char}</span>
-          </div>
-          {!expanded && summary && (
-            <div style={{fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginTop:2}}>{summary}</div>
-          )}
-        </div>
-        <span style={{fontSize:13, color:'#8B7F6E', display:'inline-block', transition:'transform .25s ease-out', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink:0}}>▶</span>
+    <div style={{background:'#fff', borderRadius:12, padding:14, marginBottom:10, border:'1px solid #EDE6DC'}}>
+      <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'2px 0'}}>
+        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C'}}>{title}</span>
+        <span style={{fontSize:13, color:'#8B7F6E', display:'inline-block', transition:'transform .2s', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)'}}>▶</span>
       </div>
       <div style={{
-        maxHeight: expanded ? '99999px' : '0',
+        maxHeight: expanded ? '9999px' : '0',
         overflow: 'hidden',
-        transition: 'max-height .3s ease-out, opacity .25s ease-out, margin-top .25s',
+        transition: 'max-height .3s ease, opacity .2s',
         opacity: expanded ? 1 : 0,
         marginTop: expanded ? 12 : 0,
       }}>{children}</div>
     </div>
-  );
-}
-
-// V18.7 — AnimatedReveal pour section progressive (Étape 2 Section II).
-function AnimatedReveal({show, children}) {
-  return (
-    <div style={{
-      maxHeight: show ? '99999px' : '0',
-      overflow: 'hidden',
-      transition: 'max-height .3s ease-out, opacity .25s ease-out',
-      opacity: show ? 1 : 0,
-    }}>{children}</div>
   );
 }
 
@@ -4479,17 +4409,20 @@ function FormView(props) {
   const init = editing || {};
   const [d, setD] = useState(init);
   const [profilType, setProfilType] = useState(init.profil_type || 'Particulier');
-  // V18.7 — accordéon strict : un seul ouvert à la fois.
-  // Mount : (1) initialExpandedSection v18.2 → cette section ; (2) nouveau dossier → Section I ; (3) existant → tout fermé.
+  // V17.1 fix-ux-3 : auto-open accordéons si champs pré-remplis (brouillon repris).
+  // V18.2 — initialExpandedSection : si défini, ouvre uniquement cette section + scroll.
   const [expanded, setExpanded] = useState(() => {
-    const arr = [false, false, false, false];
     if (initialExpandedSection != null) {
+      const arr = [false, false, false, false];
       arr[initialExpandedSection] = true;
       return arr;
     }
-    const isNew = !editing || !editing.id || String(editing.id || '').startsWith('tmp-');
-    if (isNew) arr[0] = true;
-    return arr;
+    const init = [true, false, false, false];
+    const b = d.bien || {};
+    if (b.pays || b.type || (Array.isArray(b.types) && b.types.length) || d.type_bien || d.surface || d.surface_min || d.chambres_min || d.etage) init[1] = true;
+    if (d.budget_min || d.budget_max || d.apport || d.prix_affiche || d.loyer_max || d.loyer_demande || d.rendement_cible) init[2] = true;
+    if (d.notes || d.langue || d.canal || d.origine) init[3] = true;
+    return init;
   });
   // V18.2 — scroll auto vers section initiale (200ms après render).
   useEffect(() => {
@@ -4592,75 +4525,9 @@ function FormView(props) {
     pushNow();
     backToList();
   }
-  // V18.7 — accordéon strict : ouvre i et ferme tous les autres.
   function toggleStage(i) {
-    setExpanded(prev => prev.map((v, idx) => idx === i ? !v : false));
+    setExpanded(prev => prev.map((v, idx) => idx === i ? !v : v));
   }
-  function openOnly(i) {
-    setExpanded(prev => prev.map((v, idx) => idx === i));
-    // Scroll doux vers le header de la nouvelle section.
-    setTimeout(() => {
-      const stages = document.querySelectorAll('[data-stage-anchor]');
-      const target = stages[i];
-      if (target && target.scrollIntoView) target.scrollIntoView({behavior:'smooth', block:'start'});
-    }, 80);
-  }
-  function commitAndNext(i) {
-    // V18.7 — flush save + ferme i + ouvre i+1 (ou reste sur i si dernière).
-    commit('_touch', Date.now());
-    if (i < 3) openOnly(i + 1);
-    else setExpanded(prev => prev.map(() => false));
-  }
-  // V18.7 — calcul status + summary par section.
-  function computeStatus() {
-    const b = d.bien || {};
-    const types = Array.isArray(b.types) && b.types.length ? b.types : (b.type ? [b.type] : []);
-    // I — Identité
-    const hasContact = !!(d.tel || d.email || (Array.isArray(d.tels) && d.tels.length) || (Array.isArray(d.emails) && d.emails.length));
-    const hasIdentity = (profilType === 'Société') ? !!d.societe_nom : !!(d.prenom || d.nom);
-    const sec1Complete = hasContact && hasIdentity;
-    const sec1Partial = hasContact || hasIdentity;
-    const sec1Status = sec1Complete ? 'complete' : (sec1Partial ? 'partial' : 'empty');
-    const tels = Array.isArray(d.tels) && d.tels.length > 0 ? d.tels : (d.tel ? [{valeur: d.tel}] : []);
-    const sec1Name = (profilType === 'Société' && d.societe_nom)
-      ? d.societe_nom
-      : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
-    const sec1Summary = [sec1Name || '', tels[0] && tels[0].valeur ? formatTelPretty(tels[0].valeur) : (d.email || '')].filter(Boolean).join(' · ');
-    // II — Bien
-    const sec2Complete = !!(b.pays && types.length && b.ville);
-    const sec2Partial = !!(b.pays || types.length || b.ville);
-    const sec2Status = sec2Complete ? 'complete' : (sec2Partial ? 'partial' : 'empty');
-    const sec2Summary = [types.join(' · '), b.ville || '', b.quartier || ''].filter(Boolean).join(' · ');
-    // III — Budget / financier
-    const fin = (d.financement && typeof d.financement === 'object') ? d.financement : {};
-    const sec3HasBudget = !!(fin.budget_total || fin.budget_max || d.budget_max || d.budget_min || d.prix_affiche || d.loyer_max || d.loyer_demande || d.rendement_cible);
-    const sec3Status = sec3HasBudget ? 'complete' : 'empty';
-    const currency = b.pays === 'MA' ? 'MAD' : '€';
-    const fmtN = n => { const x = Number(n); if (!x) return ''; return x.toLocaleString('fr-FR'); };
-    let sec3Summary = '';
-    const bv = fin.budget_total || fin.budget_max || d.budget_max || d.budget_min;
-    if (bv) sec3Summary = 'Budget ' + fmtN(bv) + ' ' + currency;
-    else if (d.prix_affiche) sec3Summary = 'Prix ' + fmtN(d.prix_affiche) + ' ' + currency;
-    else if (d.loyer_max) sec3Summary = '≤ ' + fmtN(d.loyer_max) + ' ' + currency + '/mois';
-    else if (d.loyer_demande) sec3Summary = fmtN(d.loyer_demande) + ' ' + currency + '/mois';
-    // IV — Suivi (counts via d.suivi si chargé via clients.list, sinon notes)
-    const su = d.suivi || {};
-    const hasSuivi = !!(su.next_event || su.next_todo || su.last_interaction);
-    const sec4HasNotes = !!(d.notes || d.langue || d.canal || d.origine);
-    const sec4Status = (hasSuivi || sec4HasNotes) ? (hasSuivi ? 'complete' : 'partial') : 'empty';
-    let sec4Summary = '';
-    if (su.next_event) sec4Summary = 'RDV à venir';
-    else if (su.next_todo) sec4Summary = 'Tâche en cours';
-    else if (su.last_interaction) sec4Summary = 'Suivi actif';
-    else if (d.notes) sec4Summary = String(d.notes).slice(0, 60);
-    return [
-      {status: sec1Status, summary: sec1Summary},
-      {status: sec2Status, summary: sec2Summary},
-      {status: sec3Status, summary: sec3Summary},
-      {status: sec4Status, summary: sec4Summary},
-    ];
-  }
-  const stageStatus = computeStatus();
   const [shareOpen, setShareOpen] = useState(false);
   function openShare() {
     if (!editing || !editing.id || String(editing.id).startsWith('tmp-')) {
@@ -4768,8 +4635,7 @@ function FormView(props) {
 
       <div style={{flex:1, overflowY:'auto', padding:12}}>
         <div data-stage-anchor="0">
-        <Stage title={STAGES[activeProfil][0]} expanded={expanded[0]} onToggle={() => toggleStage(0)}
-               status={stageStatus[0].status} summary={stageStatus[0].summary}>
+        <Stage title={STAGES[activeProfil][0]} expanded={expanded[0]} onToggle={() => toggleStage(0)}>
           <div style={{display:'flex', gap:6, marginBottom:12}}>
             {['Particulier', 'Société'].map(t => (
               <button key={t} onClick={() => { setProfilType(t); commit('profil_type', t); }}
@@ -4827,24 +4693,22 @@ function FormView(props) {
             </>
           )}
           <CustomFieldList sectionKey="client" d={d} set={set}/>
-          <button onClick={() => commitAndNext(0)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Section II →</button>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer l'étape</button>
         </Stage>
 
         </div>
         <div data-stage-anchor="1">
-        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][1]} expanded={expanded[1]} onToggle={() => toggleStage(1)}
-               status={stageStatus[1].status} summary={stageStatus[1].summary}>
+        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][1]} expanded={expanded[1]} onToggle={() => toggleStage(1)}>
           <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
             d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
             showToast={showToast}/>
-          <button onClick={() => commitAndNext(1)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Section III →</button>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer l'étape</button>
         </Stage>}
 
         {/* V17.6 Section III : FinancementForm pour Acheteur/Investisseur, fields legacy pour Vendeur/Bailleur/Locataire, masqué pour Curieux. */}
         </div>
         <div data-stage-anchor="2">
-        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][2]} expanded={expanded[2]} onToggle={() => toggleStage(2)}
-               status={stageStatus[2].status} summary={stageStatus[2].summary}>
+        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][2]} expanded={expanded[2]} onToggle={() => toggleStage(2)}>
           {(activeProfil === 'Acheteur' || activeProfil === 'Investisseur') ? (
             <FinancementForm activeProfil={activeProfil} d={d} set={set}
               dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
@@ -4874,13 +4738,12 @@ function FormView(props) {
             </>
           )}
           <CustomFieldList sectionKey="financement" d={d} set={set}/>
-          <button onClick={() => commitAndNext(2)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Section IV →</button>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer l'étape</button>
         </Stage>}
 
         </div>
         <div data-stage-anchor="3">
-        <Stage title={STAGES[activeProfil][3] || 'IV. Remarques'} expanded={expanded[3]} onToggle={() => toggleStage(3)}
-               status={stageStatus[3].status} summary={stageStatus[3].summary}>
+        <Stage title={STAGES[activeProfil][3] || 'IV. Remarques'} expanded={expanded[3]} onToggle={() => toggleStage(3)}>
           {/* V18.1 — Module Suivi (4 cards : prochain RDV, todos, agenda, journal). */}
           <SuiviPanel
             clientId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
@@ -4907,7 +4770,7 @@ function FormView(props) {
           <Field label="Origine contact" value={d.origine} onChange={v => set('origine', v)}/>
           <Field label="Options" value={d.options} onChange={v => set('options', v)}/>
           <CustomFieldList sectionKey="remarques" d={d} set={set}/>
-          <button onClick={() => commitAndNext(3)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Fermer ✓</button>
+          <button onClick={() => commit('_touch', Date.now())} style={{marginTop:4, padding:'7px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer l'étape</button>
         </Stage>
         </div>
 
