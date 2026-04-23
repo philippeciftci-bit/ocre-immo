@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.14-hotfix-jsx-comment -->
+<!-- ocre-v18.15-search-filters-row3 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -48,9 +48,45 @@ input, select, textarea, button { font-size:13px }
 }
 
 /* V18.9 — chips profil scroll horizontal single-line (gain 40px hauteur iPhone). */
+/* V18.15 — compactage : chips padding 5/10, fs 11, min-height 28. */
 .profils-row{display:flex;gap:5px;flex-wrap:nowrap;padding:0;overflow-x:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
 .profils-row::-webkit-scrollbar{display:none}
-.profil-chip{padding:6px 12px;border-radius:14px;cursor:pointer;font-family:inherit;font-size:12px;min-height:30px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;scroll-snap-align:start;white-space:nowrap;--ocre-pad-y:6px;--ocre-pad-x:12px}
+.profil-chip{padding:5px 10px;border-radius:13px;cursor:pointer;font-family:inherit;font-size:11px;min-height:28px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;scroll-snap-align:start;white-space:nowrap;--ocre-pad-y:5px;--ocre-pad-x:10px;font-weight:600}
+
+/* V18.15 — barre recherche slide-down sous le header. */
+.search-bar-wrap{overflow:hidden;transition:max-height .22s ease, opacity .18s ease;background:#fff;border-bottom:1px solid var(--border-subtle)}
+.search-bar-wrap.closed{max-height:0;opacity:0;border-bottom:none}
+.search-bar-wrap.open{max-height:54px;opacity:1}
+.search-bar-input-wrap{display:flex;align-items:center;gap:8px;padding:8px 12px}
+.search-bar-input{flex:1;background:#FBF7F2;border:1px solid #E8DDD0;border-radius:10px;padding:8px 12px;font-size:13px;font-family:inherit;color:#2A2018;outline:none;min-width:0}
+.search-bar-input:focus{border-color:#8B5E3C;background:#fff}
+.search-bar-clear{background:#EDE6DC;border:none;width:26px;height:26px;border-radius:13px;cursor:pointer;font-size:12px;color:#8B7F6E;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;font-family:inherit}
+
+/* V18.15 — ClientRow 3 lignes grid secteurs. */
+.client-row-card{background:#fff;border:1px solid #E8DDD0;border-radius:10px;margin-bottom:8px;overflow:hidden;cursor:pointer}
+.client-row-head{display:flex;align-items:center;gap:10px;padding:8px 12px;min-height:40px}
+.client-row-badge{width:32px;height:32px;border-radius:7px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.3px;flex-shrink:0}
+.client-row-name{font-weight:700;font-size:14px;color:#2A2018;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.client-row-sep{color:#B5A78F;font-weight:400;margin:0 2px}
+.client-row-tel{color:#8B5E3C;text-decoration:none;font-weight:600;font-size:12.5px;white-space:nowrap;flex-shrink:0}
+.client-row-chip-add{background:#FBF1E4;color:#8B5E3C;border:1px dashed #BBA88B;border-radius:12px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.client-row-grid{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid #EDE6DC}
+.client-row-sector{padding:7px 8px;border-left:1px solid #EDE6DC;min-height:46px;cursor:pointer;display:flex;flex-direction:column;gap:1px;background:#fff;transition:background .1s}
+.client-row-sector:first-child{border-left:none}
+.client-row-sector:active{background:#FBF7F2}
+.client-row-sector-label{font-size:10px;color:#8B7F6E;font-weight:600;text-transform:uppercase;letter-spacing:.3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.client-row-sector-l1{font-size:11.5px;color:#2A2018;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.client-row-sector-l2{font-size:10.5px;color:#8B7F6E;font-weight:400;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.client-row-sector-empty{color:#8B5E3C;font-weight:600;font-size:11px;font-style:italic}
+.client-row-sector-urgent{color:#C04B20;font-weight:700}
+@media (min-width: 768px) {
+  .client-row-sector{min-height:58px}
+  .client-row-sector-l1{font-size:12.5px}
+  .client-row-sector-l2{font-size:11.5px;white-space:normal;overflow:visible;text-overflow:clip}
+}
+@media (min-width: 1024px) {
+  .client-row-sector-l2{font-size:12px}
+}
 
 /* V17.4 UX v3 : tuiles pays / type — grille 1fr 1fr gap 6px. */
 .tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -124,8 +160,13 @@ const API = '/api';
 // V17.4 UX v3 : ordre strict Acheteur / Vendeur / Investisseur / Bailleur / Locataire / Curieux.
 const PROFILS_ORDER = ['Acheteur','Vendeur','Investisseur','Bailleur','Locataire','Curieux'];
 const PROFILS = {
-  Acheteur:'#8B5E3C', Vendeur:'#2E4A7A', Investisseur:'#6B3F8E',
-  Bailleur:'#C96B2E', Locataire:'#2E7D5C', Curieux:'#8B7F6E'
+  Acheteur:'#8B5E3C', Vendeur:'#1E3A5F', Investisseur:'#6B4E8B',
+  Bailleur:'#2D6B3F', Locataire:'#8B6B1E', Curieux:'#757575'
+};
+// V18.15 — tint backgrounds ligne 1 ClientRow (12% opacity de la couleur profil).
+const PROFILS_TINT = {
+  Acheteur:'#F4ECE3', Vendeur:'#E8EBEF', Investisseur:'#EFE9F2',
+  Bailleur:'#E8EFE9', Locataire:'#F4EFE5', Curieux:'#F0F0F0'
 };
 const BADGES = {Acheteur:'ACH', Vendeur:'VDR', Investisseur:'INV', Bailleur:'BAI', Locataire:'LOC', Curieux:'CUR'};
 const STAGES = {
@@ -2871,6 +2912,10 @@ function App() {
   const [formKey, setFormKey] = useState(0);
   const [activeProfil, setActiveProfil] = useState('Acheteur');
   const [isInvestisseur, setIsInvestisseur] = useState(false);
+  // V18.15 — filtre liste strict (radio). null = "Tous". Séparé de activeProfil (form).
+  const [listFilter, setListFilter] = useState(null);
+  // V18.15 — recherche dossiers (live debounce 150ms côté ListView).
+  const [listSearch, setListSearch] = useState('');
   // V17.10 : compteur de version pour re-render après fetch des pays dynamiques.
   const [countriesVersion, setCountriesVersion] = useState(0);
   // V17.11 : carte des matches par client_id → {count, max_score}
@@ -3050,6 +3095,8 @@ function App() {
       currentUser={currentUser} logout={logout}
       activeProfil={activeProfil} setActiveProfil={setActiveProfil}
       isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
+      listFilter={listFilter} setListFilter={setListFilter}
+      listSearch={listSearch} setListSearch={setListSearch}
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
       openDictation={() => setView('dictation')}
@@ -4210,6 +4257,7 @@ function ListView(props) {
   const {clients, country, setCountry, showArchives, setShowArchives,
          userMenu, setUserMenu, currentUser, logout,
          activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
+         listFilter, setListFilter, listSearch, setListSearch,
          openClient, openClientAtSection, openNew, toast, openPrefs,
          matchesById, openMatchModal, matchFor, closeMatchModal,
          findClientById, setEditingFromMatch} = props;
@@ -4228,12 +4276,79 @@ function ListView(props) {
   const paysFiltered = paysQuery.trim()
     ? PAYS.filter(p => normalizeAccent(p.n).includes(normalizeAccent(paysQuery)) || p.c.toLowerCase().startsWith(paysQuery.toLowerCase()))
     : PAYS;
-  const filtered = clients.filter(c => !!c.archived === showArchives);
+
+  // V18.15 — recherche dossiers live debounce 150ms.
+  const [showSearch, setShowSearch] = useState(Boolean(listSearch));
+  const [searchInput, setSearchInput] = useState(listSearch || '');
+  const searchInputRef = useRef(null);
+  useEffect(() => {
+    const t = setTimeout(() => { setListSearch(searchInput); }, 150);
+    return () => clearTimeout(t);
+  }, [searchInput, setListSearch]);
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      try { searchInputRef.current.focus(); } catch (e) {}
+    }
+  }, [showSearch]);
+  function toggleSearch() {
+    if (showSearch) {
+      setShowSearch(false);
+      setSearchInput('');
+      setListSearch('');
+    } else {
+      setShowSearch(true);
+    }
+  }
+  function clearSearch() {
+    setSearchInput('');
+    setListSearch('');
+    if (searchInputRef.current) { try { searchInputRef.current.focus(); } catch (e) {} }
+  }
+
+  // V18.15 — pipeline filtres : archive → listFilter (profil radio) → search (live).
+  // Search ranking : prenom/nom > ville > tels/emails.
+  const qNorm = normalizeAccent((listSearch || '').trim());
+  const archivedFiltered = clients.filter(c => !!c.archived === showArchives);
+  const profilFiltered = listFilter
+    ? archivedFiltered.filter(c => {
+        const cp = c.projet || c.profil_detecte;
+        if (cp === listFilter) return true;
+        // Dossiers liés (bascules v17.15) : visibles dans l'onglet si c'est leur profil primaire.
+        return false;
+      })
+    : archivedFiltered;
+  function searchScore(c) {
+    if (!qNorm) return 0;
+    const name = normalizeAccent(((c.prenom || '') + ' ' + (c.nom || '') + ' ' + (c.societe_nom || '')).trim());
+    if (name.includes(qNorm)) return 3;
+    const ville = normalizeAccent(((c.bien && c.bien.ville) || c.ville || '').trim());
+    if (ville && ville.includes(qNorm)) return 2;
+    const tels = Array.isArray(c.tels) ? c.tels.map(t => (t && t.valeur) || '').join(' ') : (c.tel || '');
+    const emails = Array.isArray(c.emails) ? c.emails.map(e => (e && e.valeur) || '').join(' ') : (c.email || '');
+    const contact = normalizeAccent((tels + ' ' + emails).trim());
+    if (contact && contact.includes(qNorm)) return 1;
+    return 0;
+  }
+  const searchFiltered = qNorm
+    ? profilFiltered
+        .map(c => ({c, s: searchScore(c)}))
+        .filter(x => x.s > 0)
+        .sort((a, b) => b.s - a.s)
+        .map(x => x.c)
+    : profilFiltered;
+  const filtered = searchFiltered;
   const drafts = filtered.filter(c => c.is_draft);
   const contacts = filtered.filter(c => !c.is_draft);
-  const countText = showArchives
-    ? `Archives / ${filtered.length} archivé${filtered.length > 1 ? 's' : ''}`
-    : `Mes Contacts / ${drafts.length} brouil · ${contacts.length} contact${contacts.length > 1 ? 's' : ''}`;
+  // Compteurs par profil (pour badge "(N)" sur chip si filtre actif).
+  const countByProfil = React.useMemo(() => {
+    const m = {};
+    PROFILS_ORDER.forEach(p => { m[p] = 0; });
+    archivedFiltered.forEach(c => {
+      const cp = c.projet || c.profil_detecte;
+      if (cp && m.hasOwnProperty(cp)) m[cp]++;
+    });
+    return m;
+  }, [archivedFiltered]);
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
@@ -4264,30 +4379,64 @@ function ListView(props) {
             )}
           </div>
         }
-        center={<div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'var(--ocre-brand)', letterSpacing:.3, fontStyle:'italic'}}>Ocre Immo</div>}
+        center={<div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'var(--ocre-brand)', letterSpacing:.3, fontStyle:'italic'}}>Ocre Immo</div>}
         right={
-          <button onClick={() => setShowArchives(!showArchives)} style={{background:'none', border:'none', cursor:'pointer', padding:4, color: showArchives ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
-            title={showArchives ? 'Retour aux contacts' : 'Voir les archives'}>
-            {showArchives ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="20" y1="12" x2="4" y2="12"/><polyline points="10 18 4 12 10 6"/>
+          <div style={{display:'flex', alignItems:'center', gap:2}}>
+            <button onClick={toggleSearch}
+              style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (showSearch || listSearch) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
+              title={showSearch ? 'Fermer la recherche' : 'Rechercher un dossier'}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-            ) : (
-              <ArchiveIcon size={22} color="currentColor"/>
-            )}
-          </button>
+            </button>
+            <button onClick={() => setShowArchives(!showArchives)} style={{background:'none', border:'none', cursor:'pointer', padding:4, color: showArchives ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
+              title={showArchives ? 'Retour aux contacts' : 'Voir les archives'}>
+              {showArchives ? (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="20" y1="12" x2="4" y2="12"/><polyline points="10 18 4 12 10 6"/>
+                </svg>
+              ) : (
+                <ArchiveIcon size={20} color="currentColor"/>
+              )}
+            </button>
+          </div>
         }
         userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs}
       />
 
-      {/* V18.9 — barre filtres compacte single-line scroll horizontal. countText déplacé en mini-texte à droite. */}
-      <div style={{padding:'6px 10px', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:8}}>
+      {/* V18.15 — barre de recherche dossiers (slide-down). */}
+      <div className={'search-bar-wrap ' + (showSearch ? 'open' : 'closed')}>
+        <div className="search-bar-input-wrap">
+          <input ref={searchInputRef} type="text"
+            className="search-bar-input"
+            placeholder="Rechercher un dossier…"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            autoCapitalize="off" autoCorrect="off" spellCheck="false"/>
+          {searchInput && (
+            <button className="search-bar-clear" onClick={clearSearch} title="Effacer">✕</button>
+          )}
+        </div>
+      </div>
+
+      {/* V18.15 — barre filtres profils strictement exclusifs (radio) + chip "Tous". */}
+      <div style={{padding:'5px 10px', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:8, minHeight:36}}>
         <div className="profils-row" style={{flex:1, minWidth:0}}>
+          <button onClick={() => setListFilter(null)}
+            className={'profil-chip ' + (listFilter === null ? 'state-selected' : 'state-default')}>Tous</button>
           {PROFILS_ORDER.map(p => {
-            const active = p === activeProfil;
+            const active = p === listFilter;
+            const n = countByProfil[p] || 0;
             return (
-              <button key={p} onClick={() => setActiveProfil(p)}
-                className={'profil-chip ' + (active ? 'state-selected' : 'state-default')}>{p}</button>
+              <button key={p}
+                onClick={() => {
+                  const next = (listFilter === p) ? null : p;
+                  setListFilter(next);
+                  if (next) setActiveProfil(next);
+                }}
+                className={'profil-chip ' + (active ? 'state-selected' : 'state-default')}>
+                {p}{n > 0 ? <span style={{marginLeft:4, opacity:.7, fontWeight:500}}>({n})</span> : null}
+              </button>
             );
           })}
         </div>
@@ -4432,13 +4581,14 @@ function MatchModal({clientId, clients, findClientById, setEditingFromMatch, onC
   );
 }
 
-// V18.2 — ClientRow avec rangée de 4 pills tappables (bien · budget · suivi · matchs).
-// Tap pill ouvre dossier + déploie la section concernée.
+// V18.15 — ClientRow 3 lignes : header teinté profil (ligne 1) + grid 3 secteurs cliquables (lignes 2-3).
+// Tap header hors tel → ouvre dossier. Tap secteur → ouvre Section II/III/IV du dossier.
+// Préserve v18.2 navigation par section (initialExpandedSection 1/2/3).
 function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection}) {
   const [telChooser, setTelChooser] = React.useState(false);
-  const [emailChooser, setEmailChooser] = React.useState(false);
-  const profil = c.projet || 'Acheteur';
+  const profil = c.projet || c.profil_detecte || 'Acheteur';
   const col = PROFILS[profil] || PROFILS.Acheteur;
+  const tint = PROFILS_TINT[profil] || PROFILS_TINT.Acheteur;
   const badge = BADGES[profil] || 'ACH';
   const isSociete = c.profil_type === 'Société';
   const name = isSociete
@@ -4446,150 +4596,165 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     : (((c.prenom || '') + ' ' + (c.nom || '').toUpperCase()).trim() || 'Sans nom');
 
   const bien = c.bien || {};
-  // V17.9 : multi-types — join si plusieurs, fallback legacy bien.type.
   const typesArr = Array.isArray(bien.types) && bien.types.length
     ? bien.types
     : (bien.type ? [bien.type] : []);
   const typeBien = typesArr.join(' · ');
-  const zone = bien.quartier || bien.ville || c.ville || '';
+  const villeQuartier = [bien.ville || c.ville, bien.quartier].filter(Boolean).join(' · ');
   const currency = bien.pays === 'MA' ? 'MAD' : '€';
-  const fmt = n => { const x = Number(n); if (!x) return ''; return x.toLocaleString('fr-FR'); };
 
-  let budgetStr = '';
+  // Budget compact : 1,2 M€ / 620k€ / 500 000 MAD. Travaux ou mensualité en sous-ligne.
+  function fmtMoney(n, cur) {
+    const x = Number(n);
+    if (!x) return '';
+    if (cur === '€') {
+      if (x >= 1000000) {
+        const v = x / 1000000;
+        return (v === Math.floor(v) ? v.toFixed(0) : v.toFixed(1).replace('.', ',')) + ' M€';
+      }
+      if (x >= 1000) return Math.round(x / 1000) + 'k€';
+      return x.toLocaleString('fr-FR') + ' €';
+    }
+    return x.toLocaleString('fr-FR') + ' ' + cur;
+  }
+  let budgetMain = '', budgetSub = '';
   if (profil === 'Acheteur' || profil === 'Investisseur') {
     const f = (c.financement && typeof c.financement === 'object') ? c.financement : {};
     const b = f.budget_total || c.budget_max || c.budget_min;
-    if (b) budgetStr = fmt(b) + ' ' + currency;
+    if (b) budgetMain = fmtMoney(b, currency);
+    const trav = f.travaux || c.travaux;
+    if (trav) budgetSub = '+' + fmtMoney(trav, currency).replace(' ', '') + ' trvx';
+    else if (f.mode === 'classique' && f.mensualite) budgetSub = fmtMoney(f.mensualite, currency) + '/mois';
   } else if (profil === 'Vendeur' && c.prix_affiche) {
-    budgetStr = fmt(c.prix_affiche) + ' ' + currency;
+    budgetMain = fmtMoney(c.prix_affiche, currency);
   } else if (profil === 'Bailleur' && c.loyer_demande) {
-    budgetStr = fmt(c.loyer_demande) + ' ' + currency + '/mois';
+    budgetMain = fmtMoney(c.loyer_demande, currency) + '/mois';
   } else if (profil === 'Locataire' && c.loyer_max) {
-    budgetStr = '≤ ' + fmt(c.loyer_max) + ' ' + currency + '/mois';
+    budgetMain = '≤ ' + fmtMoney(c.loyer_max, currency) + '/mois';
   }
-  const metaParts = [typeBien, zone, budgetStr].filter(s => s && s.length);
-  const meta = metaParts.join(' · ');
 
-  // tel/email primary (migration auto à la volée pour legacy)
+  // tel primary (migration legacy à la volée).
   const tels = Array.isArray(c.tels) && c.tels.length > 0
     ? c.tels
     : (c.tel ? [{label:'Perso', valeur:c.tel, primary:true}] : []);
-  const emails = Array.isArray(c.emails) && c.emails.length > 0
-    ? c.emails
-    : (c.email ? [{label:'Perso', valeur:c.email, primary:true}] : []);
   const primaryTel = tels.find(t => t.primary) || tels[0];
-  const primaryEmail = emails.find(t => t.primary) || emails[0];
 
-  // V18.2 — pills sections (🏠 Bien / 💰 Budget / 📅 Suivi / 🎯 Matchs).
+  // Suivi secteur III : prochain RDV 7j > todo due > ou "+ Planifier". Badge urgent si <24h.
   const suivi = c.suivi || {};
   const nextEvent = suivi.next_event;
   const nextTodo = suivi.next_todo;
-  const lastInter = suivi.last_interaction;
-  function suiviPillLabel() {
-    if (nextEvent) {
-      const t = new Date(nextEvent.when_at.replace(' ','T'));
+  function suiviTexts() {
+    if (nextEvent && nextEvent.when_at) {
+      const t = new Date(nextEvent.when_at.replace(' ', 'T'));
       const days = (t - new Date()) / (1000*3600*24);
       if (days <= 7) {
         const dn = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][t.getDay()];
-        const hh = String(t.getHours()).padStart(2,'0') + 'h' + (t.getMinutes() ? String(t.getMinutes()).padStart(2,'0') : '');
-        if (days < 1) return {icon:'📅', text:'Aujourd\'hui ' + hh, color:'#8B5E3C'};
-        if (days < 2) return {icon:'📅', text:'Demain ' + hh, color:'#8B5E3C'};
-        return {icon:'📅', text:dn + ' ' + hh, color:'#8B5E3C'};
+        const hh = String(t.getHours()).padStart(2, '0') + 'h' + (t.getMinutes() ? String(t.getMinutes()).padStart(2, '0') : '');
+        const l1 = days < 1 ? ("Aujourd'hui " + hh)
+                 : days < 2 ? ('Demain ' + hh)
+                 : (dn + ' ' + hh);
+        return {l1, l2: (nextEvent.title || '').slice(0, 22), urgent: days < 1};
       }
     }
     if (nextTodo && nextTodo.due_at) {
-      const t = new Date(nextTodo.due_at.replace(' ','T'));
+      const t = new Date(nextTodo.due_at.replace(' ', 'T'));
       const days = (t - new Date()) / (1000*3600*24);
       if (days <= 7) {
-        if (days < 1) return {icon:'✅', text:'Tâche aujourd\'hui', color:'#8B5E3C'};
-        if (days < 2) return {icon:'✅', text:'Relancer demain', color:'#8B5E3C'};
-        return {icon:'✅', text:'À faire J+' + Math.ceil(days), color:'#8B5E3C'};
+        const l1 = days < 1 ? 'Tâche aujourd\u2019hui'
+                 : days < 2 ? 'Demain'
+                 : 'Dans ' + Math.ceil(days) + 'j';
+        return {l1, l2: '✅ ' + (nextTodo.title || 'Relancer').slice(0, 20), urgent: days < 1};
       }
     }
-    if (lastInter) {
-      const t = new Date(lastInter.ts.replace(' ','T'));
-      const ago = (new Date() - t) / (1000*3600*24);
-      if (ago < 7) return {icon:'💬', text:'Contact il y a ' + Math.max(1, Math.round(ago)) + 'j', color:'#8B7F6E'};
-      if (ago > 30) return {icon:'⚠️', text:'Sans contact ' + Math.round(ago) + 'j', color:'#C04B20'};
-    }
-    return {icon:'+', text:'Ajouter un suivi', color:'#B5A78F'};
+    return null;
   }
-  const suiviPill = suiviPillLabel();
-  function pill(icon, text, color, onTap) {
-    return (
-      <button type="button" onClick={e => { e.stopPropagation(); onTap && onTap(); }}
-        style={{padding:'4px 8px', background:'#FBF1E4', border:'1px solid #E8DDD0', borderRadius:12, fontSize:11, fontWeight:600, color: color || '#8B5E3C',
-                cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0}}>
-        <span style={{marginRight:3}}>{icon}</span>{text}
-      </button>
-    );
-  }
+  const suivi3 = suiviTexts();
 
-  // Badge cumul si dossiers liés
+  // Badges cumul (dossiers liés v17.15).
   const linkedIds = Array.isArray(c.linked_dossiers) ? c.linked_dossiers : [];
-  const linkedProfils = linkedIds
+  const linkedBadges = linkedIds
     .map(id => (clients || []).find(x => x.id === id))
     .filter(Boolean)
-    .map(x => x.projet || 'Acheteur');
-  const cumul = linkedProfils.join(' · ');
+    .map(x => BADGES[x.projet || 'Acheteur'] || '');
+
+  function openSec(idx, e) {
+    if (e) e.stopPropagation();
+    onOpenSection && onOpenSection(c, idx);
+  }
 
   return (
-    <div onClick={onClick} style={{background:'#fff', padding:'12px 14px', borderRadius:10, marginBottom:8, display:'flex', alignItems:'center', gap:12, cursor:'pointer', border:'1px solid #EDE6DC'}}>
-      <div style={{width:40, height:40, borderRadius:8, background:col, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, letterSpacing:.5, flexShrink:0}}>{badge}</div>
-      <div style={{flex:1, minWidth:0}}>
-        {/* Ligne 1 : nom + cumul */}
-        <div style={{display:'flex', alignItems:'baseline', gap:6, marginBottom:2, minWidth:0}}>
-          <span style={{fontWeight:700, fontSize:13.5, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flex:'0 1 auto', minWidth:0}}>{name}</span>
-          {cumul && <span style={{fontSize:10, color:'#B26D3A', fontWeight:700, flexShrink:0}}>· 🔗 {cumul}</span>}
-        </div>
-        {/* Ligne 2 : bien · zone · budget (masquée pour Curieux) */}
-        {profil !== 'Curieux' && meta && (
-          <div style={{fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginBottom:2}}>{meta}</div>
+    <div className="client-row-card" onClick={onClick}>
+      <div className="client-row-head" style={{background: tint}}>
+        <div className="client-row-badge" style={{background: col}}>{badge}</div>
+        <div className="client-row-name">{name}</div>
+        {linkedBadges.length > 0 && (
+          <div style={{fontSize:9, color:col, fontWeight:700, flexShrink:0, letterSpacing:.3}}>🔗 {linkedBadges.join('·')}</div>
         )}
-        {/* Ligne 3 : tel + email cliquables (tap-to-call / tap-to-mail, chooser si 2+) */}
-        {(primaryTel || primaryEmail) && (
-          <div style={{fontSize:11, display:'flex', gap:10, flexWrap:'wrap'}}>
-            {primaryTel && primaryTel.valeur && (
-              tels.length > 1 ? (
-                <a href="#" onClick={e => { e.preventDefault(); e.stopPropagation(); setTelChooser(true); }}
-                  style={{color:'#8B5E3C', textDecoration:'none', fontWeight:600}}>📞 {formatTelPretty(primaryTel.valeur)} <span style={{fontSize:10, color:'#B26D3A'}}>(+{tels.length - 1})</span></a>
-              ) : (
-                <a href={'tel:' + primaryTel.valeur} onClick={e => e.stopPropagation()}
-                  style={{color:'#8B5E3C', textDecoration:'none', fontWeight:600}}>📞 {formatTelPretty(primaryTel.valeur)}</a>
-              )
-            )}
-            {primaryEmail && primaryEmail.valeur && (
-              emails.length > 1 ? (
-                <a href="#" onClick={e => { e.preventDefault(); e.stopPropagation(); setEmailChooser(true); }}
-                  style={{color:'#8B5E3C', textDecoration:'none', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'60%'}}>✉️ {primaryEmail.valeur} <span style={{fontSize:10, color:'#B26D3A'}}>(+{emails.length - 1})</span></a>
-              ) : (
-                <a href={'mailto:' + primaryEmail.valeur} onClick={e => e.stopPropagation()}
-                  style={{color:'#8B5E3C', textDecoration:'none', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'60%'}}>✉️ {primaryEmail.valeur}</a>
-              )
-            )}
-          </div>
+        {primaryTel && primaryTel.valeur ? (
+          tels.length > 1 ? (
+            <a href="#"
+              onClick={e => { e.preventDefault(); e.stopPropagation(); setTelChooser(true); }}
+              onTouchStart={e => e.stopPropagation()}
+              className="client-row-tel">
+              📞 {formatTelPretty(primaryTel.valeur)} <span style={{fontSize:10, color:'#B26D3A'}}>(+{tels.length - 1})</span>
+            </a>
+          ) : (
+            <a href={'tel:' + primaryTel.valeur}
+              onClick={e => e.stopPropagation()}
+              onTouchStart={e => e.stopPropagation()}
+              className="client-row-tel">📞 {formatTelPretty(primaryTel.valeur)}</a>
+          )
+        ) : (
+          <button className="client-row-chip-add"
+            onClick={e => { e.stopPropagation(); onOpenSection && onOpenSection(c, 0); }}>+ Contact</button>
         )}
-        {/* V18.2 — pills sections tappables (sous ligne 3 quand dossier non-curieux) */}
-        {profil !== 'Curieux' && (
-          <div style={{display:'flex', gap:5, marginTop:6, overflowX:'auto', WebkitOverflowScrolling:'touch'}}>
-            {(typeBien || zone) && pill('🏠', [typeBien, zone].filter(Boolean).join(' · ').slice(0, 30), '#8B5E3C',
-              () => onOpenSection && onOpenSection(c, 1))}
-            {budgetStr && pill('💰', budgetStr, '#8B5E3C',
-              () => onOpenSection && onOpenSection(c, 2))}
-            {pill(suiviPill.icon, suiviPill.text, suiviPill.color,
-              () => onOpenSection && onOpenSection(c, 3))}
-            {matchInfo && matchInfo.count > 0 && pill('🎯', matchInfo.count + (matchInfo.max_score > 80 ? ' ★' : ''),
-              matchInfo.max_score > 80 ? '#D64545' : '#B26D3A',
-              () => onOpenMatches && onOpenMatches())}
-          </div>
+        {matchInfo && matchInfo.count > 0 && (
+          <button onClick={e => { e.stopPropagation(); onOpenMatches && onOpenMatches(); }}
+            style={{background:'none', border:'none', cursor:'pointer', padding:'2px 4px', fontSize:12, color: matchInfo.max_score > 80 ? '#D64545' : '#B26D3A', fontWeight:700, flexShrink:0, fontFamily:'inherit'}}
+            title="Voir les matches">🎯 {matchInfo.count}{matchInfo.max_score > 80 ? '★' : ''}</button>
         )}
       </div>
-      <div style={{color:'#C4B5A0', fontSize:16, flexShrink:0}}>›</div>
+      <div className="client-row-grid">
+        <div className="client-row-sector" onClick={e => openSec(1, e)}>
+          <div className="client-row-sector-label">🏠 Bien</div>
+          {(typeBien || villeQuartier) ? (
+            <>
+              {typeBien ? <div className="client-row-sector-l1">{typeBien.slice(0, 22)}</div>
+                        : <div className="client-row-sector-l1" style={{color:'#8B7F6E'}}>—</div>}
+              {villeQuartier ? <div className="client-row-sector-l2">{villeQuartier.slice(0, 28)}</div> : null}
+            </>
+          ) : (
+            <div className="client-row-sector-empty">+ Définir</div>
+          )}
+        </div>
+        <div className="client-row-sector" onClick={e => openSec(2, e)}>
+          <div className="client-row-sector-label">💰 Budget</div>
+          {budgetMain ? (
+            <>
+              <div className="client-row-sector-l1">{budgetMain}</div>
+              {budgetSub ? <div className="client-row-sector-l2">{budgetSub}</div> : null}
+            </>
+          ) : (
+            <div className="client-row-sector-empty">+ Ajouter</div>
+          )}
+        </div>
+        <div className="client-row-sector" onClick={e => openSec(3, e)}>
+          <div className="client-row-sector-label">
+            📅 Suivi
+            {suivi3 && suivi3.urgent ? <span style={{marginLeft:3}}>🔴</span> : null}
+          </div>
+          {suivi3 ? (
+            <>
+              <div className={'client-row-sector-l1' + (suivi3.urgent ? ' client-row-sector-urgent' : '')}>{suivi3.l1}</div>
+              {suivi3.l2 ? <div className="client-row-sector-l2">{suivi3.l2}</div> : null}
+            </>
+          ) : (
+            <div className="client-row-sector-empty">+ Planifier</div>
+          )}
+        </div>
+      </div>
       {telChooser && (
         <ContactChooser entries={tels} scheme="tel:" title="Choisir un numéro" onClose={() => setTelChooser(false)}/>
-      )}
-      {emailChooser && (
-        <ContactChooser entries={emails} scheme="mailto:" title="Choisir un email" onClose={() => setEmailChooser(false)}/>
       )}
     </div>
   );
