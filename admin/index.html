@@ -85,6 +85,7 @@ tr:hover td{background:#FDFAF7}
     <button class="tab-btn" data-tab="users">Utilisateurs</button>
     <button class="tab-btn" data-tab="countries">Pays</button>
     <button class="tab-btn" data-tab="apikeys">API</button>
+    <button class="tab-btn" data-tab="backups">Sauvegardes</button>
     <button class="tab-btn" data-tab="logs">Logs</button>
   </div>
   <div class="container">
@@ -136,6 +137,21 @@ tr:hover td{background:#FDFAF7}
           <div id="ak-status" style="font-size:12px;color:#8B7F6E">Chargement…</div>
           <p style="font-size:11px;color:#8B7F6E;margin-top:10px">Utilisée par la dictée vocale (extraction JSON FR) et l'import URL (structuration HTML). Sans clé, fallback heuristique PHP pour dictée, parsing OG/JSON-LD pour URL.</p>
         </div>
+      </div>
+    </div>
+    <div id="pane-backups" class="pane hidden">
+      <div class="card">
+        <h2>Sauvegarde & partage du Sheet</h2>
+        <p style="font-size:12px;color:#8B7F6E;margin-bottom:12px">Crée une copie statique du Sheet dans ton Drive (dossier <b>Ocre Immo - Sauvegardes</b>, rétention 30) <b>et</b> ouvre le partage iOS natif avec le fichier XLSX en pièce jointe (Mail / WhatsApp / AirDrop / Fichiers).</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="btn btn-primary" id="btn-backup-share" style="padding:11px 18px;font-size:13px">💾 Sauvegarder et partager</button>
+        </div>
+        <div id="backup-status" style="font-size:12px;color:#8B7F6E;margin-bottom:10px"></div>
+        <p style="font-size:11px;color:#8B7F6E;background:#FDFAF7;padding:8px 10px;border-radius:7px;border:1px solid #F2EBE2;margin-bottom:14px">ℹ Google Sheets conserve aussi automatiquement un historique des versions accessible depuis l'app (Fichier → Historique des versions). Nos sauvegardes sont des copies statiques distinctes pour sécurité supplémentaire. Un cron quotidien tourne à 02:00 UTC.</p>
+      </div>
+      <div class="card">
+        <h2>Sauvegardes récentes (50 dernières)</h2>
+        <div id="backups-table">—</div>
       </div>
     </div>
     <div id="pane-logs" class="pane hidden"><div class="card"><h2>50 derniers logs</h2><div id="logs-table">—</div></div></div>
@@ -204,8 +220,112 @@ document.querySelectorAll('.tab-btn').forEach(b => {
 });
 
 async function loadAll(){
-  await Promise.all([loadStats(), loadSettings(), loadUsers(), loadLogs(), loadCountries(), loadApiKeys()]);
+  await Promise.all([loadStats(), loadSettings(), loadUsers(), loadLogs(), loadCountries(), loadApiKeys(), loadBackups()]);
 }
+
+// V18.16 — Sauvegardes : liste + bouton "Sauvegarder et partager" avec share iOS natif.
+async function loadBackups(){
+  const d = await fetchJson(API + '/sheet_backup.php?action=list');
+  const t = $('backups-table');
+  if (!d.ok) { t.innerHTML = `<p style="color:#C04B20;font-size:12px">${escapeHtml(d.error || 'erreur')}</p>`; return; }
+  const backups = d.backups || [];
+  if (backups.length === 0) {
+    t.innerHTML = `<p style="font-size:12px;color:#8B7F6E">Aucune sauvegarde pour le moment. La prochaine automatique tourne ce soir 02:00 UTC.</p>`;
+    return;
+  }
+  function fmtKo(b){ const n = Number(b||0); if (!n) return '—'; if (n < 1024) return n + ' o'; return Math.round(n/1024) + ' Ko'; }
+  t.innerHTML = `<table>
+    <thead><tr><th>Date</th><th>Nom</th><th>Dossiers</th><th>Taille</th><th>Partagé</th><th style="text-align:right">Actions</th></tr></thead>
+    <tbody>${backups.map(b => `
+      <tr>
+        <td style="white-space:nowrap">${escapeHtml((b.created_at || '').replace('T',' ').slice(0,16))}</td>
+        <td>${escapeHtml(b.backup_name || '—')}</td>
+        <td>${b.dossiers_count || 0}</td>
+        <td>${fmtKo(b.size_bytes)}</td>
+        <td>${b.shared == 1 ? '✓' : ''}</td>
+        <td style="text-align:right"><button class="btn btn-ghost" data-backup-id="${escapeHtml(b.backup_file_id)}" data-backup-name="${escapeHtml(b.backup_name || '')}">⬇ Télécharger</button></td>
+      </tr>`).join('')}</tbody></table>`;
+  t.querySelectorAll('button[data-backup-id]').forEach(btn => {
+    btn.addEventListener('click', () => downloadBackup(btn.dataset.backupId, btn.dataset.backupName));
+  });
+}
+
+async function downloadBackup(backupId, backupName){
+  try {
+    const resp = await fetch(API + '/sheet_backup.php?action=download&backup_id=' + encodeURIComponent(backupId), {
+      headers: {'X-Session-Token': token, 'X-Admin-Code': adminCode}
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({error: 'Erreur ' + resp.status}));
+      throw new Error(err.error || ('HTTP ' + resp.status));
+    }
+    const blob = await resp.blob();
+    const filename = (backupName || 'ocre-sauvegarde') + '.xlsx';
+    const file = new File([blob], filename, {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    if (navigator.canShare && navigator.canShare({files:[file]})) {
+      try { await navigator.share({files:[file], title:'Sauvegarde Ocre Immo', text:filename}); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; /* fallback download below */ }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+  } catch (e) {
+    toast(e.message || 'erreur', 'error');
+  }
+}
+
+async function shareBackup(){
+  const status = $('backup-status');
+  const btn = $('btn-backup-share');
+  btn.disabled = true;
+  btn.textContent = '⏳ Création…';
+  status.innerHTML = 'Drive copy + export XLSX en cours (peut prendre 5-10s)…';
+  try {
+    const resp = await fetch(API + '/sheet_backup.php?action=share', {
+      headers: {'X-Session-Token': token, 'X-Admin-Code': adminCode}
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({error: 'Erreur ' + resp.status}));
+      throw new Error(err.error || ('HTTP ' + resp.status));
+    }
+    const disp = resp.headers.get('Content-Disposition') || '';
+    let filename = 'ocre-sauvegarde.xlsx';
+    const m = disp.match(/filename="?([^";]+)"?/i);
+    if (m) filename = m[1];
+    const blob = await resp.blob();
+    const file = new File([blob], filename, {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    btn.textContent = '💾 Sauvegarder et partager';
+    btn.disabled = false;
+    status.innerHTML = `✓ Sauvegarde créée (${Math.round(blob.size/1024)} Ko) : <b>${escapeHtml(filename)}</b>`;
+    if (navigator.canShare && navigator.canShare({files:[file]})) {
+      try {
+        await navigator.share({files:[file], title:'Sauvegarde Ocre Immo', text:'Sauvegarde ' + filename});
+        status.innerHTML = '✓ Partagée via le share sheet iOS.';
+      } catch (e) {
+        // User cancelled ou erreur silencieuse.
+        if (e && e.name !== 'AbortError') {
+          status.innerHTML = '⚠ Share sheet : ' + escapeHtml(e.message || '');
+        }
+      }
+    } else {
+      // Fallback desktop : download direct.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+      status.innerHTML += ' (téléchargement direct — share files non supporté sur ce device)';
+    }
+    loadBackups();
+  } catch (e) {
+    btn.textContent = '💾 Sauvegarder et partager';
+    btn.disabled = false;
+    status.innerHTML = `<span style="color:#C04B20">✗ ${escapeHtml(e.message || 'erreur')}</span>`;
+    toast(e.message || 'erreur', 'error');
+  }
+}
+
+$('btn-backup-share').addEventListener('click', shareBackup);
 
 async function loadApiKeys(){
   // Charge la clé actuelle (juste si présente, masquée) depuis settings
