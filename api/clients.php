@@ -47,6 +47,16 @@ function enqueueSync($user_id, $dossier_id = null, $action = 'upsert') {
     } catch (Exception $e) { /* silent */ }
 }
 
+function tableExists($name) {
+    static $cache = [];
+    if (isset($cache[$name])) return $cache[$name];
+    try {
+        $st = db()->prepare("SHOW TABLES LIKE ?");
+        $st->execute([$name]);
+        return $cache[$name] = (bool)$st->fetchColumn();
+    } catch (Throwable $e) { return $cache[$name] = false; }
+}
+
 function computeIsDraft($d) {
     $tel = trim((string)($d['tel'] ?? ''));
     $email = trim((string)($d['email'] ?? ''));
@@ -69,6 +79,51 @@ switch ($action) {
         );
         $stmt->execute([$user['id']]);
         $rows = $stmt->fetchAll();
+        // V18.2 — précharge next_event / next_todo / last_interaction par client (3 batch queries).
+        $client_ids = array_map(fn($r) => (int)$r['id'], $rows);
+        $next_events = []; $next_todos = []; $last_inter = [];
+        if ($client_ids && tableExists('suivi_events')) {
+            $stmt = db()->prepare(
+                "SELECT e.* FROM suivi_events e
+                 JOIN (
+                   SELECT client_id, MIN(when_at) AS w
+                   FROM suivi_events
+                   WHERE user_id = ? AND status = 'planned' AND when_at > NOW()
+                   GROUP BY client_id
+                 ) m ON m.client_id = e.client_id AND m.w = e.when_at
+                 WHERE e.user_id = ? AND e.status = 'planned'"
+            );
+            $stmt->execute([$user['id'], $user['id']]);
+            foreach ($stmt->fetchAll() as $e) $next_events[(int)$e['client_id']] = $e;
+        }
+        if ($client_ids && tableExists('suivi_todos')) {
+            $stmt = db()->prepare(
+                "SELECT t.* FROM suivi_todos t
+                 JOIN (
+                   SELECT client_id, MIN(due_at) AS d
+                   FROM suivi_todos
+                   WHERE user_id = ? AND done = 0 AND due_at IS NOT NULL AND client_id IS NOT NULL
+                   GROUP BY client_id
+                 ) m ON m.client_id = t.client_id AND m.d = t.due_at
+                 WHERE t.user_id = ? AND t.done = 0"
+            );
+            $stmt->execute([$user['id'], $user['id']]);
+            foreach ($stmt->fetchAll() as $t) $next_todos[(int)$t['client_id']] = $t;
+        }
+        if ($client_ids && tableExists('suivi_journal')) {
+            $stmt = db()->prepare(
+                "SELECT j.* FROM suivi_journal j
+                 JOIN (
+                   SELECT client_id, MAX(ts) AS m
+                   FROM suivi_journal
+                   WHERE user_id = ?
+                   GROUP BY client_id
+                 ) x ON x.client_id = j.client_id AND x.m = j.ts
+                 WHERE j.user_id = ?"
+            );
+            $stmt->execute([$user['id'], $user['id']]);
+            foreach ($stmt->fetchAll() as $j) $last_inter[(int)$j['client_id']] = $j;
+        }
         $out = [];
         foreach ($rows as $r) {
             $d = json_decode($r['data'] ?? '{}', true) ?: [];
@@ -78,6 +133,12 @@ switch ($action) {
             $d['projet'] = $r['projet'] ?? ($d['projet'] ?? 'Acheteur');
             $d['is_investisseur'] = (bool)(int)($r['is_investisseur'] ?? 0);
             $d['updated_at'] = $r['updated_at'];
+            $cid = (int)$r['id'];
+            $d['suivi'] = [
+                'next_event' => $next_events[$cid] ?? null,
+                'next_todo' => $next_todos[$cid] ?? null,
+                'last_interaction' => $last_inter[$cid] ?? null,
+            ];
             $out[] = $d;
         }
         jsonOk(['clients' => $out]);
