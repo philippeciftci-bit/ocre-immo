@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCRE immo — choix typo manuscrite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Cormorant+Garamond:wght@600;700&family=Dancing+Script:wght@400;500;600;700&family=Homemade+Apple&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Cormorant Garamond',serif;background:#F4EEE6;color:#2A2018;min-height:100vh;padding:18px 14px 40px}
+h1{font-size:22px;color:#8B5E3C;font-weight:700;margin-bottom:6px;text-align:center}
+p.intro{font-size:13px;color:#8B7F6E;font-family:'DM Sans',system-ui,sans-serif;text-align:center;margin-bottom:18px;line-height:1.5}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:680px;margin:0 auto}
+@media (max-width: 420px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid #E8DDD0;border-radius:14px;padding:18px 16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.card .label{font-family:'DM Sans',system-ui,sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:#8B7F6E}
+.card .font-name{font-family:'DM Sans',system-ui,sans-serif;font-size:13px;font-weight:600;color:#2A2018}
+.preview{display:flex;align-items:center;gap:8px;padding:12px 10px;background:#FBF7F2;border:1px solid #EDE6DC;border-radius:10px;min-width:200px}
+.logo{width:44px;height:44px;border-radius:10px;border:1px solid #8B5E3C;background:linear-gradient(to bottom,#B26D3A 0%,#FBF1E4 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo .i{color:#1A1410;font-size:32px;line-height:1;margin-top:-4px;font-weight:500}
+.title{display:flex;align-items:baseline;gap:3px}
+.title .ocre{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:24px;letter-spacing:1.8px;color:#8B5E3C}
+.title .immo{font-size:27px;color:#2A2018;margin-left:3px;line-height:1}
+.choose-btn{width:100%;padding:11px;font-family:'DM Sans',system-ui,sans-serif;font-size:12px;font-weight:700;background:linear-gradient(135deg,#8B5E3C,#A06B45);color:#fff;border:none;border-radius:9px;cursor:pointer;text-decoration:none;text-align:center;display:inline-block}
+.choose-btn:active{opacity:.85}
+.active-tag{display:inline-block;margin-top:4px;padding:3px 8px;background:#2E7D5C;color:#fff;font-family:'DM Sans',system-ui,sans-serif;font-size:10px;font-weight:700;border-radius:10px;letter-spacing:.5px}
+
+/* Fonts : une classe par variante. Les logos ET le mot "immo" partagent la même police pour cohérence visuelle. */
+.v-caveat .i, .v-caveat .immo { font-family:'Caveat', cursive; font-weight:500; }
+.v-kalam  .i, .v-kalam  .immo { font-family:'Kalam',  cursive; font-weight:400; }
+.v-dancing .i, .v-dancing .immo { font-family:'Dancing Script', cursive; font-weight:500; }
+.v-homemade .i, .v-homemade .immo { font-family:'Homemade Apple', cursive; font-weight:400; }
+
+/* Ajustements fins selon métriques de chaque police (baseline / ascender). */
+.v-caveat .i   { margin-top:-4px }
+.v-kalam .i    { margin-top:-2px; font-size:30px }
+.v-dancing .i  { margin-top:-4px; font-size:34px }
+.v-homemade .i { margin-top:-6px; font-size:28px }
+
+.v-kalam .immo    { font-size:25px }
+.v-dancing .immo  { font-size:28px }
+.v-homemade .immo { font-size:23px; letter-spacing:.5px }
+
+footer{text-align:center;margin-top:24px;font-family:'DM Sans',system-ui,sans-serif;font-size:11px;color:#8B7F6E}
+footer a{color:#8B5E3C;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+
+<h1>Choix de la typo manuscrite</h1>
+<p class="intro">4 variantes pour le logo <b>OCRE immo</b>. La variante A (Caveat) est déployée par défaut. Tape « Choisir » sur celle que tu préfères pour me prévenir — je pourrai switcher sans redéployer.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="label">Variante A</div>
+    <div class="font-name">Caveat <span class="active-tag">ACTIVE</span></div>
+    <div class="preview v-caveat">
+      <div class="logo"><span class="i">i</span></div>
+      <div class="title"><span class="ocre">OCRE</span><span class="immo">immo</span></div>
+    </div>
+    <a class="choose-btn" href="mailto:philippe.ciftci@gmail.com?subject=Logo%20OCRE%20immo%20%E2%80%94%20choix&body=Variante%20A%20Caveat">Choisir cette variante</a>
+  </div>
+
+  <div class="card">
+    <div class="label">Variante B</div>
+    <div class="font-name">Kalam</div>
+    <div class="preview v-kalam">
+      <div class="logo"><span class="i">i</span></div>
+      <div class="title"><span class="ocre">OCRE</span><span class="immo">immo</span></div>
+    </div>
+    <a class="choose-btn" href="mailto:philippe.ciftci@gmail.com?subject=Logo%20OCRE%20immo%20%E2%80%94%20choix&body=Variante%20B%20Kalam">Choisir cette variante</a>
+  </div>
+
+  <div class="card">
+    <div class="label">Variante C</div>
+    <div class="font-name">Dancing Script</div>
+    <div class="preview v-dancing">
+      <div class="logo"><span class="i">i</span></div>
+      <div class="title"><span class="ocre">OCRE</span><span class="immo">immo</span></div>
+    </div>
+    <a class="choose-btn" href="mailto:philippe.ciftci@gmail.com?subject=Logo%20OCRE%20immo%20%E2%80%94%20choix&body=Variante%20C%20Dancing%20Script">Choisir cette variante</a>
+  </div>
+
+  <div class="card">
+    <div class="label">Variante D</div>
+    <div class="font-name">Homemade Apple</div>
+    <div class="preview v-homemade">
+      <div class="logo"><span class="i">i</span></div>
+      <div class="title"><span class="ocre">OCRE</span><span class="immo">immo</span></div>
+    </div>
+    <a class="choose-btn" href="mailto:philippe.ciftci@gmail.com?subject=Logo%20OCRE%20immo%20%E2%80%94%20choix&body=Variante%20D%20Homemade%20Apple">Choisir cette variante</a>
+  </div>
+
+</div>
+
+<footer>
+  Toutes fournies par Google Fonts. Retour direct Philippe → chat Claude (« variante X »).<br>
+  <a href="/">← Retour app</a>
+</footer>
+
+</body>
+</html>

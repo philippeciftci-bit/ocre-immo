@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.18-downloads-images -->
+<!-- ocre-v18.19-logo-search-unified -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -9,7 +9,9 @@
 <meta name="theme-color" content="#8B5E3C">
 <title>Ocre Immo</title>
 <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><rect width='180' height='180' rx='36' fill='%238B5E3C'/><text x='90' y='130' text-anchor='middle' font-family='Georgia' font-weight='bold' font-size='90' fill='white'>O</text></svg>">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
 <style>
@@ -4549,6 +4551,99 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
   );
 }
 
+// V18.19 — logo custom réutilisable. Carré arrondi dégradé ocre + 'i' Caveat manuscrit.
+function OcreLogo({size = 36}) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 8,
+      border: '1px solid #8B5E3C',
+      background: 'linear-gradient(to bottom, #B26D3A 0%, #FBF1E4 100%)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0, position: 'relative',
+    }}>
+      <span style={{
+        fontFamily: '"Caveat", cursive',
+        fontSize: Math.round(size * 0.72),
+        color: '#1A1410',
+        lineHeight: 1,
+        marginTop: -Math.round(size * 0.08),
+        fontWeight: 500,
+      }}>i</span>
+    </div>
+  );
+}
+
+// V18.19 — titre bi-typo. "OCRE" Cormorant ocre bold + "immo" Caveat noir manuscrit.
+// Les deux 'i' (logo + immo) partagent Caveat pour cohérence visuelle.
+function OcreTitle() {
+  return (
+    <div style={{display: 'flex', alignItems: 'baseline', gap: 3, justifyContent: 'center'}}>
+      <span style={{
+        fontFamily: '"Cormorant Garamond", serif',
+        fontWeight: 700,
+        fontSize: 20,
+        letterSpacing: 1.5,
+        color: '#8B5E3C',
+      }}>OCRE</span>
+      <span style={{
+        fontFamily: '"Caveat", cursive',
+        fontWeight: 400,
+        fontSize: 23,
+        color: '#2A2018',
+        marginLeft: 2,
+        lineHeight: 1,
+      }}>immo</span>
+    </div>
+  );
+}
+
+// V18.19 — SearchBar factorisée (utilisée dans main/archives/downloads).
+// props : open (bool), value (string), onChange (fn), placeholder (string).
+function SearchBar({open, value, onChange, placeholder}) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (open && ref.current) { try { ref.current.focus(); } catch (e) {} }
+  }, [open]);
+  return (
+    <div className={'search-bar-wrap ' + (open ? 'open' : 'closed')}>
+      <div className="search-bar-input-wrap">
+        <input ref={ref} type="text"
+          className="search-bar-input"
+          placeholder={placeholder || 'Rechercher un dossier…'}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          autoCapitalize="off" autoCorrect="off" spellCheck="false"/>
+        {value && (
+          <button className="search-bar-clear" onClick={() => onChange('')} title="Effacer">✕</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// V18.19 — filtre recherche accent-insensitive sur prenom/nom/societe/ville/tels/emails.
+// Ranking : nom > ville > tels/emails. Retourne liste triée (ou liste inchangée si query vide).
+function applySearchRank(list, query) {
+  const q = normalizeAccent((query || '').trim());
+  if (!q) return list;
+  function score(c) {
+    const name = normalizeAccent(((c.prenom || '') + ' ' + (c.nom || '') + ' ' + (c.societe_nom || '')).trim());
+    if (name.includes(q)) return 3;
+    const ville = normalizeAccent(((c.bien && c.bien.ville) || c.ville || '').trim());
+    if (ville && ville.includes(q)) return 2;
+    const tels = Array.isArray(c.tels) ? c.tels.map(t => (t && t.valeur) || '').join(' ') : (c.tel || '');
+    const emails = Array.isArray(c.emails) ? c.emails.map(e => (e && e.valeur) || '').join(' ') : (c.email || '');
+    const contact = normalizeAccent((tels + ' ' + emails).trim());
+    if (contact && contact.includes(q)) return 1;
+    return 0;
+  }
+  return list
+    .map(c => ({c, s: score(c)}))
+    .filter(x => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .map(x => x.c);
+}
+
 function Header({left, center, right, userMenu, setUserMenu, currentUser, logout, openPrefs}) {
   // V18.9 — compact iPhone : padding 6px 12px (vs 10px 14px), hauteur ~44px.
   return (
@@ -4585,35 +4680,14 @@ function ListView(props) {
          openClient, openClientAtSection, openNew, toast, openPrefs,
          matchesById, openMatchModal, matchFor, closeMatchModal,
          findClientById, setEditingFromMatch} = props;
-  const pays = PAYS.find(p => p.c === country) || PAYS[0];
-  // V17.7 fix-C1 : picker pays dropdown avec recherche (remplace cycle).
-  const [paysPickerOpen, setPaysPickerOpen] = useState(false);
-  const [paysQuery, setPaysQuery] = useState('');
-  const paysBtnRef = useRef(null);
-  useEffect(() => {
-    function onDoc(e) {
-      if (paysBtnRef.current && !paysBtnRef.current.contains(e.target)) { setPaysPickerOpen(false); setPaysQuery(''); }
-    }
-    if (paysPickerOpen) document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [paysPickerOpen]);
-  const paysFiltered = paysQuery.trim()
-    ? PAYS.filter(p => normalizeAccent(p.n).includes(normalizeAccent(paysQuery)) || p.c.toLowerCase().startsWith(paysQuery.toLowerCase()))
-    : PAYS;
-
-  // V18.15 — recherche dossiers live debounce 150ms.
+  // V18.19 — recherche dossiers live debounce 150ms. Partagée main/archives via showArchives.
+  // Le composant <SearchBar/> gère son propre ref/autofocus.
   const [showSearch, setShowSearch] = useState(Boolean(listSearch));
   const [searchInput, setSearchInput] = useState(listSearch || '');
-  const searchInputRef = useRef(null);
   useEffect(() => {
     const t = setTimeout(() => { setListSearch(searchInput); }, 150);
     return () => clearTimeout(t);
   }, [searchInput, setListSearch]);
-  useEffect(() => {
-    if (showSearch && searchInputRef.current) {
-      try { searchInputRef.current.focus(); } catch (e) {}
-    }
-  }, [showSearch]);
   function toggleSearch() {
     if (showSearch) {
       setShowSearch(false);
@@ -4623,44 +4697,17 @@ function ListView(props) {
       setShowSearch(true);
     }
   }
-  function clearSearch() {
-    setSearchInput('');
-    setListSearch('');
-    if (searchInputRef.current) { try { searchInputRef.current.focus(); } catch (e) {} }
-  }
 
   // V18.15 — pipeline filtres : archive → listFilter (profil radio) → search (live).
-  // Search ranking : prenom/nom > ville > tels/emails.
-  const qNorm = normalizeAccent((listSearch || '').trim());
+  // V18.19 — ranking extrait dans applySearchRank(list, query) réutilisable.
   const archivedFiltered = clients.filter(c => !!c.archived === showArchives);
   const profilFiltered = listFilter
     ? archivedFiltered.filter(c => {
         const cp = c.projet || c.profil_detecte;
-        if (cp === listFilter) return true;
-        // Dossiers liés (bascules v17.15) : visibles dans l'onglet si c'est leur profil primaire.
-        return false;
+        return cp === listFilter;
       })
     : archivedFiltered;
-  function searchScore(c) {
-    if (!qNorm) return 0;
-    const name = normalizeAccent(((c.prenom || '') + ' ' + (c.nom || '') + ' ' + (c.societe_nom || '')).trim());
-    if (name.includes(qNorm)) return 3;
-    const ville = normalizeAccent(((c.bien && c.bien.ville) || c.ville || '').trim());
-    if (ville && ville.includes(qNorm)) return 2;
-    const tels = Array.isArray(c.tels) ? c.tels.map(t => (t && t.valeur) || '').join(' ') : (c.tel || '');
-    const emails = Array.isArray(c.emails) ? c.emails.map(e => (e && e.valeur) || '').join(' ') : (c.email || '');
-    const contact = normalizeAccent((tels + ' ' + emails).trim());
-    if (contact && contact.includes(qNorm)) return 1;
-    return 0;
-  }
-  const searchFiltered = qNorm
-    ? profilFiltered
-        .map(c => ({c, s: searchScore(c)}))
-        .filter(x => x.s > 0)
-        .sort((a, b) => b.s - a.s)
-        .map(x => x.c)
-    : profilFiltered;
-  const filtered = searchFiltered;
+  const filtered = applySearchRank(profilFiltered, listSearch);
   const drafts = filtered.filter(c => c.is_draft);
   const contacts = filtered.filter(c => !c.is_draft);
   // Compteurs par profil (pour badge "(N)" sur chip si filtre actif).
@@ -4677,33 +4724,8 @@ function ListView(props) {
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
       <Header
-        left={
-          <div ref={paysBtnRef} style={{position:'relative'}}>
-            <button onClick={() => setPaysPickerOpen(o => !o)}
-              style={{background:'transparent', border:'1px solid var(--border-input)', borderRadius:8, padding:'3px 8px', fontSize:12, fontWeight:600, color:'var(--text-primary)', cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:3}}>
-              <span style={{fontSize:14}}>{pays.f}</span> {pays.d}
-              <span style={{fontSize:9, opacity:.6}}>▾</span>
-            </button>
-            {paysPickerOpen && (
-              <div style={{position:'absolute', top:'100%', left:0, maxHeight:260, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:20, marginTop:4, minWidth:200}}>
-                <input type="text" value={paysQuery} onChange={e => setPaysQuery(e.target.value)}
-                  placeholder="Rechercher…" autoFocus autoCapitalize="off" autoCorrect="off"
-                  style={{width:'100%', padding:'8px 11px', border:'none', borderBottom:'1px solid #F4EEE6', outline:'none', fontSize:13, fontFamily:'inherit'}}/>
-                {paysFiltered.length === 0 ? (
-                  <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E'}}>Aucun pays trouvé</div>
-                ) : paysFiltered.map(p => (
-                  <div key={p.c} onMouseDown={() => { setCountry(p.c); setPaysPickerOpen(false); setPaysQuery(''); }}
-                    style={{padding:'10px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F4EEE6', background: p.c === country ? '#FBF1E4' : '#fff', display:'flex', alignItems:'center', gap:8}}>
-                    <span style={{fontSize:16}}>{p.f}</span>
-                    <span style={{flex:1}}>{p.n}</span>
-                    <span style={{fontSize:11, color:'#8B7F6E', fontWeight:700}}>{p.d}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        }
-        center={<div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'var(--ocre-brand)', letterSpacing:.3, fontStyle:'italic'}}>Ocre Immo</div>}
+        left={<OcreLogo size={36}/>}
+        center={<OcreTitle/>}
         right={
           <div style={{display:'flex', alignItems:'center', gap:2}}>
             {stagedCount > 0 && (
@@ -4733,20 +4755,9 @@ function ListView(props) {
         userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs}
       />
 
-      {/* V18.15 — barre de recherche dossiers (slide-down). */}
-      <div className={'search-bar-wrap ' + (showSearch ? 'open' : 'closed')}>
-        <div className="search-bar-input-wrap">
-          <input ref={searchInputRef} type="text"
-            className="search-bar-input"
-            placeholder="Rechercher un dossier…"
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            autoCapitalize="off" autoCorrect="off" spellCheck="false"/>
-          {searchInput && (
-            <button className="search-bar-clear" onClick={clearSearch} title="Effacer">✕</button>
-          )}
-        </div>
-      </div>
+      {/* V18.19 — SearchBar factorisée (partagée main/archives/downloads). */}
+      <SearchBar open={showSearch} value={searchInput} onChange={setSearchInput}
+        placeholder={showArchives ? 'Rechercher dans les archives…' : 'Rechercher un dossier…'}/>
 
       {/* V18.15 — barre filtres profils strictement exclusifs (radio) + chip "Tous". */}
       <div style={{padding:'5px 10px', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:8, minHeight:36}}>
@@ -5484,14 +5495,36 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
 // V18.17 — DownloadsView : page dédiée aux téléchargements (annonces importées non validées).
 // Affiche les is_staged=1, avec entrée d'import URL et explication du flux.
 function DownloadsView({onBack, staged, clients, openClient, openImportUrl, openImportImage, showToast, toast}) {
-  const n = (staged || []).length;
+  // V18.19 — loupe triple scope : même SearchBar dans downloads.
+  const [showSearch, setShowSearch] = React.useState(false);
+  const [searchInput, setSearchInput] = React.useState('');
+  const [searchValue, setSearchValue] = React.useState('');
+  React.useEffect(() => {
+    const t = setTimeout(() => setSearchValue(searchInput), 150);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+  function toggleSearch() {
+    if (showSearch) { setShowSearch(false); setSearchInput(''); setSearchValue(''); }
+    else setShowSearch(true);
+  }
+  const filteredStaged = applySearchRank(staged || [], searchValue);
+  const n = filteredStaged.length;
+  const nTotal = (staged || []).length;
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>📥 Téléchargements</div>
-        <div style={{width:28}}/>
+        <button onClick={toggleSearch}
+          style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (showSearch || searchValue) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
+          title={showSearch ? 'Fermer la recherche' : 'Rechercher'}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
       </div>
+      <SearchBar open={showSearch} value={searchInput} onChange={setSearchInput}
+        placeholder="Rechercher dans les téléchargements…"/>
 
       <div style={{padding:'10px 14px', background:'#FFF3EC', borderBottom:'1px solid #BBA88B', fontSize:12, color:'#2A2018', lineHeight:1.45}}>
         Les annonces importées depuis une URL apparaissent ici. Modifie-les librement puis <b>valide</b> celles qui t'intéressent pour les ajouter à tes dossiers. Les téléchargements ne sont pas encore synchronisés vers ton Sheet ni inclus dans les matches.
@@ -5510,14 +5543,16 @@ function DownloadsView({onBack, staged, clients, openClient, openImportUrl, open
 
       <div style={{flex:1, overflowY:'auto', padding:'10px 12px 96px'}}>
         <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>
-          À valider · {n}
+          À valider · {n}{searchValue && nTotal !== n ? ' / ' + nTotal : ''}
         </div>
         {n === 0 ? (
           <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:40}}>
-            Aucun téléchargement en attente. Utilise le bouton <b>🔗 Importer</b> ci-dessus pour coller une URL d'annonce.
+            {searchValue
+              ? <>Aucun résultat pour <b>{searchValue}</b>.</>
+              : <>Aucun téléchargement en attente. Utilise les boutons <b>🔗 Lien URL</b> ou <b>📸 Document image</b> ci-dessus.</>}
           </div>
         ) : (
-          (staged || []).map(c => (
+          filteredStaged.map(c => (
             <ClientRow key={c.id} c={c} clients={clients}
               onClick={() => openClient(c)}
               onOpenSection={(cc, sec) => openClient(cc)}
