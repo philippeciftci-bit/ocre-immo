@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.16-sheet-refonte-v2 -->
+<!-- ocre-v18.17-downloads-staging -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2916,6 +2916,11 @@ function App() {
   const [listFilter, setListFilter] = useState(null);
   // V18.15 — recherche dossiers (live debounce 150ms côté ListView).
   const [listSearch, setListSearch] = useState('');
+  // V18.17 — staging téléchargements : liste séparée des is_staged=1.
+  const [staged, setStaged] = useState([]);
+  const [stagedCount, setStagedCount] = useState(0);
+  // V18.17 — ID du dossier qui vient d'être promu (pour highlight ocre 3s dans liste principale).
+  const [promotedId, setPromotedId] = useState(null);
   // V17.10 : compteur de version pour re-render après fetch des pays dynamiques.
   const [countriesVersion, setCountriesVersion] = useState(0);
   // V17.11 : carte des matches par client_id → {count, max_score}
@@ -2941,7 +2946,13 @@ function App() {
             c.is_investisseur && c.projet !== 'Investisseur' ? {...c, projet: 'Investisseur'} : c
           );
           setClients(migrated);
+          if (cl.meta && typeof cl.meta.staged_count === 'number') setStagedCount(cl.meta.staged_count);
         }
+        // V18.17 — charge en parallèle les staged (téléchargements).
+        fetch(API + '/clients.php?action=list&staged=1', {headers: {'X-Session-Token': token}})
+          .then(r => r.json())
+          .then(s => { if (s && s.ok) { setStaged(s.clients || []); setStagedCount((s.clients || []).length); } })
+          .catch(() => {});
         // V17.11 : charge les matches en arrière-plan (non bloquant).
         fetch(API + '/matching.php?action=find_all_matches', {headers:{'X-Session-Token': token}})
           .then(r => r.json()).then(d => { if (d && d.ok) setMatchesById(d.matches_by_id || {}); })
@@ -2999,15 +3010,25 @@ function App() {
 
   async function handleSaveLocal(data) {
     const incoming = {...(editing || {}), ...data, projet: activeProfil, is_investisseur: isInvestisseur};
-    setClients(prev => {
-      const exists = prev.find(c => c.id === incoming.id && incoming.id);
-      if (exists) return prev.map(c => c.id === incoming.id ? {...c, ...incoming} : c);
-      return [{...incoming, id: incoming.id || 'tmp-' + Date.now()}, ...prev];
-    });
+    // V18.17 — si staged, mettre à jour le tableau staged (pas clients principaux).
+    const isStagedSave = !!(editing && editing.is_staged);
+    if (isStagedSave) {
+      setStaged(prev => prev.map(c => (c.id === incoming.id ? {...c, ...incoming} : c)));
+    } else {
+      setClients(prev => {
+        const exists = prev.find(c => c.id === incoming.id && incoming.id);
+        if (exists) return prev.map(c => c.id === incoming.id ? {...c, ...incoming} : c);
+        return [{...incoming, id: incoming.id || 'tmp-' + Date.now()}, ...prev];
+      });
+    }
     setEditing(incoming);
     const saved = await apiSaveClient(incoming);
     if (saved) {
-      setClients(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
+      if (isStagedSave) {
+        setStaged(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
+      } else {
+        setClients(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
+      }
       setEditing(saved);
     }
   }
@@ -3051,6 +3072,48 @@ function App() {
     window.location = '/login/';
   }
 
+  // V18.17 — promote staged → liste principale + highlight ocre 3s.
+  async function promoteStaged(id) {
+    const token = localStorage.getItem('ocre_token');
+    try {
+      const r = await fetch(API + '/clients.php?action=promote', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token},
+        body: JSON.stringify({id}),
+      });
+      const d = await r.json();
+      if (!d || !d.ok) { showToast((d && d.error) || 'Échec promotion'); return false; }
+      const promoted = staged.find(c => c.id === id);
+      if (promoted) {
+        const migrated = {...promoted, is_staged: false, promoted_at: new Date().toISOString()};
+        setStaged(prev => prev.filter(c => c.id !== id));
+        setStagedCount(n => Math.max(0, n - 1));
+        setClients(prev => [migrated, ...prev]);
+      }
+      setEditing(null);
+      setView('list');
+      setPromotedId(id);
+      setTimeout(() => setPromotedId(cur => (cur === id ? null : cur)), 3200);
+      showToast('✓ Enregistré dans tes dossiers');
+      return true;
+    } catch (e) { showToast('Erreur réseau'); return false; }
+  }
+  async function deleteStaged(id) {
+    if (!confirm('Supprimer définitivement ce téléchargement ? Cette annonce ne pourra pas être récupérée.')) return false;
+    const token = localStorage.getItem('ocre_token');
+    try {
+      await fetch(API + '/clients.php?action=delete', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token},
+        body: JSON.stringify({id}),
+      });
+      setStaged(prev => prev.filter(c => c.id !== id));
+      setStagedCount(n => Math.max(0, n - 1));
+      setEditing(null);
+      setView('downloads');
+      showToast('Supprimé');
+      return true;
+    } catch (e) { showToast('Erreur réseau'); return false; }
+  }
+
   if (apiLoading) {
     return (
       <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F4EEE6'}}>
@@ -3076,15 +3139,22 @@ function App() {
       }}/>;
   }
   if (view === 'import_url') {
-    return <ImportUrlView onBack={() => setView('list')}
+    return <ImportUrlView onBack={() => setView('downloads')}
       showToast={showToast} toast={toast}
       onCreated={(newClient) => {
-        setClients(prev => [newClient, ...prev]);
-        setEditing(newClient);
-        setActiveProfil(newClient.projet || 'Vendeur');
-        setIsInvestisseur(newClient.projet === 'Investisseur' || !!newClient.is_investisseur);
-        setView('form');
+        // V18.17 — import URL crée un staged. Ajoute à la liste staged (pas clients principaux)
+        // et redirige vers la page Téléchargements (pas le formulaire).
+        setStaged(prev => [newClient, ...prev]);
+        setStagedCount(n => n + 1);
+        setView('downloads');
       }}/>;
+  }
+  if (view === 'downloads') {
+    return <DownloadsView onBack={() => setView('list')}
+      showToast={showToast} toast={toast}
+      staged={staged} clients={clients}
+      openImportUrl={() => setView('import_url')}
+      openClient={(c) => { openClient(c); }}/>;
   }
   const banner = showInstallBanner && <InstallPwaBanner aboveActionBar={view === 'list'} onClose={() => { setShowInstallBanner(false); localStorage.setItem('ocre_install_dismissed_v18','1'); }}/>;
   return (<>{view === 'list' ? (
@@ -3097,6 +3167,8 @@ function App() {
       isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
       listFilter={listFilter} setListFilter={setListFilter}
       listSearch={listSearch} setListSearch={setListSearch}
+      stagedCount={stagedCount} openDownloads={() => setView('downloads')}
+      promotedId={promotedId}
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
       openDictation={() => setView('dictation')}
@@ -3113,10 +3185,11 @@ function App() {
       activeProfil={activeProfil} setActiveProfil={setActiveProfil}
       isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
       handleSaveLocal={handleSaveLocal} handleDelete={handleDelete}
-      backToList={() => { setView('list'); setEditing(null); }}
+      backToList={() => { setView(editing && editing.is_staged ? 'downloads' : 'list'); setEditing(null); }}
       toast={toast} showToast={showToast}
       clients={clients} openExistingDossier={openClient}
       initialExpandedSection={initialExpandedSection}
+      promoteStaged={promoteStaged} deleteStaged={deleteStaged}
     />
   )}{banner}</>);
 }
@@ -3175,6 +3248,11 @@ function ImportUrlView({onBack, onCreated, showToast, toast}) {
     const client = {
       profil_type: isPro ? 'Société' : 'Particulier',
       projet: 'Vendeur',
+      // V18.17 — staging téléchargements.
+      is_staged: true,
+      import_type: 'url',
+      import_source: 'url',
+      staged_at: now,
       from_url_import: true,
       source_url: result.source_url || detectedUrl,
       source_domain: result.source_domain,
@@ -4258,6 +4336,7 @@ function ListView(props) {
          userMenu, setUserMenu, currentUser, logout,
          activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          listFilter, setListFilter, listSearch, setListSearch,
+         stagedCount, openDownloads, promotedId,
          openClient, openClientAtSection, openNew, toast, openPrefs,
          matchesById, openMatchModal, matchFor, closeMatchModal,
          findClientById, setEditingFromMatch} = props;
@@ -4382,6 +4461,11 @@ function ListView(props) {
         center={<div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'var(--ocre-brand)', letterSpacing:.3, fontStyle:'italic'}}>Ocre Immo</div>}
         right={
           <div style={{display:'flex', alignItems:'center', gap:2}}>
+            {stagedCount > 0 && (
+              <button onClick={() => openDownloads && openDownloads()}
+                style={{background:'#FBF1E4', border:'1px solid #BBA88B', borderRadius:12, padding:'2px 8px', fontSize:12, fontWeight:700, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', marginRight:4, display:'inline-flex', alignItems:'center', gap:3}}
+                title="Téléchargements à valider">📥 {stagedCount}</button>
+            )}
             <button onClick={toggleSearch}
               style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (showSearch || listSearch) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
               title={showSearch ? 'Fermer la recherche' : 'Rechercher un dossier'}>
@@ -5131,10 +5215,61 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
   );
 }
 
+// V18.17 — DownloadsView : page dédiée aux téléchargements (annonces importées non validées).
+// Affiche les is_staged=1, avec entrée d'import URL et explication du flux.
+function DownloadsView({onBack, staged, clients, openClient, openImportUrl, showToast, toast}) {
+  const n = (staged || []).length;
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>📥 Téléchargements</div>
+        <div style={{width:28}}/>
+      </div>
+
+      <div style={{padding:'10px 14px', background:'#FFF3EC', borderBottom:'1px solid #BBA88B', fontSize:12, color:'#2A2018', lineHeight:1.45}}>
+        Les annonces importées depuis une URL apparaissent ici. Modifie-les librement puis <b>valide</b> celles qui t'intéressent pour les ajouter à tes dossiers. Les téléchargements ne sont pas encore synchronisés vers ton Sheet ni inclus dans les matches.
+      </div>
+
+      <div style={{padding:'10px 12px 6px', display:'flex', gap:8, flexWrap:'wrap'}}>
+        <button onClick={openImportUrl}
+          style={{flex:'1 1 160px', minWidth:0, padding:'12px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+          🔗 Importer depuis une URL
+        </button>
+      </div>
+
+      <div style={{flex:1, overflowY:'auto', padding:'10px 12px 96px'}}>
+        <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>
+          À valider · {n}
+        </div>
+        {n === 0 ? (
+          <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:40}}>
+            Aucun téléchargement en attente. Utilise le bouton <b>🔗 Importer</b> ci-dessus pour coller une URL d'annonce.
+          </div>
+        ) : (
+          (staged || []).map(c => (
+            <ClientRow key={c.id} c={c} clients={clients}
+              onClick={() => openClient(c)}
+              onOpenSection={(cc, sec) => openClient(cc)}
+              onOpenMatches={null}
+              matchInfo={null}/>
+          ))
+        )}
+      </div>
+      {toast && <Toast msg={toast}/>}
+    </div>
+  );
+}
+
 function FormView(props) {
   const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          handleSaveLocal, handleDelete, backToList, toast, showToast,
-         clients, openExistingDossier, initialExpandedSection} = props;
+         clients, openExistingDossier, initialExpandedSection,
+         promoteStaged, deleteStaged} = props;
+  // V18.17 — dossier en mode staging (vient de la page Téléchargements).
+  const isStaged = !!(editing && editing.is_staged);
+  const stagedSource = editing && (editing.source_domain || editing.source_url || '');
+  const stagedUrl = editing && editing.source_url;
   const init = editing || {};
   const [d, setD] = useState(init);
   const [profilType, setProfilType] = useState(init.profil_type || 'Particulier');
@@ -5402,6 +5537,20 @@ function FormView(props) {
         <button onClick={openShare} style={{background:'none', border:'none', cursor:'pointer', padding:4}} title="Partager"><ShareIcon/></button>
       </div>
 
+      {/* V18.17 — banner mode staging (téléchargement non validé). */}
+      {isStaged && (
+        <div style={{background:'#FFF3EC', border:'1px solid #BBA88B', borderLeft:'4px solid #8B5E3C', padding:'10px 14px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+          <div style={{flex:1, minWidth:200, fontSize:12, color:'#2A2018', lineHeight:1.4}}>
+            <b>📥 Annonce téléchargée{stagedSource ? ' depuis ' + stagedSource : ''}.</b><br/>
+            <span style={{color:'#8B7F6E'}}>Modifie librement puis <b>enregistre</b> pour l'ajouter à tes dossiers.</span>
+          </div>
+          {stagedUrl && (
+            <a href={stagedUrl} target="_blank" rel="noopener"
+              style={{background:'none', border:'1px solid #BBA88B', borderRadius:8, padding:'5px 9px', fontSize:11, color:'#8B5E3C', fontWeight:700, textDecoration:'none', whiteSpace:'nowrap'}}>🔗 Voir l'annonce originale</a>
+          )}
+        </div>
+      )}
+
       <div style={{padding:'10px 14px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
         <div className="profils-row">
           {PROFILS_ORDER.map(p => {
@@ -5570,21 +5719,40 @@ function FormView(props) {
         </Stage>
         </div>
 
-        <div style={{display:'flex', gap:8, alignItems:'center', marginTop:12, marginBottom:24}}>
-          <button onClick={() => commit('archived', !d.archived)}
-            title={d.archived ? 'Désarchiver' : 'Archiver'}
-            style={{padding:'10px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:10, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700}}>
-            <ArchiveIcon size={18}/> {d.archived ? 'Désarchiver' : 'Archiver'}
-          </button>
-          {editing && editing.id && (
-            <button onClick={() => handleDelete(editing.id)}
-              style={{padding:'10px 14px', background:'#C04B20', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12, fontFamily:'inherit'}}>Supprimer</button>
-          )}
-          <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
-            style={{flex:1, padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
-            Enregistrer
-          </button>
-        </div>
+        {/* V18.17 — boutons dédiés pour staged : Enregistrer dans mes dossiers + Supprimer téléchargement. */}
+        {isStaged ? (
+          <div style={{display:'flex', flexDirection:'column', gap:8, marginTop:12, marginBottom:24}}>
+            <button onClick={async () => {
+              // Commit pending (s'assure que tout est persisté) puis promote.
+              await Promise.resolve(commit('_touch', Date.now()));
+              await new Promise(r => setTimeout(r, 200));
+              promoteStaged && promoteStaged(editing.id);
+            }}
+              style={{width:'100%', padding:'14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
+              ✓ Enregistrer dans mes dossiers
+            </button>
+            <button onClick={() => deleteStaged && deleteStaged(editing.id)}
+              style={{width:'100%', padding:'10px', background:'#FDFAF7', color:'#C04B20', border:'1.5px solid #E8DDD0', borderRadius:10, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>
+              🗑 Supprimer ce téléchargement
+            </button>
+          </div>
+        ) : (
+          <div style={{display:'flex', gap:8, alignItems:'center', marginTop:12, marginBottom:24}}>
+            <button onClick={() => commit('archived', !d.archived)}
+              title={d.archived ? 'Désarchiver' : 'Archiver'}
+              style={{padding:'10px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:10, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700}}>
+              <ArchiveIcon size={18}/> {d.archived ? 'Désarchiver' : 'Archiver'}
+            </button>
+            {editing && editing.id && (
+              <button onClick={() => handleDelete(editing.id)}
+                style={{padding:'10px 14px', background:'#C04B20', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12, fontFamily:'inherit'}}>Supprimer</button>
+            )}
+            <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
+              style={{flex:1, padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
+              Enregistrer
+            </button>
+          </div>
+        )}
       </div>
 
       {toast && <Toast msg={toast}/>}

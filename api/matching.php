@@ -113,10 +113,12 @@ function candidatesForProfil($user_id, $profil) {
     $opp_list = OPP_PROFIL[$profil] ?? [];
     if (!$opp_list) return [];
     $placeholders = implode(',', array_fill(0, count($opp_list), '?'));
+    // V18.17 — exclure les téléchargements staged (non validés) du matching.
     $stmt = db()->prepare(
         "SELECT id, projet, data, prenom, nom, societe_nom, updated_at
          FROM clients
-         WHERE user_id = ? AND archived = 0 AND projet IN ($placeholders)
+         WHERE user_id = ? AND archived = 0 AND (is_staged IS NULL OR is_staged = 0)
+               AND projet IN ($placeholders)
          ORDER BY updated_at DESC
          LIMIT 500"
     );
@@ -166,9 +168,10 @@ switch ($action) {
 
     case 'find_all_matches': {
         // Map client_id → {count, max_score}. Calcul one-shot sur tous les dossiers du user.
+        // V18.17 — exclure staged du matching all.
         $stmt = db()->prepare(
             "SELECT id, projet, data, prenom, nom, societe_nom FROM clients
-             WHERE user_id = ? AND archived = 0
+             WHERE user_id = ? AND archived = 0 AND (is_staged IS NULL OR is_staged = 0)
              LIMIT 500"
         );
         $stmt->execute([$user['id']]);

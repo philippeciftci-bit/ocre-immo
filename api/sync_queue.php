@@ -87,10 +87,13 @@ switch ($action) {
         $stmt->execute([$user_id]);
         $user = $stmt->fetch();
         if (!$user) jsonError('user introuvable', 404);
+        // V18.17 — exclure staged (téléchargements non validés). NULL-safe si colonne absente.
         $stmt = db()->prepare(
             "SELECT id, data, projet, is_investisseur, is_draft, archived,
                     prenom, nom, tel, email, societe_nom, updated_at
-             FROM clients WHERE user_id = ? ORDER BY updated_at DESC"
+             FROM clients
+             WHERE user_id = ? AND (is_staged IS NULL OR is_staged = 0)
+             ORDER BY updated_at DESC"
         );
         $stmt->execute([$user_id]);
         $rows = $stmt->fetchAll();

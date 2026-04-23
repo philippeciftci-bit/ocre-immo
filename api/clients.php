@@ -16,6 +16,10 @@ function ensureSyncSchema() {
             "ALTER TABLE users ADD COLUMN sync_email VARCHAR(255) NULL",
             "ALTER TABLE users ADD COLUMN sheet_id VARCHAR(100) NULL",
             "ALTER TABLE users ADD COLUMN sheet_created_at DATETIME NULL",
+            // V18.17 — staging téléchargements.
+            "ALTER TABLE clients ADD COLUMN is_staged TINYINT NOT NULL DEFAULT 0",
+            "ALTER TABLE clients ADD COLUMN promoted_at DATETIME NULL",
+            "ALTER TABLE clients ADD INDEX idx_staged (user_id, is_staged)",
         ] as $sql) {
             try { db()->exec($sql); } catch (Exception $e) {}
         }
@@ -73,12 +77,22 @@ function computeIsDraft($d) {
 switch ($action) {
 
     case 'list': {
+        // V18.17 — filtre is_staged (0 = liste principale, défaut / 1 = téléchargements).
+        ensureSyncSchema();
+        $staged = isset($_GET['staged']) ? (int)$_GET['staged'] : 0;
         $stmt = db()->prepare(
-            "SELECT id, data, is_draft, archived, projet, is_investisseur, updated_at
-             FROM clients WHERE user_id = ? ORDER BY updated_at DESC"
+            "SELECT id, data, is_draft, archived, projet, is_investisseur, is_staged, promoted_at, updated_at
+             FROM clients WHERE user_id = ? AND is_staged = ? ORDER BY updated_at DESC"
         );
-        $stmt->execute([$user['id']]);
+        $stmt->execute([$user['id'], $staged ? 1 : 0]);
         $rows = $stmt->fetchAll();
+        // V18.17 — count staged séparé pour badge header 📥 N.
+        $stagedCount = 0;
+        try {
+            $c = db()->prepare("SELECT COUNT(*) n FROM clients WHERE user_id = ? AND is_staged = 1");
+            $c->execute([$user['id']]);
+            $stagedCount = (int)($c->fetch()['n'] ?? 0);
+        } catch (Exception $e) {}
         // V18.2 — précharge next_event / next_todo / last_interaction par client (3 batch queries).
         $client_ids = array_map(fn($r) => (int)$r['id'], $rows);
         $next_events = []; $next_todos = []; $last_inter = [];
@@ -130,6 +144,8 @@ switch ($action) {
             $d['id'] = (int)$r['id'];
             $d['archived'] = (bool)(int)$r['archived'];
             $d['is_draft'] = (bool)(int)$r['is_draft'];
+            $d['is_staged'] = (bool)(int)($r['is_staged'] ?? 0);
+            $d['promoted_at'] = $r['promoted_at'] ?? null;
             $d['projet'] = $r['projet'] ?? ($d['projet'] ?? 'Acheteur');
             $d['is_investisseur'] = (bool)(int)($r['is_investisseur'] ?? 0);
             $d['updated_at'] = $r['updated_at'];
@@ -141,7 +157,7 @@ switch ($action) {
             ];
             $out[] = $d;
         }
-        jsonOk(['clients' => $out]);
+        jsonOk(['clients' => $out, 'meta' => ['staged_count' => $stagedCount]]);
     }
 
     case 'get': {
@@ -161,6 +177,7 @@ switch ($action) {
     }
 
     case 'save': {
+        ensureSyncSchema();
         $c = $input['client'] ?? [];
         if (!is_array($c)) jsonError('client invalide');
         $id = isset($c['id']) ? (int)$c['id'] : 0;
@@ -168,6 +185,9 @@ switch ($action) {
         $is_investisseur = !empty($c['is_investisseur']) ? 1 : 0;
         $archived = !empty($c['archived']) ? 1 : 0;
         $is_draft = computeIsDraft($c);
+        // V18.17 — is_staged respecté à l'INSERT (import URL/image crée staged).
+        // En UPDATE : on conserve l'existant (promote est géré par action=promote dédié).
+        $is_staged_new = !empty($c['is_staged']) ? 1 : 0;
         $prenom = substr(trim((string)($c['prenom'] ?? '')), 0, 100);
         $nom = substr(trim((string)($c['nom'] ?? '')), 0, 100);
         $societe_nom = substr(trim((string)($c['societe_nom'] ?? '')), 0, 150);
@@ -175,10 +195,13 @@ switch ($action) {
         $email = substr(trim((string)($c['email'] ?? '')), 0, 150);
         $data = json_encode($c, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
+        $wasStaged = false;
         if ($id > 0) {
-            $chk = db()->prepare("SELECT id FROM clients WHERE id = ? AND user_id = ?");
+            $chk = db()->prepare("SELECT id, is_staged FROM clients WHERE id = ? AND user_id = ?");
             $chk->execute([$id, $user['id']]);
-            if (!$chk->fetch()) jsonError('Accès refusé', 403);
+            $existing = $chk->fetch();
+            if (!$existing) jsonError('Accès refusé', 403);
+            $wasStaged = (int)($existing['is_staged'] ?? 0) === 1;
             $stmt = db()->prepare(
                 "UPDATE clients SET data = ?, projet = ?, is_investisseur = ?, archived = ?,
                    is_draft = ?, prenom = ?, nom = ?, societe_nom = ?, tel = ?, email = ?,
@@ -190,20 +213,38 @@ switch ($action) {
         } else {
             $stmt = db()->prepare(
                 "INSERT INTO clients (user_id, data, projet, is_investisseur, archived,
-                                      is_draft, prenom, nom, societe_nom, tel, email,
+                                      is_draft, is_staged, prenom, nom, societe_nom, tel, email,
                                       created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
             );
-            $stmt->execute([$user['id'], $data, $projet, $is_investisseur, $archived, $is_draft,
+            $stmt->execute([$user['id'], $data, $projet, $is_investisseur, $archived, $is_draft, $is_staged_new,
                             $prenom, $nom, $societe_nom, $tel, $email]);
             $id = (int)db()->lastInsertId();
+            $wasStaged = (bool)$is_staged_new;
         }
         $c['id'] = $id;
         $c['is_draft'] = (bool)$is_draft;
         $c['archived'] = (bool)$archived;
-        // V17.5 Phase 2c : enqueue sync Google Sheet si user sync_enabled.
-        enqueueSync((int)$user['id'], $id, 'upsert');
+        $c['is_staged'] = $wasStaged;
+        // V17.5 Phase 2c : enqueue sync Google Sheet si user sync_enabled. V18.17 : skip si staged.
+        if (!$wasStaged) enqueueSync((int)$user['id'], $id, 'upsert');
         jsonOk(['client' => $c]);
+    }
+
+    case 'promote': {
+        // V18.17 — passe un dossier de staging à la liste principale.
+        ensureSyncSchema();
+        $id = (int)($input['id'] ?? 0);
+        if (!$id) jsonError('id requis');
+        $stmt = db()->prepare(
+            "UPDATE clients SET is_staged = 0, promoted_at = NOW(), updated_at = NOW()
+             WHERE id = ? AND user_id = ? AND is_staged = 1"
+        );
+        $stmt->execute([$id, $user['id']]);
+        if ($stmt->rowCount() === 0) jsonError('dossier introuvable ou déjà promu', 404);
+        logAction((int)$user['id'], 'client_promote', "id=$id");
+        enqueueSync((int)$user['id'], $id, 'upsert');
+        jsonOk(['id' => $id, 'promoted' => true]);
     }
 
     case 'delete': {
