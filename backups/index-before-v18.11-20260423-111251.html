@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.11-url-enriched -->
+<!-- ocre-v18.9-compact-contrast -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3076,32 +3076,15 @@ function App() {
 
 // V17.5 Phase 2c — écran Préférences : sync Google Sheet.
 // V17.14 — ImportUrlView : analyse URL annonce immo + création brouillon auto.
-// V18.11 — extrait la première URL valide depuis un texte libre (filtre blocklist sociaux/shorteners).
-function extractFirstUrl(text) {
-  if (!text) return null;
-  const matches = text.match(/(https?:\/\/[^\s<>"'\]\}]+)/gi) || [];
-  if (!matches.length) return null;
-  const blocklist = ['bit.ly','t.co','tinyurl.com','facebook.com','fb.com','instagram.com','twitter.com','x.com','linkedin.com','youtube.com'];
-  const valid = matches.find(u => !blocklist.some(b => u.toLowerCase().includes(b)));
-  return (valid || matches[0]).replace(/[.,;)\]]+$/, '');
-}
-
 function ImportUrlView({onBack, onCreated, showToast, toast}) {
-  const [rawText, setRawText] = React.useState('');
-  const [detectedUrl, setDetectedUrl] = React.useState(null);
+  const [url, setUrl] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [result, setResult] = React.useState(null);
   const [creating, setCreating] = React.useState(false);
-  const [manualNote, setManualNote] = React.useState('');
-
-  React.useEffect(() => {
-    const t = setTimeout(() => setDetectedUrl(extractFirstUrl(rawText)), 200);
-    return () => clearTimeout(t);
-  }, [rawText]);
 
   async function analyse() {
-    const u = detectedUrl || extractFirstUrl(rawText);
-    if (!u) { showToast('Aucune URL détectée — colle un lien d\'annonce immobilière'); return; }
+    const u = url.trim();
+    if (!u) return;
     setLoading(true);
     setResult(null);
     const token = localStorage.getItem('ocre_token') || '';
@@ -3122,64 +3105,25 @@ function ImportUrlView({onBack, onCreated, showToast, toast}) {
     setCreating(true);
     const token = localStorage.getItem('ocre_token') || '';
     const now = new Date().toISOString();
-    // V18.11 — détection annonceur particulier vs pro.
-    const isPro = result.annonceur_type === 'professionnel';
-    const annonceurNom = result.annonceur_nom || '';
     const client = {
-      profil_type: isPro ? 'Société' : 'Particulier',
+      profil_type: 'Particulier',
       projet: 'Vendeur',
       from_url_import: true,
-      source_url: result.source_url || detectedUrl,
+      source_url: result.source_url || url,
       source_domain: result.source_domain,
       url_imported_at: now,
+      notes: result.description_clean || result.description || '',
     };
-    if (isPro && annonceurNom) client.societe_nom = annonceurNom;
-    else if (annonceurNom) client.prenom = annonceurNom;
-    // V18.11 — parser tel/email depuis textarea manuelle (priorité), sinon extraits.
-    const manualTel = (manualNote.match(/(?:(?:\+|00)\d{1,3}[\s.-]?|0)[1-9](?:[\s.-]*\d){8,9}/) || [])[0];
-    const manualEmail = (manualNote.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i) || [])[0];
-    const tel = manualTel || result.annonceur_tel_mentionne;
-    const email = manualEmail || result.annonceur_email_mentionne;
-    if (tel) { client.tel = tel; client.tels = [{label:'Principal', valeur: tel, primary: true}]; }
-    if (email) { client.email = email; client.emails = [{label:'Principal', valeur: email, primary: true}]; }
-    // Notes : description complète + manuel.
-    const notesParts = [];
-    if (result.description_complete || result.description) notesParts.push(result.description_complete || result.description);
-    if (manualNote.trim()) notesParts.push('--- Notes manuelles ---\n' + manualNote.trim());
-    if (notesParts.length) client.notes = notesParts.join('\n\n');
-    // Mapping bien complet.
+    if (result.prix) client.prix_affiche = result.prix;
     const bien = {};
     if (result.pays_bien) bien.pays = result.pays_bien;
     if (result.ville_bien) bien.ville = result.ville_bien;
     if (result.quartier_bien) bien.quartier = result.quartier_bien;
-    if (result.code_postal) client.code_postal = result.code_postal;
     if (Array.isArray(result.types_bien) && result.types_bien.length) { bien.types = result.types_bien; bien.type = result.types_bien[0]; }
-    if (result.titre || result.title) bien.titre = result.titre || result.title;
-    if (result.description_complete) bien.description = result.description_complete;
-    const surfH = result.surface_habitable || result.surface;
-    if (surfH) { bien.surface = surfH; bien.surface_habitable = surfH; }
-    if (result.surface_terrain) bien.surface_terrain = result.surface_terrain;
-    if (result.nombre_pieces) bien.pieces = result.nombre_pieces;
-    if (result.nombre_chambres || result.chambres) bien.chambres = result.nombre_chambres || result.chambres;
-    if (result.nombre_sdb) bien.sdb = result.nombre_sdb;
-    if (result.etage != null) bien.etage = result.etage;
-    if (result.dpe_class) bien.dpe = result.dpe_class;
-    if (result.dpe_ges) bien.ges = result.dpe_ges;
-    if (result.annee_construction) bien.annee_construction = result.annee_construction;
-    if (result.neuf_ancien) bien.neuf_ancien = result.neuf_ancien;
-    const carac = [];
-    if (result.ascenseur) carac.push('Ascenseur');
-    if (result.parking) carac.push('Parking');
-    if (result.cave) carac.push('Cave');
-    if (result.balcon_terrasse) carac.push('Balcon/Terrasse');
-    if (carac.length) bien.caracteristiques = carac;
-    if (Array.isArray(result.photos) && result.photos.length) bien.photos = result.photos;
+    if (result.surface) bien.surface = result.surface;
+    if (result.chambres) bien.chambres = result.chambres;
+    if (result.sdb) bien.sdb = result.sdb;
     if (Object.keys(bien).length) client.bien = bien;
-    // Financement / prix
-    const fin = {};
-    if (result.prix) { fin.prix_affiche = result.prix; client.prix_affiche = result.prix; }
-    if (result.devise) fin.devise = result.devise;
-    if (Object.keys(fin).length) client.financement = fin;
     try {
       const r = await fetch(API + '/clients.php?action=save', {
         method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token},
@@ -3194,43 +3138,7 @@ function ImportUrlView({onBack, onCreated, showToast, toast}) {
     setCreating(false);
   }
 
-  const photos = result && Array.isArray(result.photos) ? result.photos.slice(0, 8) : [];
-
-  // V18.11 — preview bullets groupés.
-  function buildPreviewGroups(r) {
-    const g = [];
-    if (r.source_domain || r.source_url) g.push({icon:'🔗', label:'Source', items:[
-      ['Domaine', r.source_domain || ''],
-      r.source_url && r.source_url.match(/\/(\d{6,})/) ? ['ID', (r.source_url.match(/\/(\d{6,})/) || [])[1]] : null,
-    ].filter(Boolean)});
-    const bien = [];
-    if (r.titre || r.title) bien.push(['Titre', r.titre || r.title]);
-    if (Array.isArray(r.types_bien) && r.types_bien.length) bien.push(['Types', r.types_bien.join(' ou ')]);
-    if (r.surface_habitable || r.surface) bien.push(['Surface habitable', (r.surface_habitable || r.surface) + ' m²']);
-    if (r.surface_terrain) bien.push(['Surface terrain', r.surface_terrain + ' m²']);
-    const pcs = [r.nombre_pieces && (r.nombre_pieces + ' pièces'), (r.nombre_chambres || r.chambres) && ((r.nombre_chambres || r.chambres) + ' chambres'), r.nombre_sdb && (r.nombre_sdb + ' SDB')].filter(Boolean);
-    if (pcs.length) bien.push(['Composition', pcs.join(' · ')]);
-    if (r.etage != null) bien.push(['Étage', r.etage + (r.ascenseur ? 'e (avec ascenseur)' : 'e')]);
-    const carac = [r.parking && 'Parking', r.cave && 'Cave', r.balcon_terrasse && 'Balcon/Terrasse'].filter(Boolean);
-    if (carac.length) bien.push(['Équipements', carac.join(' · ')]);
-    if (r.annee_construction) bien.push(['Construction', r.annee_construction + (r.neuf_ancien ? ' · ' + r.neuf_ancien : '')]);
-    if (r.dpe_class || r.dpe_ges) bien.push(['DPE / GES', (r.dpe_class || '?') + ' / ' + (r.dpe_ges || '?')]);
-    if (bien.length) g.push({icon:'🏠', label:'Bien', items: bien});
-    if (r.prix) g.push({icon:'💰', label:'Prix', items: [['Affiché', Number(r.prix).toLocaleString('fr-FR') + ' ' + (r.devise || '€')]]});
-    const loc = [];
-    if (r.ville_bien) loc.push(['Ville', r.ville_bien + (r.quartier_bien ? ', ' + r.quartier_bien : '')]);
-    if (r.code_postal) loc.push(['CP', r.code_postal + (r.pays_bien ? ' (' + r.pays_bien + ')' : '')]);
-    if (loc.length) g.push({icon:'📍', label:'Localisation', items: loc});
-    const ann = [];
-    if (r.annonceur_type) ann.push(['Type', r.annonceur_type === 'professionnel' ? '🏢 Professionnel' : '👤 Particulier']);
-    if (r.annonceur_nom) ann.push(['Nom', r.annonceur_nom]);
-    if (r.annonceur_tel_mentionne) ann.push(['Tel (dans description)', r.annonceur_tel_mentionne]);
-    if (r.annonceur_email_mentionne) ann.push(['Email (dans description)', r.annonceur_email_mentionne]);
-    if (ann.length) g.push({icon:'👤', label:'Annonceur', items: ann});
-    return g;
-  }
-  const previewGroups = result ? buildPreviewGroups(result) : [];
-  const previewCount = previewGroups.reduce((n, g) => n + g.items.length, 0);
+  const photos = result && Array.isArray(result.photos) ? result.photos.slice(0, 5) : [];
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
@@ -3239,110 +3147,63 @@ function ImportUrlView({onBack, onCreated, showToast, toast}) {
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Importer depuis une URL</div>
       </div>
       <div style={{flex:1, overflowY:'auto', padding:14}}>
-        {/* V18.11 — textarea accepte texte+URL ou URL seule. Auto-detect URL. */}
         <div className="ocre-card">
-          <label className="ocre-lbl">Colle l'URL ou un texte contenant l'URL</label>
-          <textarea value={rawText} onChange={e => setRawText(e.target.value)}
-            placeholder="ex: https://www.mubawab.ma/fr/a/...   OU   « Voici une annonce intéressante : https://... »"
+          <label className="ocre-lbl">Lien de l'annonce</label>
+          <input type="url" value={url} onChange={e => setUrl(e.target.value)}
+            placeholder="https://www.mubawab.ma/fr/a/..."
             autoCapitalize="off" autoCorrect="off" spellCheck="false"
-            style={{width:'100%', minHeight:80, padding:'10px 12px', borderRadius:10, border:'1.5px solid var(--border-input)', background:'#FDFAF7', fontSize:13, outline:'none', fontFamily:'inherit', color:'var(--text-primary)', marginBottom:8, resize:'vertical'}}/>
-          {detectedUrl && (
-            <div style={{fontSize:11, color:'var(--ocre-brand)', marginBottom:8, background:'#FBF1E4', padding:'6px 10px', borderRadius:8, border:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:6, overflow:'hidden'}}>
-              <span style={{flexShrink:0}}>🔗</span>
-              <span style={{flex:1, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontWeight:600}}>{detectedUrl.replace(/^https?:\/\/(www\.)?/,'')}</span>
-            </div>
-          )}
-          <button type="button" onClick={analyse} disabled={!detectedUrl || loading}
-            style={{width:'100%', padding:'13px', background: detectedUrl ? 'linear-gradient(135deg,#8B5E3C,#A06B45)' : '#C4B5A0', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor: detectedUrl ? 'pointer' : 'not-allowed', fontFamily:'inherit', opacity: loading ? .6 : 1}}>
-            {loading ? 'Analyse… ~10s' : (detectedUrl ? '📥 Analyser cette URL' : '📥 Aucune URL détectée')}
+            style={{width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid #EDE1CC', background:'#FDFAF7', fontSize:13, outline:'none', fontFamily:'inherit', color:'#2A2018', marginBottom:6}}/>
+          <div style={{fontSize:10.5, color:'#8B7F6E', fontStyle:'italic', marginBottom:10}}>V17.15 : toute URL https acceptée (Mubawab, Avito, SeLoger, Vaneau, agences locales, etc.). Extraction par JSON-LD → OpenGraph → Twitter → heuristique → Claude Haiku si clé.</div>
+          <button type="button" onClick={analyse} disabled={!url.trim() || loading}
+            style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
+            {loading ? 'Analyse… ~10s' : '📥 Analyser'}
           </button>
         </div>
 
         {loading && (
-          <div style={{textAlign:'center', padding:30, color:'var(--text-secondary)'}}>
+          <div style={{textAlign:'center', padding:30, color:'#8B7F6E'}}>
             <div style={{width:36, height:36, border:'3px solid #E8DDD0', borderTopColor:'#8B5E3C', borderRadius:'50%', animation:'spin 0.7s linear infinite', margin:'0 auto 10px'}}/>
             Extraction en cours…
           </div>
         )}
 
         {result && (
-          <div style={{background:'#fff', borderRadius:12, padding:16, border:'1.5px solid var(--ocre-primary)', display:'flex', flexDirection:'column', gap:10, marginBottom:10}}>
-            <div style={{display:'flex', alignItems:'center', gap:6}}>
+          <div className="ocre-card">
+            <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:8}}>
               <span style={{padding:'3px 9px', borderRadius:999, background: result.extraction_mode === 'ai' ? '#E8F5EC' : '#FFF5E0', color: result.extraction_mode === 'ai' ? '#3E8B5E' : '#D4A437', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>
                 {result.extraction_mode === 'ai' ? '🤖 IA' : '📐 Heuristique'}
               </span>
+              <span style={{fontSize:11, color:'#8B7F6E'}}>{result.source_domain || ''}</span>
             </div>
-            <div style={{fontSize:11, color:'var(--text-secondary)', textTransform:'uppercase', letterSpacing:.5, fontWeight:700}}>📋 Annonce extraite · {previewCount} point{previewCount > 1 ? 's' : ''} détecté{previewCount > 1 ? 's' : ''}</div>
             {result.warning && (
-              <div style={{background:'#FFF5E0', border:'1px solid #EBD38F', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#8A6910'}}>
+              <div style={{background:'#FFF5E0', border:'1px solid #EBD38F', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#8A6910', marginBottom:10}}>
                 ⚠ {result.warning}
               </div>
             )}
-
-            {/* Bullets groupés (cohérent avec IntentPreview v18.6). */}
-            {previewGroups.map((g, i) => (
-              <div key={i} style={{borderTop: i > 0 ? '1px solid #F0E4D4' : 'none', paddingTop: i > 0 ? 10 : 0}}>
-                <div style={{fontSize:13, fontWeight:700, color:'var(--ocre-brand)', marginBottom:6}}>{g.icon} {g.label}</div>
-                <ul style={{listStyle:'none', padding:0, margin:0}}>
-                  {g.items.map(([k, v], j) => (
-                    <li key={j} style={{fontSize:13, color:'var(--text-primary)', paddingLeft:16, marginBottom:3, position:'relative'}}>
-                      <span style={{position:'absolute', left:4, color:'var(--text-secondary)'}}>•</span>
-                      <span style={{color:'var(--text-secondary)', fontSize:12}}>{k} : </span>
-                      <span style={{fontWeight:500}}>{v}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-
-            {/* Description complète scroll */}
-            {result.description_complete && (
-              <div style={{borderTop:'1px solid #F0E4D4', paddingTop:10}}>
-                <div style={{fontSize:13, fontWeight:700, color:'var(--ocre-brand)', marginBottom:6}}>📝 Description complète</div>
-                <div style={{fontSize:12, color:'var(--text-primary)', lineHeight:1.5, whiteSpace:'pre-wrap', maxHeight:200, overflowY:'auto', background:'#FDFAF7', padding:10, borderRadius:8, border:'1px solid var(--border-subtle)'}}>
-                  {result.description_complete}
-                </div>
-              </div>
-            )}
-
-            {/* Photos galerie */}
+            {result.title && <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#2A2018', marginBottom:6, lineHeight:1.3}}>{result.title}</div>}
+            <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:10}}>
+              {result.prix && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{Number(result.prix).toLocaleString('fr-FR')} {result.devise || ''}</span>}
+              {Array.isArray(result.types_bien) && result.types_bien.length > 0 && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{result.types_bien.join(' · ')}</span>}
+              {result.surface && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{result.surface} m²</span>}
+              {result.chambres && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{result.chambres} ch.</span>}
+              {result.ville_bien && <span style={{padding:'4px 10px', borderRadius:999, background:'#FBF1E4', border:'1.5px solid #E2D8CC', color:'#8B5E3C', fontSize:12, fontWeight:700}}>{result.ville_bien}{result.quartier_bien ? ' · ' + result.quartier_bien : ''}</span>}
+            </div>
             {photos.length > 0 && (
-              <div style={{borderTop:'1px solid #F0E4D4', paddingTop:10}}>
-                <div style={{fontSize:13, fontWeight:700, color:'var(--ocre-brand)', marginBottom:6}}>📷 Photos ({photos.length})</div>
-                <div style={{display:'flex', gap:6, overflowX:'auto', paddingBottom:4, WebkitOverflowScrolling:'touch'}}>
-                  {photos.map((u, i) => (
-                    <img key={i} src={u} alt="" style={{width:120, height:120, objectFit:'cover', borderRadius:8, border:'1px solid var(--border-subtle)', flexShrink:0}}/>
-                  ))}
-                </div>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6, marginBottom:10}}>
+                {photos.map((u, i) => (
+                  <img key={i} src={u} alt="" style={{width:'100%', aspectRatio:'1/1', objectFit:'cover', borderRadius:8, border:'1px solid #E8DDD0'}}/>
+                ))}
               </div>
             )}
-
-            {/* Note honnête limite anti-bot */}
-            <div style={{fontSize:11, color:'var(--text-secondary)', fontStyle:'italic', background:'#F4EEE6', padding:'8px 10px', borderRadius:8, marginTop:4}}>
-              ℹ️ Les coordonnées derrière un bouton "Contacter" ne peuvent pas être extraites automatiquement (protection anti-bot des plateformes). Clique sur "Voir l'annonce originale" pour les consulter, puis ajoute-les ci-dessous.
-            </div>
-
-            {/* Zone manuelle */}
-            <div style={{borderTop:'1px solid #F0E4D4', paddingTop:10}}>
-              <div style={{fontSize:13, fontWeight:700, color:'var(--ocre-brand)', marginBottom:6}}>➕ Compléter manuellement</div>
-              <textarea value={manualNote} onChange={e => setManualNote(e.target.value)}
-                placeholder="Tel/email vus sur l'annonce, notes perso… (parsé automatiquement à la création)"
-                style={{width:'100%', minHeight:60, padding:'9px 11px', borderRadius:8, border:'1.5px solid var(--border-input)', background:'#FDFAF7', fontSize:13, outline:'none', fontFamily:'inherit', resize:'vertical'}}/>
-            </div>
-
-            {/* Boutons */}
+            {(result.description_clean || result.description) && (
+              <div style={{fontSize:12, color:'#2A2018', lineHeight:1.5, marginBottom:10, whiteSpace:'pre-wrap', maxHeight:150, overflowY:'auto', background:'#FDFAF7', padding:10, borderRadius:8, border:'1px solid #EDE1CC'}}>
+                {result.description_clean || result.description}
+              </div>
+            )}
             <button type="button" onClick={createDraft} disabled={creating}
-              style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit', opacity: creating ? .6 : 1}}>
-              {creating ? 'Création…' : '🟧 Créer le brouillon Vendeur'}
+              style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
+              {creating ? 'Création…' : '✓ Créer le brouillon (Vendeur)'}
             </button>
-            <div style={{display:'flex', gap:8}}>
-              {(result.source_url || detectedUrl) && (
-                <button type="button" onClick={() => window.open(result.source_url || detectedUrl, '_blank')}
-                  style={{flex:1, padding:'10px', background:'#FDFAF7', color:'var(--ocre-brand)', border:'1.5px solid var(--border-input)', borderRadius:10, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>↗️ Voir l'annonce originale</button>
-              )}
-              <button type="button" onClick={() => { setResult(null); setManualNote(''); }}
-                style={{flex:1, padding:'10px', background:'#FDFAF7', color:'var(--ocre-brand)', border:'1.5px solid var(--border-input)', borderRadius:10, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>🔄 Analyser un autre lien</button>
-            </div>
           </div>
         )}
       </div>

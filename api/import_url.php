@@ -191,17 +191,99 @@ function heuristicExtract($og, $jld, $html) {
         $pays_bien = in_array(mb_strtolower($ville), $ma_cities, true) ? 'MA' : 'FR';
     }
 
+    // V18.11 — champs enrichis via regex sur le texte complet.
+    $fullTxt = strip_tags($html);
+    // Nettoyage texte pour description complète (espaces multiples, paragraphes).
+    $cleanTxt = preg_replace('/\s+/', ' ', $fullTxt);
+    $description_complete = mb_substr($cleanTxt, 0, 5000);
+    $surface_terrain = null;
+    if (preg_match('/(?:terrain|jardin|lot)\s+(?:de\s+)?(\d{2,5})\s*m\s*[²2]/iu', $fullTxt, $tm)) $surface_terrain = (int)$tm[1];
+    $nombre_pieces = null;
+    if (preg_match('/\bT(\d)\b/u', $title . ' ' . $description, $pm)) $nombre_pieces = (int)$pm[1];
+    elseif (preg_match('/(\d+)\s*pi[eè]ces?\b/iu', $fullTxt, $pm2)) $nombre_pieces = (int)$pm2[1];
+    $nombre_sdb = null;
+    if (preg_match('/(\d+)\s*(salles?\s+de\s+bains?|sdb)/iu', $fullTxt, $sdm)) $nombre_sdb = (int)$sdm[1];
+    $etage = null;
+    if (preg_match('/au\s+(\d+)\s*[eè]me?\s*[ée]tage/iu', $fullTxt, $em)) $etage = (int)$em[1];
+    elseif (preg_match('/(\d+)\s*[eè]me?\s+[ée]tage/iu', $fullTxt, $em2)) $etage = (int)$em2[1];
+    $dpe_class = null;
+    if (preg_match('/\bDPE\s*[:\-]?\s*([A-G])\b/u', $fullTxt, $dm)) $dpe_class = $dm[1];
+    $dpe_ges = null;
+    if (preg_match('/\bGES\s*[:\-]?\s*([A-G])\b/u', $fullTxt, $gm)) $dpe_ges = $gm[1];
+    $annee_construction = null;
+    if (preg_match('/(?:construit[e]?\s+en|ann[ée]e\s+(?:de\s+)?construction|construction)\s*[:\-]?\s*(\d{4})/iu', $fullTxt, $am)) $annee_construction = (int)$am[1];
+    $ascenseur = (bool)preg_match('/\bascenseur\b/iu', $fullTxt);
+    $parking = (bool)preg_match('/\bparking|garage|stationnement\b/iu', $fullTxt);
+    $cave = (bool)preg_match('/\bcave\b/iu', $fullTxt);
+    $balcon_terrasse = (bool)preg_match('/\bbalcon|terrasse\b/iu', $fullTxt);
+    $neuf_ancien = preg_match('/\b(vefa|neuf|construction r[ée]cente|programme neuf)\b/iu', $fullTxt) ? 'neuf' : null;
+    $code_postal = null;
+    if (preg_match('/\b(\d{5})\b/u', $fullTxt, $cpm)) $code_postal = $cpm[1];
+    // Annonceur (JSON-LD seller).
+    $annonceur_type = null; $annonceur_nom = null;
+    foreach ($jld as $g) {
+        if (!empty($g['offers']['seller']['@type'])) {
+            $annonceur_type = strtolower($g['offers']['seller']['@type']) === 'organization' ? 'professionnel' : 'particulier';
+        }
+        if (!empty($g['offers']['seller']['name'])) {
+            $annonceur_nom = $g['offers']['seller']['name'];
+        }
+        if (!$annonceur_nom && !empty($g['author']['name'])) $annonceur_nom = $g['author']['name'];
+    }
+    if (!$annonceur_type && $annonceur_nom) {
+        $annonceur_type = preg_match('/\b(SARL|SAS|SCI|EURL|agence|immobili[èe]re?|groupe)\b/iu', $annonceur_nom) ? 'professionnel' : 'particulier';
+    }
+    // Tel/email DANS la description (pas derrière bouton).
+    $annonceur_tel_mentionne = null;
+    if (preg_match('/(?:(?:\+|00)33[\s.-]?|0)\s*[1-9](?:[\s.-]*\d{2}){4}/u', $description_complete, $tm2)) {
+        $digits = preg_replace('/\D/', '', $tm2[0]);
+        if (strpos($digits, '33') === 0) $digits = substr($digits, 2);
+        if ($digits[0] === '0') $digits = substr($digits, 1);
+        if (strlen($digits) === 9) $annonceur_tel_mentionne = '+33' . $digits;
+    }
+    if (!$annonceur_tel_mentionne && preg_match('/(?:(?:\+|00)212[\s.-]?|0)\s*[5-7](?:[\s.-]*\d){8}/u', $description_complete, $tm3)) {
+        $digits = preg_replace('/\D/', '', $tm3[0]);
+        if (strpos($digits, '212') === 0) $digits = substr($digits, 3);
+        if ($digits[0] === '0') $digits = substr($digits, 1);
+        if (strlen($digits) === 9) $annonceur_tel_mentionne = '+212' . $digits;
+    }
+    $annonceur_email_mentionne = null;
+    if (preg_match('/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i', $description_complete, $em3)) {
+        $annonceur_email_mentionne = $em3[0];
+    }
+
     return [
         'title' => $title,
+        'titre' => $title,
         'description' => mb_substr($description, 0, 800),
+        'description_complete' => $description_complete,
         'photos' => $photos,
         'prix' => $prix,
         'devise' => $devise,
         'surface' => $surface,
+        'surface_habitable' => $surface,
+        'surface_terrain' => $surface_terrain,
+        'nombre_pieces' => $nombre_pieces,
         'chambres' => $chambres,
+        'nombre_chambres' => $chambres,
+        'nombre_sdb' => $nombre_sdb,
+        'etage' => $etage,
+        'ascenseur' => $ascenseur,
+        'parking' => $parking,
+        'cave' => $cave,
+        'balcon_terrasse' => $balcon_terrasse,
+        'dpe_class' => $dpe_class,
+        'dpe_ges' => $dpe_ges,
+        'annee_construction' => $annee_construction,
+        'neuf_ancien' => $neuf_ancien,
+        'code_postal' => $code_postal,
         'types_bien' => $type ? [$type] : null,
         'ville_bien' => $ville,
         'pays_bien' => $pays_bien,
+        'annonceur_type' => $annonceur_type,
+        'annonceur_nom' => $annonceur_nom,
+        'annonceur_tel_mentionne' => $annonceur_tel_mentionne,
+        'annonceur_email_mentionne' => $annonceur_email_mentionne,
     ];
 }
 
@@ -211,10 +293,31 @@ function claudeStructure($html, $url, $apiKey) {
     $excerpt = preg_replace('#<style[^>]*>.*?</style>#is', '', $excerpt);
     $excerpt = preg_replace('/\s+/', ' ', strip_tags($excerpt));
     $excerpt = mb_substr($excerpt, 0, 8000);
-    $sys = "Tu extrais d'une page HTML d'annonce immobilier (FR/MA) les infos en JSON valide uniquement. Schéma : {title, description, prix (nombre), devise (EUR|MAD|USD), surface (m²), chambres, sdb, types_bien ([Villa|Appartement|Riad|Maison|Terrain|Commerce|Ferme|Bureau / plateau|Bâtiment industriel]), pays_bien (MA|FR|ES), ville_bien, quartier_bien, photos (URL array, max 5), description_clean (résumé 200 chars max)}. null si non trouvé. Convertis '500k' → 500000, '1,8M' → 1800000.";
+    // V18.11 — schéma enrichi : surfaces, pièces/SDB/étage, DPE/GES, équipements, annonceur, description complète.
+    $sys = "Tu extrais d'une page HTML d'annonce immobilier (FR/MA) les infos en JSON valide uniquement.\n"
+         . "Schéma complet :\n"
+         . "{titre, description_complete (texte intégral non-tronqué, max 5000 chars),\n"
+         . " prix (nombre), devise (EUR|MAD|USD),\n"
+         . " surface_habitable (m²), surface_terrain (m², distinct de surface_habitable),\n"
+         . " nombre_pieces (T2→2, T3→3, sinon nb explicite), nombre_chambres, nombre_sdb,\n"
+         . " etage (number, ex 3 pour 'au 3e étage'), ascenseur (bool), parking (bool), cave (bool), balcon_terrasse (bool),\n"
+         . " dpe_class (A-G), dpe_ges (A-G), annee_construction (4 digits), neuf_ancien ('neuf' si vefa/neuf/récent, sinon 'ancien'),\n"
+         . " types_bien (array : Villa|Appartement|Riad|Maison|Terrain|Commerce|Ferme|Bureau / plateau|Bâtiment industriel),\n"
+         . " pays_bien (MA|FR|ES), ville_bien, quartier_bien, code_postal,\n"
+         . " photos (array URL absolues, max 10),\n"
+         . " annonceur_type ('professionnel' si JSON-LD offers.seller.@type=Organization OU agence/SARL/SAS dans nom, sinon 'particulier'),\n"
+         . " annonceur_nom (raison sociale agence ou nom particulier),\n"
+         . " annonceur_tel_mentionne (numéro tel UNIQUEMENT si écrit dans la description ou texte de l'annonce, format E.164 +33/+212 ; null si caché derrière bouton 'Contacter'),\n"
+         . " annonceur_email_mentionne (email UNIQUEMENT si écrit dans le texte, sinon null),\n"
+         . " annonceur_ville (si mentionnée pour l'annonceur)}\n\n"
+         . "Règles :\n"
+         . "- null si non trouvé. Convertis '500k' → 500000, '1,8M' → 1800000.\n"
+         . "- description_complete = texte intégral du paragraphe descriptif, sans tronquer, sans markdown.\n"
+         . "- annonceur_tel_mentionne / annonceur_email_mentionne : SEULEMENT si visible dans le texte de l'annonce. Beaucoup d'annonceurs mettent leur numéro dans la description pour contourner les boutons 'Contacter' anti-bot. Ne pas inventer.\n"
+         . "- Pour pieces/chambres/sdb : un T3 = 3 pièces (séjour + 2 chambres typique), retourne 3 dans nombre_pieces.";
     $payload = [
         'model' => CLAUDE_MODEL,
-        'max_tokens' => 1200,
+        'max_tokens' => 2400,
         'system' => $sys,
         'messages' => [
             ['role' => 'user', 'content' => "URL: $url\n\n" . $excerpt],
