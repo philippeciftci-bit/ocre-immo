@@ -304,7 +304,7 @@ function claudeStructure($html, $url, $apiKey) {
          . " dpe_class (A-G), dpe_ges (A-G), annee_construction (4 digits), neuf_ancien ('neuf' si vefa/neuf/récent, sinon 'ancien'),\n"
          . " types_bien (array : Villa|Appartement|Riad|Maison|Terrain|Commerce|Ferme|Bureau / plateau|Bâtiment industriel),\n"
          . " pays_bien (MA|FR|ES), ville_bien, quartier_bien, code_postal,\n"
-         . " photos (array URL absolues, max 10),\n"
+         . " photos (array d'URL absolues https://… directement utilisables en <img src>, max 10 ; privilégier les versions HD et non-lazyload ; exclure placeholders/logos/bannières publicitaires),\n"
          . " annonceur_type ('professionnel' si JSON-LD offers.seller.@type=Organization OU agence/SARL/SAS dans nom, sinon 'particulier'),\n"
          . " annonceur_nom (raison sociale agence ou nom particulier),\n"
          . " annonceur_tel_mentionne (numéro tel UNIQUEMENT si écrit dans la description ou texte de l'annonce, format E.164 +33/+212 ; null si caché derrière bouton 'Contacter'),\n"

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.26-sections-summaries-rich -->
+<!-- ocre-v18.27-search-name-photos -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2778,16 +2778,22 @@ function FinancementForm({activeProfil, d, set, dossierId, showToast}) {
 }
 
 // V18.7 — Stage accordéon strict + status badge + ligne stats compacte fermé.
-function Stage({title, expanded, onToggle, children, status, summary}) {
+// V18.27 — prop highlighted : match loupe → border jaune #F59E0B + bg très léger #FFFBEB.
+function Stage({title, expanded, onToggle, children, status, summary, highlighted}) {
   // status : 'complete' (✓ vert) | 'partial' (… orange) | 'empty' (— gris)
   const badge = status === 'complete'
     ? {char:'✓', color:'#3E8B5E', bg:'#E8F5EC'}
     : status === 'partial'
       ? {char:'…', color:'#D4A437', bg:'#FFF5E0'}
       : {char:'—', color:'#B5A78F', bg:'#F4EEE6'};
+  const borderColor = highlighted ? '#F59E0B' : '#A67F5A';
+  const cardBg = highlighted ? '#FFFBEB' : '#fff';
+  const headerBg = expanded
+    ? (highlighted ? '#FEF3C7' : '#F4ECE3')
+    : (highlighted ? '#FFFBEB' : '#FBF7F2');
   return (
-    <div style={{background:'#fff', borderRadius:12, marginBottom:12, border:'1.5px solid #A67F5A', overflow:'hidden', boxShadow:'0 1px 3px rgba(139,94,60,.06)'}}>
-      <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: expanded ? '#F4ECE3' : '#FBF7F2', borderBottom: expanded ? '1.5px solid #A67F5A' : 'none', transition:'background .15s'}}>
+    <div style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow:'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)'}}>
+      <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s'}}>
         <div style={{flex:1, minWidth:0}}>
           <div style={{display:'flex', alignItems:'center', gap:8}}>
             <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{title}</span>
@@ -5724,6 +5730,23 @@ function FormView(props) {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+  // V18.27 — loupe dans le dossier : filtre live les sections matchées, auto-open, highlight.
+  const [formSearchOpen, setFormSearchOpen] = useState(false);
+  const [formSearchInput, setFormSearchInput] = useState('');
+  const [formSearchQuery, setFormSearchQuery] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setFormSearchQuery(formSearchInput), 200);
+    return () => clearTimeout(t);
+  }, [formSearchInput]);
+  function toggleFormSearch() {
+    if (formSearchOpen) {
+      setFormSearchOpen(false);
+      setFormSearchInput('');
+      setFormSearchQuery('');
+    } else {
+      setFormSearchOpen(true);
+    }
+  }
   const init = editing || {};
   const [d, setD] = useState(init);
   const [profilType, setProfilType] = useState(init.profil_type || 'Particulier');
@@ -6054,6 +6077,67 @@ function FormView(props) {
     ];
   }
   const stageStatus = computeStatus();
+
+  // V18.27 — matching loupe dossier. Retourne {matchedSections:Set, totalMatches:int}.
+  const formMatches = React.useMemo(() => {
+    const q = normalizeAccent((formSearchQuery || '').trim());
+    if (!q) return {matchedSections: new Set(), totalMatches: 0};
+    const b = d.bien || {};
+    const su = d.suivi || {};
+    function str(v) { return (v == null) ? '' : normalizeAccent(String(v)); }
+    function hit(v) { return v && str(v).includes(q); }
+    function arrHit(arr, key) {
+      if (!Array.isArray(arr)) return false;
+      return arr.some(x => x && (key ? hit(x[key]) : hit(x)));
+    }
+    const sections = [
+      // Section I — Profil
+      hit(d.prenom) || hit(d.nom) || hit(d.societe_nom) || hit(d.siret) || hit(d.representant)
+        || hit(d.adresse) || hit(d.ville) || hit(d.pays_residence) || hit(d.nationalite)
+        || arrHit(d.tels, 'valeur') || hit(d.tel)
+        || arrHit(d.emails, 'valeur') || hit(d.email),
+      // Section II — Bien
+      hit(b.titre) || hit(b.description) || hit(b.ville) || hit(b.quartier) || hit(b.pays)
+        || hit(b.type) || arrHit(b.types)
+        || hit(b.caracteristiques) || arrHit(b.caracteristiques),
+      // Section III — Budget
+      hit(d.prix_affiche) || hit(d.loyer_demande) || hit(d.loyer_max) || hit(d.budget_max) || hit(d.budget_min)
+        || (d.financement && (hit(d.financement.mode) || hit(d.financement.budget_total) || hit(d.financement.mensualite))),
+      // Section IV — Suivi & notes
+      hit(d.notes) || hit(d.langue) || hit(d.canal) || hit(d.origine) || arrHit(d.tags)
+        || (su.next_event && (hit(su.next_event.title) || hit(su.next_event.when_at)))
+        || (su.next_todo && hit(su.next_todo.title))
+        || (su.last_interaction && hit(su.last_interaction.content)),
+    ];
+    const matched = new Set();
+    sections.forEach((ok, i) => { if (ok) matched.add(i); });
+    return {matchedSections: matched, totalMatches: matched.size};
+  }, [formSearchQuery, d]);
+
+  // V18.27 — auto-scroll sur la 1ère section matchée 400ms après un nouveau match.
+  useEffect(() => {
+    if (!formSearchQuery || formMatches.totalMatches === 0) return;
+    const first = Math.min(...Array.from(formMatches.matchedSections));
+    const t = setTimeout(() => {
+      const anchors = document.querySelectorAll('[data-stage-anchor]');
+      const el = anchors[first];
+      if (el && el.scrollIntoView) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }, 300);
+    return () => clearTimeout(t);
+  }, [formSearchQuery, formMatches.totalMatches]);
+
+  // V18.27 — no-match toast (non bloquant, discret).
+  const [noMatchToasted, setNoMatchToasted] = useState(false);
+  useEffect(() => {
+    if (formSearchQuery && formMatches.totalMatches === 0 && !noMatchToasted) {
+      setNoMatchToasted(true);
+      showToast && showToast('Aucun résultat dans ce dossier');
+    }
+    if (formMatches.totalMatches > 0 || !formSearchQuery) setNoMatchToasted(false);
+  }, [formSearchQuery, formMatches.totalMatches]);
+
+  // V18.27 — helper : la section est-elle dans les matches (override auto-open + highlight).
+  function isMatched(i) { return formSearchQuery && formMatches.matchedSections.has(i); }
   const [shareOpen, setShareOpen] = useState(false);
   function openShare() {
     if (!editing || !editing.id || String(editing.id).startsWith('tmp-')) {
@@ -6124,16 +6208,65 @@ function FormView(props) {
     } catch (e) { showToast && showToast('Erreur réseau'); }
   }
 
-  const stageTitle = editing && (d.prenom || d.nom || d.societe_nom)
-    ? ((profilType === 'Société' && d.societe_nom) ? d.societe_nom : ((d.prenom || '') + ' ' + (d.nom || '')).trim())
-    : ('Nouveau ' + activeProfil);
+  // V18.27 — header dossier : Prénom NOM centré, société en sous-ligne si pro.
+  // Plus de "Nouveau {Profil}" → "Sans nom" gris italique si aucun identifiant saisi.
+  const hasHeadName = !!(d.prenom || d.nom || d.societe_nom);
+  const headMainName = hasHeadName
+    ? ((profilType === 'Société' && d.societe_nom)
+        ? d.societe_nom
+        : (((d.prenom || '') + ' ' + (d.nom || '').toUpperCase()).trim() || d.societe_nom || ''))
+    : '';
+  const headSubSociety = (profilType === 'Société' && d.societe_nom && (d.prenom || d.nom)) ? d.societe_nom : '';
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
-      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
-        <button onClick={backToListFlushed} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
-        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>{stageTitle}</div>
-        <button onClick={openShare} style={{background:'none', border:'none', cursor:'pointer', padding:4}} title="Partager"><ShareIcon/></button>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:8}}>
+        <button onClick={backToListFlushed} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>←</button>
+        {/* V18.27 — nom Cormorant italic bold centré. "Sans nom" si vide. Société sous-ligne si pro. */}
+        <div style={{flex:1, textAlign:'center', minWidth:0, overflow:'hidden'}}>
+          {headMainName ? (
+            <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:22, fontWeight:600, fontStyle:'italic', color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.1}}>
+              {headMainName}
+            </div>
+          ) : (
+            <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:22, fontStyle:'italic', color:'#8B7355', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.1}}>
+              Sans nom
+            </div>
+          )}
+          {headSubSociety && (
+            <div style={{fontSize:12, color:'#8B7355', fontStyle:'italic', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginTop:1}}>
+              {headSubSociety}
+            </div>
+          )}
+        </div>
+        {/* V18.27 — loupe dossier. */}
+        <button onClick={toggleFormSearch}
+          title={formSearchOpen ? 'Fermer la recherche' : 'Rechercher dans le dossier'}
+          style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (formSearchOpen || formSearchQuery) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+        <button onClick={openShare} style={{background:'none', border:'none', cursor:'pointer', padding:4, flexShrink:0}} title="Partager"><ShareIcon/></button>
+      </div>
+      {/* V18.27 — Barre de recherche dossier avec compteur. */}
+      <div className={'search-bar-wrap ' + (formSearchOpen ? 'open' : 'closed')}>
+        <div className="search-bar-input-wrap">
+          <input type="text" autoFocus={formSearchOpen}
+            className="search-bar-input"
+            placeholder="Rechercher dans ce dossier…"
+            value={formSearchInput}
+            onChange={e => setFormSearchInput(e.target.value)}
+            autoCapitalize="off" autoCorrect="off" spellCheck="false"/>
+          {formSearchQuery && (
+            <div style={{fontSize:11, color:'#8B7F6E', fontWeight:700, whiteSpace:'nowrap', flexShrink:0, padding:'0 8px'}}>
+              {formMatches.totalMatches} résultat{formMatches.totalMatches > 1 ? 's' : ''}
+            </div>
+          )}
+          {formSearchInput && (
+            <button className="search-bar-clear" onClick={() => { setFormSearchInput(''); setFormSearchQuery(''); }} title="Effacer">✕</button>
+          )}
+        </div>
       </div>
 
       {/* V18.17/V18.18 — banner mode staging. URL → lien origine. Image → thumbnail + contexte. */}
@@ -6198,7 +6331,7 @@ function FormView(props) {
 
       <div style={{flex:1, overflowY:'auto', padding:12}}>
         <div data-stage-anchor="0">
-        <Stage title={STAGES[activeProfil][0]} expanded={expanded[0]} onToggle={() => toggleStage(0)}
+        <Stage title={STAGES[activeProfil][0]} expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status} summary={stageStatus[0].summary}>
           <div style={{display:'flex', gap:6, marginBottom:12}}>
             {['Particulier', 'Société'].map(t => (
@@ -6262,7 +6395,7 @@ function FormView(props) {
 
         </div>
         <div data-stage-anchor="1">
-        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][1]} expanded={expanded[1]} onToggle={() => toggleStage(1)}
+        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
                status={stageStatus[1].status} summary={stageStatus[1].summary}>
           <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
             d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
@@ -6273,7 +6406,7 @@ function FormView(props) {
         {/* V17.6 Section III : FinancementForm pour Acheteur/Investisseur, fields legacy pour Vendeur/Bailleur/Locataire, masqué pour Curieux. */}
         </div>
         <div data-stage-anchor="2">
-        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][2]} expanded={expanded[2]} onToggle={() => toggleStage(2)}
+        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
                status={stageStatus[2].status} summary={stageStatus[2].summary}>
           {(activeProfil === 'Acheteur' || activeProfil === 'Investisseur') ? (
             <FinancementForm activeProfil={activeProfil} d={d} set={set}
@@ -6309,7 +6442,7 @@ function FormView(props) {
 
         </div>
         <div data-stage-anchor="3">
-        <Stage title={STAGES[activeProfil][3] || 'IV. Remarques'} expanded={expanded[3]} onToggle={() => toggleStage(3)}
+        <Stage title={STAGES[activeProfil][3] || 'IV. Suivi & notes'} expanded={expanded[3] || isMatched(3)} onToggle={() => toggleStage(3)} highlighted={isMatched(3)}
                status={stageStatus[3].status} summary={stageStatus[3].summary}>
           {/* V18.1 — Module Suivi (4 cards : prochain RDV, todos, agenda, journal). */}
           <SuiviPanel
