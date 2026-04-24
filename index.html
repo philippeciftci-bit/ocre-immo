@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v33-footers-espagne-types -->
+<!-- ocre-v34-footer-societe-clickable -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -64,8 +64,9 @@
   --ocre-bg-ultralight:#FDF8F0;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;overflow-x:hidden;overscroll-behavior:none}
 body{font-family:'DM Sans',sans-serif;background:#F0E8D8;color:#2A2018;overflow:hidden;height:100vh;height:100dvh;font-size:13px}
-#root{height:100%}
+#root{height:100dvh;min-height:100dvh}
 ::-webkit-scrollbar{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
@@ -8210,8 +8211,9 @@ function FormView(props) {
       ? d.societe_nom
       : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
     const sec1Society = (profilType === 'Société' && d.societe_nom && (d.prenom || d.nom)) ? d.societe_nom : '';
-    // V32 — Hiérarchie pills : primaire pleine opacity 1 fw 700 en 1ère position,
-    // secondaires outline opacity 0.55 fw 600 triées par created_at ASC (id fallback).
+    // V34 — Ligne 1 summary Stage I : Société = raison sociale (pas doublon sec1Society
+    // supprimé, représentant mis en sous-ligne italique) / Particulier = prénom+nom.
+    // Pills hiérarchie v32 conservée.
     const linkedForSummary = (Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
       .map(id => (clients || []).find(cc => cc.id === id))
       .filter(Boolean)
@@ -8221,11 +8223,11 @@ function FormView(props) {
         return (ta || a.id || 0) - (tb || b.id || 0);
       });
     const activeColorSum = PROFILS[activeProfil] || '#8B5E3C';
+    const sec1Representant = (profilType === 'Société' && d.representant && d.representant.trim()) ? d.representant.trim() : '';
     const sec1Line1 = sec1Name
       ? (
         <span style={{display:'inline-flex', alignItems:'center', gap:5, flexWrap:'wrap'}}>
           <b style={{color:'#2A2018'}}>{sec1Name}</b>
-          {sec1Society ? <span style={{fontStyle:'italic', color:'#8B7F6E'}}> · {sec1Society}</span> : null}
           <span style={{display:'inline-block', padding:'2px 6px', borderRadius:6, background:activeColorSum, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', opacity:1}}>
             {PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()}
           </span>
@@ -8244,23 +8246,26 @@ function FormView(props) {
       : <span style={{fontStyle:'italic', color:'#B5A78F'}}>Sans nom</span>;
     const sec1TelRaw = tels[0] && tels[0].valeur ? tels[0].valeur : '';
     const sec1Email = emails[0] && emails[0].valeur ? emails[0].valeur : '';
-    // V18.37 — tel en PhonePill cliquable (size sm).
+    // V34 — tel en PhonePill cliquable + email cliquable mailto:. Ville/pays supprimés.
     const sec1Line2 = (sec1TelRaw || sec1Email) ? (
       <span style={{display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
         {sec1TelRaw && <PhonePill tel={sec1TelRaw} size="sm"/>}
-        {sec1Email && <span style={{fontSize:12}}>✉ {sec1Email}</span>}
+        {sec1Email && (
+          <a href={'mailto:' + sec1Email}
+            onClick={e => e.stopPropagation()}
+            style={{fontSize:12, color:'#8B5E3C', textDecoration:'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:220}}>
+            ✉ {sec1Email}
+          </a>
+        )}
       </span>
-    ) : null;
-    const sec1Ville = d.ville || '';
-    const sec1Pays = d.pays_residence || '';
-    const sec1Line3 = (sec1Ville || sec1Pays) ? (
-      <span>📍 {[sec1Ville, (sec1Pays ? (flagFor(sec1Pays) + ' ' + sec1Pays) : '')].filter(Boolean).join(' · ')}</span>
     ) : null;
     const sec1Summary = (hasContact || hasIdentity) ? (
       <>
         <div>{sec1Line1}</div>
+        {sec1Representant && (
+          <div style={{marginTop:2, fontStyle:'italic', color:'#5C4A3A', fontSize:13}}>{sec1Representant}</div>
+        )}
         {sec1Line2 && <div style={{marginTop:2}}>{sec1Line2}</div>}
-        {sec1Line3 && <div style={{marginTop:2}}>{sec1Line3}</div>}
       </>
     ) : emptyHint('Définir le profil');
 
