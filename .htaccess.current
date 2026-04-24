@@ -14,7 +14,7 @@ ErrorDocument 404 /404.html
 # V18.46.1 — Cache 30j sur favicons (retiré `immutable` : Safari iOS pouvait refuser de
 # refetch un apple-touch-icon obsolète). Query string ?v=18.46.1 dans index.html force
 # refetch à chaque bump.
-<FilesMatch "^(favicon\.ico|favicon-16\.png|favicon-32\.png|apple-touch-icon(-(152|167|180|precomposed))?\.png)$">
+<FilesMatch "^(icon\.ico|icon-16\.png|icon-32\.png|ocre-ios-(152|167|180)\.png|favicon\.ico|favicon-16\.png|favicon-32\.png|apple-touch-icon(-(152|167|180|precomposed))?\.png)$">
 Header set Cache-Control "public, max-age=2592000"
 </FilesMatch>
 
