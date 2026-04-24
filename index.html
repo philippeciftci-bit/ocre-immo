@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v34-footer-societe-clickable -->
+<!-- ocre-v35-fix-casquettes-decoche -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3229,25 +3229,51 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
   const prenom = (sourceDossier && (sourceDossier.prenom || sourceDossier.societe_nom)) || 'ce client';
   const nom = (sourceDossier && sourceDossier.nom) || '';
 
-  // V30 — Variante C ultra compact 240px. Multi-select + Valider qui boucle
-  // createCasquette pour chaque case nouvellement cochée.
+  // V35 — Variante C. Toutes cases décochables sauf profil COURANT (actif = dossier
+  // édité). Au Valider : calcule toCreate + toDelete, si suppression prévue, affiche
+  // un second modal de confirmation rouge avant exécution.
   const [checked, setChecked] = React.useState(() => {
     const s = {};
     Object.keys(takenMap).forEach(k => { s[k] = true; });
     return s;
   });
-  async function onValider() {
-    const toCreate = PROFIL_LIST.filter(p => checked[p] && !takenMap[p]);
-    if (!toCreate.length) { onClose(); return; }
+  const [confirmPlan, setConfirmPlan] = React.useState(null);
+  const [actionMsg, setActionMsg] = React.useState('');
+
+  function toggle(p) {
+    if (busy) return;
+    // V35 — le profil courant (activeProfil du dossier édité) reste verrouillé.
+    if (p === (currentProfil || 'Acheteur')) {
+      setActionMsg('Profil du dossier actuel — utilise le bouton Supprimer en bas pour le retirer');
+      setTimeout(() => setActionMsg(''), 2500);
+      return;
+    }
+    setChecked(prev => ({...prev, [p]: !prev[p]}));
+  }
+
+  async function executeActions(toCreate, toDelete) {
     setBusy(true); setError('');
-    let created = 0;
+    const token = localStorage.getItem('ocre_token') || '';
+    let deleted = 0, created = 0;
+    // 1. Suppressions d'abord.
+    for (const p of toDelete) {
+      const lc = (clients || []).find(cc => cc.projet === p && (sourceDossier.linked_dossiers || []).includes(cc.id));
+      if (!lc) continue;
+      try {
+        const r = await fetch(API + '/clients.php?action=delete', {
+          method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
+          body: JSON.stringify({id: lc.id}),
+        });
+        const d = await r.json();
+        if (d && d.ok) deleted++;
+      } catch (e) { /* noop */ }
+    }
+    // 2. Créations ensuite.
     let lastClient = null;
     for (const p of toCreate) {
       try {
-        const token = localStorage.getItem('ocre_token') || '';
         const r = await fetch(API + '/dossier_create.php?action=add_casquette', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'X-Session-Token': token},
+          method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
           body: JSON.stringify({source_dossier_id: sourceId, new_profil: p}),
         });
         const d = await r.json();
@@ -3264,15 +3290,27 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
       } catch (e) { /* noop */ }
     }
     setBusy(false);
+    setConfirmPlan(null);
+    // Si on a créé au moins un dossier ET onCreated dispo, notifier (navigue vers le dernier créé).
     if (created > 0 && onCreated) {
       onCreated(lastClient);
     } else {
+      // Sinon fermer simplement (et s'appuyer sur onCreated=null pour que l'app recharge la liste si besoin).
       onClose();
     }
   }
-  function toggle(p) {
-    if (takenMap[p]) return; // existant non désactivable
-    setChecked(prev => ({...prev, [p]: !prev[p]}));
+
+  async function onValider() {
+    const currentProf = currentProfil || 'Acheteur';
+    const toCreate = PROFIL_LIST.filter(p => checked[p] && !takenMap[p]);
+    const toDelete = PROFIL_LIST.filter(p => p !== currentProf && takenMap[p] && takenMap[p].state === 'linked' && !checked[p]);
+    if (!toCreate.length && !toDelete.length) { onClose(); return; }
+    if (toDelete.length === 0) {
+      // Créations seules : pas de modal confirm, direct.
+      return executeActions(toCreate, []);
+    }
+    // Au moins une suppression : second modal confirm rouge.
+    setConfirmPlan({toCreate, toDelete});
   }
 
   return (
@@ -3287,15 +3325,14 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
         <div style={{display:'flex', flexDirection:'column', marginBottom:10}}>
           {PROFIL_LIST.map(p => {
             const taken = takenMap[p];
-            const isTaken = !!taken;
+            const isCurrent = taken && taken.state === 'current';
             const on = !!checked[p];
             const col = {Acheteur:'#8B5E3C',Vendeur:'#2F3A56',Investisseur:'#6B4A8E',Bailleur:'#4A7856',Locataire:'#B8955A',Curieux:'#6E6352'}[p] || '#8B5E3C';
             return (
               <div key={p}
-                onClick={() => { if (!busy && !isTaken) toggle(p); }}
-                title={isTaken ? 'Existant — passer par le dossier pour supprimer' : 'Cocher pour créer un dossier lié'}
-                style={{display:'flex', alignItems:'center', gap:8, padding:'5px 6px', cursor: isTaken ? 'default' : (busy ? 'wait' : 'pointer'), opacity: isTaken ? 0.55 : 1, borderBottom:'0'}}>
-                {/* Checkbox carrée 14x14 */}
+                onClick={() => { if (!busy) toggle(p); }}
+                title={isCurrent ? 'Profil du dossier actuel — verrouillé' : 'Cocher pour créer un dossier lié / décocher pour supprimer le dossier lié existant'}
+                style={{display:'flex', alignItems:'center', gap:8, padding:'5px 6px', cursor: isCurrent ? 'not-allowed' : (busy ? 'wait' : 'pointer'), opacity: isCurrent ? 0.8 : 1}}>
                 <span style={{width:14, height:14, borderRadius:3, border:'1.5px '+(on?'solid #8B5E3C':'solid #B5A78F'), background: on ? '#8B5E3C' : '#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
                   {on && (
                     <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
@@ -3303,11 +3340,17 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
                     </svg>
                   )}
                 </span>
-                <span style={{fontSize:12.5, fontWeight:600, color: col, fontFamily:'inherit'}}>{p}</span>
+                <span style={{fontSize:12.5, fontWeight:600, color: col, fontFamily:'inherit', flex:1}}>{p}</span>
+                {isCurrent && (
+                  <span style={{fontSize:9, fontWeight:700, color:col, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap'}}>Actuel</span>
+                )}
               </div>
             );
           })}
         </div>
+        {actionMsg && (
+          <div style={{marginBottom:8, padding:'5px 8px', background:'#FFF3EC', color:'#8B5E3C', borderRadius:5, fontSize:11, borderLeft:'3px solid #D97706', lineHeight:1.4}}>{actionMsg}</div>
+        )}
         {error && (
           <div style={{marginBottom:8, padding:'6px 8px', background:'#FEE2E2', color:'#991B1B', borderRadius:5, fontSize:11, borderLeft:'3px solid #DC2626'}}>{error}</div>
         )}
@@ -3320,6 +3363,37 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
           </button>
         </div>
       </div>
+      {/* V35 — Modal de confirmation secondaire (rouge si suppression) */}
+      {confirmPlan && (
+        <div onClick={() => !busy && setConfirmPlan(null)}
+          style={{position:'fixed', inset:0, background:'rgba(20,15,10,.65)', zIndex:210, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
+          <div onClick={e => e.stopPropagation()}
+            style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:12, padding:'14px 14px 12px', width:'100%', maxWidth:320, boxShadow:'0 10px 30px rgba(0,0,0,.25)'}}>
+            <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:16, fontWeight:700, color:'#8B5E3C', marginBottom:8}}>Confirmer les changements</div>
+            {confirmPlan.toCreate.length > 0 && (
+              <div style={{fontSize:12, color:'#2E7D32', fontWeight:600, marginBottom:4}}>
+                ✓ Créer : {confirmPlan.toCreate.join(', ')}
+              </div>
+            )}
+            {confirmPlan.toDelete.length > 0 && (
+              <div style={{fontSize:12, color:'#C0392B', fontWeight:600, marginBottom:8}}>
+                ✗ Supprimer : {confirmPlan.toDelete.join(', ')}
+              </div>
+            )}
+            <div style={{fontSize:11.5, color:'#C0392B', fontStyle:'italic', marginBottom:12, lineHeight:1.4}}>
+              La suppression d'un dossier lié est définitive (données bien, budget, suivi perdues). Cette action ne peut pas être annulée.
+            </div>
+            <div style={{display:'flex', gap:8}}>
+              <button type="button" onClick={() => setConfirmPlan(null)} disabled={busy}
+                style={{flex:1, background:'#fff', color:'#8B7F6E', border:'1.5px solid #E0CDAE', padding:'8px', fontSize:13, fontWeight:600, borderRadius:8, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button type="button" onClick={() => executeActions(confirmPlan.toCreate, confirmPlan.toDelete)} disabled={busy}
+                style={{flex:1, background:'#C0392B', color:'#fff', border:'1.5px solid #C0392B', padding:'8px', fontSize:13, fontWeight:700, borderRadius:8, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit'}}>
+                {busy ? '…' : 'Confirmer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
