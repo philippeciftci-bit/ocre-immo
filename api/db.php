@@ -73,7 +73,43 @@ function currentUser() {
     );
     $stmt->execute([$token]);
     $row = $stmt->fetch();
-    return $row ?: null;
+    if (!$row) return null;
+    // V18.39 — block suspended users at the door.
+    if (!empty($row['is_suspended']) && (int) $row['is_suspended'] === 1) return null;
+
+    // V18.40 — impersonation : si X-Impersonation-Token valide + cette session appartient à un
+    // admin, retourner l'user cible avec flags is_impersonating/impersonated_by. Chaque requête
+    // auth'ée sous impersonation logge une action 'impersonate_action' dans admin_actions.
+    $impToken = $_SERVER['HTTP_X_IMPERSONATION_TOKEN'] ?? '';
+    if ($impToken && !empty($row['is_admin']) && (int) $row['is_admin'] === 1) {
+        $st = db()->prepare(
+            "SELECT s.admin_user_id, s.target_user_id, u.* FROM impersonation_sessions s
+             JOIN users u ON u.id = s.target_user_id
+             WHERE s.token = ? AND s.expires_at > NOW() AND s.stopped_at IS NULL
+                   AND s.admin_user_id = ? AND u.active = 1 AND (u.is_suspended IS NULL OR u.is_suspended = 0)
+             LIMIT 1"
+        );
+        $st->execute([$impToken, $row['id']]);
+        $imp = $st->fetch();
+        if ($imp) {
+            $imp['is_impersonating'] = true;
+            $imp['impersonated_by'] = (int) $imp['admin_user_id'];
+            // Log de l'action imitée (best-effort). Ne bloque pas.
+            try {
+                $logStmt = db()->prepare(
+                    "INSERT INTO admin_actions (admin_user_id, action, target_user_id, meta, ip)
+                     VALUES (?, 'impersonate_action', ?, ?, ?)"
+                );
+                $meta = json_encode([
+                    'endpoint' => substr((string) ($_SERVER['REQUEST_URI'] ?? ''), 0, 120),
+                    'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+                ], JSON_UNESCAPED_UNICODE);
+                $logStmt->execute([(int) $imp['admin_user_id'], (int) $imp['target_user_id'], $meta, $_SERVER['REMOTE_ADDR'] ?? '']);
+            } catch (Exception $e) { /* silent */ }
+            return $imp;
+        }
+    }
+    return $row;
 }
 
 function requireAuth() {
@@ -84,7 +120,11 @@ function requireAuth() {
 
 function requireAdmin() {
     $u = requireAuth();
-    if (($u['role'] ?? '') !== 'admin') jsonError('Accès refusé (admin requis)', 403);
+    // V18.40 — flag is_admin (nouveau) OU role legacy 'admin'. Refuse sous impersonation
+    // (un admin impersoné ne peut pas performer des actions admin).
+    $isAdmin = (!empty($u['is_admin']) && (int) $u['is_admin'] === 1) || (($u['role'] ?? '') === 'admin');
+    if (!$isAdmin) jsonError('Accès refusé (admin requis)', 403);
+    if (!empty($u['is_impersonating'])) jsonError('Actions admin interdites sous impersonation', 403);
     return $u;
 }
 

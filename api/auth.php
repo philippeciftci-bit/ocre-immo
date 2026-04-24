@@ -103,6 +103,9 @@ switch ($action) {
             'user' => [
                 'id' => (int)$u['id'], 'email' => $u['email'],
                 'prenom' => $u['prenom'], 'nom' => $u['nom'], 'role' => $u['role'],
+                'is_admin' => (bool)(int)($u['is_admin'] ?? 0),
+                'is_suspended' => (bool)(int)($u['is_suspended'] ?? 0),
+                'must_change_password' => (bool)(int)($u['must_change_password'] ?? 0),
             ],
         ]);
     }
@@ -153,6 +156,11 @@ switch ($action) {
         jsonOk(['user' => [
             'id' => (int)$u['id'], 'email' => $u['email'],
             'prenom' => $u['prenom'], 'nom' => $u['nom'], 'role' => $u['role'],
+            'is_admin' => (bool)(int)($u['is_admin'] ?? 0),
+            'is_suspended' => (bool)(int)($u['is_suspended'] ?? 0),
+            'must_change_password' => (bool)(int)($u['must_change_password'] ?? 0),
+            'is_impersonating' => !empty($u['is_impersonating']),
+            'impersonated_by' => $u['impersonated_by'] ?? null,
         ]]);
     }
 

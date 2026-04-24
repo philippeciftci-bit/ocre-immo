@@ -99,6 +99,20 @@ switch ($action) {
         exit;
     }
 
+    case 'set_admin': {
+        $email = strtolower(trim((string) ($input['email'] ?? '')));
+        $is_admin = !empty($input['is_admin']) ? 1 : 0;
+        if (!$email || !str_starts_with($email, 'test_e2e')) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'email test_e2e* requis']);
+            exit;
+        }
+        $up = db()->prepare("UPDATE users SET is_admin = ? WHERE email = ?");
+        $up->execute([$is_admin, $email]);
+        echo json_encode(['ok' => true, 'is_admin' => (bool) $is_admin, 'rows' => $up->rowCount()]);
+        exit;
+    }
+
     default:
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'action inconnue : ' . $action]);
