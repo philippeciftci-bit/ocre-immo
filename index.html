@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.24-downloads-3buttons-inline -->
+<!-- ocre-v18.25-trombone-btns-right -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4821,12 +4821,17 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   }
   const suivi3 = suiviTexts();
 
-  // Badges cumul (dossiers liés v17.15).
+  // Badges cumul (dossiers liés v17.15). V18.23 : affiché juste après le badge principal pour
+  // lecture instantanée multi-casquettes (au lieu de tout à droite, loin du badge).
   const linkedIds = Array.isArray(c.linked_dossiers) ? c.linked_dossiers : [];
-  const linkedBadges = linkedIds
+  const linkedDossiers = linkedIds
     .map(id => (clients || []).find(x => x.id === id))
-    .filter(Boolean)
-    .map(x => BADGES[x.projet || 'Acheteur'] || '');
+    .filter(Boolean);
+  const linkedBadges = linkedDossiers.map(x => BADGES[x.projet || 'Acheteur'] || '');
+  // Couleur profil lié dominant si 1 seul, sinon ocre neutre.
+  const linkedColor = linkedDossiers.length === 1
+    ? (PROFILS[linkedDossiers[0].projet] || '#8B5E3C')
+    : '#8B5E3C';
 
   function openSec(idx, e) {
     if (e) e.stopPropagation();
@@ -4855,12 +4860,19 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         ) : (
           <div className="client-row-badge" style={{background: col}}>{badge}</div>
         )}
+        {/* V18.23 — LinkedProfilesBadge collé au badge principal pour lecture instantanée. */}
+        {linkedBadges.length > 0 && (
+          <button type="button"
+            onClick={e => { e.stopPropagation(); openSec(0); }}
+            title="Dossiers liés — voir Section I"
+            style={{display:'inline-flex', alignItems:'center', gap:3, fontSize:11, color: linkedColor, fontWeight:600, letterSpacing:.2, background:'rgba(255,255,255,.6)', border:'1px solid ' + linkedColor, borderRadius:6, padding:'2px 6px', flexShrink:0, cursor:'pointer', fontFamily:'inherit'}}>
+            <span style={{fontSize:11, lineHeight:1}}>🔗</span>
+            <span style={{whiteSpace:'nowrap'}}>{linkedBadges.join(' · ')}</span>
+          </button>
+        )}
         <div className="client-row-name">{name}</div>
         {sourceChip && (
           <div style={{fontSize:10, color: importType === 'image' ? '#8B6B1E' : '#B26D3A', fontWeight:700, flexShrink:0, background:'#fff', border:'1px solid #E8DDD0', borderRadius:10, padding:'2px 7px', whiteSpace:'nowrap'}}>{sourceChip}</div>
-        )}
-        {linkedBadges.length > 0 && (
-          <div style={{fontSize:9, color:col, fontWeight:700, flexShrink:0, letterSpacing:.3}}>🔗 {linkedBadges.join('·')}</div>
         )}
         {primaryTel && primaryTel.valeur ? (
           tels.length > 1 ? (
@@ -5698,6 +5710,13 @@ function FormView(props) {
     : null;
   const stagedContext = editing && editing.import_source_context;
   const [imageOverlay, setImageOverlay] = useState(false);
+  // V18.25 — responsive : <420px les boutons footer Archiver/Supprimer affichent l'icône seule.
+  const [smallScreen, setSmallScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 420);
+  useEffect(() => {
+    function onResize() { setSmallScreen(window.innerWidth < 420); }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const init = editing || {};
   const [d, setD] = useState(init);
   const [profilType, setProfilType] = useState(init.profil_type || 'Particulier');
@@ -6189,20 +6208,28 @@ function FormView(props) {
             </button>
           </div>
         ) : (
-          <div style={{display:'flex', gap:8, alignItems:'center', marginTop:12, marginBottom:24}}>
+          /* V18.25 — Footer repositionné : Enregistrer large gauche flex:1, Archiver+Supprimer
+             shrink à droite. Responsive : <420px → icônes seules 44x44. Sticky bottom avec
+             background blanc + border-top pour toujours être visible quand on scrolle. */
+          <div style={{position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:8, alignItems:'center', padding:'12px 4px', background:'#fff', borderTop:'1px solid #E0CDAE', marginTop:12, marginBottom:8}}>
+            <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
+              style={{flex:1, padding:'14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:15, cursor:'pointer', fontFamily:'inherit'}}>
+              Enregistrer
+            </button>
             <button onClick={() => commit('archived', !d.archived)}
               title={d.archived ? 'Désarchiver' : 'Archiver'}
-              style={{padding:'10px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:10, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700}}>
-              <ArchiveIcon size={18}/> {d.archived ? 'Désarchiver' : 'Archiver'}
+              style={{flexShrink:0, width: smallScreen ? 44 : 'auto', height: smallScreen ? 44 : 'auto', padding: smallScreen ? 0 : '10px 14px', background:'#fff', color:'#8B5E3C', border:'1.5px solid #C9B79A', borderRadius:10, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap: smallScreen ? 0 : 6, fontSize:13, fontWeight:600}}>
+              <span style={{fontSize:16, lineHeight:1}}>📦</span>
+              {!smallScreen && <span>{d.archived ? 'Désarchiver' : 'Archiver'}</span>}
             </button>
             {editing && editing.id && (
               <button onClick={() => handleDelete(editing.id)}
-                style={{padding:'10px 14px', background:'#C04B20', color:'#fff', border:'none', borderRadius:10, cursor:'pointer', fontWeight:700, fontSize:12, fontFamily:'inherit'}}>Supprimer</button>
+                title="Supprimer ce dossier"
+                style={{flexShrink:0, width: smallScreen ? 44 : 'auto', height: smallScreen ? 44 : 'auto', padding: smallScreen ? 0 : '10px 14px', background:'#fff', color:'#D64545', border:'1.5px solid #D64545', borderRadius:10, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap: smallScreen ? 0 : 6, fontSize:13, fontWeight:600}}>
+                <span style={{fontSize:16, lineHeight:1}}>🗑</span>
+                {!smallScreen && <span>Supprimer</span>}
+              </button>
             )}
-            <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
-              style={{flex:1, padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
-              Enregistrer
-            </button>
           </div>
         )}
       </div>
