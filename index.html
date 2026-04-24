@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.31-header-share-icon -->
+<!-- ocre-v18.32-export-zip-autonomous -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2918,6 +2918,133 @@ function isIOS() {
   return /iP(hone|od|ad)/.test(navigator.platform || '') || /iPad|iPhone|iPod/.test(navigator.userAgent || '');
 }
 
+// V18.32 — Modal "Partager mes dossiers" : preview + bouton Générer → ZIP autonome.
+function ShareDossiersModal({onClose, showToast}) {
+  const [preview, setPreview] = React.useState(null);
+  const [loadingPreview, setLoadingPreview] = React.useState(true);
+  const [generating, setGenerating] = React.useState(false);
+  const [status, setStatus] = React.useState('');
+  const token = localStorage.getItem('ocre_token');
+
+  React.useEffect(() => {
+    fetch(API + '/export_zip.php?action=preview', {headers: {'X-Session-Token': token}})
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.ok) setPreview(d);
+        else setStatus((d && d.error) || 'Preview indisponible');
+        setLoadingPreview(false);
+      })
+      .catch(() => { setStatus('Erreur réseau'); setLoadingPreview(false); });
+    // eslint-disable-next-line
+  }, []);
+
+  function fmtSize(bytes) {
+    if (!bytes) return '—';
+    const mo = bytes / 1048576;
+    if (mo < 1) return (bytes / 1024).toFixed(0) + ' Ko';
+    return mo.toFixed(mo < 10 ? 1 : 0).replace('.', ',') + ' Mo';
+  }
+
+  async function generate() {
+    setGenerating(true);
+    setStatus('Préparation du ZIP… téléchargement des photos ~10-30s');
+    try {
+      const r = await fetch(API + '/export_zip.php?action=generate', {headers: {'X-Session-Token': token}});
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({error: 'Erreur ' + r.status}));
+        throw new Error(err.error || ('HTTP ' + r.status));
+      }
+      const disp = r.headers.get('Content-Disposition') || '';
+      let filename = 'ocre-export.zip';
+      const m = disp.match(/filename="?([^";]+)"?/i);
+      if (m) filename = m[1];
+      const blob = await r.blob();
+      const sizeMo = Math.round(blob.size / 1048576);
+      if (sizeMo > 50) {
+        setStatus('Export volumineux (' + sizeMo + ' Mo) — partage en cours…');
+      } else {
+        setStatus('ZIP prêt (' + fmtSize(blob.size) + ') — ouverture du partage…');
+      }
+      const file = new File([blob], filename, {type: 'application/zip'});
+      if (navigator.canShare && navigator.canShare({files: [file]})) {
+        try {
+          await navigator.share({files: [file], title: 'Export Ocre Immo', text: 'Dossiers Ocre Immo — consultation offline via viewer.html'});
+          setStatus('✓ Partagé.');
+          setTimeout(() => onClose && onClose(), 800);
+          return;
+        } catch (e) {
+          if (e && e.name === 'AbortError') { setStatus('Partage annulé.'); setGenerating(false); return; }
+          // Autre erreur share → fallback download.
+        }
+      }
+      // Fallback : téléchargement direct.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+      setStatus('✓ Téléchargé (' + fmtSize(blob.size) + ').');
+      setTimeout(() => onClose && onClose(), 1200);
+    } catch (e) {
+      setStatus('✗ ' + (e.message || 'Erreur'));
+      showToast && showToast(e.message || 'Erreur export');
+    }
+    setGenerating(false);
+  }
+
+  return (
+    <div onClick={onClose}
+      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      <div onClick={e => e.stopPropagation()}
+        style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, width:'100%', maxWidth:380, boxShadow:'0 20px 50px rgba(0,0,0,.25)'}}>
+        <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:6, display:'flex', alignItems:'center', gap:8}}>
+          <ShareIcon size={22}/>
+          <span>Partager mes dossiers</span>
+        </div>
+        <div style={{fontSize:12.5, color:'#5A4E3D', lineHeight:1.5, marginBottom:14}}>
+          Génère un ZIP avec tous tes dossiers et photos. Partage-le par Mail, WhatsApp, AirDrop, iCloud…
+        </div>
+
+        <div style={{background:'#FDFAF7', border:'1px solid #E0CDAE', borderRadius:9, padding:'10px 12px', marginBottom:14, fontSize:13, color:'#2A2018'}}>
+          {loadingPreview ? (
+            <div style={{color:'#8B7F6E', fontStyle:'italic'}}>Calcul de l'aperçu…</div>
+          ) : preview && preview.counts ? (
+            <>
+              <div style={{fontWeight:600}}>
+                {preview.counts.dossiers} dossier{preview.counts.dossiers > 1 ? 's' : ''}
+                {preview.counts.staged > 0 && <span> · {preview.counts.staged} téléchargement{preview.counts.staged > 1 ? 's' : ''}</span>}
+                {preview.counts.archived > 0 && <span> · {preview.counts.archived} archivé{preview.counts.archived > 1 ? 's' : ''}</span>}
+              </div>
+              <div style={{color:'#8B7F6E', fontSize:12, marginTop:4}}>
+                {preview.counts.photos} photo{preview.counts.photos > 1 ? 's' : ''} · ~{fmtSize(preview.size_estimate_bytes)} estimé
+              </div>
+            </>
+          ) : <div style={{color:'#C04B20'}}>{status || 'Preview indisponible'}</div>}
+        </div>
+
+        <button onClick={generate} disabled={generating || loadingPreview}
+          style={{width:'100%', padding:'13px', background: generating ? '#BBA88B' : 'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor: generating ? 'wait' : 'pointer', fontFamily:'inherit', marginBottom:8, display:'flex', alignItems:'center', justifyContent:'center', gap:8}}>
+          {generating ? <span>⏳ Génération…</span> : (<><ShareIcon size={18}/><span>Générer et partager</span></>)}
+        </button>
+
+        {status && (
+          <div style={{fontSize:11.5, color: status.indexOf('✓') === 0 ? '#065F46' : (status.indexOf('✗') === 0 ? '#991B1B' : '#5A4E3D'), marginBottom:10, textAlign:'center'}}>
+            {status}
+          </div>
+        )}
+
+        <div style={{fontSize:11, color:'#8B7F6E', lineHeight:1.5, marginBottom:12, background:'#FBF7F2', padding:'8px 10px', borderRadius:7, border:'1px solid #F2EBE2'}}>
+          Le destinataire peut consulter l'export <b>sans compte Ocre</b> en ouvrant <code>viewer.html</code> dans son navigateur. Avec un compte, il pourra aussi réimporter (bouton « Importer un ZIP » côté admin, v18.33+).
+        </div>
+
+        <button onClick={onClose} disabled={generating}
+          style={{width:'100%', padding:'9px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:9, fontWeight:600, fontSize:12, cursor: generating ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // V18.30 — Système AlertBanner global : 4 types (urgent/warning/info/success), sticky sous
 // header, dismissible, actions CTA inline. InstallPwaBanner v18.5 retiré (remplacé par
 // AlertBanner + PWAInstallOverlay).
@@ -3400,21 +3527,10 @@ function App() {
       promoteStaged={promoteStaged} deleteStaged={deleteStaged}
     />
   )}{pwaOverlay}
-  {/* V18.31 — modal placeholder partage dossiers (impl réelle à venir en v18.32). */}
+  {/* V18.32 — ShareDossiersModal : génère un ZIP autonome (data.json + photos + viewer.html)
+      et le partage via navigator.share (iOS share sheet) ou download direct (fallback desktop). */}
   {sharePlaceholderOpen && (
-    <div onClick={() => setSharePlaceholderOpen(false)}
-      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
-      <div onClick={e => e.stopPropagation()}
-        style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, width:'100%', maxWidth:340, boxShadow:'0 20px 50px rgba(0,0,0,.25)', textAlign:'center'}}>
-        <div style={{fontSize:38, marginBottom:10}}>🚧</div>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', marginBottom:8}}>Partager mes dossiers</div>
-        <div style={{fontSize:13, color:'#5A4E3D', lineHeight:1.5, marginBottom:16}}>Fonctionnalité en cours de développement — disponible dans la prochaine version.</div>
-        <button onClick={() => setSharePlaceholderOpen(false)}
-          style={{width:'100%', padding:'11px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
-          Compris
-        </button>
-      </div>
-    </div>
+    <ShareDossiersModal onClose={() => setSharePlaceholderOpen(false)} showToast={showToast}/>
   )}
   {/* V18.20 — ConfirmModal global. Tous les delete passent par window.__ocreAsk(). */}
   {confirmReq && (

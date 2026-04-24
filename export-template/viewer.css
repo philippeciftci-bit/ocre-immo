@@ -1,0 +1,69 @@
+/* Ocre Immo — viewer standalone (vanilla JS). Palette cohérente avec l'app. */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{font-family:'DM Sans',system-ui,sans-serif;background:#F0E8D8;color:#2A2018;min-height:100vh;font-size:14px;line-height:1.45}
+button{font-family:inherit;cursor:pointer}
+img{max-width:100%;display:block}
+.hidden{display:none !important}
+.muted{color:#8B7F6E;font-size:12px}
+
+#app{max-width:860px;margin:0 auto;padding:0 14px 40px}
+
+#topbar{background:#fff;border-bottom:1.5px solid #A67F5A;padding:12px 16px;position:sticky;top:0;z-index:10;margin:0 -14px;box-shadow:0 1px 3px rgba(139,94,60,.08)}
+.topbar-inner{display:flex;align-items:center;gap:12px;max-width:860px;margin:0 auto}
+.topbar-left{display:flex;align-items:center;gap:10px;flex:1}
+.topbar-right{font-size:12px;color:#8B5E3C;font-weight:700;background:#FBF1E4;border:1px solid #BBA88B;border-radius:12px;padding:3px 10px}
+.ocre-logo{width:34px;height:34px;border-radius:8px;border:2.5px solid #3D2515;background:linear-gradient(to bottom,#3D2515 0%,#5C3B1E 20%,#8B5E3C 55%,#F4E4CC 100%);box-shadow:0 1px 3px rgba(60,40,20,.35),inset 0 3px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ocre-logo-i{font-family:'Caveat',cursive;font-size:24px;color:#0D0A08;line-height:1;margin-top:2px;font-weight:500}
+.ocre-title{display:flex;align-items:baseline;gap:3px}
+.ocre-title-ocre{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:20px;letter-spacing:1.5px;color:#8B5E3C}
+.ocre-title-immo{font-family:'Caveat',cursive;font-weight:400;font-size:23px;color:#2A2018;margin-left:2px}
+.topbar-sub{max-width:860px;margin:6px auto 0;font-size:11px;color:#8B7F6E;text-align:center}
+
+#toolbar{padding:12px 0 6px;position:sticky;top:64px;background:#F0E8D8;z-index:9;margin:0 -14px;padding-left:14px;padding-right:14px}
+#search{width:100%;padding:10px 14px;border:1px solid #D4C3A8;background:#fff;border-radius:10px;font-size:14px;outline:none;font-family:inherit}
+#search:focus{border-color:#8B5E3C}
+#filters{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+#filters::-webkit-scrollbar{display:none}
+.filter-chip{padding:5px 10px;border-radius:13px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #BBA88B;background:#fff;color:#8B5E3C;flex-shrink:0}
+.filter-chip.active{background:#8B5E3C;color:#fff;border-color:#8B5E3C}
+
+.list{padding-top:10px;display:flex;flex-direction:column;gap:10px}
+.card{background:#fff;border:1.5px solid #8B7355;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(139,94,60,.08);cursor:pointer}
+.card-head{display:flex;align-items:center;gap:10px;padding:10px 12px;min-height:44px}
+.badge{width:32px;height:32px;border-radius:7px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.3px;flex-shrink:0}
+.name{font-weight:700;font-size:14px;color:#2A2018;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.chip-linked{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;background:rgba(255,255,255,.6);border:1px solid #8B5E3C;color:#8B5E3C;border-radius:6px;padding:2px 6px}
+.tel{color:#8B5E3C;font-weight:600;font-size:12.5px;white-space:nowrap;flex-shrink:0}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1.5px solid #D4C3A8}
+.sector{padding:8px 10px;border-left:1px solid #D4C3A8;min-height:52px;display:flex;flex-direction:column;gap:1px}
+.sector:first-child{border-left:none}
+.sector-label{font-size:10px;color:#8B7F6E;font-weight:600;text-transform:uppercase;letter-spacing:.3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sector-l1{font-size:12px;color:#2A2018;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sector-l2{font-size:11px;color:#8B7F6E;font-weight:400;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sector-empty{color:#B5A78F;font-weight:500;font-size:11px;font-style:italic}
+.thumb-wrap{display:flex;gap:8px;align-items:center;min-width:0}
+.thumb{width:48px;height:48px;border-radius:6px;overflow:hidden;flex-shrink:0;position:relative;border:1px solid #D4C3A8;background:#F4ECE3;display:flex;align-items:center;justify-content:center}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb-plus{position:absolute;right:2px;bottom:2px;background:rgba(0,0,0,.7);color:#fff;font-size:9px;font-weight:700;padding:2px 4px;border-radius:4px;line-height:1}
+.thumb-placeholder{font-size:22px}
+
+.detail{background:#fff;border-radius:12px;border:1.5px solid #A67F5A;padding:16px;margin-top:12px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.detail h2{font-family:'Cormorant Garamond',serif;font-size:22px;color:#8B5E3C;margin-bottom:4px;font-weight:700}
+.detail h3{font-family:'Cormorant Garamond',serif;font-size:17px;color:#8B5E3C;margin:18px 0 8px;font-weight:700;border-bottom:1px solid #E0CDAE;padding-bottom:4px}
+.detail .sub{color:#8B7F6E;font-size:12px;margin-bottom:12px;font-style:italic}
+.kv{display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed #F2EBE2;font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv-k{color:#8B7F6E;min-width:110px;flex-shrink:0;font-weight:500}
+.kv-v{flex:1;color:#2A2018}
+.photos{display:flex;gap:8px;overflow-x:auto;padding:8px 0;scrollbar-width:none}
+.photos::-webkit-scrollbar{display:none}
+.photos img{width:140px;height:140px;object-fit:cover;border-radius:8px;border:1px solid #D4C3A8;flex-shrink:0}
+.btn-ghost{padding:8px 12px;background:#FDFAF7;color:#8B5E3C;border:1.5px solid #E0CDAE;border-radius:9px;font-weight:600;font-size:12px;margin-bottom:12px}
+.section-group{border:1px solid #E0CDAE;border-radius:10px;padding:12px;margin-top:8px;background:#FDFAF7}
+
+#footer{margin-top:24px;padding:14px 0;text-align:center;font-size:12px;color:#8B7F6E;border-top:1px solid #E0CDAE}
+#footer .muted{font-size:11px;margin-top:4px}
+
+@media (min-width:720px){
+  .detail .kv-k{min-width:150px}
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Export Ocre Immo — Consultation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500&family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+
+<div id="app">
+  <header id="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-left">
+        <div class="ocre-logo">
+          <span class="ocre-logo-i">i</span>
+        </div>
+        <div class="ocre-title">
+          <span class="ocre-title-ocre">OCRE</span>
+          <span class="ocre-title-immo">immo</span>
+        </div>
+      </div>
+      <div class="topbar-right" id="count-chip"></div>
+    </div>
+    <div class="topbar-sub" id="export-meta"></div>
+  </header>
+
+  <section id="toolbar">
+    <input id="search" type="text" placeholder="Rechercher dans l'export…" autocomplete="off" spellcheck="false">
+    <div id="filters"></div>
+  </section>
+
+  <main id="list" class="list"></main>
+
+  <div id="detail" class="detail hidden">
+    <button id="detail-close" class="btn-ghost" type="button">← Retour</button>
+    <div id="detail-body"></div>
+  </div>
+
+  <footer id="footer">
+    <div>📦 Export statique Ocre Immo — consultable hors connexion.</div>
+    <div class="muted">Les données affichées reflètent l'état au moment de l'export.</div>
+  </footer>
+</div>
+
+<script src="viewer.js"></script>
+</body>
+</html>
