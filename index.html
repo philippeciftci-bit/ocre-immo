@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.21-downloads-inline-url -->
+<!-- ocre-v18.22-logo-strong-thumbs -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4319,14 +4319,15 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
   );
 }
 
-// V18.19/20 — logo custom réutilisable. Carré arrondi dégradé ocre (V18.20 : inversé — foncé
-// haut, clair bas — pour que le 'i' Caveat noir reste lisible sur le bas clair). 3-stops doux.
+// V18.22 — logo contraste radical : brun chocolat profond haut → brand milieu → crème bas.
+// Border 2px + inset shadow top pour densifier. 'i' Caveat décalé légèrement vers le bas.
 function OcreLogo({size = 36}) {
   return (
     <div style={{
       width: size, height: size, borderRadius: 8,
-      border: '1px solid #8B5E3C',
-      background: 'linear-gradient(to bottom, #7A5230 0%, #8B5E3C 30%, #FBF1E4 100%)',
+      border: '2px solid #5C3B1E',
+      background: 'linear-gradient(to bottom, #5C3B1E 0%, #8B5E3C 45%, #F4E4CC 100%)',
+      boxShadow: 'inset 0 2px 6px rgba(0,0,0,.15)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0, position: 'relative',
     }}>
@@ -4335,7 +4336,7 @@ function OcreLogo({size = 36}) {
         fontSize: Math.round(size * 0.72),
         color: '#1A1410',
         lineHeight: 1,
-        marginTop: -Math.round(size * 0.08),
+        marginTop: Math.round(size * 0.04),
         fontWeight: 500,
       }}>i</span>
     </div>
@@ -4717,6 +4718,29 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   const villeQuartier = [bien.ville || c.ville, bien.quartier].filter(Boolean).join(' · ');
   const currency = bien.pays === 'MA' ? 'MAD' : '€';
 
+  // V18.22 — thumbnail photo bien 1ère + badge +N si plusieurs.
+  // Proxy : URL externes (http/https) direct. Chemin interne (/uploads/...) via api/image.php auth.
+  const photosArr = (() => {
+    const raw = Array.isArray(bien.photos) ? bien.photos : [];
+    return raw.map(p => {
+      if (!p) return null;
+      if (typeof p === 'string') return p;
+      if (typeof p === 'object' && p.url) return p.url;
+      return null;
+    }).filter(Boolean);
+  })();
+  const photoCount = photosArr.length;
+  const firstPhotoRaw = photosArr[0] || '';
+  const firstPhotoUrl = (() => {
+    if (!firstPhotoRaw) return '';
+    // API proxy déjà formé (ex : /api/image.php?path=…)
+    if (firstPhotoRaw.indexOf('/api/image.php') === 0) return firstPhotoRaw;
+    // URL externe (http/https)
+    if (/^https?:\/\//.test(firstPhotoRaw)) return firstPhotoRaw;
+    // Chemin relatif uploads → proxy auth.
+    return '/api/image.php?path=' + encodeURIComponent(firstPhotoRaw.replace(/^\//, ''));
+  })();
+
   // Budget compact : 1,2 M€ / 620k€ / 500 000 MAD. Travaux ou mensualité en sous-ligne.
   function fmtMoney(n, cur) {
     const x = Number(n);
@@ -4852,12 +4876,31 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       <div className="client-row-grid">
         <div className="client-row-sector" onClick={e => openSec(1, e)}>
           <div className="client-row-sector-label">🏠 Bien</div>
-          {(typeBien || villeQuartier) ? (
-            <>
-              {typeBien ? <div className="client-row-sector-l1">{typeBien.slice(0, 22)}</div>
-                        : <div className="client-row-sector-l1" style={{color:'#8B7F6E'}}>—</div>}
-              {villeQuartier ? <div className="client-row-sector-l2">{villeQuartier.slice(0, 28)}</div> : null}
-            </>
+          {(typeBien || villeQuartier || firstPhotoUrl) ? (
+            firstPhotoUrl ? (
+              // V18.22 — thumbnail photo bien + texte à droite. Badge +N si photoCount > 1.
+              <div style={{display:'flex', alignItems:'center', gap:7, minWidth:0}}>
+                <div style={{position:'relative', width:48, height:48, borderRadius:6, overflow:'hidden', flexShrink:0, background:'#F0E4D4', border:'1px solid #D4C3A8'}}>
+                  <img src={firstPhotoUrl} alt="" loading="lazy"
+                    style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
+                    onError={e => { e.target.parentNode.style.display = 'none'; }}/>
+                  {photoCount > 1 && (
+                    <div style={{position:'absolute', right:2, bottom:2, background:'rgba(0,0,0,.7)', color:'#fff', fontSize:9, fontWeight:700, padding:'2px 4px', borderRadius:4, lineHeight:1, fontFamily:'inherit'}}>+{photoCount - 1}</div>
+                  )}
+                </div>
+                <div style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:1}}>
+                  {typeBien ? <div className="client-row-sector-l1">{typeBien.slice(0, 18)}</div>
+                            : <div className="client-row-sector-l1" style={{color:'#8B7F6E'}}>—</div>}
+                  {villeQuartier ? <div className="client-row-sector-l2">{villeQuartier.slice(0, 22)}</div> : null}
+                </div>
+              </div>
+            ) : (
+              <>
+                {typeBien ? <div className="client-row-sector-l1">{typeBien.slice(0, 22)}</div>
+                          : <div className="client-row-sector-l1" style={{color:'#8B7F6E'}}>—</div>}
+                {villeQuartier ? <div className="client-row-sector-l2">{villeQuartier.slice(0, 28)}</div> : null}
+              </>
+            )
           ) : (
             <div className="client-row-sector-empty">+ Définir</div>
           )}
