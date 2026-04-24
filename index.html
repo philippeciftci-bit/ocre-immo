@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v28-casquettes-section-i -->
+<!-- ocre-v29-dossier-compact -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -7747,47 +7747,96 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
   );
 }
 
-// V28 — Stage I header bar : nom + pills casquettes (active + liées) + bouton "+" rond.
-// Remplace le titre "I. L'Acheteur / Le Vendeur / ..." dynamique. Permet de gérer les
-// casquettes (ajouter via modal multi-select, naviguer entre liées via tap pill).
-function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, onOpenPicker, canAdd, profilType}) {
+// V29 — Stage I header bar compact (Variante C validée Philippe) : ligne 1 identité
+// (nom + pills + "+" rond 20, ✓ si complet) + ligne 2 coordonnées inline (tel · email ·
+// ville flag) + bouton "Modifier ▸" discret. En mode étendu : seule la ligne 1 est
+// conservée en haut de la section pour garder la vue pendant l'édition.
+function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, onOpenPicker, canAdd, profilType, expanded, stageComplete}) {
   const displayName = (profilType === 'Société' && d && d.societe_nom)
     ? d.societe_nom
-    : (((d && d.prenom) || '') + ' ' + ((d && d.nom) || '')).trim();
+    : (((d && d.prenom) || '') + ' ' + ((d && d.nom) || '')).trim() || 'Nouveau dossier';
   const activeColor = PROFILS[activeProfil] || '#8B5E3C';
+  const total = 1 + linkedDossiers.length;
+  const useAbbr = total >= 3 && typeof window !== 'undefined' && window.innerWidth < 420;
+  // Ligne 2 : extraction coords compactes.
+  const telsArr = Array.isArray(d && d.tels) && d.tels.length > 0
+    ? d.tels : ((d && d.tel) ? [{valeur: d.tel}] : []);
+  const primaryTel = telsArr[0] && telsArr[0].valeur;
+  const telExtras = Math.max(0, telsArr.length - 1);
+  const emailsArr = Array.isArray(d && d.emails) && d.emails.length > 0
+    ? d.emails : ((d && d.email) ? [{valeur: d.email}] : []);
+  const primaryEmail = emailsArr[0] && emailsArr[0].valeur;
+  const emailExtras = Math.max(0, emailsArr.length - 1);
+  const ville = (d && d.ville) || '';
+  const nat = (d && d.nationalite) || '';
+  const flagMap = {FR:'🇫🇷', MA:'🇲🇦', ES:'🇪🇸', DE:'🇩🇪', IT:'🇮🇹', BE:'🇧🇪', CH:'🇨🇭', PT:'🇵🇹', UK:'🇬🇧', US:'🇺🇸'};
+  const villeLine = [ville, flagMap[nat] || ''].filter(Boolean).join(' ');
+
   return (
-    <div style={{display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0, flexWrap:'wrap'}} onClick={e => e.stopPropagation()}>
-      <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flexShrink:1}}>
-        {displayName || 'Nouveau dossier'}
-      </span>
-      {/* Pill ACTIVE */}
-      <span style={{padding:'3px 9px', borderRadius:11, border:'1px solid '+activeColor, background:activeColor, color:'#fff', fontSize:9.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0}}>
-        {PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()}
-      </span>
-      {/* Pills LIÉES (tap → openExistingDossier) */}
-      {linkedDossiers.map(lc => {
-        const p = lc.projet || 'Acheteur';
-        const color = PROFILS[p] || '#8B5E3C';
-        return (
-          <button key={lc.id} type="button"
-            onClick={e => { e.stopPropagation(); openExistingDossier && openExistingDossier(lc); }}
-            title={'Ouvrir la casquette ' + p}
-            style={{padding:'3px 9px', borderRadius:11, border:'1px solid '+color, background:'transparent', color:color, fontSize:9.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer', flexShrink:0}}>
-            {PROFILS_LABEL[p] || p.toUpperCase()}
+    <div style={{display:'flex', flexDirection:'column', gap:4, flex:1, minWidth:0}} onClick={e => e.stopPropagation()}>
+      {/* LIGNE 1 identité */}
+      <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', minWidth:0}}>
+        <span style={{fontFamily:'"Cormorant Garamond", serif', fontSize:17, fontWeight:700, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flexShrink:1}}>
+          {displayName}
+        </span>
+        {/* Pill ACTIVE */}
+        <span style={{padding: useAbbr ? '1px 5px' : '1px 6px', borderRadius:5, background:activeColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, lineHeight:1.4}}>
+          {useAbbr ? (BADGES[activeProfil] || activeProfil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase())}
+        </span>
+        {/* Pills LIÉES */}
+        {linkedDossiers.map(lc => {
+          const p = lc.projet || 'Acheteur';
+          const color = PROFILS[p] || '#8B5E3C';
+          return (
+            <button key={lc.id} type="button"
+              onClick={e => { e.stopPropagation(); openExistingDossier && openExistingDossier(lc); }}
+              title={'Ouvrir la casquette ' + p}
+              style={{padding: useAbbr ? '1px 5px' : '1px 6px', borderRadius:5, border:'1px solid '+color, background:'transparent', color:color, fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer', flexShrink:0, lineHeight:1.4}}>
+              {useAbbr ? (BADGES[p] || p.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[p] || p.toUpperCase())}
+            </button>
+          );
+        })}
+        {/* Bouton "+" rond 20 — ouvre le picker */}
+        {canAdd && (
+          <button type="button"
+            onClick={e => { e.stopPropagation(); onOpenPicker && onOpenPicker(); }}
+            title="Ajouter une casquette"
+            aria-label="Ajouter une casquette"
+            style={{width:20, height:20, borderRadius:'50%', border:'1px solid #C9B79A', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, flexShrink:0, color:'#8B5E3C'}}>
+            <IconPlus size={12}/>
           </button>
-        );
-      })}
-      {/* Bouton "+" rond → ouvre le modal multi-select */}
-      {canAdd && (
-        <button type="button"
-          onClick={e => { e.stopPropagation(); onOpenPicker && onOpenPicker(); }}
-          title="Ajouter une casquette à ce client"
-          aria-label="Ajouter une casquette"
-          style={{width:32, height:32, borderRadius:'50%', border:'1.5px solid #D4C3A8', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, flexShrink:0, color:'#8B5E3C', transition:'background .1s'}}
-          onMouseEnter={e => { e.currentTarget.style.background = '#FFF8EF'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}>
-          <IconPlus size={18}/>
-        </button>
+        )}
+        {/* Checkmark ✓ si section complète */}
+        {stageComplete && (
+          <span aria-label="Section complète" title="Section complète"
+            style={{color:'#2E7D32', fontWeight:700, fontSize:14, flexShrink:0, marginLeft:2}}>✓</span>
+        )}
+      </div>
+      {/* LIGNE 2 coordonnées inline — uniquement en mode réduit */}
+      {!expanded && (
+        <div style={{display:'flex', alignItems:'center', flexWrap:'wrap', gap:0, fontSize:11.5, color:'#5C4A3A', minWidth:0, lineHeight:1.35}}>
+          {primaryTel && (
+            <a href={'tel:' + String(primaryTel).replace(/[^+0-9]/g,'')}
+              onClick={e => e.stopPropagation()}
+              style={{color:'#8B5E3C', textDecoration:'none', whiteSpace:'nowrap'}}>
+              {primaryTel}{telExtras > 0 ? ' (+' + telExtras + ')' : ''}
+            </a>
+          )}
+          {primaryTel && (primaryEmail || villeLine) && <span style={{color:'#B5A78F', margin:'0 6px'}}>·</span>}
+          {primaryEmail && (
+            <a href={'mailto:' + primaryEmail}
+              onClick={e => e.stopPropagation()}
+              style={{color:'#8B5E3C', textDecoration:'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:180}}>
+              {primaryEmail}{emailExtras > 0 ? ' (+' + emailExtras + ')' : ''}
+            </a>
+          )}
+          {primaryEmail && villeLine && <span style={{color:'#B5A78F', margin:'0 6px'}}>·</span>}
+          {villeLine && <span style={{whiteSpace:'nowrap'}}>{villeLine}</span>}
+          <span style={{flex:1}}/>
+          <span style={{fontSize:9, fontWeight:700, color:'#B26D3A', letterSpacing:.5, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, marginLeft:6}}>
+            Modifier ▸
+          </span>
+        </div>
       )}
     </div>
   );
@@ -8325,23 +8374,9 @@ function FormView(props) {
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:8}}>
         <button onClick={backToListFlushed} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>←</button>
-        {/* V18.27 — nom Cormorant italic bold centré. "Sans nom" si vide. Société sous-ligne si pro. */}
-        <div style={{flex:1, textAlign:'center', minWidth:0, overflow:'hidden'}}>
-          {headMainName ? (
-            <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:22, fontWeight:600, fontStyle:'italic', color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.1}}>
-              {headMainName}
-            </div>
-          ) : (
-            <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:22, fontStyle:'italic', color:'#8B7355', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.1}}>
-              Sans nom
-            </div>
-          )}
-          {headSubSociety && (
-            <div style={{fontSize:12, color:'#8B7355', fontStyle:'italic', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginTop:1}}>
-              {headSubSociety}
-            </div>
-          )}
-        </div>
+        {/* V29 — Titre Cormorant grand du header supprimé. Le nom apparaît désormais
+            uniquement dans le bandeau compact Section I (Variante C). */}
+        <div style={{flex:1}}/>
         {/* V18.36 — PillIconButton cohérent (loupe dossier + partager dossier). */}
         <div style={{display:'flex', alignItems:'center', gap:8, flexShrink:0}}>
           <PillIconButton icon={
@@ -8416,7 +8451,15 @@ function FormView(props) {
       <div style={{flex:1, overflowY:'auto', padding:12}}>
         <div data-stage-anchor="0">
         <Stage
-               customHeader={<StageIHeaderBar d={d} activeProfil={activeProfil} linkedDossiers={(Array.isArray(d.linked_dossiers) ? d.linked_dossiers : []).map(id => (clients || []).find(c => c.id === id)).filter(Boolean)} openExistingDossier={openExistingDossier} onOpenPicker={() => setAddCasquetteOpen(true)} canAdd={editing && editing.id && !String(editing.id).startsWith('tmp-')} profilType={profilType}/>}
+               customHeader={<StageIHeaderBar
+                 d={d} activeProfil={activeProfil}
+                 linkedDossiers={(Array.isArray(d.linked_dossiers) ? d.linked_dossiers : []).map(id => (clients || []).find(c => c.id === id)).filter(Boolean)}
+                 openExistingDossier={openExistingDossier}
+                 onOpenPicker={() => setAddCasquetteOpen(true)}
+                 canAdd={editing && editing.id && !String(editing.id).startsWith('tmp-')}
+                 profilType={profilType}
+                 expanded={expanded[0] || isMatched(0)}
+                 stageComplete={stageStatus[0].status === 'complete'}/>}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status} summary={stageStatus[0].summary}>
           <div style={{display:'flex', gap:6, marginBottom:12}}>
