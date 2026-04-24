@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v38-emailpill -->
+<!-- ocre-v40-clientrow-2lignes -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -6998,6 +6998,17 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   const name = isSociete
     ? (c.societe_nom || 'Société')
     : (((c.prenom || '') + ' ' + (c.nom || '').toUpperCase()).trim() || 'Sans nom');
+  // V40 — ligne 1 : pour société, afficher représentant + raison sociale. Pour
+  // particulier, prénom+NOM seul.
+  const representantName = (((c.prenom || '') + ' ' + (c.nom || '').toUpperCase()).trim());
+  const displayNameLine1 = isSociete
+    ? (representantName || c.societe_nom || 'Société')
+    : (representantName || 'Sans nom');
+  const raisonSocialeLine1 = (isSociete && representantName && c.societe_nom) ? c.societe_nom : '';
+  // V40 — email principal pour ligne 2 (miroir de primaryTel existant).
+  const emailsArrRow = Array.isArray(c.emails) && c.emails.length > 0
+    ? c.emails : (c.email ? [{valeur: c.email}] : []);
+  const primaryEmail = emailsArrRow[0] && emailsArrRow[0].valeur ? emailsArrRow[0].valeur : '';
 
   const bien = c.bien || {};
   const typesArr = Array.isArray(bien.types) && bien.types.length
@@ -7138,108 +7149,96 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
 
   return (
     <div className="client-row-card" onClick={onClick}>
-      {/* V28 — Ligne labels v26 supprimée : les pills sont intégrées dans la ligne nom ci-dessous. */}
-      <div className="client-row-head" style={{background: tint}}>
-        {/* V22 — Miniature photo bien à gauche UNIQUEMENT pour offres (Vendeur/Bailleur).
-            Thumb 48x48 mobile (56 desktop via class), IconHome fallback si pas de photo.
-            Tap → ouvre Section Bien (openSec 1). Badge +N overlay si photoCount > 1. */}
-        {(profil === 'Vendeur' || profil === 'Bailleur') && (
-          <button type="button" title="Voir les photos"
-            onClick={e => { e.stopPropagation(); openSec(1, e, 'photos'); }}
-            className="client-row-thumb"
-            style={{position:'relative', width:48, height:48, borderRadius:8, overflow:'hidden', flexShrink:0, background:'#F4ECE3', border:'1px solid #D4C3A8', padding:0, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#8B5E3C'}}>
-            {firstPhotoUrl ? (
-              <img src={firstPhotoUrl} alt="" loading="lazy"
-                style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
-                onError={e => { e.target.style.display = 'none'; }}/>
-            ) : (
-              <IconHome size={24}/>
-            )}
-            {photoCount > 1 && (
-              <span style={{position:'absolute', right:2, bottom:2, background:'rgba(139,94,60,.85)', color:'#fff', fontSize:10, fontWeight:700, padding:'1px 5px', borderRadius:4, lineHeight:1.2, fontFamily:'inherit'}}>+{photoCount - 1}</span>
-            )}
-          </button>
-        )}
-        {/* V26 — badge carré ACH/VDR/INV/BAI/LOC/CUR supprimé, remplacé par labels texte au-dessus.
-            Le badge staged-image (thumbnail import) reste car c'est un signal visuel différent
-            (import en cours de promotion vers dossier complet). */}
-        {isStagedRow && importType === 'image' && importImageUrl && (
-          <div className="client-row-badge" style={{background:'#F4EFE5', padding:0, overflow:'hidden'}}>
-            <img src={importImageUrl} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}
+      {/* V40 — Header ClientRow : thumb 54×54 + colonne 2 lignes à droite (Variante 1).
+          Ligne 1 : nom (+ société italique si Pro) + pill profil à droite marginLeft:auto.
+          Ligne 2 : chip tel + chip mail + cible 🎯 à droite marginLeft:auto.
+          Les pills liées secondaires 9px du v32 sont retirées du header ClientRow — un
+          seul profil affiché par row. Les casquettes secondaires restent utilisées dans
+          le dossier ouvert (linked_dossiers intact). */}
+      <div className="client-row-head" style={{display:'flex', gap:10, padding:'10px 12px', alignItems:'stretch', background: tint}}>
+        {/* Thumb 54×54 — toujours affichée (fallback IconHome si pas de photo) */}
+        <button type="button" title="Voir les photos"
+          onClick={e => { e.stopPropagation(); openSec(1, e, 'photos'); }}
+          style={{flexShrink:0, width:54, height:54, borderRadius:10, background:'#FBF1E4', border:'1.5px solid #E0CDAE', overflow:'hidden', position:'relative', padding:0, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#8B5E3C'}}>
+          {(isStagedRow && importType === 'image' && importImageUrl) ? (
+            <img src={importImageUrl} alt="" loading="lazy"
+              style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
               onError={e => { e.target.style.display = 'none'; }}/>
-          </div>
-        )}
-        {/* V28 — Bloc empilé : ligne 1 nom + pills, ligne 2 téléphone. Tient dans la hauteur thumb. */}
-        <div style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', gap:2}}>
-          <div style={{display:'flex', alignItems:'center', gap:6, minWidth:0, flexWrap:'nowrap', overflow:'hidden'}}>
-            <span className="client-row-name" style={{minWidth:0, flexShrink:1}}>{name}</span>
-            {/* V32 — Pills hiérarchie : primaire pleine opacity 1 fw 700, secondaires
-                outline opacity 0.55 fw 600 triées created_at ASC. 3+ → abréviations. */}
-            {(() => {
-              const activeColor = PROFILS[profil] || '#8B5E3C';
-              const linkedList = linkedDossiers
-                .map(x => ({projet: x.projet || 'Acheteur', id: x.id, c: x, created_at: x.created_at}))
-                .sort((a, b) => {
-                  const ta = a.created_at ? Date.parse(String(a.created_at).replace(' ', 'T')) : 0;
-                  const tb = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
-                  return (ta || a.id || 0) - (tb || b.id || 0);
-                });
-              const total = 1 + linkedList.length;
-              const useAbbr = total >= 3;
-              return (
-                <>
-                  <span style={{padding: useAbbr ? 0 : '2px 6px', borderRadius:8, border: useAbbr ? 'none' : '1px solid '+activeColor, background: useAbbr ? 'transparent' : activeColor, color: useAbbr ? activeColor : '#fff', fontSize:8.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', opacity:1}}>
-                    {useAbbr ? (BADGES[profil] || profil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[profil] || profil.toUpperCase())}
-                  </span>
-                  {linkedList.map(lp => (
-                    <React.Fragment key={'pill-' + lp.id}>
-                      {useAbbr && <span style={{color:'#B5A78F', fontSize:8.5, fontWeight:400, flexShrink:0, opacity:0.55}}>·</span>}
-                      <button type="button"
-                        onClick={e => { e.stopPropagation(); onOpenSection && onOpenSection(lp.c, 0); }}
-                        style={{padding: useAbbr ? 0 : '2px 6px', borderRadius:8, border: useAbbr ? 'none' : '1px solid ' + (PROFILS[lp.projet] || '#8B5E3C'), background:'transparent', color: PROFILS[lp.projet] || '#8B5E3C', fontSize:8.5, fontWeight:600, letterSpacing:.6, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', cursor:'pointer', opacity:0.55}}>
-                        {useAbbr ? (BADGES[lp.projet] || lp.projet.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[lp.projet] || lp.projet.toUpperCase())}
-                      </button>
-                    </React.Fragment>
-                  ))}
-                </>
-              );
-            })()}
-            {/* Badges publication/source à droite si présents */}
+          ) : firstPhotoUrl ? (
+            <img src={firstPhotoUrl} alt="" loading="lazy"
+              style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
+              onError={e => { e.target.style.display = 'none'; }}/>
+          ) : (
+            <IconHome size={24}/>
+          )}
+          {photoCount > 1 && (
+            <span style={{position:'absolute', bottom:-1, right:-1, background:'rgba(139,94,60,.85)', color:'#fff', fontSize:9, fontWeight:700, padding:'2px 5px', borderRadius:'6px 0 0 0', fontFamily:'inherit'}}>+{photoCount - 1}</span>
+          )}
+        </button>
+        {/* Col 2 lignes à droite — space-between pour répartir verticalement sur la hauteur thumb. */}
+        <div style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'space-between', gap:6}}>
+          {/* LIGNE 1 : nom + (société italique si Pro) + pill profil à droite */}
+          <div style={{display:'flex', alignItems:'center', gap:6, minWidth:0}}>
+            <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:15, fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:0, maxWidth: isSociete ? '40%' : '75%'}}>
+              {displayNameLine1}
+            </span>
+            {isSociete && raisonSocialeLine1 && (
+              <span style={{fontSize:12, fontStyle:'italic', color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1}}>
+                · {raisonSocialeLine1}
+              </span>
+            )}
             {c.is_published && (
               <span title={c.public_visible ? 'Publié en ligne sur ocre.immo' : 'Publication masquée'}
-                style={{fontSize:9.5, fontWeight:700, color: c.public_visible ? '#2E7D32' : '#8B7F6E', background:'#fff', border:'1px solid ' + (c.public_visible ? '#2E7D32' : '#C9B79A'), borderRadius:10, padding:'1px 6px', whiteSpace:'nowrap', flexShrink:0}}>
+                style={{fontSize:9, fontWeight:700, color: c.public_visible ? '#2E7D32' : '#8B7F6E', background:'#fff', border:'1px solid ' + (c.public_visible ? '#2E7D32' : '#C9B79A'), borderRadius:8, padding:'1px 5px', whiteSpace:'nowrap', flexShrink:0}}>
                 ● {c.public_visible ? 'En ligne' : 'Masquée'}
               </span>
             )}
             {sourceChip && (
-              <div style={{fontSize:9.5, color: importType === 'image' ? '#8B6B1E' : '#B26D3A', fontWeight:700, flexShrink:0, background:'#fff', border:'1px solid #E8DDD0', borderRadius:10, padding:'1px 6px', whiteSpace:'nowrap'}}>{sourceChip}</div>
+              <div style={{fontSize:9, color: importType === 'image' ? '#8B6B1E' : '#B26D3A', fontWeight:700, flexShrink:0, background:'#fff', border:'1px solid #E8DDD0', borderRadius:8, padding:'1px 5px', whiteSpace:'nowrap'}}>{sourceChip}</div>
             )}
+            {/* Pill profil principal — toujours collée à droite */}
+            <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:9.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background: PROFILS[profil] || '#8B5E3C', color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+              {PROFILS_LABEL[profil] || (profil || '').toUpperCase()}
+            </span>
           </div>
-          {/* Ligne 2 : téléphone primaire */}
-          <div style={{display:'flex', alignItems:'center', gap:6}}>
-            {primaryTel && primaryTel.valeur ? (
+          {/* LIGNE 2 : chip tel + chip mail + cible à droite */}
+          <div style={{display:'flex', alignItems:'center', gap:5, minWidth:0}}>
+            {primaryTel && primaryTel.valeur && (
               tels.length > 1 ? (
                 <button type="button"
                   onClick={e => { e.preventDefault(); e.stopPropagation(); setTelChooser(true); }}
                   onTouchStart={e => e.stopPropagation()}
-                  style={{background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:4, flexShrink:0}}>
+                  style={{background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:3, flexShrink:0}}>
                   <PhonePill tel={primaryTel.valeur} size="sm"/>
                   <span style={{fontSize:10, color:'#B26D3A', fontWeight:700}}>(+{tels.length - 1})</span>
                 </button>
               ) : (
                 <PhonePill tel={primaryTel.valeur} size="sm"/>
               )
-            ) : (
+            )}
+            {primaryEmail && (
+              <a href={'mailto:' + primaryEmail}
+                onClick={e => e.stopPropagation()}
+                onTouchStart={e => e.stopPropagation()}
+                style={{display:'inline-flex', alignItems:'center', gap:3, padding:'3px 8px', background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:14, color:'#5C3B1E', textDecoration:'none', fontSize:11, fontWeight:500, whiteSpace:'nowrap', fontFamily:'inherit', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, maxWidth:150, boxSizing:'border-box', flexShrink:1}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{primaryEmail}</span>
+              </a>
+            )}
+            {!primaryTel && !primaryEmail && (
               <button className="client-row-chip-add"
                 onClick={e => { e.stopPropagation(); onOpenSection && onOpenSection(c, 0); }}>+ Contact</button>
             )}
+            {matchInfo && matchInfo.count > 0 && (
+              <button onClick={e => { e.stopPropagation(); onOpenMatches && onOpenMatches(); }}
+                style={{marginLeft:'auto', background:'none', border:'none', cursor:'pointer', padding:'2px 4px', fontSize:11.5, color: matchInfo.max_score > 80 ? '#C0392B' : '#B26D3A', fontWeight:700, flexShrink:0, fontFamily:'inherit', whiteSpace:'nowrap'}}
+                title="Voir les matches">🎯 {matchInfo.count}{matchInfo.max_score > 80 ? '★' : ''}</button>
+            )}
           </div>
         </div>
-        {matchInfo && matchInfo.count > 0 && (
-          <button onClick={e => { e.stopPropagation(); onOpenMatches && onOpenMatches(); }}
-            style={{background:'none', border:'none', cursor:'pointer', padding:'2px 4px', fontSize:12, color: matchInfo.max_score > 80 ? '#D64545' : '#B26D3A', fontWeight:700, flexShrink:0, fontFamily:'inherit'}}
-            title="Voir les matches">🎯 {matchInfo.count}{matchInfo.max_score > 80 ? '★' : ''}</button>
-        )}
       </div>
       <div className="client-row-grid">
         <div className="client-row-sector" onClick={e => openSec(1, e)}>
