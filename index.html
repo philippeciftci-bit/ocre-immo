@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.25-trombone-btns-right -->
+<!-- ocre-v18.26-sections-summaries-rich -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -171,13 +171,16 @@ const PROFILS_TINT = {
   Bailleur:'#E8EFE9', Locataire:'#F4EFE5', Curieux:'#F0F0F0'
 };
 const BADGES = {Acheteur:'ACH', Vendeur:'VDR', Investisseur:'INV', Bailleur:'BAI', Locataire:'LOC', Curieux:'CUR'};
+// V18.26 — titres sections adaptés par profil. Section II varie (ciblé/en vente/à louer/recherché).
+// Section III : "Budget & rendement" pour Investisseur, "Budget & financement" pour les autres.
+// Section IV : "Suivi & notes" pour tous (renommé depuis "Infos complémentaires").
 const STAGES = {
-  Acheteur:     ["I. L'Acheteur","II. Le bien recherché","III. Budget & financement","IV. Infos complémentaires"],
-  Vendeur:      ["I. Le Vendeur","II. Le bien à vendre","III. Prix & conditions","IV. Infos complémentaires"],
-  Investisseur: ["I. L'Investisseur","II. Le bien ciblé","III. Budget & rendement","IV. Infos complémentaires"],
-  Bailleur:     ["I. Le Bailleur","II. Le bien à louer","III. Loyer & conditions","IV. Infos complémentaires"],
-  Locataire:    ["I. Le Locataire","II. Le bien recherché","III. Loyer & garanties","IV. Infos complémentaires"],
-  Curieux:      ["I. Identité","","","IV. Remarques"]
+  Acheteur:     ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Suivi & notes"],
+  Vendeur:      ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Suivi & notes"],
+  Investisseur: ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Suivi & notes"],
+  Bailleur:     ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Suivi & notes"],
+  Locataire:    ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Suivi & notes"],
+  Curieux:      ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Suivi & notes"]
 };
 // V17.4 : suggestions "Aussi…" selon profil courant.
 const BASCULES = {
@@ -2792,7 +2795,11 @@ function Stage({title, expanded, onToggle, children, status, summary}) {
               style={{display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:9, background: badge.bg, color: badge.color, fontSize:11, fontWeight:800, flexShrink:0}}>{badge.char}</span>
           </div>
           {!expanded && summary && (
-            <div style={{fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginTop:2}}>{summary}</div>
+            /* V18.26 — summary accepte string (ancien) ou ReactNode riche (nouveau, multiligne
+               avec thumb/emojis/couleurs). On laisse le flow normal (pas de nowrap) pour les nodes. */
+            typeof summary === 'string'
+              ? <div style={{fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginTop:2}}>{summary}</div>
+              : <div style={{fontSize:12.5, color:'#5A4E3D', lineHeight:1.4, marginTop:4}}>{summary}</div>
           )}
         </div>
         <span style={{fontSize:13, color:'#8B7F6E', display:'inline-block', transition:'transform .25s ease-out', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink:0}}>▶</span>
@@ -5857,44 +5864,188 @@ function FormView(props) {
   function computeStatus() {
     const b = d.bien || {};
     const types = Array.isArray(b.types) && b.types.length ? b.types : (b.type ? [b.type] : []);
-    // I — Identité
-    const hasContact = !!(d.tel || d.email || (Array.isArray(d.tels) && d.tels.length) || (Array.isArray(d.emails) && d.emails.length));
+    const tels = Array.isArray(d.tels) && d.tels.length > 0 ? d.tels : (d.tel ? [{valeur: d.tel}] : []);
+    const emails = Array.isArray(d.emails) && d.emails.length > 0 ? d.emails : (d.email ? [{valeur: d.email}] : []);
+    const currency = b.pays === 'MA' ? 'MAD' : '€';
+
+    // V18.26 — formateurs.
+    function fmtBudget(n, cur) {
+      const x = Number(n); if (!x) return '';
+      if (cur === '€') {
+        if (x >= 1000000) { const v = x / 1000000; return (v === Math.floor(v) ? v.toFixed(0) : v.toFixed(1).replace('.', ',')) + ' M€'; }
+        if (x >= 1000) return Math.round(x / 1000) + 'k€';
+        return x.toLocaleString('fr-FR') + ' €';
+      }
+      return x.toLocaleString('fr-FR') + ' ' + cur;
+    }
+    function relativeDateFr(whenIso) {
+      if (!whenIso) return '';
+      const t = new Date(String(whenIso).replace(' ', 'T'));
+      if (isNaN(t.getTime())) return '';
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfThat = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+      const days = Math.round((startOfThat - startOfToday) / 86400000);
+      const hh = String(t.getHours()).padStart(2, '0') + 'h' + (t.getMinutes() ? String(t.getMinutes()).padStart(2, '0') : '');
+      if (days === 0) return "Aujourd'hui " + hh;
+      if (days === 1) return 'Demain ' + hh;
+      if (days > 1 && days < 7) {
+        const dn = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+        return dn[t.getDay()] + ' ' + hh;
+      }
+      const months = ['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
+      return t.getDate() + ' ' + months[t.getMonth()] + ' ' + hh;
+    }
+    function relativeSince(whenIso) {
+      if (!whenIso) return '';
+      const t = new Date(String(whenIso).replace(' ', 'T'));
+      if (isNaN(t.getTime())) return '';
+      const days = Math.floor((Date.now() - t.getTime()) / 86400000);
+      if (days <= 0) return "aujourd'hui";
+      if (days === 1) return 'hier';
+      if (days < 30) return 'il y a ' + days + 'j';
+      const m = Math.round(days / 30);
+      return 'il y a ' + m + ' mois';
+    }
+    function flagFor(cc) {
+      if (cc === 'MA') return '🇲🇦';
+      if (cc === 'FR') return '🇫🇷';
+      if (cc === 'ES') return '🇪🇸';
+      return '';
+    }
+    function photoThumbUrl(raw) {
+      if (!raw) return '';
+      const p = typeof raw === 'string' ? raw : (raw && raw.url) || '';
+      if (!p) return '';
+      if (p.indexOf('/api/image.php') === 0) return p;
+      if (/^https?:\/\//.test(p)) return p;
+      return '/api/image.php?path=' + encodeURIComponent(p.replace(/^\//, ''));
+    }
+    const emptyHint = (label) => (
+      <div style={{color:'#B5A78F', fontStyle:'italic', fontSize:12}}>{'+ ' + label}</div>
+    );
+
+    // ─── Section I · Profil ───────────────────────────────────────────
+    const hasContact = !!(tels.length || emails.length);
     const hasIdentity = (profilType === 'Société') ? !!d.societe_nom : !!(d.prenom || d.nom);
     const sec1Complete = hasContact && hasIdentity;
-    const sec1Partial = hasContact || hasIdentity;
-    const sec1Status = sec1Complete ? 'complete' : (sec1Partial ? 'partial' : 'empty');
-    const tels = Array.isArray(d.tels) && d.tels.length > 0 ? d.tels : (d.tel ? [{valeur: d.tel}] : []);
+    const sec1Status = sec1Complete ? 'complete' : ((hasContact || hasIdentity) ? 'partial' : 'empty');
     const sec1Name = (profilType === 'Société' && d.societe_nom)
       ? d.societe_nom
       : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
-    const sec1Summary = [sec1Name || '', tels[0] && tels[0].valeur ? formatTelPretty(tels[0].valeur) : (d.email || '')].filter(Boolean).join(' · ');
-    // II — Bien
+    const sec1Society = (profilType === 'Société' && d.societe_nom && (d.prenom || d.nom)) ? d.societe_nom : '';
+    const sec1Line1 = sec1Name
+      ? (<span><b style={{color:'#2A2018'}}>{sec1Name}</b>{sec1Society ? <span style={{fontStyle:'italic', color:'#8B7F6E'}}> · {sec1Society}</span> : null}</span>)
+      : <span style={{fontStyle:'italic', color:'#B5A78F'}}>Sans nom</span>;
+    const sec1Tel = tels[0] && tels[0].valeur ? formatTelPretty(tels[0].valeur) : '';
+    const sec1Email = emails[0] && emails[0].valeur ? emails[0].valeur : '';
+    const sec1Line2 = (sec1Tel || sec1Email) ? (
+      <span>
+        {sec1Tel && <span>📞 {sec1Tel}</span>}
+        {sec1Tel && sec1Email && <span> · </span>}
+        {sec1Email && <span>✉ {sec1Email}</span>}
+      </span>
+    ) : null;
+    const sec1Ville = d.ville || '';
+    const sec1Pays = d.pays_residence || '';
+    const sec1Line3 = (sec1Ville || sec1Pays) ? (
+      <span>📍 {[sec1Ville, (sec1Pays ? (flagFor(sec1Pays) + ' ' + sec1Pays) : '')].filter(Boolean).join(' · ')}</span>
+    ) : null;
+    const sec1Summary = (hasContact || hasIdentity) ? (
+      <>
+        <div>{sec1Line1}</div>
+        {sec1Line2 && <div style={{marginTop:2}}>{sec1Line2}</div>}
+        {sec1Line3 && <div style={{marginTop:2}}>{sec1Line3}</div>}
+      </>
+    ) : emptyHint('Définir le profil');
+
+    // ─── Section II · Le bien ─────────────────────────────────────────
+    const sec2HasAny = !!(b.pays || types.length || b.ville);
     const sec2Complete = !!(b.pays && types.length && b.ville);
-    const sec2Partial = !!(b.pays || types.length || b.ville);
-    const sec2Status = sec2Complete ? 'complete' : (sec2Partial ? 'partial' : 'empty');
-    const sec2Summary = [types.join(' · '), b.ville || '', b.quartier || ''].filter(Boolean).join(' · ');
-    // III — Budget / financier
+    const sec2Status = sec2Complete ? 'complete' : (sec2HasAny ? 'partial' : 'empty');
+    const thumbUrl = photoThumbUrl(Array.isArray(b.photos) && b.photos.length ? b.photos[0] : '');
+    const composition = [
+      b.surface ? b.surface + ' m²' : (b.surface_habitable ? b.surface_habitable + ' m²' : ''),
+      b.pieces ? b.pieces + ' pièces' : '',
+      b.chambres ? b.chambres + ' ch' : '',
+    ].filter(Boolean).join(' · ');
+    const locII = [b.ville, b.quartier].filter(Boolean).join(' · ');
+    const typesJoin = types.join(' · ');
+    const sec2RightLines = (
+      <>
+        {typesJoin ? <div><b style={{color:'#2A2018'}}>{typesJoin}</b></div>
+                   : <div style={{color:'#B5A78F', fontStyle:'italic'}}>Type non défini</div>}
+        {locII && <div style={{marginTop:2}}>📍 {locII}</div>}
+        {composition && <div style={{marginTop:2}}>{composition}</div>}
+      </>
+    );
+    const sec2Summary = sec2HasAny ? (
+      <div style={{display:'flex', gap:10, alignItems:'center'}}>
+        <div style={{width:56, height:56, borderRadius:8, overflow:'hidden', flexShrink:0, border:'1px solid #E0CDAE', background:'#F4ECE3', display:'flex', alignItems:'center', justifyContent:'center'}}>
+          {thumbUrl
+            ? <img src={thumbUrl} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
+                onError={e => { e.target.style.display = 'none'; }}/>
+            : <span style={{fontSize:22}}>🏠</span>}
+        </div>
+        <div style={{flex:1, minWidth:0}}>{sec2RightLines}</div>
+      </div>
+    ) : emptyHint('Définir le bien');
+
+    // ─── Section III · Budget ─────────────────────────────────────────
     const fin = (d.financement && typeof d.financement === 'object') ? d.financement : {};
-    const sec3HasBudget = !!(fin.budget_total || fin.budget_max || d.budget_max || d.budget_min || d.prix_affiche || d.loyer_max || d.loyer_demande || d.rendement_cible);
-    const sec3Status = sec3HasBudget ? 'complete' : 'empty';
-    const currency = b.pays === 'MA' ? 'MAD' : '€';
-    const fmtN = n => { const x = Number(n); if (!x) return ''; return x.toLocaleString('fr-FR'); };
-    let sec3Summary = '';
-    const bv = fin.budget_total || fin.budget_max || d.budget_max || d.budget_min;
-    if (bv) sec3Summary = 'Budget ' + fmtN(bv) + ' ' + currency;
-    else if (d.prix_affiche) sec3Summary = 'Prix ' + fmtN(d.prix_affiche) + ' ' + currency;
-    else if (d.loyer_max) sec3Summary = '≤ ' + fmtN(d.loyer_max) + ' ' + currency + '/mois';
-    else if (d.loyer_demande) sec3Summary = fmtN(d.loyer_demande) + ' ' + currency + '/mois';
-    // IV — Suivi (counts via d.suivi si chargé via clients.list, sinon notes)
+    const budgetVal = fin.budget_total || fin.budget_max || d.budget_max || d.budget_min
+                   || d.prix_affiche || d.loyer_demande || d.loyer_max;
+    const sec3Status = budgetVal ? 'complete' : 'empty';
+    const modeLabels = {classique:'💳 Classique', comptant:'💵 Comptant', mourabaha:'🕌 Mourabaha', ijara:'🕌 Ijara'};
+    const modeLabel = fin.mode ? (modeLabels[fin.mode] || fin.mode) : '';
+    const budgetLine1 = budgetVal ? (
+      <span><b style={{color:'#2A2018'}}>💰 {fmtBudget(budgetVal, currency)}</b>
+        {d.loyer_demande && !d.prix_affiche ? <span> /mois</span> : null}
+      </span>
+    ) : null;
+    const modeLine = (modeLabel || (fin.mode === 'classique' && fin.mensualite)) ? (
+      <span>
+        {modeLabel}
+        {fin.mode === 'classique' && fin.mensualite ? <span> · mensualité ~{fmtBudget(fin.mensualite, currency)}</span> : null}
+      </span>
+    ) : null;
+    const extras = [
+      (fin.travaux || d.travaux) ? ('🔨 +' + fmtBudget(fin.travaux || d.travaux, currency).replace(' ', '') + ' travaux') : '',
+      (d.rendement_cible && activeProfil === 'Investisseur') ? ('📈 ' + d.rendement_cible + '% rendement') : '',
+    ].filter(Boolean).join(' · ');
+    const sec3Summary = budgetVal ? (
+      <>
+        <div>{budgetLine1}</div>
+        {modeLine && <div style={{marginTop:2}}>{modeLine}</div>}
+        {extras && <div style={{marginTop:2}}>{extras}</div>}
+      </>
+    ) : emptyHint('Ajouter le budget');
+
+    // ─── Section IV · Suivi & notes ────────────────────────────────────
     const su = d.suivi || {};
     const hasSuivi = !!(su.next_event || su.next_todo || su.last_interaction);
-    const sec4HasNotes = !!(d.notes || d.langue || d.canal || d.origine);
-    const sec4Status = (hasSuivi || sec4HasNotes) ? (hasSuivi ? 'complete' : 'partial') : 'empty';
-    let sec4Summary = '';
-    if (su.next_event) sec4Summary = 'RDV à venir';
-    else if (su.next_todo) sec4Summary = 'Tâche en cours';
-    else if (su.last_interaction) sec4Summary = 'Suivi actif';
-    else if (d.notes) sec4Summary = String(d.notes).slice(0, 60);
+    const sec4HasAny = hasSuivi || !!d.notes || (Array.isArray(d.tags) && d.tags.length);
+    const sec4Status = sec4HasAny ? (hasSuivi ? 'complete' : 'partial') : 'empty';
+    const evt = su.next_event;
+    const evtLine = evt && evt.when_at ? (
+      <span>🗓 <b style={{color:'#2A2018'}}>{relativeDateFr(evt.when_at)}</b>
+        {evt.title ? <span> · {evt.title}</span> : null}
+      </span>
+    ) : null;
+    const todo = su.next_todo;
+    const last = su.last_interaction;
+    const line2Parts = [];
+    if (todo && todo.title) line2Parts.push(<span key="t">✅ {todo.title}</span>);
+    if (last && last.ts) line2Parts.push(<span key="l">✍ Dernière note {relativeSince(last.ts)}</span>);
+    const tags = Array.isArray(d.tags) ? d.tags : [];
+    const sec4Summary = sec4HasAny ? (
+      <>
+        {evtLine ? <div>{evtLine}</div> : (d.notes ? <div>✍ {String(d.notes).slice(0, 60)}{String(d.notes).length > 60 ? '…' : ''}</div> : null)}
+        {line2Parts.length > 0 && <div style={{marginTop:2}}>{line2Parts.reduce((acc, cur, i) => i === 0 ? [cur] : [...acc, <span key={'s'+i}> · </span>, cur], [])}</div>}
+        {tags.length > 0 && <div style={{marginTop:2}}>🏷 {tags.join(' · ')}</div>}
+      </>
+    ) : emptyHint('Planifier un suivi');
+
     return [
       {status: sec1Status, summary: sec1Summary},
       {status: sec2Status, summary: sec2Summary},
