@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v40-clientrow-2lignes -->
+<!-- ocre-v41-section1-archive-fix -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3345,10 +3345,11 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
     setBusy(true); setError('');
     const token = localStorage.getItem('ocre_token') || '';
     let deleted = 0, created = 0;
+    const errors = [];
     // 1. Suppressions d'abord.
     for (const p of toDelete) {
       const lc = (clients || []).find(cc => cc.projet === p && (sourceDossier.linked_dossiers || []).includes(cc.id));
-      if (!lc) continue;
+      if (!lc) { errors.push(p + ' : dossier lié introuvable'); continue; }
       try {
         const r = await fetch(API + '/clients.php?action=delete', {
           method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
@@ -3356,7 +3357,8 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
         });
         const d = await r.json();
         if (d && d.ok) deleted++;
-      } catch (e) { /* noop */ }
+        else errors.push(p + ' : ' + ((d && d.error) || 'échec API'));
+      } catch (e) { errors.push(p + ' : erreur réseau'); }
     }
     // 2. Créations ensuite.
     let lastClient = null;
@@ -3376,16 +3378,23 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
             bien:{}, financement:{}, suivi:{},
             prix_affiche:null, loyer_demande:null, loyer_max:null, budget_max:null, budget_min:null,
           });
-        }
-      } catch (e) { /* noop */ }
+        } else errors.push(p + ' : ' + ((d && d.error) || 'échec création'));
+      } catch (e) { errors.push(p + ' : erreur réseau création'); }
     }
     setBusy(false);
     setConfirmPlan(null);
-    // Si on a créé au moins un dossier ET onCreated dispo, notifier (navigue vers le dernier créé).
+    if (errors.length > 0) {
+      setError(errors.join(' · '));
+      return; // reste dans le modal pour afficher l'erreur
+    }
+    // V41 — Refresh force : après une action réussie (create/delete/mixed), recharger
+    // pour propager l'état partout (casquettes pills accueil + dossier courant).
     if (created > 0 && onCreated) {
-      onCreated(lastClient);
+      onCreated(lastClient); // navigue vers le nouveau dossier créé
+    } else if (deleted > 0) {
+      // Delete-only : recharger la page pour rafraîchir la liste + pills.
+      window.location.reload();
     } else {
-      // Sinon fermer simplement (et s'appuyer sur onCreated=null pour que l'app recharge la liste si besoin).
       onClose();
     }
   }
@@ -7147,8 +7156,64 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     }))
   );
 
+  // V41 — Swipe-to-archive : translation X révèle bouton archive derrière la row.
+  const [swipeX, setSwipeX] = React.useState(0);
+  const [swipeStart, setSwipeStart] = React.useState(null);
+  async function doArchive(e) {
+    if (e) e.stopPropagation();
+    if (!c.id) return;
+    if (!(await askConfirm({
+      title: 'Archiver ce dossier ?',
+      message: 'Le dossier sera retiré de la liste principale mais restera accessible dans Archives.',
+      danger: false, confirmLabel: 'Archiver',
+    }))) { setSwipeX(0); return; }
+    try {
+      const token = localStorage.getItem('ocre_token') || '';
+      const r = await fetch(API + '/clients.php?action=archive', {
+        method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
+        body: JSON.stringify({id: c.id, archived: 1}),
+      });
+      const j = await r.json();
+      if (j && j.ok) { window.location.reload(); }
+    } catch (e) { /* noop */ }
+  }
+  function onTouchStart(e) { setSwipeStart({x: e.touches[0].clientX, y: e.touches[0].clientY, initial: swipeX}); }
+  function onTouchMove(e) {
+    if (!swipeStart) return;
+    const dx = e.touches[0].clientX - swipeStart.x;
+    const dy = e.touches[0].clientY - swipeStart.y;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+      // Scroll vertical : annule le swipe.
+      setSwipeStart(null);
+      setSwipeX(0);
+      return;
+    }
+    const next = Math.min(0, Math.max(-120, swipeStart.initial + dx));
+    setSwipeX(next);
+  }
+  function onTouchEnd() {
+    if (!swipeStart) return;
+    if (swipeX <= -60) setSwipeX(-80); // snap bouton visible
+    else setSwipeX(0); // annule
+    setSwipeStart(null);
+  }
+
   return (
-    <div className="client-row-card" onClick={onClick}>
+    <div style={{position:'relative', overflow:'hidden', marginBottom:6}}>
+      {/* V41 — Bouton archive révélé sous la row à droite. */}
+      <button type="button" onClick={e => { e.stopPropagation(); doArchive(e); }}
+        title="Archiver"
+        style={{position:'absolute', right:0, top:0, bottom:0, width:80, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#8B5E3C', color:'#fff', fontSize:10.5, fontWeight:700, gap:3, border:'none', cursor:'pointer', fontFamily:'inherit', padding:0, letterSpacing:.3, textTransform:'uppercase'}}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="4" rx="1"/>
+          <path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/>
+          <line x1="10" y1="12" x2="14" y2="12"/>
+        </svg>
+        <span>Archiver</span>
+      </button>
+    <div className="client-row-card" onClick={onClick}
+      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+      style={{transform:'translateX(' + swipeX + 'px)', transition:'transform 200ms ease', background:'#fff', position:'relative'}}>
       {/* V40 — Header ClientRow : thumb 54×54 + colonne 2 lignes à droite (Variante 1).
           Ligne 1 : nom (+ société italique si Pro) + pill profil à droite marginLeft:auto.
           Ligne 2 : chip tel + chip mail + cible 🎯 à droite marginLeft:auto.
@@ -7284,6 +7349,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       {telChooser && (
         <ContactChooser entries={tels} scheme="tel:" title="Choisir un numéro" onClose={() => setTelChooser(false)}/>
       )}
+    </div>
     </div>
   );
 }
@@ -8377,36 +8443,31 @@ function FormView(props) {
       ? d.societe_nom
       : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
     const sec1Society = (profilType === 'Société' && d.societe_nom && (d.prenom || d.nom)) ? d.societe_nom : '';
-    // V34 — Ligne 1 summary Stage I : Société = raison sociale (pas doublon sec1Society
-    // supprimé, représentant mis en sous-ligne italique) / Particulier = prénom+nom.
-    // Pills hiérarchie v32 conservée.
-    const linkedForSummary = (Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
-      .map(id => (clients || []).find(cc => cc.id === id))
-      .filter(Boolean)
-      .sort((a, b) => {
-        const ta = a.created_at ? Date.parse(String(a.created_at).replace(' ', 'T')) : 0;
-        const tb = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
-        return (ta || a.id || 0) - (tb || b.id || 0);
-      });
+    // V41 — Section I résumé compact harmonisé accueil Variante 1 :
+    // Ligne 1 = nom Cormorant 15 + (· raison sociale italique si Société) + pill profil marginLeft:auto.
+    // Pills liées secondaires retirées du résumé (visibles uniquement dans formulaire déployé).
     const activeColorSum = PROFILS[activeProfil] || '#8B5E3C';
-    const sec1Representant = (profilType === 'Société' && d.representant && d.representant.trim()) ? d.representant.trim() : '';
-    const sec1Line1 = sec1Name
+    const isSocieteSum = profilType === 'Société';
+    const representantSum = (((d.prenom || '') + ' ' + (d.nom || '').toUpperCase()).trim());
+    const sec1DisplayName = isSocieteSum
+      ? (representantSum || d.societe_nom || 'Société')
+      : (representantSum || 'Sans nom');
+    const sec1RaisonSociale = (isSocieteSum && representantSum && d.societe_nom) ? d.societe_nom : '';
+    const sec1Representant = ''; // v41 — doublon italique remplacé par la raison sociale inline ligne 1
+    const sec1Line1 = sec1DisplayName
       ? (
-        <span style={{display:'inline-flex', alignItems:'center', gap:5, flexWrap:'wrap'}}>
-          <b style={{color:'#2A2018'}}>{sec1Name}</b>
-          <span style={{display:'inline-block', padding:'2px 6px', borderRadius:6, background:activeColorSum, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', opacity:1}}>
-            {PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()}
+        <span style={{display:'flex', alignItems:'center', gap:6, minWidth:0, width:'100%'}}>
+          <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:15, fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:0, maxWidth: isSocieteSum ? '40%' : '75%'}}>
+            {sec1DisplayName}
           </span>
-          {linkedForSummary.map(lc => {
-            const lp = lc.projet || 'Acheteur';
-            const lcol = PROFILS[lp] || '#8B5E3C';
-            return (
-              <span key={'sum-pill-' + lc.id}
-                style={{display:'inline-block', padding:'2px 6px', borderRadius:6, border:'1px solid '+lcol, background:'transparent', color:lcol, fontSize:9, fontWeight:600, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', opacity:0.55}}>
-                {PROFILS_LABEL[lp] || lp.toUpperCase()}
-              </span>
-            );
-          })}
+          {sec1RaisonSociale && (
+            <span style={{fontSize:12, fontStyle:'italic', color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1}}>
+              · {sec1RaisonSociale}
+            </span>
+          )}
+          <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:9.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background:activeColorSum, color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+            {PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()}
+          </span>
         </span>
       )
       : <span style={{fontStyle:'italic', color:'#B5A78F'}}>Sans nom</span>;
@@ -9002,7 +9063,44 @@ function FormView(props) {
               style={{flex:1, height:40, padding:'0 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
               Enregistrer
             </button>
-            <button onClick={() => commit('archived', !d.archived)}
+            <button onClick={async () => {
+                // V41 — Archivage via confirm modal + API clients.php?action=archive + navigation.
+                const targetState = !d.archived;
+                if (!targetState) {
+                  // Désarchivage direct sans confirm.
+                  try {
+                    const token = localStorage.getItem('ocre_token') || '';
+                    await fetch(API + '/clients.php?action=archive', {
+                      method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
+                      body: JSON.stringify({id: editing && editing.id, archived: 0}),
+                    });
+                    commit('archived', false);
+                    showToast && showToast('Dossier désarchivé');
+                  } catch (e) { showToast && showToast('Erreur réseau'); }
+                  return;
+                }
+                if (!(await askConfirm({
+                  title: 'Archiver ce dossier ?',
+                  message: 'Le dossier sera retiré de la liste principale mais restera accessible dans Archives (icône carton en haut). Tu pourras le restaurer à tout moment.',
+                  danger: false,
+                  confirmLabel: 'Archiver',
+                }))) return;
+                try {
+                  const token = localStorage.getItem('ocre_token') || '';
+                  const r = await fetch(API + '/clients.php?action=archive', {
+                    method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
+                    body: JSON.stringify({id: editing && editing.id, archived: 1}),
+                  });
+                  const j = await r.json();
+                  if (j && j.ok) {
+                    commit('archived', true);
+                    showToast && showToast('Dossier archivé');
+                    setTimeout(() => backToList && backToList(), 250);
+                  } else {
+                    showToast && showToast((j && j.error) || 'Échec archivage');
+                  }
+                } catch (e) { showToast && showToast('Erreur réseau'); }
+              }}
               title={d.archived ? 'Désarchiver' : 'Archiver'}
               style={{flexShrink:0, width:38, height:38, padding:0, background:'#fff', color:'#8B5E3C', border:'1.5px solid #C9B79A', borderRadius:8, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14}}>
               <span style={{fontSize:14, lineHeight:1}}>📦</span>
