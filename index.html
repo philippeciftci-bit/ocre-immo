@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v35-fix-casquettes-decoche -->
+<!-- ocre-v36-counter-chips -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -568,7 +568,7 @@ function formatLocal(digits, dial) {
   // Default : groupes de 2
   return digits.replace(/(\d{2})/g, '$1 ').trim();
 }
-function PhoneField({label, value, onChange, residenceCountry='', style={}}) {
+function PhoneField({label, value, onChange, onBlur, residenceCountry='', style={}}) {
   // value en E.164 "+33612345678" → split dial/local
   const parseE164 = (v) => {
     if (!v) return {dial:'', local:''};
@@ -639,7 +639,7 @@ function PhoneField({label, value, onChange, residenceCountry='', style={}}) {
         </button>
         <div className="divider"/>
         <input type="tel" inputMode="tel" autoComplete="tel" value={displayLocal} onChange={handleLocal}
-          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); onBlur && onBlur(); }}
           placeholder={dial === '33' ? '6 12 34 56 78' : (dial === '1' ? '(555) 123-4567' : '…')}/>
       </div>
       {pickerOpen && (
@@ -657,7 +657,7 @@ function PhoneField({label, value, onChange, residenceCountry='', style={}}) {
 }
 
 // V17.1 fix-ux-2 — EmailField : validation visuelle temps réel + icône.
-function EmailField({label, value, onChange, style={}}) {
+function EmailField({label, value, onChange, onBlur, style={}}) {
   const [touched, setTouched] = React.useState(false);
   const v = (value || '').trim();
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -678,7 +678,8 @@ function EmailField({label, value, onChange, style={}}) {
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
       <div style={{position:'relative'}}>
         <input type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck="false"
-          value={value || ''} onChange={e => onChange(e.target.value)} onBlur={() => setTouched(true)}
+          value={value || ''} onChange={e => onChange(e.target.value)}
+          onBlur={() => { setTouched(true); onBlur && onBlur(); }}
           placeholder="nom@exemple.com"
           style={{...base, ...borderStyle}}/>
         {icon && <span style={{position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', color:iconColor, fontWeight:700, fontSize:16}}>{icon}</span>}
@@ -785,17 +786,33 @@ function CycleChip({value, labels, onChange}) {
     </button>
   );
 }
+// V36 — TelephoneMulti + EmailMulti affichent des chips cliquables (tel:/mailto:)
+// quand une valeur est saisie et que l'input perd le focus. Tap sur le chip = édition.
+// Croix × conserve la suppression dans les 2 modes.
 function TelephoneMulti({value, onChange, residenceCountry}) {
   const list = Array.isArray(value) ? value : [];
+  // editingMap[i] = true quand l'entrée i est en mode input. Les entrées avec valeur
+  // existante au load = chip par défaut ; les nouvelles entrées créées via + Ajouter
+  // = input pour saisie immédiate (ajout via add(): on fait apparaître directement
+  // en édition).
+  const [editingMap, setEditingMap] = React.useState({});
   function update(i, patch) { onChange(list.map((x, j) => j === i ? {...x, ...patch} : x)); }
   async function removeEntry(i) {
     const v = (list[i] && list[i].valeur) || '';
     if (v.trim() && !(await askConfirm({title:'Supprimer ce numéro ?', message: v, danger:true}))) return;
     onChange(list.filter((_, j) => j !== i));
+    setEditingMap(prev => { const n = {...prev}; delete n[i]; return n; });
   }
   function add() {
     if (list.length >= 4) return;
+    const newIdx = list.length;
     onChange([...list, {label:'Mobile', valeur:''}]);
+    setEditingMap(prev => ({...prev, [newIdx]: true}));
+  }
+  function isEditing(i, entry) {
+    // Mode édition si explicitement activé OU si la valeur est vide (nouveau).
+    if (editingMap[i]) return true;
+    return !entry.valeur || !entry.valeur.trim();
   }
   return (
     <div style={{marginBottom:10}}>
@@ -803,36 +820,75 @@ function TelephoneMulti({value, onChange, residenceCountry}) {
       {list.length === 0 && (
         <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', marginBottom:6}}>Aucun numéro — Ajoutes-en un.</div>
       )}
-      {list.map((entry, i) => (
-        <div key={i} style={{display:'flex', gap:6, marginBottom:6, alignItems:'center'}}>
-          <CycleChip value={entry.label} labels={TEL_LABELS} onChange={v => update(i, {label: v})}/>
-          <div style={{flex:1, minWidth:0}}>
-            <PhoneField value={entry.valeur} onChange={v => update(i, {valeur: v})} residenceCountry={residenceCountry} style={{marginBottom:0}}/>
+      {list.map((entry, i) => {
+        const editing = isEditing(i, entry);
+        const cleaned = String(entry.valeur || '').replace(/[^+0-9]/g, '');
+        return (
+          <div key={i} style={{display:'flex', gap:6, marginBottom:6, alignItems:'center'}}>
+            <CycleChip value={entry.label} labels={TEL_LABELS} onChange={v => update(i, {label: v})}/>
+            <div style={{flex:1, minWidth:0}}>
+              {editing ? (
+                <PhoneField value={entry.valeur}
+                  onChange={v => update(i, {valeur: v})}
+                  onBlur={() => { if ((entry.valeur || '').trim()) setEditingMap(prev => ({...prev, [i]: false})); }}
+                  residenceCountry={residenceCountry} style={{marginBottom:0}}/>
+              ) : (
+                <a href={'tel:' + cleaned}
+                  onClick={e => { e.preventDefault(); /* rien — le click direct du chip édite, tel via long-press ou icône dédiée */ }}
+                  style={{textDecoration:'none'}}>
+                  <button type="button"
+                    onClick={e => { e.preventDefault(); setEditingMap(prev => ({...prev, [i]: true})); }}
+                    onDoubleClick={e => { e.preventDefault(); window.location.href = 'tel:' + cleaned; }}
+                    title="Tap pour modifier · double-tap pour appeler"
+                    style={{display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', background:'#FBF1E4', border:'1.5px solid #D4C3A8', borderRadius:14, color:'#8B5E3C', fontSize:14, fontWeight:600, cursor:'pointer', fontFamily:'inherit', width:'100%', textAlign:'left', boxSizing:'border-box'}}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                    <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{formatTelPretty(entry.valeur)}</span>
+                  </button>
+                </a>
+              )}
+            </div>
+            {!editing && (
+              <a href={'tel:' + cleaned} onClick={e => e.stopPropagation()}
+                title="Appeler"
+                style={{flex:'0 0 auto', width:26, height:26, padding:0, borderRadius:13, border:'1px solid #D4C3A8', background:'#FBF1E4', color:'#8B5E3C', fontSize:12, cursor:'pointer', lineHeight:'22px', display:'inline-flex', alignItems:'center', justifyContent:'center', textDecoration:'none'}}>
+                📞
+              </a>
+            )}
+            <button type="button" onClick={() => removeEntry(i)} title="Supprimer"
+              style={{flex:'0 0 auto', width:26, height:26, padding:0, borderRadius:13, border:'1px solid #E8DDD0', background:'#fff', color:'#8B7F6E', fontSize:13, cursor:'pointer', lineHeight:'22px'}}>×</button>
           </div>
-          <button type="button" onClick={() => removeEntry(i)} title="Supprimer"
-            style={{flex:'0 0 auto', width:26, height:26, padding:0, borderRadius:13, border:'1px solid #E8DDD0', background:'#fff', color:'#8B7F6E', fontSize:13, cursor:'pointer', lineHeight:'22px'}}>×</button>
-        </div>
-      ))}
+        );
+      })}
       {list.length < 4 && (
         <button type="button" onClick={add}
           style={{padding:'6px 11px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFF3EC', color:'#8B5E3C', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un numéro</button>
       )}
-      {list.length > 1 && <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:4, fontStyle:'italic'}}>La 1ère entrée est le numéro principal.</div>}
+      {list.length > 1 && <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:4, fontStyle:'italic'}}>La 1ère entrée est le numéro principal. Tap chip = éditer, icône 📞 = appeler.</div>}
     </div>
   );
 }
 
 function EmailMulti({value, onChange}) {
   const list = Array.isArray(value) ? value : [];
+  const [editingMap, setEditingMap] = React.useState({});
   function update(i, patch) { onChange(list.map((x, j) => j === i ? {...x, ...patch} : x)); }
   async function removeEntry(i) {
     const v = (list[i] && list[i].valeur) || '';
     if (v.trim() && !(await askConfirm({title:'Supprimer cet email ?', message: v, danger:true}))) return;
     onChange(list.filter((_, j) => j !== i));
+    setEditingMap(prev => { const n = {...prev}; delete n[i]; return n; });
   }
   function add() {
     if (list.length >= 4) return;
+    const newIdx = list.length;
     onChange([...list, {label:'Perso', valeur:''}]);
+    setEditingMap(prev => ({...prev, [newIdx]: true}));
+  }
+  function isEditing(i, entry) {
+    if (editingMap[i]) return true;
+    return !entry.valeur || !entry.valeur.trim();
   }
   return (
     <div style={{marginBottom:10}}>
@@ -840,21 +896,48 @@ function EmailMulti({value, onChange}) {
       {list.length === 0 && (
         <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', marginBottom:6}}>Aucun email — Ajoutes-en un.</div>
       )}
-      {list.map((entry, i) => (
-        <div key={i} style={{display:'flex', gap:6, marginBottom:6, alignItems:'center'}}>
-          <CycleChip value={entry.label} labels={EMAIL_LABELS} onChange={v => update(i, {label: v})}/>
-          <div style={{flex:1, minWidth:0}}>
-            <EmailField value={entry.valeur} onChange={v => update(i, {valeur: v})} style={{marginBottom:0}}/>
+      {list.map((entry, i) => {
+        const editing = isEditing(i, entry);
+        const val = (entry.valeur || '').trim();
+        return (
+          <div key={i} style={{display:'flex', gap:6, marginBottom:6, alignItems:'center'}}>
+            <CycleChip value={entry.label} labels={EMAIL_LABELS} onChange={v => update(i, {label: v})}/>
+            <div style={{flex:1, minWidth:0}}>
+              {editing ? (
+                <EmailField value={entry.valeur}
+                  onChange={v => update(i, {valeur: v})}
+                  onBlur={() => { if ((entry.valeur || '').trim()) setEditingMap(prev => ({...prev, [i]: false})); }}
+                  style={{marginBottom:0}}/>
+              ) : (
+                <button type="button"
+                  onClick={e => { e.preventDefault(); setEditingMap(prev => ({...prev, [i]: true})); }}
+                  title="Tap pour modifier · icône ✉ pour envoyer un mail"
+                  style={{display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', background:'#FBF1E4', border:'1.5px solid #D4C3A8', borderRadius:14, color:'#8B5E3C', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'inherit', width:'100%', textAlign:'left', boxSizing:'border-box'}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{val}</span>
+                </button>
+              )}
+            </div>
+            {!editing && val && (
+              <a href={'mailto:' + val} onClick={e => e.stopPropagation()}
+                title="Envoyer un mail"
+                style={{flex:'0 0 auto', width:26, height:26, padding:0, borderRadius:13, border:'1px solid #D4C3A8', background:'#FBF1E4', color:'#8B5E3C', fontSize:12, cursor:'pointer', lineHeight:'22px', display:'inline-flex', alignItems:'center', justifyContent:'center', textDecoration:'none'}}>
+                ✉
+              </a>
+            )}
+            <button type="button" onClick={() => removeEntry(i)} title="Supprimer"
+              style={{flex:'0 0 auto', width:26, height:26, padding:0, borderRadius:13, border:'1px solid #E8DDD0', background:'#fff', color:'#8B7F6E', fontSize:13, cursor:'pointer', lineHeight:'22px'}}>×</button>
           </div>
-          <button type="button" onClick={() => removeEntry(i)} title="Supprimer"
-            style={{flex:'0 0 auto', width:26, height:26, padding:0, borderRadius:13, border:'1px solid #E8DDD0', background:'#fff', color:'#8B7F6E', fontSize:13, cursor:'pointer', lineHeight:'22px'}}>×</button>
-        </div>
-      ))}
+        );
+      })}
       {list.length < 4 && (
         <button type="button" onClick={add}
           style={{padding:'6px 11px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFF3EC', color:'#8B5E3C', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un email</button>
       )}
-      {list.length > 1 && <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:4, fontStyle:'italic'}}>La 1ère entrée est l'email principal.</div>}
+      {list.length > 1 && <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:4, fontStyle:'italic'}}>La 1ère entrée est l'email principal. Tap chip = éditer, icône ✉ = envoyer.</div>}
     </div>
   );
 }
@@ -6752,7 +6835,10 @@ function ListView(props) {
             );
           })()}
         </div>
-        <div style={{fontSize:10, color:'var(--text-secondary)', whiteSpace:'nowrap', flexShrink:0, fontWeight:600}}>{showArchives ? filtered.length + ' arch.' : drafts.length + 'b · ' + contacts.length + 'd'}</div>
+        {/* V36 — compteur "Xb · Yd" retiré (redondant avec onglet Brouillons + label DOSSIERS · N). */}
+        {showArchives && (
+          <div style={{fontSize:10, color:'var(--text-secondary)', whiteSpace:'nowrap', flexShrink:0, fontWeight:600}}>{filtered.length + ' arch.'}</div>
+        )}
       </div>
 
       <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(50px + env(safe-area-inset-bottom, 0px))'}}>
