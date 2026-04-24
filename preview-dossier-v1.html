@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview dossier v1 — redesign Offre/Demande</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#F0E8D8;color:#2A2018;min-height:100vh;padding:22px 14px 60px;line-height:1.5;font-size:13px}
+.page{max-width:1100px;margin:0 auto}
+
+h1.page-title{font-family:'Cormorant Garamond',serif;font-size:26px;color:#8B5E3C;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:.3px}
+p.page-sub{font-size:13px;color:#8B7F6E;text-align:center;margin-bottom:26px;line-height:1.55;max-width:720px;margin-left:auto;margin-right:auto}
+
+.section-wrap{max-width:420px;margin:0 auto 28px}
+.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#8B7F6E;text-align:center;margin-bottom:8px}
+.section-card{background:#fff;border:1px solid #E0CDAE;border-radius:16px;box-shadow:0 2px 8px rgba(139,94,60,.1);overflow:hidden}
+
+/* ────── Info Offre/Demande ────── */
+.info-od{background:linear-gradient(to bottom,#FDFAF4 0%,#F4ECE3 100%);border:1px solid #E0CDAE;border-radius:14px;padding:14px 16px;margin-bottom:28px;max-width:720px;margin-left:auto;margin-right:auto}
+.info-od h2{font-family:'Cormorant Garamond',serif;font-size:16px;color:#8B5E3C;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.info-od .row{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+.info-od .block{flex:1;min-width:260px;background:#fff;border:1px solid #E0CDAE;border-radius:10px;padding:10px 12px}
+.info-od .block b{color:#8B5E3C;font-size:12px;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px}
+.info-od .block span{font-size:12.5px;color:#2A2018;line-height:1.5}
+
+/* ────── Dossier mockup ────── */
+.dossier{position:relative;background:#F0E8D8;display:flex;flex-direction:column;height:720px}
+.doss-header{background:#fff;border-bottom:2px solid #8B5E3C;padding:10px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;position:relative;z-index:2}
+.doss-back{background:none;border:none;font-size:22px;color:#8B5E3C;cursor:pointer;padding:4px;font-family:inherit;flex-shrink:0}
+.doss-hcenter{flex:1;display:flex;align-items:center;justify-content:center;gap:10px;min-width:0;padding:0 6px}
+.doss-badge{width:32px;height:32px;border-radius:7px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.3px;flex-shrink:0}
+.doss-photo{width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;border:1px solid #D4C3A8;background:#F4ECE3;display:flex;align-items:center;justify-content:center}
+.doss-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.doss-photo .placeholder{font-size:24px;color:#8B7F6E}
+.doss-idstack{display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0;line-height:1.1;max-height:44px;overflow:hidden}
+.doss-name{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;font-weight:700;color:#2A2018;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+.doss-tel{font-size:13px;color:#5A4E3D;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15;letter-spacing:.2px}
+.doss-hright{display:flex;align-items:center;gap:8px;flex-shrink:0}
+
+/* Pill icon buttons (cohérent v18.36 B) */
+.pill{border:1px solid #C9B79A;background:#FDF8F0;padding:6px 10px;border-radius:20px;color:#5C3B1E;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(60,40,20,.08);font-family:inherit;flex-shrink:0}
+.pill.active{background:#F4ECE3;color:#8B5E3C}
+.pill.danger{color:#D64545;border-color:#E8A8A8}
+.pill.amber{color:#D97706;border-color:#E8C78A;background:#FFFBEB}
+.pill svg{display:block}
+
+/* Scroll zone */
+.doss-scroll{flex:1;overflow-y:auto;padding:12px 12px 16px;background:#F0E8D8}
+.chips{display:flex;gap:5px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:10px;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{padding:5px 10px;border-radius:13px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #BBA88B;background:#fff;color:#8B5E3C;flex-shrink:0;white-space:nowrap}
+.chip.active{background:#8B5E3C;color:#fff;border-color:#8B5E3C}
+.bascule{background:#FFF3EC;border:1px solid #BBA88B;border-radius:9px;padding:8px 10px;font-size:12px;color:#5A4E3D;margin-bottom:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.bascule b{color:#8B5E3C;font-weight:700}
+.bascule-btn{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;border:1px solid #BBA88B;background:#fff;color:#8B5E3C;cursor:pointer;font-family:inherit}
+
+/* Stage accordéon fermé (summary visible) */
+.stage{background:#fff;border-radius:12px;border:1.5px solid #A67F5A;overflow:hidden;box-shadow:0 1px 3px rgba(139,94,60,.06);margin-bottom:10px}
+.stage-head{padding:12px 14px;background:#FBF7F2;display:flex;align-items:center;gap:10px;cursor:pointer}
+.stage-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:#8B5E3C;flex:1;min-width:0}
+.status-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9px;font-size:11px;font-weight:800;flex-shrink:0}
+.status-complete{background:#E8F5EC;color:#3E8B5E}
+.status-partial{background:#FFF5E0;color:#D4A437}
+.status-empty{background:#F4EEE6;color:#B5A78F}
+.stage-chevron{font-size:13px;color:#8B7F6E;flex-shrink:0}
+.stage-sum{padding:10px 14px;font-size:12.5px;color:#5A4E3D;line-height:1.45;border-top:1px dashed #F0E4D4;background:#fff}
+.stage-sum .row{margin-top:2px}
+.stage-sum .row:first-child{margin-top:0}
+.thumb-wrap{display:flex;gap:10px;align-items:center}
+.thumb{width:56px;height:56px;border-radius:8px;overflow:hidden;flex-shrink:0;border:1px solid #D4C3A8;background:#F4ECE3;display:flex;align-items:center;justify-content:center}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .placeholder-home{font-size:22px}
+.thumb-right{flex:1;min-width:0}
+.sum-strong{font-weight:700;color:#2A2018}
+
+/* Footer sticky */
+.doss-foot{background:#fff;border-top:1px solid #E0CDAE;padding:10px 14px;display:flex;gap:8px;align-items:center;flex-shrink:0}
+.btn-save{flex:1;padding:13px;background:#8B5E3C;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+.foot-note{background:#FDFAF4;border:1px dashed #E0CDAE;font-size:11px;color:#8B7F6E;padding:6px 10px;border-radius:7px;margin-top:-4px;line-height:1.4}
+
+/* Demande variant */
+.dossier.demande .info-badge-tag{background:#8B5E3C}
+
+/* Labels section maquettes */
+.maq-label{font-size:11px;font-weight:700;color:#8B5E3C;text-transform:uppercase;letter-spacing:1.2px;text-align:center;margin-bottom:10px;padding:6px 12px;background:#FDFAF4;border:1px solid #E0CDAE;border-radius:20px;display:inline-block}
+.maq-wrap{text-align:center}
+
+/* Modals */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px}
+.overlay.hidden{display:none}
+.modal{background:#fff;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.35);max-height:90vh;overflow-y:auto}
+.modal.size-confirm{width:100%;max-width:420px;padding:22px}
+.modal.size-results{width:100%;max-width:540px;padding:20px}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:700;color:#8B5E3C;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.modal-msg{font-size:13px;color:#2A2018;line-height:1.55;margin-bottom:10px}
+.modal-note{font-size:11.5px;color:#8B7355;font-style:italic;line-height:1.5;margin-bottom:16px;padding:8px 10px;background:#FDFAF4;border-left:3px solid #D4C3A8;border-radius:6px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.btn-ghost{padding:10px 14px;background:#FDFAF7;color:#8B5E3C;border:1.5px solid #E0CDAE;border-radius:9px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit}
+.btn-primary{padding:10px 14px;background:linear-gradient(135deg,#8B5E3C,#A06B45);color:#fff;border:none;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+
+.match-card{background:#FDFAF4;border:1px solid #E0CDAE;border-radius:10px;padding:10px;display:flex;gap:10px;margin-bottom:10px}
+.match-thumb{width:60px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;border:1px solid #D4C3A8;background:#F4ECE3;display:flex;align-items:center;justify-content:center}
+.match-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.match-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.match-line1{font-size:12px;font-weight:700;color:#8B5E3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match-line2{font-size:13px;color:#2A2018;font-weight:600}
+.match-line2 .delta-up{color:#C04B20;margin-left:6px;font-size:12px}
+.match-line2 .delta-down{color:#3E8B5E;margin-left:6px;font-size:12px}
+.match-line3{font-size:11px;color:#5A4E3D;font-style:italic}
+.match-open{align-self:flex-start;padding:5px 10px;margin-top:2px;background:#fff;color:#8B5E3C;border:1px solid #BBA88B;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;text-align:center;box-sizing:border-box;text-decoration:none;display:block}
+.modal-stats{font-size:12px;color:#5A4E3D;margin-bottom:14px;padding:8px 10px;background:#F4EEE6;border-radius:7px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}
+
+/* Layout cols page */
+.duo{display:grid;grid-template-columns:1fr;gap:24px;max-width:900px;margin:0 auto}
+@media (min-width:820px){.duo{grid-template-columns:1fr 1fr}}
+
+.open-link{display:inline-block;margin:0 4px 6px;padding:6px 12px;background:#8B5E3C;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none}
+.open-link:hover{background:#A06B45}
+
+/* Responsive */
+@media (max-width:420px){
+  .pill-hide-small{display:none}
+  .doss-hcenter{gap:6px}
+  .doss-name{font-size:16px}
+  .doss-tel{font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<h1 class="page-title">Preview dossier v1 · redesign Offre/Demande</h1>
+<p class="page-sub">Maquette HTML pur (pas React). Vue redessinée pour distinguer <b>Offre</b> (Vendeur/Bailleur/Investisseur) et <b>Demande</b> (Acheteur/Locataire/Curieux). Header centralisé avec nom + photo bien + tel inline. Footer sticky. Modals recherche Internet.</p>
+
+<!-- ════════ SECTION 1 · Bloc Offre / Demande ════════ -->
+<div class="info-od">
+  <h2>📘 Principe Offre / Demande</h2>
+  <div class="row">
+    <div class="block">
+      <b>OFFRE</b>
+      <span>Vendeur · Bailleur · Investisseur — données précises, photos réelles, surfaces exactes, prix ferme.</span>
+    </div>
+    <div class="block">
+      <b>DEMANDE</b>
+      <span>Acheteur · Locataire · Curieux — fourchettes, zones préférées, pas de photos du bien.</span>
+    </div>
+  </div>
+</div>
+
+<div class="duo">
+
+<!-- ════════ SECTION 2 · Dossier OFFRE (Vendeur) ════════ -->
+<div class="maq-wrap">
+  <div class="maq-label">Dossier Offre · Vendeur</div>
+  <div class="section-card">
+    <div class="dossier">
+      <div class="doss-header">
+        <button class="doss-back" title="Retour">←</button>
+        <div class="doss-hcenter">
+          <div class="doss-badge" style="background:#1E3A5F">VDR</div>
+          <div class="doss-photo">
+            <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=200&q=80" alt="">
+          </div>
+          <div class="doss-idstack">
+            <div class="doss-name">Ahmed BENALI</div>
+            <div class="doss-tel">06 12 34 56 78</div>
+          </div>
+        </div>
+        <div class="doss-hright">
+          <button class="pill" title="Rechercher dans le dossier">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <button class="pill" title="Partager ce dossier">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="doss-scroll">
+        <div class="chips">
+          <button class="chip">Tous</button>
+          <button class="chip">Acheteur</button>
+          <button class="chip active">Vendeur</button>
+          <button class="chip">Investisseur</button>
+          <button class="chip">Bailleur</button>
+          <button class="chip">Locataire</button>
+          <button class="chip">Curieux</button>
+        </div>
+
+        <div class="bascule">
+          🔄 <span>Aussi…&nbsp;cette personne veut peut-être aussi</span>
+          <button class="bascule-btn">Acheteur</button>
+          <button class="bascule-btn">Bailleur</button>
+        </div>
+
+        <!-- Stage I — Vendeur -->
+        <div class="stage">
+          <div class="stage-head">
+            <div class="stage-title">I. Le Vendeur</div>
+            <span class="status-badge status-complete">✓</span>
+            <span class="stage-chevron">▶</span>
+          </div>
+          <div class="stage-sum">
+            <div class="row"><span class="sum-strong">Ahmed BENALI</span></div>
+            <div class="row">📞 06 12 34 56 78 · ✉ ahmed.benali@gmail.com</div>
+            <div class="row">📍 Marrakech · 🇲🇦 MA</div>
+          </div>
+        </div>
+
+        <!-- Stage II — Bien en vente (thumb) -->
+        <div class="stage">
+          <div class="stage-head">
+            <div class="stage-title">II. Le bien en vente</div>
+            <span class="status-badge status-complete">✓</span>
+            <span class="stage-chevron">▶</span>
+          </div>
+          <div class="stage-sum">
+            <div class="thumb-wrap">
+              <div class="thumb">
+                <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=200&q=80" alt="">
+              </div>
+              <div class="thumb-right">
+                <div><span class="sum-strong">Riad · Villa</span></div>
+                <div class="row">📍 Marrakech · Gueliz</div>
+                <div class="row">250 m² · 5 pièces · 3 ch</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage III — Budget -->
+        <div class="stage">
+          <div class="stage-head">
+            <div class="stage-title">III. Budget &amp; financement</div>
+            <span class="status-badge status-complete">✓</span>
+            <span class="stage-chevron">▶</span>
+          </div>
+          <div class="stage-sum">
+            <div class="row">💰 <span class="sum-strong">1 200 000 MAD</span></div>
+            <div class="row">💵 Comptant · prix ferme</div>
+            <div class="row">🔨 +80 000 MAD travaux prévus</div>
+          </div>
+        </div>
+
+        <!-- Stage IV — Suivi -->
+        <div class="stage">
+          <div class="stage-head">
+            <div class="stage-title">IV. Suivi &amp; notes</div>
+            <span class="status-badge status-partial">…</span>
+            <span class="stage-chevron">▶</span>
+          </div>
+          <div class="stage-sum">
+            <div class="row">🗓 <span class="sum-strong">Jeudi 15h</span> · Visite riad</div>
+            <div class="row">✅ Relancer notaire · ✍ Dernière note il y a 2j</div>
+            <div class="row">🏷 À vendre · Négociable</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="doss-foot">
+        <!-- Loupe ambre = rechercher ce bien sur Internet (Offre only) -->
+        <button class="pill amber" title="Chercher ce bien sur Internet" onclick="openModal('m-confirm')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <button class="btn-save">Enregistrer</button>
+        <button class="pill" title="Archiver">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M4 9v10a1 1 0 001 1h14a1 1 0 001-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>
+        </button>
+        <button class="pill danger" title="Supprimer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ SECTION 3 · Dossier DEMANDE (Acheteur) ════════ -->
+<div class="maq-wrap">
+  <div class="maq-label">Dossier Demande · Acheteur</div>
+  <div class="section-card">
+    <div class="dossier demande">
+      <div class="doss-header">
+        <button class="doss-back" title="Retour">←</button>
+        <div class="doss-hcenter">
+          <div class="doss-badge" style="background:#8B5E3C">ACH</div>
+          <div class="doss-photo">
+            <span class="placeholder">🏠</span>
+          </div>
+          <div class="doss-idstack">
+            <div class="doss-name">Sarah MARTIN</div>
+            <div class="doss-tel">06 98 76 54 32</div>
+          </div>
+        </div>
+        <div class="doss-hright">
+          <button class="pill" title="Rechercher dans le dossier">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <button class="pill" title="Partager ce dossier">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="doss-scroll">
+        <div class="chips">
+          <button class="chip">Tous</button>
+          <button class="chip active">Acheteur</button>
+          <button class="chip">Vendeur</button>
+          <button class="chip">Investisseur</button>
+          <button class="chip">Bailleur</button>
+          <button class="chip">Locataire</button>
+          <button class="chip">Curieux</button>
+        </div>
+
+        <div class="bascule">
+          🔄 <span>Aussi…&nbsp;cette personne veut peut-être aussi</span>
+          <button class="bascule-btn">Vendeur</button>
+          <button class="bascule-btn">Investisseur</button>
+        </div>
+
+        <!-- Stage I — Acheteur -->
+        <div class="stage">
+          <div class="stage-head">
+            <div class="stage-title">I. L'Acheteur</div>
+            <span class="status-badge status-complete">✓</span>
+            <span class="stage-chevron">▶</span>
+          </div>
+          <div class="stage-sum">
+            <div class="row"><span class="sum-strong">Sarah MARTIN</span></div>
+            <div class="row">📞 06 98 76 54 32 · ✉ sarah.martin@outlook.fr</div>
+            <div class="row">📍 Paris · 🇫🇷 FR</div>
+          </div>
+        </div>
+
+        <!-- Stage II — Bien ciblé (pas de photos pour une demande) -->
+        <div class="stage">
+          <div class="stage-head">
+            <div class="stage-title">II. Le bien ciblé</div>
+            <span class="status-badge status-partial">…</span>
+            <span class="stage-chevron">▶</span>
+          </div>
+          <div class="stage-sum">
+            <div class="thumb-wrap">
+              <div class="thumb">
+                <span class="placeholder-home">🏠</span>
+              </div>
+              <div class="thumb-right">
+                <div><span class="sum-strong">Riad · Villa</span></div>
+                <div class="row">📍 Marrakech · Gueliz / Palmeraie</div>
+                <div class="row">200-280 m² · 4-6 pièces</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage III — Budget (fourchette) -->
+        <div class="stage">
+          <div class="stage-head">
+            <div class="stage-title">III. Budget &amp; financement</div>
+            <span class="status-badge status-complete">✓</span>
+            <span class="stage-chevron">▶</span>
+          </div>
+          <div class="stage-sum">
+            <div class="row">💰 <span class="sum-strong">900k → 1,3 M MAD</span></div>
+            <div class="row">💳 Classique · mensualité ~4 800 €/mois</div>
+            <div class="row">🔨 +150 000 MAD travaux prévus</div>
+          </div>
+        </div>
+
+        <!-- Stage IV — Suivi -->
+        <div class="stage">
+          <div class="stage-head">
+            <div class="stage-title">IV. Suivi &amp; notes</div>
+            <span class="status-badge status-partial">…</span>
+            <span class="stage-chevron">▶</span>
+          </div>
+          <div class="stage-sum">
+            <div class="row">🗓 <span class="sum-strong">Demain 10h</span> · Appel préparatoire</div>
+            <div class="row">✅ Envoyer plaquette · ✍ Dernière note hier</div>
+            <div class="row">🏷 Sérieux · Dispo week-end</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="doss-foot">
+        <!-- PAS de loupe ambre pour une Demande -->
+        <button class="btn-save">Enregistrer</button>
+        <button class="pill" title="Archiver">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M4 9v10a1 1 0 001 1h14a1 1 0 001-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>
+        </button>
+        <button class="pill danger" title="Supprimer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="foot-note" style="margin:12px auto 0;max-width:420px">ℹ️ Recherche Internet disponible uniquement pour les profils <b>Offre</b> (Vendeur/Bailleur/Investisseur).</div>
+</div>
+
+</div><!-- /.duo -->
+
+<div style="text-align:center;margin:34px 0 10px">
+  <button class="open-link" onclick="openModal('m-confirm')">Ouvrir modal confirmation recherche</button>
+  <button class="open-link" onclick="openModal('m-results')">Ouvrir modal résultats</button>
+</div>
+
+</div><!-- /.page -->
+
+
+<!-- ════════ SECTION 4 · Modal confirmation recherche Internet ════════ -->
+<div class="overlay hidden" id="m-confirm" onclick="closeModal('m-confirm', event)">
+  <div class="modal size-confirm" onclick="event.stopPropagation()">
+    <div class="modal-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5E3C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>Rechercher ce bien sur Internet</span>
+    </div>
+    <div class="modal-msg">L'application va scanner les sites d'annonces immobilières et agences de la région <b>MARRAKECH</b> pour retrouver ce bien. Attention particulière aux <b>photos identiques</b> pour éviter la confusion entre biens similaires de lotissements. Résultats en ~10-15 secondes.</div>
+    <div class="modal-note">Les logos et filigranes d'agences sur les photos sont détectés comme le même bien.</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('m-confirm')">Annuler</button>
+      <button class="btn-primary" onclick="closeModal('m-confirm'); setTimeout(() => openModal('m-results'), 250)">Lancer la recherche</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ SECTION 5 · Modal résultats ════════ -->
+<div class="overlay hidden" id="m-results" onclick="closeModal('m-results', event)">
+  <div class="modal size-results" onclick="event.stopPropagation()">
+    <div class="modal-title">
+      <span>🔍 Ce bien trouvé sur 3 sites (Marrakech)</span>
+    </div>
+    <div class="modal-stats">
+      <span>Prix médian <b>1 175 000 MAD</b></span>
+      <span>Écart <b>-300 000</b> / <b>+100 000</b> MAD</span>
+    </div>
+
+    <div class="match-card">
+      <div class="match-thumb"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=200&q=80" alt=""></div>
+      <div class="match-body">
+        <div class="match-line1">mubawab.ma · Agence Riad Premium</div>
+        <div class="match-line2">1 200 000 MAD · 250 m² · 5p</div>
+        <div class="match-line3">Match photos ✓ (logo agence détecté)</div>
+        <a class="match-open" href="#" target="_blank" rel="noopener">Ouvrir l'annonce →</a>
+      </div>
+    </div>
+
+    <div class="match-card">
+      <div class="match-thumb"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=200&q=80" alt=""></div>
+      <div class="match-body">
+        <div class="match-line1">vaneau.com · Vaneau Marrakech</div>
+        <div class="match-line2">900 000 MAD · 245 m² · 5p<span class="delta-down">-300k</span></div>
+        <div class="match-line3">Match photos ✓ (filigrane Vaneau)</div>
+        <a class="match-open" href="#" target="_blank" rel="noopener">Ouvrir l'annonce →</a>
+      </div>
+    </div>
+
+    <div class="match-card">
+      <div class="match-thumb"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=200&q=80" alt=""></div>
+      <div class="match-body">
+        <div class="match-line1">facebook.com · Particulier</div>
+        <div class="match-line2">1 300 000 MAD · 260 m² · 5p<span class="delta-up">+100k</span></div>
+        <div class="match-line3">Match photos ✓ (pas de filigrane)</div>
+        <a class="match-open" href="#" target="_blank" rel="noopener">Ouvrir l'annonce →</a>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-ghost" onclick="closeModal('m-results')" style="width:100%">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openModal(id){ var el=document.getElementById(id); if(el) el.classList.remove('hidden'); }
+function closeModal(id, ev){
+  if(ev && ev.target && !ev.target.classList.contains('overlay')) return;
+  var el=document.getElementById(id); if(el) el.classList.add('hidden');
+}
+// Permet fermeture par clic overlay ou par bouton (le bouton passe pas d'event).
+document.querySelectorAll('.overlay').forEach(function(ov){
+  ov.addEventListener('click', function(e){
+    if(e.target === ov) ov.classList.add('hidden');
+  });
+});
+</script>
+
+</body>
+</html>

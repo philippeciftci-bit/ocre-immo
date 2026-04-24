@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview logo « Oi » v3 — 4 variantes fonds clairs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#F0E8D8;color:#2A2018;min-height:100vh;padding:22px 14px 40px}
+h1{font-family:'Cormorant Garamond',serif;font-size:24px;color:#8B5E3C;font-weight:700;text-align:center;margin-bottom:6px}
+p.intro{font-size:13px;color:#8B7F6E;text-align:center;margin-bottom:22px;line-height:1.5;max-width:640px;margin-left:auto;margin-right:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:680px;margin:0 auto}
+@media (max-width:500px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid #E0CDAE;border-radius:14px;padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(139,94,60,.08)}
+.var-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:#8B7F6E}
+.font-name{font-size:14px;font-weight:600;color:#2A2018;text-align:center;line-height:1.35}
+.font-name .note{display:block;font-size:11px;color:#8B7F6E;font-weight:400;margin-top:2px;font-family:monospace}
+
+/* Commun à tous : carré 72x72, border 2px or foncé, pas d'inset shadow sombre. */
+.logo{
+  width:72px;height:72px;border-radius:10px;
+  border:2px solid #8B6914;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;gap:2px;
+  box-shadow:0 2px 5px rgba(139,105,20,.18);
+}
+.logo .o{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:40px;line-height:1}
+.logo .i{font-family:'Caveat',cursive;font-weight:500;font-size:52px;line-height:1;margin-top:4px}
+
+/* Variante A — Crème lumineux uniforme */
+.v-a { background: linear-gradient(to bottom, #FFF5E1 0%, #F4E4CC 35%, #E4C99E 70%, #C9A460 100%); }
+.v-a .o, .v-a .i { color:#8B6914; text-shadow:0 1px 1px rgba(0,0,0,.15); }
+
+/* Variante B — Ciel blanc, pied ocre doux */
+.v-b { background: linear-gradient(to bottom, #FFFBF0 0%, #F4E4CC 40%, #D4A574 75%, #A67C00 100%); }
+.v-b .o, .v-b .i { color:#8B6914; text-shadow:0 1px 1px rgba(0,0,0,.15); }
+
+/* Variante C — Pastel doré */
+.v-c { background: linear-gradient(to bottom, #F9F4E6 0%, #EDDFBC 45%, #C9A362 80%, #9C7A1E 100%); }
+.v-c .o, .v-c .i { color:#6B4E1E; text-shadow:0 1px 1px rgba(255,255,255,.4); }
+
+/* Variante D — Parchemin avec relief */
+.v-d { background: linear-gradient(to bottom, #FDF5E6 0%, #EAD4A0 50%, #C9924A 85%, #8B6914 100%); }
+.v-d .o, .v-d .i { color:#8B6914; text-shadow:0 1px 0 rgba(255,255,255,.5), 0 -1px 0 rgba(0,0,0,.2); }
+
+footer{text-align:center;margin-top:28px;font-size:11px;color:#8B7F6E;padding:0 14px;line-height:1.5}
+footer a{color:#8B5E3C;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+
+<h1>Logo « Oi » v3 — fonds clairs</h1>
+<p class="intro">Retour v2 : le fond était trop sombre. Gradient <b>inversé lumineux</b> (ciel→terre, sans descendre dans le brun profond). 4 pistes pour le fond et le contraste des lettres. Border 2px <code>#8B6914</code>.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="var-label">Variante A</div>
+    <div class="font-name">Crème lumineux uniforme<span class="note">#FFF5E1 → #C9A460 · lettres #8B6914</span></div>
+    <div class="logo v-a"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante B</div>
+    <div class="font-name">Blanc cassé → ocre doux<span class="note">#FFFBF0 → #A67C00 · lettres #8B6914</span></div>
+    <div class="logo v-b"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante C</div>
+    <div class="font-name">Pastel doré<span class="note">#F9F4E6 → #9C7A1E · lettres #6B4E1E</span></div>
+    <div class="logo v-c"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante D</div>
+    <div class="font-name">Parchemin + relief gravé<span class="note">#FDF5E6 → #8B6914 · lettres #8B6914 double ombre</span></div>
+    <div class="logo v-d"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+</div>
+
+<footer>
+  Dis-moi « logo A » (ou B, C, D) et je code le vrai. Retour direct en chat.<br>
+  <a href="/">← Retour app</a> · <a href="/preview-logo-v2.html">Voir v2 (fonds plus foncés)</a>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview header v2 — 4 variantes icônes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500&family=Cormorant+Garamond:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#F0E8D8;color:#2A2018;min-height:100vh;padding:22px 14px 40px}
+h1{font-family:'Cormorant Garamond',serif;font-size:24px;color:#8B5E3C;font-weight:700;text-align:center;margin-bottom:6px}
+p.intro{font-size:13px;color:#8B7F6E;text-align:center;margin-bottom:22px;line-height:1.5;max-width:640px;margin-left:auto;margin-right:auto}
+.stack{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.variant{display:flex;flex-direction:column;gap:6px}
+.var-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:#8B7F6E;padding:0 6px}
+.var-desc{font-size:12px;color:#2A2018;padding:0 6px;line-height:1.4}
+.var-desc b{color:#8B5E3C}
+
+/* Header commun */
+.header{
+  background:#fff;border-radius:12px;
+  padding:10px 14px;
+  display:flex;align-items:center;gap:10px;
+  border:1px solid #E0CDAE;
+  box-shadow:0 1px 3px rgba(139,94,60,.08);
+}
+.header .center{flex:1;text-align:center;min-width:0}
+
+/* Logo "Oi" (variante A or foncé par défaut pour toutes) */
+.logo{
+  width:36px;height:36px;border-radius:8px;
+  border:2px solid #5C3B1E;
+  background:linear-gradient(to bottom,#F4E4CC 0%,#E4C99E 30%,#8B5E3C 70%,#3D2515 100%);
+  box-shadow:0 1px 3px rgba(60,40,20,.25);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;gap:1px;
+}
+.logo .o{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:20px;color:#B8860B;text-shadow:0 1px 1px rgba(0,0,0,.25);line-height:1}
+.logo .i{font-family:'Caveat',cursive;font-weight:500;font-size:26px;color:#B8860B;text-shadow:0 1px 1px rgba(0,0,0,.25);line-height:1;margin-top:2px}
+
+/* Titre OCRE immo */
+.title{display:inline-flex;align-items:baseline;gap:3px}
+.title .ocre{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:20px;letter-spacing:1.5px;color:#8B5E3C}
+.title .immo{font-family:'Caveat',cursive;font-weight:400;font-size:23px;color:#2A2018;margin-left:2px}
+
+/* Icônes SVG (extraits de l'app) */
+.ico{width:22px;height:22px;display:block}
+
+/* ─── Variante A : contours ovales fins ─── */
+.va .ico-btn{
+  border:1px solid #C9B79A;
+  background:transparent;
+  padding:6px 10px;
+  border-radius:20px;
+  color:#8B5E3C;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.va .ico-group{display:flex;gap:8px;align-items:center}
+
+/* ─── Variante B : fond crème doux + contour ─── */
+.vb .ico-btn{
+  border:1px solid #C9B79A;
+  background:#FDF8F0;
+  padding:6px 10px;
+  border-radius:20px;
+  color:#5C3B1E;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.vb .ico-group{display:flex;gap:8px;align-items:center}
+
+/* ─── Variante C : ombre portée flottante (sans border) ─── */
+.vc .ico-btn{
+  background:#FFFFFF;
+  border:none;
+  padding:8px 12px;
+  border-radius:20px;
+  color:#5C3B1E;
+  box-shadow:0 2px 4px rgba(60,40,20,.15);
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.vc .ico-group{display:flex;gap:8px;align-items:center}
+
+/* ─── Variante D : pill group regroupé ─── */
+.vd .ico-group{
+  border:1px solid #C9B79A;
+  background:#FDF8F0;
+  border-radius:24px;
+  padding:4px 6px;
+  gap:4px;
+  display:inline-flex;align-items:center;
+}
+.vd .ico-btn{
+  background:transparent;
+  border:none;
+  padding:6px;
+  border-radius:18px;
+  color:#5C3B1E;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+
+footer{text-align:center;margin-top:28px;font-size:11px;color:#8B7F6E}
+footer a{color:#8B5E3C;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+
+<h1>Header — 4 variantes icônes</h1>
+<p class="intro">Logo "Oi" fixe (variante A or foncé) + titre "OCRE immo" fixe. Seules les <b>3 icônes droite</b> varient : Share · Search · Archive. Fond app <code>#F0E8D8</code>.</p>
+
+<div class="stack">
+
+  <!-- Variante A · contours ovales fins -->
+  <div class="variant">
+    <div class="var-label">Variante A</div>
+    <div class="var-desc">Contours ovales fins — <b>border 1px #C9B79A</b>, bg transparent, radius 20, color #8B5E3C.</div>
+    <div class="header va">
+      <div class="logo"><span class="o">O</span><span class="i">i</span></div>
+      <div class="center"><span class="title"><span class="ocre">OCRE</span><span class="immo">immo</span></span></div>
+      <div class="ico-group">
+        <span class="ico-btn" title="Partager"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+        <span class="ico-btn" title="Rechercher"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <span class="ico-btn" title="Archives"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M4 9v10a1 1 0 001 1h14a1 1 0 001-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Variante B · fond crème doux + contour -->
+  <div class="variant">
+    <div class="var-label">Variante B</div>
+    <div class="var-desc">Fond crème doux + contour — <b>bg #FDF8F0</b>, border 1px #C9B79A, radius 20, color #5C3B1E.</div>
+    <div class="header vb">
+      <div class="logo"><span class="o">O</span><span class="i">i</span></div>
+      <div class="center"><span class="title"><span class="ocre">OCRE</span><span class="immo">immo</span></span></div>
+      <div class="ico-group">
+        <span class="ico-btn" title="Partager"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+        <span class="ico-btn" title="Rechercher"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <span class="ico-btn" title="Archives"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M4 9v10a1 1 0 001 1h14a1 1 0 001-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Variante C · ombre portée flottante -->
+  <div class="variant">
+    <div class="var-label">Variante C</div>
+    <div class="var-desc">Ombre portée flottante (sans border) — bg #FFFFFF, <b>box-shadow 0 2px 4px rgba(60,40,20,.15)</b>, radius 20, color #5C3B1E.</div>
+    <div class="header vc">
+      <div class="logo"><span class="o">O</span><span class="i">i</span></div>
+      <div class="center"><span class="title"><span class="ocre">OCRE</span><span class="immo">immo</span></span></div>
+      <div class="ico-group">
+        <span class="ico-btn" title="Partager"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+        <span class="ico-btn" title="Rechercher"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <span class="ico-btn" title="Archives"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M4 9v10a1 1 0 001 1h14a1 1 0 001-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Variante D · pill group regroupé -->
+  <div class="variant">
+    <div class="var-label">Variante D</div>
+    <div class="var-desc">Pill group regroupé — <b>conteneur unique</b> border 1px #C9B79A, bg #FDF8F0, radius 24, gap 4px, icônes padding 6.</div>
+    <div class="header vd">
+      <div class="logo"><span class="o">O</span><span class="i">i</span></div>
+      <div class="center"><span class="title"><span class="ocre">OCRE</span><span class="immo">immo</span></span></div>
+      <div class="ico-group">
+        <span class="ico-btn" title="Partager"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+        <span class="ico-btn" title="Rechercher"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <span class="ico-btn" title="Archives"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M4 9v10a1 1 0 001 1h14a1 1 0 001-1V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Dis-moi « header X » et je code le vrai. Retour direct en chat.<br>
+  <a href="/">← Retour app</a>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview logo "Oi" v2 — 4 variantes couleur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#F0E8D8;color:#2A2018;min-height:100vh;padding:22px 14px 40px}
+h1{font-family:'Cormorant Garamond',serif;font-size:24px;color:#8B5E3C;font-weight:700;text-align:center;margin-bottom:6px}
+p.intro{font-size:13px;color:#8B7F6E;text-align:center;margin-bottom:22px;line-height:1.5;max-width:640px;margin-left:auto;margin-right:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:680px;margin:0 auto}
+@media (max-width:500px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid #E0CDAE;border-radius:14px;padding:22px 18px;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(139,94,60,.08)}
+.var-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:#8B7F6E}
+.font-name{font-size:14px;font-weight:600;color:#2A2018;text-align:center;line-height:1.35}
+.font-name .note{display:block;font-size:11px;color:#8B7F6E;font-weight:400;margin-top:2px}
+
+/* Commun à tous les logos : gradient INVERSÉ clair haut → foncé bas (ciel→terre). */
+.logo{
+  width:72px;height:72px;border-radius:10px;
+  border:2px solid #5C3B1E;
+  background:linear-gradient(to bottom,#F4E4CC 0%,#E4C99E 30%,#8B5E3C 70%,#3D2515 100%);
+  box-shadow:0 2px 6px rgba(60,40,20,.25);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;gap:2px;
+}
+.logo .o{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:40px;line-height:1}
+.logo .i{font-family:'Caveat',cursive;font-weight:500;font-size:52px;line-height:1;margin-top:4px}
+
+/* Variante A : or foncé #B8860B + text-shadow léger noir */
+.v-a .o, .v-a .i { color:#B8860B; text-shadow:0 1px 1px rgba(0,0,0,.25); }
+
+/* Variante B : or cuivré #A67C00 */
+.v-b .o, .v-b .i { color:#A67C00; }
+
+/* Variante C : or vieilli parchemin #8B6914 */
+.v-c .o, .v-c .i { color:#8B6914; }
+
+/* Variante D : or foncé #B8860B + effet gravé (double text-shadow) */
+.v-d .o, .v-d .i { color:#B8860B; text-shadow:0 1px 0 rgba(255,255,255,.5), 0 -1px 0 rgba(0,0,0,.3); }
+
+footer{text-align:center;margin-top:28px;font-size:11px;color:#8B7F6E}
+footer a{color:#8B5E3C;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+
+<h1>Logo « Oi » — 4 variantes couleur</h1>
+<p class="intro">Gradient <b>inversé</b> (clair haut → foncé bas, ciel→terre). Carré 72×72, border 2px #5C3B1E. Titres "OCRE" en Cormorant + "i" en Caveat. Variation uniquement sur la couleur des 2 lettres.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="var-label">Variante A</div>
+    <div class="font-name">Or foncé classique<span class="note">#B8860B + ombre noire légère</span></div>
+    <div class="logo v-a"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante B</div>
+    <div class="font-name">Or cuivré<span class="note">#A67C00</span></div>
+    <div class="logo v-b"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante C</div>
+    <div class="font-name">Or vieilli parchemin<span class="note">#8B6914</span></div>
+    <div class="logo v-c"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante D</div>
+    <div class="font-name">Or foncé gravé<span class="note">#B8860B + double ombre relief</span></div>
+    <div class="logo v-d"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+</div>
+
+<footer>
+  Dis-moi la lettre préférée et je code le vrai. Retour direct en chat.<br>
+  <a href="/">← Retour app</a>
+</footer>
+
+</body>
+</html>

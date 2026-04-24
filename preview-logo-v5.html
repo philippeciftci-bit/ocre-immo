@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logo OCRE immo — v5 — 6 variantes finales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#F0E8D8;color:#2A2018;min-height:100vh;padding:24px 14px 40px}
+h1{font-family:'Cormorant Garamond',serif;font-size:26px;color:#8B5E3C;font-weight:700;text-align:center;margin-bottom:6px;letter-spacing:.3px}
+p.intro{font-size:13px;color:#8B7F6E;text-align:center;margin-bottom:26px;line-height:1.55;max-width:720px;margin-left:auto;margin-right:auto}
+p.intro b{color:#2A2018}
+
+.grid{display:grid;grid-template-columns:1fr;gap:16px;max-width:1060px;margin:0 auto}
+@media (min-width:500px){.grid{grid-template-columns:1fr 1fr}}
+@media (min-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
+
+.card{background:#fff;border:1px solid #E0CDAE;border-radius:14px;padding:26px 20px;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:0 1px 3px rgba(139,94,60,.08)}
+.var-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#8B7F6E}
+.var-title{font-size:14px;font-weight:600;color:#2A2018;text-align:center;line-height:1.4}
+.var-tech{font-size:10.5px;font-weight:400;color:#8B7F6E;text-align:center;font-family:ui-monospace,'SF Mono',Menlo,monospace;line-height:1.5;word-break:break-word;max-width:280px}
+
+/* Commun : carré 80×80, gap 2px, lettres figées. */
+.logo{
+  width:80px;height:80px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;gap:2px;
+  margin-top:2px;
+}
+.logo .o{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:42px;line-height:1;color:#8B5E3C}
+.logo .i{font-family:'Caveat',cursive;font-weight:500;font-size:54px;line-height:1;color:#0D0A08;margin-top:3px}
+
+/* 1 · Ciel blanc pur · terre ocre moyen · transition douce, bordure fine */
+.v1{background:linear-gradient(to bottom,#FFFFFF 0%,#F5E8D1 40%,#8B5E3C 100%);border:2px solid #8B5E3C}
+
+/* 2 · Ciel ivoire · terre ocre foncé · bordure moyenne */
+.v2{background:linear-gradient(to bottom,#FDF8F0 0%,#E8D4AC 40%,#5C3B1E 100%);border:2.5px solid #5C3B1E}
+
+/* 3 · Ciel crème teinté · terre ocre profond · bordure épaisse */
+.v3{background:linear-gradient(to bottom,#F4E4CC 0%,#C9A574 45%,#3D2515 100%);border:3px solid #3D2515}
+
+/* 4 · Horizon net · transition à mi-hauteur */
+.v4{background:linear-gradient(to bottom,#FFFBF0 0%,#FFFBF0 40%,#8B5E3C 50%,#8B5E3C 100%);border:2px solid #8B5E3C}
+
+/* 5 · Ciel doux · terre ocre foncé · léger relief extérieur */
+.v5{background:linear-gradient(to bottom,#F9F4E6 0%,#DCC29B 40%,#5C3B1E 100%);border:2px solid #5C3B1E;box-shadow:0 1px 3px rgba(60,40,20,.2)}
+
+/* 6 · Très clair → très foncé · contraste max, bordure fine */
+.v6{background:linear-gradient(to bottom,#FFFBEE 0%,#D4B589 35%,#2A1810 100%);border:1.5px solid #3D2515}
+
+footer{text-align:center;margin-top:30px;font-size:12px;color:#8B7F6E;padding:0 14px;line-height:1.6}
+footer .rules{color:#2A2018;font-weight:500;display:block;margin-bottom:4px}
+footer a{color:#8B5E3C;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+
+<h1>Logo OCRE immo — 6 variantes finales</h1>
+<p class="intro">Checklist validée. Lettres figées : <b>O</b> Cormorant ocre <code>#8B5E3C</code> · <b>i</b> Caveat <b>noir</b> <code>#0D0A08</code>. Variation uniquement sur la teinte du gradient <b>ciel (haut) → terre (bas)</b> et la bordure.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="var-label">Variante 1</div>
+    <div class="var-title">Ciel blanc · terre ocre moyen · transition douce</div>
+    <div class="var-tech">#FFFFFF → #F5E8D1 → #8B5E3C<br>border 2px #8B5E3C</div>
+    <div class="logo v1"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 2</div>
+    <div class="var-title">Ciel ivoire · terre ocre foncé · bordure moyenne</div>
+    <div class="var-tech">#FDF8F0 → #E8D4AC → #5C3B1E<br>border 2.5px #5C3B1E</div>
+    <div class="logo v2"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 3</div>
+    <div class="var-title">Ciel crème teinté · terre ocre profond · bordure épaisse</div>
+    <div class="var-tech">#F4E4CC → #C9A574 → #3D2515<br>border 3px #3D2515</div>
+    <div class="logo v3"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 4</div>
+    <div class="var-title">Horizon net · transition à mi-hauteur</div>
+    <div class="var-tech">#FFFBF0 (haut 50%) · #8B5E3C (bas 50%)<br>border 2px #8B5E3C</div>
+    <div class="logo v4"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 5</div>
+    <div class="var-title">Ciel doux · terre ocre foncé · léger relief</div>
+    <div class="var-tech">#F9F4E6 → #DCC29B → #5C3B1E<br>border 2px · shadow externe .2</div>
+    <div class="logo v5"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 6</div>
+    <div class="var-title">Très clair / très foncé · contraste max</div>
+    <div class="var-tech">#FFFBEE → #D4B589 → #2A1810<br>border 1.5px #3D2515</div>
+    <div class="logo v6"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+</div>
+
+<footer>
+  <span class="rules">Toutes respectent : <b>O</b> Cormorant ocre · <b>i</b> Caveat <b>noir</b> · ciel haut → terre ocre bas · bordure visible · contraste lisible</span>
+  Dis-moi <b>« logo N »</b> (1 à 6) et je code dans l'app.<br>
+  <a href="/">← Retour app</a> · <a href="/preview-logo-v4.html">v4 (10 variantes brouillon)</a>
+</footer>
+
+</body>
+</html>
