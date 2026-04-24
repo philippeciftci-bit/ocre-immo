@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v31-fix-doublon-footers -->
+<!-- ocre-v32-hierarchy-publish-footer -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -6681,10 +6681,11 @@ function ListView(props) {
         )}
       </div>
 
-      {/* V31 — Footer accueil encore plus fin : boutons 36×36, barre ~42px. */}
+      {/* V32 — Footer accueil collé au bas : paddingBottom = safe-area strict,
+          pas de marge additionnelle. Barre ~36-42px selon safe-area iPhone. */}
       <div style={{position:'fixed', bottom:0, left:0, right:0, zIndex:40,
                    background:'#fff', borderTop:'1px solid #E8DDD0', boxShadow:'0 -2px 6px rgba(139,94,60,.05)',
-                   padding:'3px 12px calc(3px + env(safe-area-inset-bottom, 0px)) 12px',
+                   padding:'3px 12px calc(env(safe-area-inset-bottom, 0px)) 12px',
                    display:'flex', justifyContent:'space-around', alignItems:'center', gap:10}}>
         <button onClick={() => props.openDownloads && props.openDownloads()} title="Téléchargements"
           style={{width:36, height:36, borderRadius:'50%', background:'#FBF1E4', color:'var(--ocre-brand)', border:'1.5px solid var(--ocre-primary)',
@@ -6979,23 +6980,30 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         <div style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', gap:2}}>
           <div style={{display:'flex', alignItems:'center', gap:6, minWidth:0, flexWrap:'nowrap', overflow:'hidden'}}>
             <span className="client-row-name" style={{minWidth:0, flexShrink:1}}>{name}</span>
-            {/* Pills : active (fond couleur) + liées (outline). 3+ casquettes sur mobile → fallback texte. */}
+            {/* V32 — Pills hiérarchie : primaire pleine opacity 1 fw 700, secondaires
+                outline opacity 0.55 fw 600 triées created_at ASC. 3+ → abréviations. */}
             {(() => {
               const activeColor = PROFILS[profil] || '#8B5E3C';
-              const linkedList = linkedDossiers.map(x => ({projet: x.projet || 'Acheteur', id: x.id, c: x}));
+              const linkedList = linkedDossiers
+                .map(x => ({projet: x.projet || 'Acheteur', id: x.id, c: x, created_at: x.created_at}))
+                .sort((a, b) => {
+                  const ta = a.created_at ? Date.parse(String(a.created_at).replace(' ', 'T')) : 0;
+                  const tb = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
+                  return (ta || a.id || 0) - (tb || b.id || 0);
+                });
               const total = 1 + linkedList.length;
               const useAbbr = total >= 3;
               return (
                 <>
-                  <span style={{padding: useAbbr ? 0 : '2px 6px', borderRadius:8, border: useAbbr ? 'none' : '1px solid '+activeColor, background: useAbbr ? 'transparent' : activeColor, color: useAbbr ? activeColor : '#fff', fontSize:8.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit'}}>
+                  <span style={{padding: useAbbr ? 0 : '2px 6px', borderRadius:8, border: useAbbr ? 'none' : '1px solid '+activeColor, background: useAbbr ? 'transparent' : activeColor, color: useAbbr ? activeColor : '#fff', fontSize:8.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', opacity:1}}>
                     {useAbbr ? (BADGES[profil] || profil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[profil] || profil.toUpperCase())}
                   </span>
                   {linkedList.map(lp => (
                     <React.Fragment key={'pill-' + lp.id}>
-                      {useAbbr && <span style={{color:'#B5A78F', fontSize:8.5, fontWeight:400, flexShrink:0}}>·</span>}
+                      {useAbbr && <span style={{color:'#B5A78F', fontSize:8.5, fontWeight:400, flexShrink:0, opacity:0.55}}>·</span>}
                       <button type="button"
                         onClick={e => { e.stopPropagation(); onOpenSection && onOpenSection(lp.c, 0); }}
-                        style={{padding: useAbbr ? 0 : '2px 6px', borderRadius:8, border: useAbbr ? 'none' : '1px solid ' + (PROFILS[lp.projet] || '#8B5E3C'), background:'transparent', color: PROFILS[lp.projet] || '#8B5E3C', fontSize:8.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', cursor:'pointer'}}>
+                        style={{padding: useAbbr ? 0 : '2px 6px', borderRadius:8, border: useAbbr ? 'none' : '1px solid ' + (PROFILS[lp.projet] || '#8B5E3C'), background:'transparent', color: PROFILS[lp.projet] || '#8B5E3C', fontSize:8.5, fontWeight:600, letterSpacing:.6, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', cursor:'pointer', opacity:0.55}}>
                         {useAbbr ? (BADGES[lp.projet] || lp.projet.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[lp.projet] || lp.projet.toUpperCase())}
                       </button>
                     </React.Fragment>
@@ -8177,17 +8185,23 @@ function FormView(props) {
       ? d.societe_nom
       : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
     const sec1Society = (profilType === 'Société' && d.societe_nom && (d.prenom || d.nom)) ? d.societe_nom : '';
-    // V31 — Ligne 1 summary Stage I : nom + pills casquettes statiques (mode fermé =
-    // affichage pur, pas de clic, pas de "+"). Pills v31 cohérent avec accueil v28.
+    // V32 — Hiérarchie pills : primaire pleine opacity 1 fw 700 en 1ère position,
+    // secondaires outline opacity 0.55 fw 600 triées par created_at ASC (id fallback).
     const linkedForSummary = (Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
-      .map(id => (clients || []).find(cc => cc.id === id)).filter(Boolean);
+      .map(id => (clients || []).find(cc => cc.id === id))
+      .filter(Boolean)
+      .sort((a, b) => {
+        const ta = a.created_at ? Date.parse(String(a.created_at).replace(' ', 'T')) : 0;
+        const tb = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
+        return (ta || a.id || 0) - (tb || b.id || 0);
+      });
     const activeColorSum = PROFILS[activeProfil] || '#8B5E3C';
     const sec1Line1 = sec1Name
       ? (
         <span style={{display:'inline-flex', alignItems:'center', gap:5, flexWrap:'wrap'}}>
           <b style={{color:'#2A2018'}}>{sec1Name}</b>
           {sec1Society ? <span style={{fontStyle:'italic', color:'#8B7F6E'}}> · {sec1Society}</span> : null}
-          <span style={{display:'inline-block', padding:'2px 6px', borderRadius:6, background:activeColorSum, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+          <span style={{display:'inline-block', padding:'2px 6px', borderRadius:6, background:activeColorSum, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', opacity:1}}>
             {PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()}
           </span>
           {linkedForSummary.map(lc => {
@@ -8195,7 +8209,7 @@ function FormView(props) {
             const lcol = PROFILS[lp] || '#8B5E3C';
             return (
               <span key={'sum-pill-' + lc.id}
-                style={{display:'inline-block', padding:'2px 6px', borderRadius:6, border:'1px solid '+lcol, background:'transparent', color:lcol, fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+                style={{display:'inline-block', padding:'2px 6px', borderRadius:6, border:'1px solid '+lcol, background:'transparent', color:lcol, fontSize:9, fontWeight:600, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', opacity:0.55}}>
                 {PROFILS_LABEL[lp] || lp.toUpperCase()}
               </span>
             );
@@ -8544,16 +8558,23 @@ function FormView(props) {
         <Stage title={STAGES[activeProfil][0]}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status} summary={stageStatus[0].summary}>
-          {/* V31 — Bloc top mode déplié : pills casquettes cliquables (naviguer vers dossier lié)
-              + bouton "+" rond pour ouvrir le modal multi-select Variante C v30. */}
+          {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
+              opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
+              bouton "+" rond pour ouvrir le modal multi-select Variante C v30. */}
           {(() => {
             const linkedOpen = (Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
-              .map(id => (clients || []).find(cc => cc.id === id)).filter(Boolean);
+              .map(id => (clients || []).find(cc => cc.id === id))
+              .filter(Boolean)
+              .sort((a, b) => {
+                const ta = a.created_at ? Date.parse(String(a.created_at).replace(' ', 'T')) : 0;
+                const tb = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
+                return (ta || a.id || 0) - (tb || b.id || 0);
+              });
             const activeColorOpen = PROFILS[activeProfil] || '#8B5E3C';
             const canAdd = editing && editing.id && !String(editing.id).startsWith('tmp-');
             return (
               <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:10, padding:'2px 0'}}>
-                <span style={{padding:'2px 6px', borderRadius:6, background:activeColorOpen, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+                <span style={{padding:'2px 6px', borderRadius:6, background:activeColorOpen, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', opacity:1}}>
                   {PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()}
                 </span>
                 {linkedOpen.map(lc => {
@@ -8563,7 +8584,7 @@ function FormView(props) {
                     <button key={'open-pill-' + lc.id} type="button"
                       onClick={() => openExistingDossier && openExistingDossier(lc)}
                       title={'Ouvrir la casquette ' + lp}
-                      style={{padding:'2px 6px', borderRadius:6, border:'1px solid '+lcol, background:'transparent', color:lcol, fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer'}}>
+                      style={{padding:'2px 6px', borderRadius:6, border:'1px solid '+lcol, background:'transparent', color:lcol, fontSize:9, fontWeight:600, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer', opacity:0.55}}>
                       {PROFILS_LABEL[lp] || lp.toUpperCase()}
                     </button>
                   );
@@ -8745,15 +8766,12 @@ function FormView(props) {
             </button>
           </div>
         ) : (
-          /* V18.47 — Bouton "Publier sur ocre.immo" uniquement pour Vendeur/Bailleur, avant
-             le footer Enregistrer/Archiver/Supprimer. */
+          /* V32 — PublishButton full-width supprimé. Chip PUBLIER intégré dans la barre
+             footer entre la loupe ambre et Enregistrer (offres uniquement). */
           <>
-          {['Vendeur','Bailleur'].includes(activeProfil) && editing && editing.id && (
-            <PublishButton dossier={d} dossierId={editing.id} disabled={!!d.is_draft}
-              onOpen={() => setPublishOpen(true)} showToast={showToast}/>
-          )}
-          {/* V31 — Footer dossier compacté : boutons 36-40 + Enregistrer 40h, hauteur ~50px. */}
-          <div style={{position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:6, alignItems:'center', padding:'4px 10px', background:'#fff', borderTop:'1px solid #E0CDAE', marginTop:8, marginBottom:4}}>
+          {/* V32 — Footer dossier : [Loupe] [Chip PUBLIER offres] [Enregistrer flex:1] [Archiver] [Supprimer].
+              paddingBottom = safe-area only, marginBottom 0 → collé au bas. */}
+          <div style={{position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:6, alignItems:'center', padding:'4px 10px calc(4px + env(safe-area-inset-bottom, 0px))', background:'#fff', borderTop:'1px solid #E0CDAE'}}>
             {['Vendeur','Bailleur','Investisseur'].includes(activeProfil) && editing && editing.id && !String(editing.id).startsWith('tmp-') && (
               <CrossSearchFooter d={d} dossierId={editing.id}
                 showToast={showToast}
@@ -8763,6 +8781,20 @@ function FormView(props) {
                   handleSaveLocal(next);
                 }}/>
             )}
+            {/* V32 — Chip PUBLIER (Vendeur/Bailleur/Investisseur uniquement) */}
+            {['Vendeur','Bailleur','Investisseur'].includes(activeProfil) && editing && editing.id && !String(editing.id).startsWith('tmp-') && (() => {
+              const disabled = !!d.is_draft;
+              const published = !!d.is_published;
+              const label = published ? 'EN LIGNE' : 'PUBLIER';
+              const bg = disabled ? '#C9B79A' : (published ? '#2E7D32' : '#8B5E3C');
+              return (
+                <button onClick={() => disabled ? (showToast && showToast('Complète le dossier avant publication')) : setPublishOpen(true)}
+                  title={published ? 'Publication active — gérer' : 'Publier sur ocre.immo'}
+                  style={{flexShrink:0, width:68, height:36, padding:0, background:bg, color:'#fff', border:'1.5px solid '+bg, borderRadius:18, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily:'inherit', fontSize:10, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                  {label}
+                </button>
+              );
+            })()}
             <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
               style={{flex:1, height:40, padding:'0 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
               Enregistrer
