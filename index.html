@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.22-logo-strong-thumbs -->
+<!-- ocre-v18.24-downloads-3buttons-inline -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2957,6 +2957,10 @@ function App() {
   }
   // V18.17 — ID du dossier qui vient d'être promu (pour highlight ocre 3s dans liste principale).
   const [promotedId, setPromotedId] = useState(null);
+  // V18.24 — file pré-sélectionné depuis DownloadsView (3 boutons Photo/Galerie/Fichier).
+  // Quand user clique une source → on stocke le File ici + setView('import_image') → ImportImageView
+  // lit fileAlreadySelected et saute la phase 1 "choix source".
+  const [pickedImageFile, setPickedImageFile] = useState(null);
   // V17.10 : compteur de version pour re-render après fetch des pays dynamiques.
   const [countriesVersion, setCountriesVersion] = useState(0);
   // V17.11 : carte des matches par client_id → {count, max_score}
@@ -3176,11 +3180,13 @@ function App() {
   }
   // V18.21 — import_url retiré (fusion dans DownloadsView). ImportImageView reste plein écran.
   if (view === 'import_image') {
-    return <ImportImageView onBack={() => setView('downloads')}
+    return <ImportImageView onBack={() => { setPickedImageFile(null); setView('downloads'); }}
       showToast={showToast} toast={toast}
+      fileAlreadySelected={pickedImageFile}
       onCreated={(newClient) => {
         setStaged(prev => [newClient, ...prev]);
         setStagedCount(n => n + 1);
+        setPickedImageFile(null);
         setView('downloads');
       }}/>;
   }
@@ -3192,7 +3198,7 @@ function App() {
         setStaged(prev => [newClient, ...prev]);
         setStagedCount(n => n + 1);
       }}
-      openImportImage={() => setView('import_image')}
+      onPickedImageFile={(f) => { setPickedImageFile(f); setView('import_image'); }}
       openClient={(c) => { openClient(c); }}/>;
   }
   const banner = showInstallBanner && <InstallPwaBanner aboveActionBar={view === 'list'} onClose={() => { setShowInstallBanner(false); localStorage.setItem('ocre_install_dismissed_v18','1'); }}/>;
@@ -3259,7 +3265,7 @@ function extractFirstUrl(text) {
 // V18.18 — ImportImageView : extraction d'annonce depuis une image (capture WhatsApp/SMS,
 // photo annonce papier/panneau). Flow : upload/capture/paste → preview → POST import_image.php
 // action=extract → preview JSON + thumbnail → "Créer brouillon" → clients.php save is_staged=1.
-function ImportImageView({onBack, onCreated, showToast, toast}) {
+function ImportImageView({onBack, onCreated, showToast, toast, fileAlreadySelected}) {
   const [file, setFile] = React.useState(null);
   const [previewUrl, setPreviewUrl] = React.useState(null);
   const [extracting, setExtracting] = React.useState(false);
@@ -3278,6 +3284,13 @@ function ImportImageView({onBack, onCreated, showToast, toast}) {
     setResult(null);
     setImagePath(null);
   }
+
+  // V18.24 — si un File a été pré-sélectionné en amont (depuis DownloadsView via 3 boutons
+  // Photo/Galerie/Fichier), on saute la phase 1 "choix source" et on va direct au preview.
+  React.useEffect(() => {
+    if (fileAlreadySelected instanceof File) pickFile(fileAlreadySelected);
+    // eslint-disable-next-line
+  }, []);
   function clearFile() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setFile(null);
@@ -5355,7 +5368,16 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
 // V18.21 — DownloadsView : textarea URL directement prête (pas de page intermédiaire),
 // bouton Document image en dessous, liste staged en bas. Fusion de l'ancien ImportUrlView
 // qui est désormais retiré (logique analyse + createDraft inline ici).
-function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, openImportImage, showToast, toast}) {
+function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, onPickedImageFile, showToast, toast}) {
+  // V18.24 — 3 refs pour inputs file cachés (Photo caméra / Galerie / Fichier).
+  const refCam = React.useRef(null);
+  const refGal = React.useRef(null);
+  const refFile = React.useRef(null);
+  function handlePicked(f) {
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { showToast && showToast('Fichier trop grand (max 10 Mo)'); return; }
+    onPickedImageFile && onPickedImageFile(f);
+  }
   // --- Recherche (v18.19 SearchBar factorisée) ---
   const [showSearch, setShowSearch] = React.useState(false);
   const [searchInput, setSearchInput] = React.useState('');
@@ -5563,12 +5585,35 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, op
           </div>
         )}
 
-        {/* Bouton Document image (secondaire) */}
+        {/* V18.24 — 📸 Importer un document : 3 sous-boutons inline qui déclenchent directement
+            camera/galerie/Fichiers sans passer par un écran intermédiaire. */}
         {!result && !loading && (
-          <button onClick={openImportImage}
-            style={{width:'100%', padding:'12px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #A67F5A', borderRadius:10, fontWeight:700, fontSize:13.5, cursor:'pointer', fontFamily:'inherit', marginBottom:14, display:'flex', alignItems:'center', justifyContent:'center', gap:8}}>
-            📸 Importer un document image
-          </button>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12, fontWeight:700, color:'#8B5E3C', marginBottom:6, textTransform:'uppercase', letterSpacing:.5}}>📸 Importer un document</div>
+            <input ref={refCam} type="file" accept="image/*" capture="environment" style={{display:'none'}}
+              onChange={e => handlePicked(e.target.files && e.target.files[0])}/>
+            <input ref={refGal} type="file" accept="image/*" style={{display:'none'}}
+              onChange={e => handlePicked(e.target.files && e.target.files[0])}/>
+            <input ref={refFile} type="file" accept="image/*,application/pdf" style={{display:'none'}}
+              onChange={e => handlePicked(e.target.files && e.target.files[0])}/>
+            <div style={{display:'flex', gap:8, width:'100%'}}>
+              <button onClick={() => refCam.current && refCam.current.click()}
+                style={{flex:1, padding:'12px 8px', background:'#F4ECE3', color:'#8B5E3C', border:'1.5px solid #A67F5A', borderRadius:10, fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, minWidth:0}}>
+                <span style={{fontSize:20, lineHeight:1}}>📷</span>
+                <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%'}}>Photo</span>
+              </button>
+              <button onClick={() => refGal.current && refGal.current.click()}
+                style={{flex:1, padding:'12px 8px', background:'#F4ECE3', color:'#8B5E3C', border:'1.5px solid #A67F5A', borderRadius:10, fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, minWidth:0}}>
+                <span style={{fontSize:20, lineHeight:1}}>🖼</span>
+                <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%'}}>Galerie</span>
+              </button>
+              <button onClick={() => refFile.current && refFile.current.click()}
+                style={{flex:1, padding:'12px 8px', background:'#F4ECE3', color:'#8B5E3C', border:'1.5px solid #A67F5A', borderRadius:10, fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, minWidth:0}}>
+                <span style={{fontSize:20, lineHeight:1}}>📁</span>
+                <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%'}}>Fichier</span>
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Preview (après analyse URL) */}
