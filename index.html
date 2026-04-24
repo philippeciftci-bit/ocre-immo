@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.46.1-favicon-ios-fix -->
+<!-- ocre-v18.47-publish-workflow -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3474,6 +3474,248 @@ function PWAInstallOverlay({onClose}) {
   );
 }
 
+// V18.47 — Workflow Publier sur ocre.immo. Bouton affiché en bas des dossiers Vendeur/Bailleur.
+// PublishButton déclenche PublishPreviewModal qui affiche une preview WYSIWYG + champs
+// éditables (titre, description, vertical). Post-publi : PublishSuccessModal "site en cours
+// de création". Gestion post-publi : bouton devient "Gérer la publication" + toggle visibility.
+function PublishButton({dossier, dossierId, disabled, onOpen, showToast}) {
+  const published = !!dossier.is_published;
+  const visible = dossier.public_visible !== 0 && dossier.public_visible !== false;
+  let label, subBadge = null, btnStyle;
+  if (disabled) {
+    label = '🌐 Publier sur ocre.immo';
+    btnStyle = {background:'#F2EBE2', color:'#A89882', border:'1.5px solid #E0CDAE', cursor:'not-allowed'};
+  } else if (!published) {
+    label = '🌐 Publier sur ocre.immo';
+    btnStyle = {background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', cursor:'pointer'};
+  } else {
+    label = '🌐 Gérer la publication';
+    btnStyle = {background:'#fff', color:'#8B5E3C', border:'1.5px solid #8B5E3C', cursor:'pointer'};
+    subBadge = visible
+      ? <span style={{marginLeft:8, fontSize:11, color:'#2E7D32'}}>● En ligne</span>
+      : <span style={{marginLeft:8, fontSize:11, color:'#8B7F6E'}}>● Masquée</span>;
+  }
+  return (
+    <div style={{padding:'14px 4px 4px', display:'flex', justifyContent:'center'}}>
+      <button type="button" onClick={disabled ? () => showToast && showToast('Complète le dossier avant publication') : onOpen}
+        title={disabled ? 'Complète le dossier avant publication' : label}
+        style={{width:'100%', maxWidth:420, padding:'13px 18px', borderRadius:10, fontWeight:700, fontSize:14, fontFamily:'inherit', ...btnStyle}}>
+        {label}{subBadge}
+      </button>
+    </div>
+  );
+}
+
+function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
+  const [loading, setLoading] = React.useState(true);
+  const [preview, setPreview] = React.useState(null);
+  const [title, setTitle] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [vertical, setVertical] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(API + '/publish.php?action=preview_data&client_id=' + dossierId, {headers:{'X-Session-Token':token()}});
+        const d = await r.json();
+        if (!d || !d.ok) { showToast && showToast(d.error || 'Erreur chargement preview'); onClose(); return; }
+        setPreview(d);
+        // Pré-remplissage titre auto si pas encore publié.
+        const data = d.data || {};
+        const projet = d.projet;
+        const typeBien = data.type_bien || 'Bien';
+        const chambres = data.chambres ? data.chambres + ' ch. ' : '';
+        const ville = data.ville || '';
+        const prix = data.prix_affiche || data.prix || data.loyer_demande || '';
+        const devise = data.devise || 'MAD';
+        let autoTitle = '';
+        if (projet === 'vendeur') {
+          autoTitle = `${typeBien} ${chambres}– ${ville}${prix ? ' – ' + prix + ' ' + devise : ''}`.trim();
+        } else if (projet === 'bailleur') {
+          autoTitle = `${typeBien} ${chambres}– ${ville}${prix ? ' – ' + prix + ' ' + devise + '/mois' : ''}`.trim();
+        }
+        setTitle(d.public_title || autoTitle || typeBien);
+        // Description : concat notes + points clés
+        const notesParts = [];
+        if (data.notes) notesParts.push(String(data.notes));
+        if (data.points_cles) notesParts.push(String(data.points_cles));
+        if (data.description) notesParts.push(String(data.description));
+        setDescription(d.public_description || notesParts.join('\n\n'));
+        setVertical(d.vertical || (projet === 'vendeur' ? 'vente' : projet === 'bailleur' ? 'location_longue' : 'vente'));
+      } catch (e) { showToast && showToast('Erreur réseau'); onClose(); }
+      setLoading(false);
+    })();
+  }, [dossierId]);
+
+  async function submit(actionName = 'publish') {
+    if (!title.trim()) { showToast && showToast('Titre requis'); return; }
+    setSaving(true);
+    try {
+      const r = await fetch(API + '/publish.php?action=' + actionName, {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token()},
+        body: JSON.stringify({client_id: dossierId, public_title: title.trim(), public_description: description.trim(), vertical}),
+      });
+      const d = await r.json();
+      if (d && d.ok) onPublished(d);
+      else showToast && showToast((d && d.error) || 'Échec publication');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setSaving(false);
+  }
+  async function doUnpublish() {
+    if (!window.confirm('Retirer de la vitrine ocre.immo ? Le dossier et les photos restent, seule la publication est retirée.')) return;
+    setSaving(true);
+    try {
+      const r = await fetch(API + '/publish.php?action=unpublish', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token()}, body: JSON.stringify({client_id: dossierId})});
+      const d = await r.json();
+      if (d && d.ok) { showToast && showToast('Publication retirée'); onClose(); }
+      else showToast && showToast((d && d.error) || 'Échec');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setSaving(false);
+  }
+  async function doToggleVisibility(next) {
+    try {
+      const r = await fetch(API + '/publish.php?action=toggle_visibility', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token()}, body: JSON.stringify({client_id: dossierId, public_visible: next ? 1 : 0})});
+      const d = await r.json();
+      if (d && d.ok) { showToast && showToast(next ? 'Annonce visible' : 'Annonce masquée'); setPreview({...preview, public_visible: !!next}); }
+      else showToast && showToast((d && d.error) || 'Échec');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+  }
+
+  if (loading || !preview) {
+    return (
+      <div style={{position:'fixed', inset:0, background:'#F5EFE6', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center'}}>
+        <div style={{color:'#8B7F6E'}}>Chargement…</div>
+      </div>
+    );
+  }
+
+  const data = preview.data || {};
+  const photos = Array.isArray(data.photos) ? data.photos : (Array.isArray(data.photo_urls) ? data.photo_urls : []);
+  const prix = data.prix_affiche || data.prix || data.loyer_demande;
+  const devise = data.devise || 'MAD';
+  const alreadyPublished = !!preview.is_published;
+
+  return (
+    <div style={{position:'fixed', inset:0, background:'#F5EFE6', zIndex:200, overflowY:'auto', display:'flex', flexDirection:'column', borderTop:'3px solid #8B5E3C'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #E0CDAE', padding:'12px 14px', display:'flex', alignItems:'center', gap:10, position:'sticky', top:0, zIndex:10}}>
+        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:19, fontWeight:700, color:'#8B5E3C'}}>{alreadyPublished ? 'Gérer la publication' : 'Aperçu publication'}</div>
+        <button onClick={onClose} aria-label="Fermer" style={{background:'none', border:'none', fontSize:24, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', padding:'0 6px'}}>×</button>
+      </div>
+      <div style={{flex:1, padding:'14px 16px 120px', maxWidth:640, margin:'0 auto', width:'100%', boxSizing:'border-box'}}>
+        {alreadyPublished && (
+          <div style={{background:'#FDFAF4', border:'1px solid #E0CDAE', borderRadius:10, padding:'10px 12px', marginBottom:12, fontSize:13, color:'#5A4E3D'}}>
+            Cette annonce est <b>{preview.public_visible ? 'en ligne' : 'masquée'}</b> depuis le {String(preview.published_at || '').replace('T',' ').slice(0,16)}.
+          </div>
+        )}
+        <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:14, lineHeight:1.5}}>
+          Voici comment ton annonce apparaîtra sur le site <b>ocre.immo</b>. Tu peux modifier le titre et la description avant de valider.
+        </div>
+
+        {/* Galerie photos */}
+        {photos.length > 0 && (
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:4, marginBottom:14}}>
+            {photos.slice(0, 9).map((url, i) => (
+              <div key={i} style={{aspectRatio:'1/1', background:'#FDFAF4 center/cover no-repeat url(' + (url.startsWith('/') ? url : '/api/image.php?path=' + encodeURIComponent(url)) + ')', borderRadius:6, border:'1px solid #E0CDAE'}}/>
+            ))}
+          </div>
+        )}
+
+        {/* Titre auto preview */}
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:24, fontWeight:700, color:'#8B5E3C', lineHeight:1.2, marginBottom:8}}>{title || '(titre)'}</div>
+
+        {/* Prix */}
+        {prix && <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:22, color:'#8B5E3C', fontWeight:700, marginBottom:14}}>{prix} {devise}{preview.projet === 'bailleur' ? ' / mois' : ''}</div>}
+
+        {/* Caractéristiques grid */}
+        <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8, marginBottom:14, fontSize:12.5}}>
+          {data.surface && <div><b>Surface :</b> {data.surface} m²</div>}
+          {data.chambres && <div><b>Chambres :</b> {data.chambres}</div>}
+          {data.sdb && <div><b>SDB :</b> {data.sdb}</div>}
+          {data.etage && <div><b>Étage :</b> {data.etage}</div>}
+          {data.orientation && <div><b>Orientation :</b> {data.orientation}</div>}
+          {data.parking && <div><b>Parking :</b> {data.parking}</div>}
+        </div>
+
+        {/* Localisation */}
+        {data.ville && <div style={{fontSize:13, color:'#5A4E3D', marginBottom:14}}>📍 {data.ville}{data.quartier ? ' — ' + data.quartier : ''}</div>}
+
+        <hr style={{border:'none', borderTop:'1px solid #E0CDAE', margin:'16px 0'}}/>
+
+        {/* Champs éditables */}
+        <label className="ocre-lbl">Titre</label>
+        <input value={title} onChange={e => setTitle(e.target.value)} maxLength={200}
+          style={{width:'100%', padding:'10px 12px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:14, fontFamily:'inherit', marginBottom:12, boxSizing:'border-box'}}/>
+
+        <label className="ocre-lbl">Description</label>
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={6}
+          style={{width:'100%', padding:'10px 12px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13.5, fontFamily:'inherit', marginBottom:12, boxSizing:'border-box', resize:'vertical'}}/>
+
+        {preview.projet === 'bailleur' && (
+          <>
+            <label className="ocre-lbl">Type de location</label>
+            <select value={vertical} onChange={e => setVertical(e.target.value)}
+              style={{width:'100%', padding:'10px 12px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:14, fontFamily:'inherit', marginBottom:12, boxSizing:'border-box', background:'#fff'}}>
+              <option value="location_longue">Location longue durée</option>
+              <option value="sejour_court">Séjour court (Airbnb / Booking)</option>
+            </select>
+          </>
+        )}
+
+        {/* Encart agent */}
+        <div style={{background:'#FBF7EE', border:'1px solid #E0CDAE', borderRadius:10, padding:'10px 12px', marginTop:14, fontSize:12.5}}>
+          <div style={{fontSize:10, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Contact</div>
+          {preview.agent.prenom} {preview.agent.nom} · {preview.agent.email}
+        </div>
+      </div>
+
+      {/* Footer sticky actions */}
+      <div style={{position:'sticky', bottom:0, background:'#fff', borderTop:'1.5px solid #8B5E3C', padding:'12px 14px', display:'flex', flexDirection:'column', gap:8, boxShadow:'0 -4px 12px rgba(60,40,20,.08)'}}>
+        {alreadyPublished && (
+          <div style={{display:'flex', gap:8}}>
+            <button onClick={() => doToggleVisibility(!preview.public_visible)} disabled={saving}
+              style={{flex:1, padding:'10px', background:'#FFF3EC', color:'#8B5E3C', border:'1.5px solid #BBA88B', borderRadius:8, fontWeight:600, fontSize:12.5, cursor:'pointer', fontFamily:'inherit'}}>
+              {preview.public_visible ? '👁 Masquer l\'annonce' : '👁 Rendre visible'}
+            </button>
+            <button onClick={doUnpublish} disabled={saving}
+              style={{flex:1, padding:'10px', background:'#fff', color:'#D64545', border:'1.5px solid #D64545', borderRadius:8, fontWeight:600, fontSize:12.5, cursor:'pointer', fontFamily:'inherit'}}>
+              Retirer de la vitrine
+            </button>
+          </div>
+        )}
+        <div style={{display:'flex', gap:8}}>
+          <button onClick={onClose} disabled={saving}
+            style={{flex:1, padding:'12px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:9, fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+            Annuler
+          </button>
+          <button onClick={() => submit(alreadyPublished ? 'update' : 'publish')} disabled={saving || !title.trim()}
+            style={{flex:2, padding:'12px', background: title.trim() ? 'linear-gradient(135deg,#8B5E3C,#A06B45)' : '#C9B79A', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13.5, cursor: title.trim() ? 'pointer' : 'not-allowed', fontFamily:'inherit'}}>
+            {saving ? 'Enregistrement…' : (alreadyPublished ? 'Enregistrer' : 'Valider et publier')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PublishSuccessModal({result, onClose}) {
+  return (
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:210, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:24, maxWidth:420, width:'100%', textAlign:'center'}}>
+        <div style={{width:56, height:56, borderRadius:'50%', background:'#E8F5E8', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px', fontSize:30, color:'#2E7D32'}}>✓</div>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C', marginBottom:10}}>Annonce enregistrée</div>
+        <div style={{fontSize:13.5, color:'#2A2018', lineHeight:1.55, marginBottom:18}}>
+          Le site vitrine <b>ocre.immo</b> est en cours de création, il sera bientôt accessible. Tu peux modifier ou masquer ta publication à tout moment depuis ce dossier.
+        </div>
+        <button onClick={onClose} style={{padding:'12px 28px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13.5, cursor:'pointer', fontFamily:'inherit'}}>
+          J'ai compris
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // V18.44 — SW auto-update : détection updatefound + bannière non-bloquante + auto-reload idle.
 // Un seul enregistrement SW au chargement. Le nouveau SW reste "waiting" jusqu'à SKIP_WAITING
 // envoyé depuis la bannière (ou auto-reload si user idle > 5min sans form ouvert).
@@ -5981,6 +6223,13 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
           </button>
         )}
         <div className="client-row-name">{name}</div>
+        {/* V18.47 — badge "En ligne / Masquée" si dossier publié sur vitrine ocre.immo */}
+        {c.is_published ? (
+          <span title={c.public_visible ? 'Publié en ligne sur ocre.immo' : 'Publication masquée'}
+            style={{fontSize:10, fontWeight:700, color: c.public_visible ? '#2E7D32' : '#8B7F6E', background:'#fff', border:'1px solid ' + (c.public_visible ? '#2E7D32' : '#C9B79A'), borderRadius:10, padding:'2px 7px', whiteSpace:'nowrap', flexShrink:0}}>
+            ● {c.public_visible ? 'En ligne' : 'Masquée'}
+          </span>
+        ) : null}
         {sourceChip && (
           <div style={{fontSize:10, color: importType === 'image' ? '#8B6B1E' : '#B26D3A', fontWeight:700, flexShrink:0, background:'#fff', border:'1px solid #E8DDD0', borderRadius:10, padding:'2px 7px', whiteSpace:'nowrap'}}>{sourceChip}</div>
         )}
@@ -6818,6 +7067,9 @@ function FormView(props) {
   const [imageOverlay, setImageOverlay] = useState(false);
   // V18.37 — modal "+ Ajouter une casquette" (créer nouveau dossier avec mêmes coordonnées).
   const [addCasquetteOpen, setAddCasquetteOpen] = useState(false);
+  // V18.47 — modal publication vitrine ocre.immo.
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState(null);
   // V18.25 — responsive : <420px les boutons footer Archiver/Supprimer affichent l'icône seule.
   const [smallScreen, setSmallScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 420);
   useEffect(() => {
@@ -7616,9 +7868,13 @@ function FormView(props) {
             </button>
           </div>
         ) : (
-          /* V18.25 — Footer repositionné : Enregistrer large gauche flex:1, Archiver+Supprimer
-             shrink à droite. Responsive : <420px → icônes seules 44x44. Sticky bottom avec
-             background blanc + border-top pour toujours être visible quand on scrolle. */
+          /* V18.47 — Bouton "Publier sur ocre.immo" uniquement pour Vendeur/Bailleur, avant
+             le footer Enregistrer/Archiver/Supprimer. */
+          <>
+          {['Vendeur','Bailleur'].includes(activeProfil) && editing && editing.id && (
+            <PublishButton dossier={d} dossierId={editing.id} disabled={!!d.is_draft}
+              onOpen={() => setPublishOpen(true)} showToast={showToast}/>
+          )}
           <div style={{position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:8, alignItems:'center', padding:'12px 4px', background:'#fff', borderTop:'1px solid #E0CDAE', marginTop:12, marginBottom:8}}>
             <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
               style={{flex:1, padding:'14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:15, cursor:'pointer', fontFamily:'inherit'}}>
@@ -7639,6 +7895,16 @@ function FormView(props) {
               </button>
             )}
           </div>
+          {publishOpen && (
+            <PublishPreviewModal dossierId={editing && editing.id}
+              onClose={() => setPublishOpen(false)}
+              onPublished={(res) => { setPublishOpen(false); setPublishSuccess(res); commit('_touch', Date.now()); }}
+              showToast={showToast}/>
+          )}
+          {publishSuccess && (
+            <PublishSuccessModal result={publishSuccess} onClose={() => setPublishSuccess(null)}/>
+          )}
+          </>
         )}
       </div>
 
