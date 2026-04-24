@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v29-dossier-compact -->
+<!-- ocre-v30-accueil-package -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3203,61 +3203,101 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
   const prenom = (sourceDossier && (sourceDossier.prenom || sourceDossier.societe_nom)) || 'ce client';
   const nom = (sourceDossier && sourceDossier.nom) || '';
 
+  // V30 — Variante C ultra compact 240px. Multi-select + Valider qui boucle
+  // createCasquette pour chaque case nouvellement cochée.
+  const [checked, setChecked] = React.useState(() => {
+    const s = {};
+    Object.keys(takenMap).forEach(k => { s[k] = true; });
+    return s;
+  });
+  async function onValider() {
+    const toCreate = PROFIL_LIST.filter(p => checked[p] && !takenMap[p]);
+    if (!toCreate.length) { onClose(); return; }
+    setBusy(true); setError('');
+    let created = 0;
+    let lastClient = null;
+    for (const p of toCreate) {
+      try {
+        const token = localStorage.getItem('ocre_token') || '';
+        const r = await fetch(API + '/dossier_create.php?action=add_casquette', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-Session-Token': token},
+          body: JSON.stringify({source_dossier_id: sourceId, new_profil: p}),
+        });
+        const d = await r.json();
+        if (d && d.ok) {
+          created++;
+          lastClient = Object.assign({}, sourceDossier, {
+            id: d.new_id, projet: p,
+            is_investisseur: p === 'Investisseur',
+            linked_dossiers: d.linked_ids,
+            bien:{}, financement:{}, suivi:{},
+            prix_affiche:null, loyer_demande:null, loyer_max:null, budget_max:null, budget_min:null,
+          });
+        }
+      } catch (e) { /* noop */ }
+    }
+    setBusy(false);
+    if (created > 0 && onCreated) {
+      onCreated(lastClient);
+    } else {
+      onClose();
+    }
+  }
+  function toggle(p) {
+    if (takenMap[p]) return; // existant non désactivable
+    setChecked(prev => ({...prev, [p]: !prev[p]}));
+  }
+
   return (
     <div onClick={onClose}
-      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
       <div onClick={e => e.stopPropagation()}
-        style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:20, width:'100%', maxWidth:400, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 50px rgba(0,0,0,.25)'}}>
-        <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:19, fontWeight:700, color:'#8B5E3C', marginBottom:4}}>Casquettes de {prenom}{nom ? ' ' + nom : ''}</div>
-        <div style={{fontSize:11.5, color:'#8B7F6E', marginBottom:14, fontStyle:'italic', lineHeight:1.45}}>
-          Coche les profils pour créer les dossiers liés. Les coordonnées sont partagées ; chaque dossier a son propre bien, budget et suivi. Les cases "Existant" ne peuvent pas être décochées ici (passer par le dossier pour supprimer).
+        style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:12, padding:'14px 12px 10px', width:'100%', maxWidth:240, boxShadow:'0 10px 30px rgba(0,0,0,.22)'}}>
+        <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:15, fontWeight:700, color:'#8B5E3C', marginBottom:2}}>Casquettes</div>
+        <div style={{fontSize:10.5, color:'#8B7F6E', marginBottom:8, fontStyle:'italic', lineHeight:1.35}}>
+          Coche pour créer un dossier lié.
         </div>
-
-        <div style={{display:'flex', flexDirection:'column', gap:8}}>
+        <div style={{display:'flex', flexDirection:'column', marginBottom:10}}>
           {PROFIL_LIST.map(p => {
             const taken = takenMap[p];
-            const col = PROFILS[p] || '#8B5E3C';
-            const badge = BADGES[p] || p.slice(0, 3).toUpperCase();
             const isTaken = !!taken;
+            const on = !!checked[p];
+            const col = {Acheteur:'#8B5E3C',Vendeur:'#2F3A56',Investisseur:'#6B4A8E',Bailleur:'#4A7856',Locataire:'#B8955A',Curieux:'#6E6352'}[p] || '#8B5E3C';
             return (
-              <button key={p} type="button" disabled={isTaken || busy}
-                onClick={() => createCasquette(p)}
-                style={{
-                  display:'flex', alignItems:'center', gap:10,
-                  padding:'10px 12px', background: isTaken ? '#F4EEE6' : '#fff',
-                  border:'1.5px solid ' + (isTaken ? '#D4C3A8' : col),
-                  borderRadius:10, cursor: isTaken || busy ? 'not-allowed' : 'pointer',
-                  opacity: isTaken ? .65 : 1, fontFamily:'inherit', textAlign:'left',
-                  width:'100%',
-                }}>
-                <div style={{width:30, height:30, borderRadius:7, background: col, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, flexShrink:0}}>{badge}</div>
-                <div style={{flex:1, minWidth:0}}>
-                  <div style={{fontSize:13, fontWeight:700, color:'#2A2018'}}>{p}</div>
-                </div>
-                {isTaken && (
-                  <div style={{fontSize:10, color: taken.state === 'current' ? '#8B5E3C' : '#5A4E3D', fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>
-                    {taken.state === 'current' ? 'Actuel' : 'Déjà créé'}
-                  </div>
-                )}
-              </button>
+              <div key={p}
+                onClick={() => { if (!busy && !isTaken) toggle(p); }}
+                title={isTaken ? 'Existant — passer par le dossier pour supprimer' : 'Cocher pour créer un dossier lié'}
+                style={{display:'flex', alignItems:'center', gap:8, padding:'5px 6px', cursor: isTaken ? 'default' : (busy ? 'wait' : 'pointer'), opacity: isTaken ? 0.55 : 1, borderBottom:'0'}}>
+                {/* Checkbox carrée 14x14 */}
+                <span style={{width:14, height:14, borderRadius:3, border:'1.5px '+(on?'solid #8B5E3C':'solid #B5A78F'), background: on ? '#8B5E3C' : '#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                  {on && (
+                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6.5l2.5 2.5L10 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </span>
+                <span style={{fontSize:12.5, fontWeight:600, color: col, fontFamily:'inherit'}}>{p}</span>
+              </div>
             );
           })}
         </div>
-
         {error && (
-          <div style={{marginTop:12, padding:'8px 10px', background:'#FEE2E2', color:'#991B1B', borderRadius:7, fontSize:12, borderLeft:'3px solid #DC2626'}}>
-            ⚠ {error}
-          </div>
+          <div style={{marginBottom:8, padding:'6px 8px', background:'#FEE2E2', color:'#991B1B', borderRadius:5, fontSize:11, borderLeft:'3px solid #DC2626'}}>{error}</div>
         )}
-
-        <button type="button" onClick={onClose} disabled={busy}
-          style={{width:'100%', marginTop:14, padding:'9px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:9, fontWeight:600, fontSize:13, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit'}}>
-          {busy ? '⏳ Création…' : 'Annuler'}
-        </button>
+        <div style={{display:'flex', gap:8}}>
+          <button type="button" onClick={onClose} disabled={busy}
+            style={{flex:1, background:'#fff', color:'#8B7F6E', border:'1.5px solid #E0CDAE', padding:'8px', fontSize:13, fontWeight:600, borderRadius:8, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit'}}>Annuler</button>
+          <button type="button" onClick={onValider} disabled={busy}
+            style={{flex:1, background:'#8B5E3C', color:'#fff', border:'1.5px solid #8B5E3C', padding:'8px', fontSize:13, fontWeight:600, borderRadius:8, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit'}}>
+            {busy ? '…' : 'Valider'}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
 
 // V18.36 — Cross-referencing Option A (amorce) : panel "Cette annonce ailleurs" sous Section II.
 // Backend api/cross_search.php appelle Claude web_search. Manuel via bouton, auto v18.37+.
@@ -6452,15 +6492,16 @@ function ListView(props) {
     }
   }
 
-  // V18.15 — pipeline filtres : archive → listFilter (profil radio) → search (live).
-  // V18.19 — ranking extrait dans applySearchRank(list, query) réutilisable.
+  // V30 — pipeline filtres : archive → listFilter (profil radio OU '__drafts__') → search.
   const archivedFiltered = clients.filter(c => !!c.archived === showArchives);
-  const profilFiltered = listFilter
-    ? archivedFiltered.filter(c => {
-        const cp = c.projet || c.profil_detecte;
-        return cp === listFilter;
-      })
-    : archivedFiltered;
+  const profilFiltered = listFilter === '__drafts__'
+    ? archivedFiltered.filter(c => !!c.is_draft)
+    : (listFilter
+        ? archivedFiltered.filter(c => {
+            const cp = c.projet || c.profil_detecte;
+            return cp === listFilter;
+          })
+        : archivedFiltered);
   const filtered = applySearchRank(profilFiltered, listSearch);
   const drafts = filtered.filter(c => c.is_draft);
   const contacts = filtered.filter(c => !c.is_draft);
@@ -6561,31 +6602,60 @@ function ListView(props) {
       <SearchBar open={showSearch} value={searchInput} onChange={setSearchInput}
         placeholder={showArchives ? 'Rechercher dans les archives…' : 'Rechercher un dossier…'}/>
 
-      {/* V18.15 — barre filtres profils strictement exclusifs (radio) + chip "Tous". */}
+      {/* V30 — Barre filtres : palette pastel/pleine + onglet Brouillons. Style inline
+          remplace la classe .profil-chip pour appliquer les couleurs par profil. */}
       <div style={{padding:'5px 10px', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:8, minHeight:36}}>
         <div className="profils-row" style={{flex:1, minWidth:0}}>
-          <button onClick={() => setListFilter(null)}
-            className={'profil-chip ' + (listFilter === null ? 'state-selected' : 'state-default')}>Tous</button>
-          {PROFILS_ORDER.map(p => {
-            const active = p === listFilter;
-            const n = countByProfil[p] || 0;
+          {(() => {
+            const PAL = {
+              'Tous':         {active:'#8B5E3C', bg:'#F0E4D4', border:'#D4C3A8', text:'#8B5E3C'},
+              'Brouillons':   {active:'#A67F5A', bg:'#F0E5D4', border:'#D4C3A8', text:'#A67F5A'},
+              'Acheteur':     {active:'#8B5E3C', bg:'#F5EADF', border:'#D9B995', text:'#8B5E3C'},
+              'Vendeur':      {active:'#2F3A56', bg:'#E8EAF0', border:'#B8BDCE', text:'#2F3A56'},
+              'Investisseur': {active:'#6B4A8E', bg:'#EEE6F5', border:'#C8B8D8', text:'#6B4A8E'},
+              'Bailleur':     {active:'#4A7856', bg:'#E4EFE4', border:'#B0CCB4', text:'#4A7856'},
+              'Locataire':    {active:'#B8955A', bg:'#F5EFDF', border:'#D9C99C', text:'#8B6F2C'},
+              'Curieux':      {active:'#6E6352', bg:'#ECEAE4', border:'#C4BFB0', text:'#6E6352'},
+            };
+            function chipStyle(key, selected) {
+              const p = PAL[key] || PAL['Tous'];
+              return selected
+                ? {background: p.active, color:'#fff', border:'1.5px solid '+p.active, padding:'6px 10px', borderRadius:14, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0}
+                : {background: p.bg, color: p.text, border:'1.5px solid '+p.border, padding:'6px 10px', borderRadius:14, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0};
+            }
+            const isAll = listFilter === null;
+            const isDrafts = listFilter === '__drafts__';
             return (
-              <button key={p}
-                onClick={() => {
-                  const next = (listFilter === p) ? null : p;
-                  setListFilter(next);
-                  if (next) setActiveProfil(next);
-                }}
-                className={'profil-chip ' + (active ? 'state-selected' : 'state-default')}>
-                {p}{n > 0 ? <span style={{marginLeft:4, opacity:.7, fontWeight:500}}>({n})</span> : null}
-              </button>
+              <>
+                <button onClick={() => setListFilter(null)} style={chipStyle('Tous', isAll)}>Tous</button>
+                {drafts.length > 0 && (
+                  <button onClick={() => setListFilter(isDrafts ? null : '__drafts__')} style={chipStyle('Brouillons', isDrafts)}>
+                    Brouillons<span style={{marginLeft:3, opacity:.8, fontWeight:500, fontSize:11}}>({drafts.length})</span>
+                  </button>
+                )}
+                {PROFILS_ORDER.map(p => {
+                  const active = p === listFilter;
+                  const n = countByProfil[p] || 0;
+                  return (
+                    <button key={p}
+                      onClick={() => {
+                        const next = (listFilter === p) ? null : p;
+                        setListFilter(next);
+                        if (next && next !== '__drafts__') setActiveProfil(next);
+                      }}
+                      style={chipStyle(p, active)}>
+                      {p}{n > 0 ? <span style={{marginLeft:3, opacity:.8, fontWeight:500, fontSize:11}}>({n})</span> : null}
+                    </button>
+                  );
+                })}
+              </>
             );
-          })}
+          })()}
         </div>
-        <div style={{fontSize:10, color:'var(--text-secondary)', whiteSpace:'nowrap', flexShrink:0, fontWeight:600}}>{showArchives ? filtered.length + ' arch.' : drafts.length + 'b · ' + contacts.length + 'c'}</div>
+        <div style={{fontSize:10, color:'var(--text-secondary)', whiteSpace:'nowrap', flexShrink:0, fontWeight:600}}>{showArchives ? filtered.length + ' arch.' : drafts.length + 'b · ' + contacts.length + 'd'}</div>
       </div>
 
-      <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(96px + env(safe-area-inset-bottom, 0px))'}}>
+      <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(64px + env(safe-area-inset-bottom, 0px))'}}>
         {!showArchives && drafts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
@@ -6594,7 +6664,7 @@ function ListView(props) {
         )}
         {!showArchives && contacts.length > 0 && (
           <>
-            <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'12px 4px 6px'}}>Contacts · {contacts.length}</div>
+            <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'12px 4px 6px'}}>Dossiers · {contacts.length}</div>
             {contactGroups.map(renderGroup)}
           </>
         )}
@@ -6606,34 +6676,33 @@ function ListView(props) {
         )}
         {!showArchives && filtered.length === 0 && (
           <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:40}}>
-            Aucun contact pour le moment. Clique sur <b>+</b> pour commencer.
+            Aucun dossier pour le moment. Clique sur <b>+</b> pour commencer.
           </div>
         )}
       </div>
 
-      {/* V18.5 — Barre d'actions horizontale fixed-bottom (iPhone-friendly). */}
+      {/* V30 — Footer compacté /2 : boutons 44/44/48 (tap target iOS respecté), padding
+          8/10, hauteur barre ≈ 56px au lieu de ~100px. */}
       <div style={{position:'fixed', bottom:0, left:0, right:0, zIndex:40,
                    background:'#fff', borderTop:'1px solid #E8DDD0', boxShadow:'0 -2px 8px rgba(139,94,60,.05)',
-                   padding:'12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) 16px',
-                   display:'flex', justifyContent:'space-around', alignItems:'center', gap:12}}>
-        {/* V18.20 — FAB 📥 ouvre la page Téléchargements (v18.17 DownloadsView avec 2 boutons
-            🔗 Lien URL / 📸 Document image), plus le ImportUrlView direct du v18.11. */}
+                   padding:'6px 14px calc(6px + env(safe-area-inset-bottom, 0px)) 14px',
+                   display:'flex', justifyContent:'space-around', alignItems:'center', gap:10}}>
         <button onClick={() => props.openDownloads && props.openDownloads()} title="Téléchargements"
-          style={{width:52, height:52, borderRadius:'50%', background:'#FBF1E4', color:'var(--ocre-brand)', border:'2px solid var(--ocre-primary)',
-                  fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(139,94,60,0.18)', fontFamily:'inherit',
+          style={{width:44, height:44, borderRadius:'50%', background:'#FBF1E4', color:'var(--ocre-brand)', border:'2px solid var(--ocre-primary)',
+                  fontSize:16, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 6px rgba(139,94,60,0.14)', fontFamily:'inherit',
                   display:'flex', alignItems:'center', justifyContent:'center', padding:0, position:'relative'}}>
-          <DownloadIcon size={24}/>
+          <DownloadIcon size={18}/>
           {stagedCount > 0 && (
-            <span style={{position:'absolute', top:-4, right:-4, background:'#8B5E3C', color:'#fff', borderRadius:10, padding:'1px 6px', fontSize:10, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #fff'}}>{stagedCount}</span>
+            <span style={{position:'absolute', top:-4, right:-4, background:'#8B5E3C', color:'#fff', borderRadius:10, padding:'1px 5px', fontSize:9.5, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #fff'}}>{stagedCount}</span>
           )}
         </button>
-        <button onClick={() => props.openDictation()} title="Dicter un contact"
-          style={{width:52, height:52, borderRadius:'50%', background:'#FBF1E4', color:'#8B5E3C', border:'2px solid #B26D3A',
-                  fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(139,94,60,0.18)', fontFamily:'inherit',
+        <button onClick={() => props.openDictation()} title="Dicter un dossier"
+          style={{width:44, height:44, borderRadius:'50%', background:'#FBF1E4', color:'#8B5E3C', border:'2px solid #B26D3A',
+                  fontSize:18, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 6px rgba(139,94,60,0.14)', fontFamily:'inherit',
                   display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>🎤</button>
-        <button onClick={openNew} title="Saisir un contact"
-          style={{width:56, height:56, borderRadius:'50%', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none',
-                  fontSize:28, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 20px rgba(139,94,60,0.35)', fontFamily:'inherit',
+        <button onClick={openNew} title="Saisir un dossier"
+          style={{width:48, height:48, borderRadius:'50%', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none',
+                  fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 12px rgba(139,94,60,0.28)', fontFamily:'inherit',
                   display:'flex', alignItems:'center', justifyContent:'center', padding:0, lineHeight:1}}>+</button>
       </div>
 
