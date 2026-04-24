@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v23-photos-and-cross-ref -->
+<!-- ocre-v24-photos-unified -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1024,24 +1024,32 @@ function BoolChip({label, value, onChange}) {
   );
 }
 
-// V17.2 Phase 2a — PhotoUpload : galerie + upload /api/upload.php, max 30, JPEG/PNG/WebP.
-function PhotoUpload({dossierId, showToast}) {
-  const [photos, setPhotos] = React.useState([]);
+// V24 — PhotoUpload source unique data.bien.photos[]. Supporte lecture string ou {name,url}
+// (rétro-compat seed v20 = string, uploads upload.php = {name,url}). Les ajouts/suppressions
+// sont propagés via onPhotosChange qui met à jour bien.photos[] dans data (auto-save FormView).
+// Le storage physique reste géré par api/upload.php (unchanged backend).
+function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
   const [uploading, setUploading] = React.useState(false);
   const inputRef = React.useRef(null);
+  const list = Array.isArray(photos) ? photos : [];
 
   const token = () => localStorage.getItem('ocre_token') || '';
 
-  React.useEffect(() => {
-    if (!dossierId) return;
-    fetch(API + '/upload.php?action=list&dossier_id=' + dossierId, {headers:{'X-Session-Token': token()}})
-      .then(r => r.json()).then(d => { if (d && d.ok) setPhotos(d.photos || []); })
-      .catch(() => {});
-  }, [dossierId]);
+  // Normalise : extrait l'URL affichable et la clé (name) pour delete.
+  function photoSrc(p) {
+    if (!p) return '';
+    if (typeof p === 'string') return p;
+    return p.url || '';
+  }
+  function photoKey(p, idx) {
+    if (!p) return 'idx-' + idx;
+    if (typeof p === 'string') return p;
+    return p.name || p.url || ('idx-' + idx);
+  }
 
   async function uploadFile(f) {
     if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); return; }
-    if (photos.length >= 30) { showToast && showToast('Limite 30 photos'); return; }
+    if (list.length >= 30) { showToast && showToast('Limite 30 photos'); return; }
     const fd = new FormData();
     fd.append('action', 'upload');
     fd.append('dossier_id', dossierId);
@@ -1052,8 +1060,9 @@ function PhotoUpload({dossierId, showToast}) {
         method:'POST', headers:{'X-Session-Token': token()}, body: fd,
       });
       const d = await r.json();
-      if (d && d.ok && d.photo) setPhotos(prev => [d.photo, ...prev]);
-      else showToast && showToast(d && d.error ? d.error : 'Échec upload');
+      if (d && d.ok && d.photo) {
+        onPhotosChange && onPhotosChange([d.photo, ...list]);
+      } else showToast && showToast(d && d.error ? d.error : 'Échec upload');
     } catch (e) { showToast && showToast('Erreur réseau'); }
     setUploading(false);
   }
@@ -1061,32 +1070,39 @@ function PhotoUpload({dossierId, showToast}) {
     for (const f of fl) await uploadFile(f);
     if (inputRef.current) inputRef.current.value = '';
   }
-  async function removePhoto(name) {
+  async function removePhoto(p) {
     if (!(await askConfirm({title:'Supprimer cette photo ?', message:'Cette photo sera retirée du dossier.', danger:true}))) return;
-    try {
-      const r = await fetch(API + '/upload.php?action=delete', {
-        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
-        body: JSON.stringify({dossier_id: dossierId, name}),
-      });
-      const d = await r.json();
-      if (d && d.ok) setPhotos(prev => prev.filter(p => p.name !== name));
-    } catch (e) {}
+    const name = typeof p === 'object' ? (p.name || '') : '';
+    // Best-effort storage cleanup (ne bloque pas en cas d'échec — les photos seed sans name passent outre).
+    if (name) {
+      try {
+        await fetch(API + '/upload.php?action=delete', {
+          method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+          body: JSON.stringify({dossier_id: dossierId, name}),
+        });
+      } catch (e) { /* silent */ }
+    }
+    // Retrait de l'entrée de la liste (par identité d'objet / string).
+    onPhotosChange && onPhotosChange(list.filter(x => x !== p));
   }
 
   return (
-    <div style={{marginBottom:10}}>
+    <div id="stage2-photos" style={{marginBottom:10, scrollMarginTop:60}}>
       <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:6, textTransform:'uppercase', letterSpacing:.4}}>
-        Photos {photos.length > 0 && <span style={{color:'#8B5E3C'}}>· {photos.length}/30</span>}
+        Photos {list.length > 0 && <span style={{color:'#8B5E3C'}}>· {list.length}/30</span>}
       </label>
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6, marginBottom:8}}>
-        {photos.map(p => (
-          <div key={p.name} style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden', border:'1px solid #E8DDD0'}}>
-            <img src={p.url} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
-            <button type="button" onClick={() => removePhoto(p.name)}
-              style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(42,32,24,.75)', color:'#fff', fontSize:12, cursor:'pointer', lineHeight:'20px', padding:0}}>×</button>
-          </div>
-        ))}
-        {photos.length < 30 && (
+        {list.map((p, idx) => {
+          const src = photoSrc(p);
+          return (
+            <div key={photoKey(p, idx)} style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden', border:'1px solid #E8DDD0', background:'#F4ECE3'}}>
+              {src && <img src={src} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} onError={e => { e.target.style.display = 'none'; }}/>}
+              <button type="button" onClick={() => removePhoto(p)}
+                style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(42,32,24,.75)', color:'#fff', fontSize:12, cursor:'pointer', lineHeight:'20px', padding:0}}>×</button>
+            </div>
+          );
+        })}
+        {list.length < 30 && (
           <button type="button" onClick={() => inputRef.current && inputRef.current.click()} disabled={uploading || !dossierId}
             title={!dossierId ? 'Enregistrez d\'abord le dossier' : ''}
             style={{aspectRatio:'1/1', border:'1.5px dashed #BBA88B', borderRadius:8, background:'#FDFAF7', color:'#8B5E3C', cursor: dossierId ? 'pointer' : 'not-allowed', opacity: dossierId ? 1 : .5, fontSize:24, fontWeight:700}}>
@@ -1560,9 +1576,11 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             </>
           )}
 
-          {/* 7. Photos */}
+          {/* 7. Photos — V24 : source unique bien.photos[], lu/écrit via parent setB. */}
           <div style={{marginTop:14}}>
-            <PhotoUpload dossierId={dossierId} showToast={showToast}/>
+            <PhotoUpload dossierId={dossierId} showToast={showToast}
+              photos={Array.isArray(bien.photos) ? bien.photos : []}
+              onPhotosChange={v => setB('photos', v)}/>
           </div>
 
           {/* 8. Acheteur : budget déjà dans Stage III ; ici on laisse juste le Custom fields list */}
@@ -4343,21 +4361,26 @@ function App() {
     showToast('Supprimé');
   }
   // V18.2 — initialExpandedSection : 0=Identité, 1=Bien, 2=Financier, 3=Suivi(Section IV).
+  // V24 — initialFocus : optionnel, déclenche un scrollIntoView post-rendu sur un id précis
+  // (ex: 'photos' → #stage2-photos). Utilisé par ClientRow thumbnail → ouvrir + scroller direct.
   const [initialExpandedSection, setInitialExpandedSection] = useState(null);
+  const [initialFocus, setInitialFocus] = useState(null);
   function openClient(c) {
     setEditing(c);
     const profil = c.projet || 'Acheteur';
     setActiveProfil(profil);
     setIsInvestisseur(profil === 'Investisseur' || !!c.is_investisseur);
     setInitialExpandedSection(null);
+    setInitialFocus(null);
     setView('form');
   }
-  function openClientAtSection(c, sectionIdx) {
+  function openClientAtSection(c, sectionIdx, focus) {
     setEditing(c);
     const profil = c.projet || 'Acheteur';
     setActiveProfil(profil);
     setIsInvestisseur(profil === 'Investisseur' || !!c.is_investisseur);
     setInitialExpandedSection(sectionIdx);
+    setInitialFocus(focus || null);
     setFormKey(k => k + 1); // force remount pour relancer l'init expanded
     setView('form');
   }
@@ -4515,6 +4538,7 @@ function App() {
       toast={toast} showToast={showToast}
       clients={clients} openExistingDossier={openClient}
       initialExpandedSection={initialExpandedSection}
+      initialFocus={initialFocus}
       promoteStaged={promoteStaged} deleteStaged={deleteStaged}
     />
   )}
@@ -6816,9 +6840,9 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     ? (PROFILS[linkedDossiers[0].projet] || '#8B5E3C')
     : '#8B5E3C';
 
-  function openSec(idx, e) {
+  function openSec(idx, e, focus) {
     if (e) e.stopPropagation();
-    onOpenSection && onOpenSection(c, idx);
+    onOpenSection && onOpenSection(c, idx, focus);
   }
 
   // V18.18 — imports staged : distinction 🔗 Lien vs 📸 Document. Thumbnail si image.
@@ -6839,8 +6863,8 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             Thumb 48x48 mobile (56 desktop via class), IconHome fallback si pas de photo.
             Tap → ouvre Section Bien (openSec 1). Badge +N overlay si photoCount > 1. */}
         {(profil === 'Vendeur' || profil === 'Bailleur') && (
-          <button type="button" title="Ouvrir le bien"
-            onClick={e => { e.stopPropagation(); openSec(1, e); }}
+          <button type="button" title="Voir les photos"
+            onClick={e => { e.stopPropagation(); openSec(1, e, 'photos'); }}
             className="client-row-thumb"
             style={{position:'relative', width:48, height:48, borderRadius:8, overflow:'hidden', flexShrink:0, background:'#F4ECE3', border:'1px solid #D4C3A8', padding:0, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#8B5E3C'}}>
             {firstPhotoUrl ? (
@@ -7685,8 +7709,19 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
 function FormView(props) {
   const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          handleSaveLocal, handleDelete, backToList, toast, showToast,
-         clients, openExistingDossier, initialExpandedSection,
+         clients, openExistingDossier, initialExpandedSection, initialFocus,
          promoteStaged, deleteStaged} = props;
+  // V24 — scroll direct sur #stage2-photos si la nav a demandé focus='photos'.
+  React.useEffect(() => {
+    if (!initialFocus) return;
+    const targetId = initialFocus === 'photos' ? 'stage2-photos' : null;
+    if (!targetId) return;
+    const tid = setTimeout(() => {
+      const el = document.getElementById(targetId);
+      if (el) el.scrollIntoView({behavior:'smooth', block:'start', inline:'nearest'});
+    }, 220);
+    return () => clearTimeout(tid);
+  }, [initialFocus]);
   // V18.17 — dossier en mode staging (vient de la page Téléchargements).
   // V18.18 — distinction URL vs image (banner + thumbnail + overlay fullscreen).
   const isStaged = !!(editing && editing.is_staged);
