@@ -1,0 +1,11 @@
+[Unit]
+Description=OCRE immo — Trigger DB backup quotidien à 03:00 UTC (v18.46)
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+Unit=ocre-db-backup.service
+
+[Install]
+WantedBy=timers.target
