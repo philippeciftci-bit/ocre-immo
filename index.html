@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.36-logo-v1-header-crossref -->
+<!-- ocre-v18.37-group-casquette-phonepill -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -80,7 +80,11 @@ input, select, textarea, button { font-size:13px }
 .client-row-sector-label{font-size:10px;color:#8B7F6E;font-weight:600;text-transform:uppercase;letter-spacing:.3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .client-row-sector-l1{font-size:11.5px;color:#2A2018;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .client-row-sector-l2{font-size:10.5px;color:#8B7F6E;font-weight:400;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.client-row-sector-empty{color:#8B5E3C;font-weight:600;font-size:11px;font-style:italic}
+.client-row-sector-empty{color:#8B5E3C;font-weight:600;font-size:11px;font-style:italic;text-decoration:underline dotted #8B5E3C;text-decoration-thickness:1px;text-underline-offset:2px}
+/* V18.37 — regroupement linked_dossiers : retirer margin-bottom sur cards dans un groupe. */
+.dossier-group .client-row-card{margin-bottom:0;border-radius:8px}
+.dossier-group > div:first-child .client-row-card{border-top-left-radius:10px;border-top-right-radius:10px}
+.dossier-group > div:last-child .client-row-card{border-bottom-left-radius:10px;border-bottom-right-radius:10px}
 .client-row-sector-urgent{color:#C04B20;font-weight:700}
 @media (min-width: 768px) {
   .client-row-sector{min-height:58px}
@@ -2871,6 +2875,38 @@ function IconPlus({size=22, color='currentColor'}) {
     </svg>
   );
 }
+// V18.37 — PhonePill : tel cliquable visuellement distinct (pill fond crème + icône Feather).
+// onClick stopPropagation critique pour ne pas déclencher ouverture dossier quand tap dans card.
+function PhonePill({tel, size = 'md', style}) {
+  if (!tel) return null;
+  const cleaned = String(tel).replace(/[^+0-9]/g, '');
+  const sizes = {
+    sm: {fontSize: 12, padding: '3px 8px', iconSize: 12, gap: 4},
+    md: {fontSize: 13, padding: '6px 10px', iconSize: 14, gap: 6},
+    lg: {fontSize: 14, padding: '7px 12px', iconSize: 15, gap: 6},
+  };
+  const s = sizes[size] || sizes.md;
+  return (
+    <a href={'tel:' + cleaned}
+      onClick={e => e.stopPropagation()}
+      onTouchStart={e => e.stopPropagation()}
+      style={Object.assign({
+        display: 'inline-flex', alignItems: 'center', gap: s.gap,
+        padding: s.padding, background: '#FDF8F0',
+        border: '1px solid #C9B79A', borderRadius: 20,
+        color: '#5C3B1E', textDecoration: 'none',
+        fontSize: s.fontSize, fontWeight: 500,
+        boxShadow: '0 1px 2px rgba(60,40,20,.08)',
+        whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+      }, style || {})}>
+      <svg width={s.iconSize} height={s.iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+      </svg>
+      {formatTelPretty(tel)}
+    </a>
+  );
+}
+
 // V18.36 — pill wrapper cohérent (fond crème + contour ovale) validé Philippe preview-header-v2 B.
 function PillIconButton({icon, onClick, title, active, style}) {
   return (
@@ -2947,6 +2983,123 @@ function isStandalonePWA() {
 }
 function isIOS() {
   return /iP(hone|od|ad)/.test(navigator.platform || '') || /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+}
+
+// V18.37 — AddCasquetteModal : liste 6 profils cliquables pour créer une casquette liée.
+// Les profils déjà pris (dossier actuel + linked_dossiers) sont grisés avec badge "actuel" /
+// "déjà créé". POST api/dossier_create.php action=add_casquette.
+function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onClose, onCreated}) {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  // Profils déjà pris dans le groupe (incluant source).
+  const linkedIds = Array.isArray(sourceDossier && sourceDossier.linked_dossiers) ? sourceDossier.linked_dossiers : [];
+  const takenMap = React.useMemo(() => {
+    const m = {};
+    m[currentProfil || 'Acheteur'] = {state: 'current', id: sourceId};
+    linkedIds.forEach(id => {
+      const c = (clients || []).find(x => x.id === id);
+      if (c && c.projet) m[c.projet] = {state: 'linked', id};
+    });
+    return m;
+  }, [linkedIds.join(','), currentProfil, sourceId]);
+
+  async function createCasquette(profil) {
+    if (takenMap[profil]) return;
+    if (!sourceId || String(sourceId).startsWith('tmp-')) {
+      setError('Enregistre d\'abord le dossier');
+      return;
+    }
+    setBusy(true); setError('');
+    const token = localStorage.getItem('ocre_token') || '';
+    try {
+      const r = await fetch(API + '/dossier_create.php?action=add_casquette', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Session-Token': token},
+        body: JSON.stringify({source_dossier_id: sourceId, new_profil: profil}),
+      });
+      const d = await r.json();
+      if (!d || !d.ok) {
+        setError((d && d.error) || 'Création échouée');
+        setBusy(false);
+        return;
+      }
+      // On reconstruit un objet client minimal pour navigation immédiate. L'app relira depuis API.
+      const newClient = Object.assign({}, sourceDossier, {
+        id: d.new_id,
+        projet: profil,
+        is_investisseur: profil === 'Investisseur',
+        linked_dossiers: d.linked_ids,
+        bien: {}, financement: {}, suivi: {},
+        prix_affiche: null, loyer_demande: null, loyer_max: null,
+        budget_max: null, budget_min: null,
+      });
+      onCreated && onCreated(newClient);
+    } catch (e) {
+      setError('Erreur réseau');
+    }
+    setBusy(false);
+  }
+
+  const PROFIL_LIST = ['Acheteur','Vendeur','Investisseur','Bailleur','Locataire','Curieux'];
+  const prenom = (sourceDossier && (sourceDossier.prenom || sourceDossier.societe_nom)) || 'ce client';
+  const nom = (sourceDossier && sourceDossier.nom) || '';
+
+  return (
+    <div onClick={onClose}
+      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      <div onClick={e => e.stopPropagation()}
+        style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:20, width:'100%', maxWidth:400, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 50px rgba(0,0,0,.25)'}}>
+        <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:19, fontWeight:700, color:'#8B5E3C', marginBottom:4}}>Ajouter une casquette</div>
+        <div style={{fontSize:13, color:'#2A2018', marginBottom:14}}>à <b>{prenom}{nom ? ' ' + nom : ''}</b></div>
+        <div style={{fontSize:11.5, color:'#8B7F6E', marginBottom:14, fontStyle:'italic'}}>
+          Les coordonnées (tel, email, adresse, résidence) sont copiées. Tu complèteras ensuite Section II/III/IV selon ce nouveau profil.
+        </div>
+
+        <div style={{display:'flex', flexDirection:'column', gap:8}}>
+          {PROFIL_LIST.map(p => {
+            const taken = takenMap[p];
+            const col = PROFILS[p] || '#8B5E3C';
+            const badge = BADGES[p] || p.slice(0, 3).toUpperCase();
+            const isTaken = !!taken;
+            return (
+              <button key={p} type="button" disabled={isTaken || busy}
+                onClick={() => createCasquette(p)}
+                style={{
+                  display:'flex', alignItems:'center', gap:10,
+                  padding:'10px 12px', background: isTaken ? '#F4EEE6' : '#fff',
+                  border:'1.5px solid ' + (isTaken ? '#D4C3A8' : col),
+                  borderRadius:10, cursor: isTaken || busy ? 'not-allowed' : 'pointer',
+                  opacity: isTaken ? .65 : 1, fontFamily:'inherit', textAlign:'left',
+                  width:'100%',
+                }}>
+                <div style={{width:30, height:30, borderRadius:7, background: col, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, flexShrink:0}}>{badge}</div>
+                <div style={{flex:1, minWidth:0}}>
+                  <div style={{fontSize:13, fontWeight:700, color:'#2A2018'}}>{p}</div>
+                </div>
+                {isTaken && (
+                  <div style={{fontSize:10, color: taken.state === 'current' ? '#8B5E3C' : '#5A4E3D', fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>
+                    {taken.state === 'current' ? 'Actuel' : 'Déjà créé'}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {error && (
+          <div style={{marginTop:12, padding:'8px 10px', background:'#FEE2E2', color:'#991B1B', borderRadius:7, fontSize:12, borderLeft:'3px solid #DC2626'}}>
+            ⚠ {error}
+          </div>
+        )}
+
+        <button type="button" onClick={onClose} disabled={busy}
+          style={{width:'100%', marginTop:14, padding:'9px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:9, fontWeight:600, fontSize:13, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit'}}>
+          {busy ? '⏳ Création…' : 'Annuler'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // V18.36 — Cross-referencing Option A (amorce) : panel "Cette annonce ailleurs" sous Section II.
@@ -4918,6 +5071,56 @@ function ListView(props) {
   const filtered = applySearchRank(profilFiltered, listSearch);
   const drafts = filtered.filter(c => c.is_draft);
   const contacts = filtered.filter(c => !c.is_draft);
+  // V18.37 — Union-Find sur linked_dossiers pour regrouper les casquettes d'un même client.
+  // Retourne [{ids:[id…], dossiers:[…], latest:ts}, …] trié par latest DESC, chaque groupe
+  // trié updated_at DESC. Les dossiers non liés forment des groupes solo.
+  function buildDossierGroups(list) {
+    const byId = {};
+    list.forEach(d => { byId[d.id] = d; });
+    const parent = {};
+    function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+    function union(a, b) { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; }
+    list.forEach(d => { parent[d.id] = d.id; });
+    list.forEach(d => {
+      const linked = Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [];
+      linked.forEach(lid => { if (byId[lid]) union(d.id, lid); });
+    });
+    const buckets = {};
+    list.forEach(d => {
+      const r = find(d.id);
+      (buckets[r] = buckets[r] || []).push(d);
+    });
+    const groups = Object.values(buckets).map(g => {
+      g.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+      return {
+        ids: g.map(x => x.id),
+        dossiers: g,
+        latest: g[0] && g[0].updated_at ? new Date(g[0].updated_at).getTime() : 0,
+      };
+    });
+    groups.sort((a, b) => b.latest - a.latest);
+    return groups;
+  }
+  const draftGroups = React.useMemo(() => buildDossierGroups(drafts), [drafts]);
+  const contactGroups = React.useMemo(() => buildDossierGroups(contacts), [contacts]);
+  const archiveGroups = React.useMemo(() => buildDossierGroups(filtered), [filtered]);
+  // Render helper : groupe teinté ocre léger + séparateur 1px entre cards si 2+ dossiers.
+  function renderGroup(g) {
+    if (g.dossiers.length === 1) {
+      const c = g.dossiers[0];
+      return <ClientRow key={'s-'+c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)}/>;
+    }
+    return (
+      <div key={'g-'+g.ids.join('-')} className="dossier-group"
+        style={{background:'rgba(214,178,135,.1)', borderRadius:12, padding:2, marginBottom:10, border:'1px solid #D4C3A8'}}>
+        {g.dossiers.map((c, i) => (
+          <div key={'gm-'+c.id} style={{borderTop: i === 0 ? 'none' : '1px solid #C9B79A'}}>
+            <ClientRow c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)}/>
+          </div>
+        ))}
+      </div>
+    );
+  }
   // Compteurs par profil (pour badge "(N)" sur chip si filtre actif).
   const countByProfil = React.useMemo(() => {
     const m = {};
@@ -4993,18 +5196,18 @@ function ListView(props) {
         {!showArchives && drafts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
-            {drafts.map(c => <ClientRow key={c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)}/>)}
+            {draftGroups.map(renderGroup)}
           </>
         )}
         {!showArchives && contacts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'12px 4px 6px'}}>Contacts · {contacts.length}</div>
-            {contacts.map(c => <ClientRow key={c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)}/>)}
+            {contactGroups.map(renderGroup)}
           </>
         )}
         {showArchives && (
           <>
-            {filtered.map(c => <ClientRow key={c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)}/>)}
+            {archiveGroups.map(renderGroup)}
             {filtered.length === 0 && <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:40}}>Aucune archive</div>}
           </>
         )}
@@ -5294,17 +5497,16 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         )}
         {primaryTel && primaryTel.valeur ? (
           tels.length > 1 ? (
-            <a href="#"
+            // Plusieurs tels : PhonePill ouvre le chooser au lieu d'appeler direct.
+            <button type="button"
               onClick={e => { e.preventDefault(); e.stopPropagation(); setTelChooser(true); }}
               onTouchStart={e => e.stopPropagation()}
-              className="client-row-tel">
-              📞 {formatTelPretty(primaryTel.valeur)} <span style={{fontSize:10, color:'#B26D3A'}}>(+{tels.length - 1})</span>
-            </a>
+              style={{background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:4, flexShrink:0}}>
+              <PhonePill tel={primaryTel.valeur} size="sm"/>
+              <span style={{fontSize:10, color:'#B26D3A', fontWeight:700}}>(+{tels.length - 1})</span>
+            </button>
           ) : (
-            <a href={'tel:' + primaryTel.valeur}
-              onClick={e => e.stopPropagation()}
-              onTouchStart={e => e.stopPropagation()}
-              className="client-row-tel">📞 {formatTelPretty(primaryTel.valeur)}</a>
+            <PhonePill tel={primaryTel.valeur} size="sm"/>
           )
         ) : (
           <button className="client-row-chip-add"
@@ -6125,6 +6327,8 @@ function FormView(props) {
     : null;
   const stagedContext = editing && editing.import_source_context;
   const [imageOverlay, setImageOverlay] = useState(false);
+  // V18.37 — modal "+ Ajouter une casquette" (créer nouveau dossier avec mêmes coordonnées).
+  const [addCasquetteOpen, setAddCasquetteOpen] = useState(false);
   // V18.25 — responsive : <420px les boutons footer Archiver/Supprimer affichent l'icône seule.
   const [smallScreen, setSmallScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 420);
   useEffect(() => {
@@ -6362,13 +6566,13 @@ function FormView(props) {
     const sec1Line1 = sec1Name
       ? (<span><b style={{color:'#2A2018'}}>{sec1Name}</b>{sec1Society ? <span style={{fontStyle:'italic', color:'#8B7F6E'}}> · {sec1Society}</span> : null}</span>)
       : <span style={{fontStyle:'italic', color:'#B5A78F'}}>Sans nom</span>;
-    const sec1Tel = tels[0] && tels[0].valeur ? formatTelPretty(tels[0].valeur) : '';
+    const sec1TelRaw = tels[0] && tels[0].valeur ? tels[0].valeur : '';
     const sec1Email = emails[0] && emails[0].valeur ? emails[0].valeur : '';
-    const sec1Line2 = (sec1Tel || sec1Email) ? (
-      <span>
-        {sec1Tel && <span>📞 {sec1Tel}</span>}
-        {sec1Tel && sec1Email && <span> · </span>}
-        {sec1Email && <span>✉ {sec1Email}</span>}
+    // V18.37 — tel en PhonePill cliquable (size sm).
+    const sec1Line2 = (sec1TelRaw || sec1Email) ? (
+      <span style={{display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+        {sec1TelRaw && <PhonePill tel={sec1TelRaw} size="sm"/>}
+        {sec1Email && <span style={{fontSize:12}}>✉ {sec1Email}</span>}
       </span>
     ) : null;
     const sec1Ville = d.ville || '';
@@ -6795,6 +6999,21 @@ function FormView(props) {
           )}
           <CustomFieldList sectionKey="client" d={d} set={set}/>
           <button onClick={() => commitAndNext(0)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Section II →</button>
+
+          {/* V18.37 — bouton "Ajouter une casquette" : crée un nouveau dossier avec les mêmes
+              coordonnées et un autre profil. Bascule v17.15 en haut Section I conservée. */}
+          {editing && editing.id && !String(editing.id).startsWith('tmp-') && (
+            <>
+              <button type="button" onClick={() => setAddCasquetteOpen(true)}
+                style={{width:'100%', padding:'12px 16px', marginTop:16, background:'#FDF8F0', border:'1.5px dashed #8B5E3C', borderRadius:10, color:'#5C3B1E', fontSize:14, fontWeight:600, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8}}>
+                <IconPlus size={16}/>
+                <span>Ajouter une casquette à {d.prenom || d.societe_nom || 'ce client'}</span>
+              </button>
+              <div style={{fontSize:11.5, color:'#8B7F6E', textAlign:'center', marginTop:6, lineHeight:1.45, fontStyle:'italic'}}>
+                Crée un nouveau dossier avec ces mêmes coordonnées et un autre profil (Acheteur, Vendeur, Investisseur…).
+              </div>
+            </>
+          )}
         </Stage>
 
         </div>
@@ -6936,6 +7155,18 @@ function FormView(props) {
 
       {toast && <Toast msg={toast}/>}
       {shareOpen && <ShareMenu dossierId={editing && editing.id} dossierName={dossierName} onClose={() => setShareOpen(false)} showToast={showToast}/>}
+      {addCasquetteOpen && (
+        <AddCasquetteModal
+          sourceDossier={d} sourceId={editing && editing.id}
+          clients={clients} currentProfil={activeProfil}
+          onClose={() => setAddCasquetteOpen(false)}
+          onCreated={(newClient) => {
+            setAddCasquetteOpen(false);
+            showToast && showToast('✓ Casquette ' + newClient.projet + ' créée');
+            // Navigate vers le nouveau dossier.
+            if (openExistingDossier) openExistingDossier(newClient);
+          }}/>
+      )}
     </div>
   );
 }
