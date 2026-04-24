@@ -363,6 +363,16 @@ switch ($action) {
         jsonOk(['id' => $id, 'archived' => (bool)$archived]);
     }
 
+    case 'unarchive': {
+        // V43 — alias action=unarchive pour désarchivage explicite. Equivaut à
+        // archive avec archived=0.
+        $id = (int)($input['id'] ?? 0);
+        if (!$id) jsonError('id requis');
+        $stmt = db()->prepare("UPDATE clients SET archived = 0 WHERE id = ? AND user_id = ?");
+        $stmt->execute([$id, $user['id']]);
+        jsonOk(['id' => $id, 'archived' => false]);
+    }
+
     // V17.1 fix-ux-3 — suggestions basées sur les saisies antérieures de l'utilisateur.
     case 'suggest_city': {
         $q = trim((string)($_GET['q'] ?? ''));
