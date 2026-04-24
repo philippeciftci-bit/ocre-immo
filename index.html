@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v43-fixes -->
+<!-- ocre-v44-group-restore -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -6778,7 +6778,14 @@ function ListView(props) {
         style={{background:'rgba(214,178,135,.1)', borderRadius:12, padding:2, marginBottom:10, border:'1px solid #D4C3A8'}}>
         {g.dossiers.map((c, i) => (
           <div key={'gm-'+c.id} style={{borderTop: i === 0 ? 'none' : '1px solid #C9B79A'}}>
-            <ClientRow c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)}/>
+            <ClientRow c={c} clients={clients}
+              isGrouped={true}
+              isFirstInGroup={i === 0}
+              isLastInGroup={i === g.dossiers.length - 1}
+              matchInfo={matchesById && matchesById[c.id]}
+              onOpenMatches={() => openMatchModal(c.id)}
+              onOpenSection={openClientAtSection}
+              onClick={() => openClient(c)}/>
           </div>
         ))}
       </div>
@@ -7027,7 +7034,7 @@ function MatchModal({clientId, clients, findClientById, setEditingFromMatch, onC
 // V18.15 — ClientRow 3 lignes : header teinté profil (ligne 1) + grid 3 secteurs cliquables (lignes 2-3).
 // Tap header hors tel → ouvre dossier. Tap secteur → ouvre Section II/III/IV du dossier.
 // Préserve v18.2 navigation par section (initialExpandedSection 1/2/3).
-function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection}) {
+function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection, isGrouped, isFirstInGroup, isLastInGroup}) {
   const [telChooser, setTelChooser] = React.useState(false);
   const profil = c.projet || c.profil_detecte || 'Acheteur';
   const col = PROFILS[profil] || PROFILS.Acheteur;
@@ -7228,8 +7235,19 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     setSwipeStart(null);
   }
 
+  // V44 — Regroupement visuel : à l'intérieur d'un groupe de dossiers du même client,
+  // marginBottom 0 (les bordures internes du group container séparent les rows).
+  // borderRadius adaptatif selon position dans le groupe (premier / milieu / dernier).
+  const wrapperRadius = !isGrouped
+    ? 14
+    : (isFirstInGroup && isLastInGroup
+        ? 14
+        : (isFirstInGroup ? '10px 10px 0 0'
+           : (isLastInGroup ? '0 0 10px 10px'
+              : 0)));
+  const wrapperMargin = isGrouped ? 0 : 10;
   return (
-    <div style={{position:'relative', overflow:'hidden', borderRadius:14, marginBottom:10, background:'transparent'}}>
+    <div style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent'}}>
       {/* V43 — Bouton archive révélé sous la row à droite. Cliquable uniquement
           quand swipeX suffisamment négatif (au moins -60) pour éviter tap accidentel. */}
       <button type="button"
