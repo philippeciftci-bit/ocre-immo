@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.35-no-pwa-compact-import -->
+<!-- ocre-v18.36-logo-v1-header-crossref -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2871,6 +2871,28 @@ function IconPlus({size=22, color='currentColor'}) {
     </svg>
   );
 }
+// V18.36 — pill wrapper cohérent (fond crème + contour ovale) validé Philippe preview-header-v2 B.
+function PillIconButton({icon, onClick, title, active, style}) {
+  return (
+    <button type="button" onClick={onClick} title={title}
+      style={Object.assign({
+        border: '1px solid #C9B79A',
+        background: active ? '#F4ECE3' : '#FDF8F0',
+        padding: '6px 10px',
+        borderRadius: 20,
+        color: active ? '#8B5E3C' : '#5C3B1E',
+        cursor: 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '0 1px 2px rgba(60,40,20,.08)',
+        fontFamily: 'inherit',
+        flexShrink: 0,
+      }, style || {})}>
+      {icon}
+    </button>
+  );
+}
 // Alias nomenclature Philippe v18.28.
 const IconShare = ShareIcon;
 const IconDownload = DownloadIcon;
@@ -2925,6 +2947,124 @@ function isStandalonePWA() {
 }
 function isIOS() {
   return /iP(hone|od|ad)/.test(navigator.platform || '') || /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+}
+
+// V18.36 — Cross-referencing Option A (amorce) : panel "Cette annonce ailleurs" sous Section II.
+// Backend api/cross_search.php appelle Claude web_search. Manuel via bouton, auto v18.37+.
+function CrossRefPanel({d, dossierId, onMatchesUpdate, showToast}) {
+  const [loading, setLoading] = React.useState(false);
+  const matches = Array.isArray(d && d.cross_matches) ? d.cross_matches : [];
+  const lastSearched = d && d.cross_search_last_at;
+
+  function fmtPrice(p, cur) {
+    const x = Number(p);
+    if (!x) return '—';
+    const label = cur === 'EUR' ? '€' : (cur || '');
+    if (label === '€') {
+      if (x >= 1000000) return (x / 1000000).toFixed(x % 1000000 === 0 ? 0 : 1).replace('.', ',') + ' M€';
+      if (x >= 1000) return Math.round(x / 1000) + 'k€';
+      return x.toLocaleString('fr-FR') + ' €';
+    }
+    return x.toLocaleString('fr-FR') + ' ' + label;
+  }
+  function fmtDelta(pct) {
+    if (pct == null) return '';
+    const sign = pct > 0 ? '+' : '';
+    return sign + pct.toFixed(0) + '%';
+  }
+  function deltaColor(pct) {
+    if (pct == null) return '#8B7F6E';
+    if (pct > 0) return '#C04B20';       // plus cher
+    if (pct < 0) return '#3E8B5E';       // moins cher (bonne affaire)
+    return '#8B7F6E';
+  }
+  const prices = matches.map(m => Number(m.price_found)).filter(n => !!n);
+  const pMin = prices.length ? Math.min(...prices) : null;
+  const pMax = prices.length ? Math.max(...prices) : null;
+  const pMed = prices.length ? [...prices].sort((a, b) => a - b)[Math.floor(prices.length / 2)] : null;
+  const curRef = matches[0] && matches[0].currency_found;
+
+  async function runSearch() {
+    if (!dossierId || String(dossierId).startsWith('tmp-')) {
+      showToast && showToast('Enregistrez d\'abord le dossier');
+      return;
+    }
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('ocre_token') || '';
+      const r = await fetch(API + '/cross_search.php?action=search&id=' + encodeURIComponent(dossierId), {
+        method: 'POST',
+        headers: {'X-Session-Token': token},
+      });
+      const j = await r.json();
+      if (j && j.ok) {
+        onMatchesUpdate && onMatchesUpdate(j.matches || [], j.searched_at);
+        if ((j.matches || []).length === 0) showToast && showToast('Aucune annonce trouvée');
+        else showToast && showToast('✓ ' + j.matches.length + ' annonce' + (j.matches.length > 1 ? 's' : '') + ' trouvée' + (j.matches.length > 1 ? 's' : ''));
+      } else {
+        showToast && showToast((j && j.error) || 'Recherche échouée');
+      }
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:12, marginTop:12, marginBottom:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(139,94,60,.06)'}}>
+      <div style={{padding:'12px 14px', background:'#FDFAF4', borderBottom:'1px solid #E0CDAE', display:'flex', alignItems:'center', gap:8}}>
+        <span style={{fontSize:16}}>🔍</span>
+        <div style={{flex:1, minWidth:0}}>
+          <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:15, fontWeight:700, color:'#8B5E3C', lineHeight:1.2}}>Cette annonce ailleurs{matches.length > 0 ? ' (' + matches.length + ')' : ''}</div>
+          {lastSearched && (
+            <div style={{fontSize:10, color:'#8B7F6E', marginTop:1}}>Dernière recherche : {String(lastSearched).replace('T', ' ').slice(0, 16)}</div>
+          )}
+        </div>
+      </div>
+      <div style={{padding:14}}>
+        {matches.length === 0 ? (
+          <>
+            <div style={{fontSize:12.5, color:'#5A4E3D', lineHeight:1.5, marginBottom:10}}>
+              Cherche si ce bien apparaît sur d'autres sites (Mubawab, Vaneau, Leboncoin, SeLoger, Facebook…). Utile pour comparer les prix et détecter les republications.
+            </div>
+            <button type="button" onClick={runSearch} disabled={loading}
+              style={{width:'100%', padding:'11px', background: loading ? '#BBA88B' : 'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor: loading ? 'wait' : 'pointer', fontFamily:'inherit'}}>
+              {loading ? '⏳ Recherche en cours ~15s…' : '🔍 Chercher sur d\'autres sites'}
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{display:'flex', flexDirection:'column', gap:6, marginBottom:10}}>
+              {matches.map((m, i) => (
+                <a key={i} href={m.source_url} target="_blank" rel="noopener noreferrer"
+                  style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px', background:'#FDFAF4', border:'1px solid #E0CDAE', borderRadius:9, textDecoration:'none', color:'inherit', cursor:'pointer'}}>
+                  <div style={{flex:1, minWidth:0}}>
+                    <div style={{fontSize:12, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{m.source_domain || 'Lien'}</div>
+                    {m.title_found && <div style={{fontSize:11, color:'#5A4E3D', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{m.title_found}</div>}
+                  </div>
+                  <div style={{textAlign:'right', flexShrink:0}}>
+                    <div style={{fontSize:12, fontWeight:700, color:'#2A2018'}}>{fmtPrice(m.price_found, m.currency_found)}</div>
+                    {m.price_delta_pct != null && (
+                      <div style={{fontSize:10, fontWeight:700, color: deltaColor(m.price_delta_pct)}}>{fmtDelta(m.price_delta_pct)}</div>
+                    )}
+                  </div>
+                  <div style={{color:'#8B7F6E', fontSize:14, flexShrink:0}}>↗</div>
+                </a>
+              ))}
+            </div>
+            {prices.length > 1 && (
+              <div style={{fontSize:11, color:'#5A4E3D', padding:'6px 8px', background:'#F4EEE6', borderRadius:7, marginBottom:10, display:'flex', justifyContent:'space-between', gap:6}}>
+                <span>Écart : <b>{fmtPrice(pMin, curRef)}</b> → <b>{fmtPrice(pMax, curRef)}</b></span>
+                <span>médiane <b>{fmtPrice(pMed, curRef)}</b></span>
+              </div>
+            )}
+            <button type="button" onClick={runSearch} disabled={loading}
+              style={{width:'100%', padding:'9px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:9, fontWeight:600, fontSize:12, cursor: loading ? 'wait' : 'pointer', fontFamily:'inherit'}}>
+              {loading ? '⏳ Recherche…' : '🔄 Relancer la recherche'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // V18.32 — Modal "Partager mes dossiers" : preview + bouton Générer → ZIP autonome.
@@ -4609,34 +4749,32 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
   );
 }
 
-// V18.33 — logo "Oi" : 2 lettres côte à côte, mini-réplique du titre OCRE immo.
-// "O" Cormorant 700 brun foncé (cohérent OCRE) + "i" Caveat 500 noir (cohérent immo).
-// Gradient + border + shadows v18.28 conservés (sommet brun quasi-noir détaché).
-// Fix demande Philippe mal interprétée en v18.19 ("Oi" et pas "i" seul).
+// V18.36 — OcreLogo variante 1 (validée Philippe preview-logo-v5) : ciel blanc haut → crème
+// intermédiaire → terre ocre bas. O Cormorant ocre cohérent "OCRE", i Caveat noir cohérent
+// "immo". Pas de box-shadow qui assombrirait le ciel blanc.
 function OcreLogo({size = 36}) {
   return (
     <div style={{
       width: size, height: size, borderRadius: 8,
-      border: '2.5px solid #3D2515',
-      background: 'linear-gradient(to bottom, #3D2515 0%, #5C3B1E 20%, #8B5E3C 55%, #F4E4CC 100%)',
-      boxShadow: '0 1px 3px rgba(60,40,20,.35), inset 0 3px 8px rgba(0,0,0,.2)',
+      border: '2px solid #8B5E3C',
+      background: 'linear-gradient(to bottom, #FFFFFF 0%, #F5E8D1 40%, #8B5E3C 100%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0, position: 'relative', gap: 1,
+      flexShrink: 0, gap: Math.max(1, Math.round(size * 0.05)),
     }}>
       <span style={{
         fontFamily: '"Cormorant Garamond", serif',
         fontWeight: 700,
-        fontSize: Math.round(size * 0.55),
-        color: '#2A1810',
+        fontSize: Math.round(size * 0.52),
+        color: '#8B5E3C',
         lineHeight: 1,
       }}>O</span>
       <span style={{
         fontFamily: '"Caveat", cursive',
         fontWeight: 500,
-        fontSize: Math.round(size * 0.75),
-        color: '#1A1410',
+        fontSize: Math.round(size * 0.67),
+        color: '#0D0A08',
         lineHeight: 1,
-        marginTop: Math.round(size * 0.06),
+        marginTop: Math.round(size * 0.03),
       }}>i</span>
     </div>
   );
@@ -4797,32 +4935,27 @@ function ListView(props) {
         left={<OcreLogo size={36}/>}
         center={<OcreTitle/>}
         right={
-          <div style={{display:'flex', alignItems:'center', gap:2}}>
-            {/* V18.31 — header droite : IconShare pour partage global (placeholder modal).
-                Le compteur staged reste uniquement sur le FAB bottom → plus de doublon visuel
-                avec l'icône download du FAB. */}
-            <button onClick={() => props.openSharePlaceholder && props.openSharePlaceholder()}
-              title="Partager mes dossiers"
-              style={{background:'none', border:'none', cursor:'pointer', padding:4, color:'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}>
-              <ShareIcon size={20}/>
-            </button>
-            <button onClick={toggleSearch}
-              style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (showSearch || listSearch) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
-              title={showSearch ? 'Fermer la recherche' : 'Rechercher un dossier'}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <div style={{display:'flex', alignItems:'center', gap:8}}>
+            {/* V18.36 — PillIconButton cohérent (fond crème + contour ovale) pour les 3 actions
+                header droite : Share (placeholder modal), Search (toggle SearchBar), Archive toggle. */}
+            <PillIconButton icon={<ShareIcon size={18}/>} title="Partager mes dossiers"
+              onClick={() => props.openSharePlaceholder && props.openSharePlaceholder()}/>
+            <PillIconButton icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-            </button>
-            <button onClick={() => setShowArchives(!showArchives)} style={{background:'none', border:'none', cursor:'pointer', padding:4, color: showArchives ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
-              title={showArchives ? 'Retour aux contacts' : 'Voir les archives'}>
-              {showArchives ? (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            } title={showSearch ? 'Fermer la recherche' : 'Rechercher un dossier'}
+              active={showSearch || !!listSearch}
+              onClick={toggleSearch}/>
+            <PillIconButton icon={
+              showArchives ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="20" y1="12" x2="4" y2="12"/><polyline points="10 18 4 12 10 6"/>
                 </svg>
-              ) : (
-                <ArchiveIcon size={20} color="currentColor"/>
-              )}
-            </button>
+              ) : <ArchiveIcon size={18} color="currentColor"/>
+            } title={showArchives ? 'Retour aux contacts' : 'Voir les archives'}
+              active={showArchives}
+              onClick={() => setShowArchives(!showArchives)}/>
           </div>
         }
         userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs}
@@ -5840,13 +5973,13 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
           <DownloadIcon size={20} color="#8B5E3C"/>
           <span>Téléchargements</span>
         </div>
-        <button onClick={toggleSearch}
-          style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (showSearch || searchValue) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
-          title={showSearch ? 'Fermer la recherche' : 'Rechercher'}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <PillIconButton icon={
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-        </button>
+        } title={showSearch ? 'Fermer la recherche' : 'Rechercher'}
+          active={showSearch || !!searchValue}
+          onClick={toggleSearch}/>
       </div>
       <SearchBar open={showSearch} value={searchInput} onChange={setSearchInput}
         placeholder="Rechercher dans les téléchargements…"/>
@@ -6508,15 +6641,17 @@ function FormView(props) {
             </div>
           )}
         </div>
-        {/* V18.27 — loupe dossier. */}
-        <button onClick={toggleFormSearch}
-          title={formSearchOpen ? 'Fermer la recherche' : 'Rechercher dans le dossier'}
-          style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (formSearchOpen || formSearchQuery) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </button>
-        <button onClick={openShare} style={{background:'none', border:'none', cursor:'pointer', padding:4, flexShrink:0}} title="Partager"><ShareIcon/></button>
+        {/* V18.36 — PillIconButton cohérent (loupe dossier + partager dossier). */}
+        <div style={{display:'flex', alignItems:'center', gap:8, flexShrink:0}}>
+          <PillIconButton icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          } title={formSearchOpen ? 'Fermer la recherche' : 'Rechercher dans le dossier'}
+            active={formSearchOpen || !!formSearchQuery}
+            onClick={toggleFormSearch}/>
+          <PillIconButton icon={<ShareIcon size={18}/>} title="Partager" onClick={openShare}/>
+        </div>
       </div>
       {/* V18.27 — Barre de recherche dossier avec compteur. */}
       <div className={'search-bar-wrap ' + (formSearchOpen ? 'open' : 'closed')}>
@@ -6671,6 +6806,18 @@ function FormView(props) {
             showToast={showToast}/>
           <button onClick={() => commitAndNext(1)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Section III →</button>
         </Stage>}
+
+        {/* V18.36 — Cross-referencing Option A (amorce) : panel manuel sous Section II. */}
+        {activeProfil !== 'Curieux' && editing && editing.id && !String(editing.id).startsWith('tmp-') && (
+          <CrossRefPanel d={d} dossierId={editing.id}
+            showToast={showToast}
+            onMatchesUpdate={(matches, searchedAt) => {
+              // Update local state d + persiste via commit (auto-save debounce).
+              const next = {...d, cross_matches: matches, cross_search_last_at: searchedAt};
+              setD(next);
+              handleSaveLocal(next);
+            }}/>
+        )}
 
         {/* V17.6 Section III : FinancementForm pour Acheteur/Investisseur, fields legacy pour Vendeur/Bailleur/Locataire, masqué pour Curieux. */}
         </div>
