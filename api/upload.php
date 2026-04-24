@@ -98,6 +98,11 @@ switch ($action) {
             jsonError('Limite atteinte (30 photos max par bien)', 409);
         }
 
+        // V18.39 — quotas globaux : 500 Mo total photos par user (100/dossier déjà couvert
+        // par UPLOAD_MAX_PER_DOSSIER=30). Envoie 413 + exit si dépassé.
+        require_once __DIR__ . '/_security.php';
+        checkPhotoQuota((int) $user['id'], count($existing), (int) $f['size']);
+
         $ext = UPLOAD_EXT_MAP[$mime];
         // V17.6 Section III : prefix doc-<slug> si document_type fourni (classement par catégorie).
         $doc_type = trim((string)($_POST['document_type'] ?? ''));

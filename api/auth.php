@@ -51,19 +51,42 @@ switch ($action) {
     }
 
     case 'login': {
+        require_once __DIR__ . '/_security.php';
         $email = strtolower(trim($input['email'] ?? ''));
         $pwd   = (string)($input['password'] ?? '');
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) jsonError('Email invalide');
         if (!$pwd) jsonError('Mot de passe requis');
+
+        // V18.39 — lockout 5 fails / 15 min par (email, ip).
+        $lockedUntil = checkLoginLockout($email);
+        if ($lockedUntil) {
+            $retry = max(0, $lockedUntil - time());
+            header('Retry-After: ' . $retry);
+            http_response_code(429);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'ok' => false,
+                'error' => 'Trop d\'échecs — réessaie dans ' . ceil($retry / 60) . ' min.',
+                'retry_after_sec' => $retry,
+                'locked_until' => date('c', $lockedUntil),
+            ]);
+            exit;
+        }
+
         $stmt = db()->prepare("SELECT * FROM users WHERE email = ? LIMIT 1");
         $stmt->execute([$email]);
         $u = $stmt->fetch();
-        if (!$u) jsonError('Identifiants invalides', 401);
-        if ((int)$u['active'] !== 1) jsonError('Compte désactivé', 403);
+        if (!$u) { recordLoginAttempt($email, false); logAccess(null, 'login_fail', ['email' => $email, 'reason' => 'unknown_email']); jsonError('Identifiants invalides', 401); }
+        if ((int)$u['active'] !== 1) { logAccess((int)$u['id'], 'login_blocked', ['reason' => 'inactive']); jsonError('Compte désactivé', 403); }
         if ($u['password_hash'] === 'PLACEHOLDER') {
             jsonError('Mot de passe non défini', 403, ['needs_password' => true]);
         }
-        if (!password_verify($pwd, $u['password_hash'])) jsonError('Identifiants invalides', 401);
+        if (!password_verify($pwd, $u['password_hash'])) {
+            recordLoginAttempt($email, false);
+            logAccess((int)$u['id'], 'login_fail', ['email' => $email, 'reason' => 'wrong_password']);
+            jsonError('Identifiants invalides', 401);
+        }
+        recordLoginAttempt($email, true); // reset compteur
         $token = bin2hex(random_bytes(32));
         $ip = $_SERVER['REMOTE_ADDR'] ?? '';
         $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
@@ -74,6 +97,7 @@ switch ($action) {
         $stmt->execute([$token, $u['id'], SESSION_DURATION, $ip, $ua]);
         db()->prepare("UPDATE users SET last_login = NOW() WHERE id = ?")->execute([$u['id']]);
         logAction((int)$u['id'], 'login');
+        logAccess((int)$u['id'], 'login_ok');
         jsonOk([
             'token' => $token,
             'user' => [

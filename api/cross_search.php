@@ -141,11 +141,14 @@ function sanitizeMatches(array $matches): array {
 }
 
 $user = requireAuth();
+require_once __DIR__ . '/_security.php';
 $action = $_GET['action'] ?? '';
 
 switch ($action) {
 
     case 'search': {
+        // V18.39 — rate limit cross_search : 50 / heure par user.
+        checkRateLimit('cross_search', 50, 3600, (int) $user['id']);
         $id = (int) ($_GET['id'] ?? 0);
         if (!$id) jsonError('id requis', 400);
 

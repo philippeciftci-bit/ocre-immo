@@ -352,6 +352,9 @@ function claudeStructure($html, $url, $apiKey) {
 
 switch ($action) {
     case 'extract': {
+        require_once __DIR__ . '/_security.php';
+        // V18.39 — rate limit 30 / heure par user.
+        checkRateLimit('import_url', 30, 3600, (int) $user['id']);
         $url = trim((string)($input['url'] ?? ''));
         // V17.15 I3 : plus de whitelist, toute URL http/https FQDN valide acceptée.
         if (!$url || !urlValid($url)) jsonError('URL invalide');

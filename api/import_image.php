@@ -193,6 +193,9 @@ $action = $_GET['action'] ?? ($_POST['action'] ?? '');
 switch ($action) {
 
     case 'extract': {
+        require_once __DIR__ . '/_security.php';
+        // V18.39 — rate limit 30 / heure par user.
+        checkRateLimit('import_image', 30, 3600, (int) $user['id']);
         if (!isset($_FILES['image'])) jsonError('champ image (multipart) manquant', 400);
         $apiKey = anthropicKey();
         if (!$apiKey) jsonError('Clé Anthropic non configurée — voir /admin/ → API', 503);

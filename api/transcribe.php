@@ -5,6 +5,9 @@ require_once __DIR__ . '/db.php';
 setCorsHeaders();
 
 $user = requireAuth();
+require_once __DIR__ . '/_security.php';
+// V18.39 — rate limit 60 / heure par user.
+checkRateLimit('whisper', 60, 3600, (int) $user['id']);
 
 $endpoint = getSetting('whisper_endpoint', 'https://46-225-215-148.sslip.io/whisper/transcribe');
 $secret = getSetting('whisper_shared_secret', '');
