@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.28-logo-icons-bg -->
+<!-- ocre-v18.31-header-share-icon -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -33,6 +33,7 @@ body{font-family:'DM Sans',sans-serif;background:#F0E8D8;color:#2A2018;overflow:
 ::-webkit-scrollbar{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ocreBounce{0%,100%{transform:translateY(0);opacity:.7}50%{transform:translateY(-3px);opacity:1}}
 
 /* V17.4 UX v3 : densité mobile — labels, cartes, tuiles, chips. */
 label.ocre-lbl{display:block;font-size:11px;font-weight:600;color:#8B7F6E;margin-bottom:4px;text-transform:uppercase;letter-spacing:1.2px}
@@ -2917,23 +2918,94 @@ function isIOS() {
   return /iP(hone|od|ad)/.test(navigator.platform || '') || /iPad|iPhone|iPod/.test(navigator.userAgent || '');
 }
 
-function InstallPwaBanner({onClose, aboveActionBar}) {
-  const ios = isIOS();
-  // V18.5 — si la barre d'actions est visible (vue liste), pousser le bandeau au-dessus.
-  const bottomOffset = aboveActionBar ? 'calc(80px + env(safe-area-inset-bottom, 0px))' : '0';
+// V18.30 — Système AlertBanner global : 4 types (urgent/warning/info/success), sticky sous
+// header, dismissible, actions CTA inline. InstallPwaBanner v18.5 retiré (remplacé par
+// AlertBanner + PWAInstallOverlay).
+const ALERT_PALETTE = {
+  urgent:  {bg:'#FEE2E2', border:'#DC2626', text:'#991B1B', icon:'⚠'},
+  warning: {bg:'#FEF3C7', border:'#F59E0B', text:'#92400E', icon:'⚠'},
+  info:    {bg:'#DBEAFE', border:'#2563EB', text:'#1E40AF', icon:'ℹ'},
+  success: {bg:'#D1FAE5', border:'#059669', text:'#065F46', icon:'✓'},
+};
+function AlertBanner({type = 'info', icon, title, message, dismissible = true, onDismiss, onClick, actions}) {
+  const p = ALERT_PALETTE[type] || ALERT_PALETTE.info;
+  const iconNode = icon || p.icon;
+  function stop(e, fn) { e.stopPropagation(); if (fn) fn(); }
   return (
-    <div style={{position:'fixed', bottom:bottomOffset, left:0, right:0, background:'#FBF1E4', borderTop:'2px solid #B26D3A', padding:'12px 14px', zIndex:50, fontSize:13, color:'#2A2018', boxShadow:'0 -4px 12px rgba(0,0,0,.08)'}}>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10}}>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:700, color:'#8B5E3C', marginBottom:4}}>📲 Installer Ocre sur l'écran d'accueil</div>
-          {ios ? (
-            <div style={{lineHeight:1.4, color:'#5C4A3A'}}>Tape <span style={{fontWeight:700}}>Partager</span> ⬆ en bas, puis <span style={{fontWeight:700}}>« Sur l'écran d'accueil »</span>. Indispensable pour recevoir les rappels de RDV en notifications.</div>
-          ) : (
-            <div style={{lineHeight:1.4, color:'#5C4A3A'}}>Menu navigateur → <span style={{fontWeight:700}}>Installer l'application</span>. Permet de recevoir les rappels de RDV en notifications natives.</div>
-          )}
+    <div onClick={onClick}
+      style={{background: p.bg, borderLeft: '4px solid ' + p.border, padding: '10px 14px', color: p.text, fontSize: 13, display: 'flex', alignItems: 'flex-start', gap: 10, cursor: onClick ? 'pointer' : 'default'}}>
+      {iconNode && (
+        <div style={{fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 1}}>{iconNode}</div>
+      )}
+      <div style={{flex: 1, minWidth: 0}}>
+        {title && <div style={{fontWeight: 700, fontSize: 13, lineHeight: 1.3}}>{title}</div>}
+        {message && <div style={{fontSize: 12, lineHeight: 1.4, marginTop: title ? 2 : 0}}>{message}</div>}
+        {Array.isArray(actions) && actions.length > 0 && (
+          <div style={{display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap'}}>
+            {actions.map((a, i) => (
+              <button key={i} onClick={e => stop(e, a.onClick)}
+                style={{padding: '6px 12px', background: a.primary ? p.border : 'transparent', color: a.primary ? '#fff' : p.text, border: a.primary ? 'none' : ('1px solid ' + p.border), borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit'}}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {dismissible && (
+        <button onClick={e => stop(e, onDismiss)} title="Fermer"
+          style={{background: 'none', border: 'none', color: p.text, fontSize: 16, cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0, opacity: .7, fontFamily: 'inherit'}}>
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+// V18.30 — Overlay PWA install iOS : 3 étapes visuelles avec flèches animées (Apple verrouille
+// l'auto-install, donc guide manuel obligatoire). Pour Android : pas besoin d'overlay, l'event
+// beforeinstallprompt déclenche l'install natif en 1 tap.
+function PWAInstallOverlay({onClose}) {
+  return (
+    <div onClick={onClose}
+      style={{position: 'fixed', inset: 0, background: 'rgba(20,15,10,.85)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18}}>
+      <div onClick={e => e.stopPropagation()}
+        style={{background: '#fff', borderRadius: 18, maxWidth: 420, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '22px 20px', boxShadow: '0 20px 60px rgba(0,0,0,.4)'}}>
+        <div style={{textAlign: 'center', marginBottom: 18}}>
+          <div style={{fontFamily: 'Cormorant Garamond, serif', fontSize: 22, fontWeight: 700, color: '#8B5E3C', marginBottom: 4}}>Installer Ocre sur votre iPhone</div>
+          <div style={{fontSize: 12, color: '#8B7F6E'}}>3 étapes rapides pour recevoir les rappels RDV en notifications natives.</div>
         </div>
-        <button type="button" onClick={onClose} aria-label="Fermer"
-          style={{flexShrink:0, background:'none', border:'none', color:'#8B5E3C', fontSize:20, cursor:'pointer', padding:'0 4px', fontFamily:'inherit', lineHeight:1}}>×</button>
+
+        <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
+          {/* Étape 1 */}
+          <div style={{display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, background: '#FDF8F0', border: '1px solid #EDE6DC', borderRadius: 12}}>
+            <div style={{width: 30, height: 30, borderRadius: 15, background: '#8B5E3C', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, flexShrink: 0}}>1</div>
+            <div style={{flex: 1}}>
+              <div style={{fontWeight: 700, fontSize: 14, color: '#2A2018', marginBottom: 4}}>Appuyez sur <span style={{color: '#8B5E3C'}}>Partager</span></div>
+              <div style={{fontSize: 12, color: '#5A4E3D', lineHeight: 1.5}}>En bas de Safari, tapez l'icône <span style={{display: 'inline-block', width: 22, height: 22, verticalAlign: 'middle', background: '#F4ECE3', border: '1px solid #BBA88B', borderRadius: 4, lineHeight: '20px', textAlign: 'center', fontSize: 14, color: '#8B5E3C', fontWeight: 700, margin: '0 2px', animation: 'ocreBounce 1.6s ease-in-out infinite'}}>⎙</span> (carré avec flèche vers le haut).</div>
+            </div>
+          </div>
+          {/* Étape 2 */}
+          <div style={{display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, background: '#FDF8F0', border: '1px solid #EDE6DC', borderRadius: 12}}>
+            <div style={{width: 30, height: 30, borderRadius: 15, background: '#8B5E3C', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, flexShrink: 0}}>2</div>
+            <div style={{flex: 1}}>
+              <div style={{fontWeight: 700, fontSize: 14, color: '#2A2018', marginBottom: 4}}>Choisissez « <span style={{color: '#8B5E3C'}}>Sur l'écran d'accueil</span> »</div>
+              <div style={{fontSize: 12, color: '#5A4E3D', lineHeight: 1.5}}>Dans le menu partage iOS, faites défiler et tapez <b>➕ Sur l'écran d'accueil</b>.</div>
+            </div>
+          </div>
+          {/* Étape 3 */}
+          <div style={{display: 'flex', gap: 12, alignItems: 'flex-start', padding: 12, background: '#FDF8F0', border: '1px solid #EDE6DC', borderRadius: 12}}>
+            <div style={{width: 30, height: 30, borderRadius: 15, background: '#8B5E3C', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, flexShrink: 0}}>3</div>
+            <div style={{flex: 1}}>
+              <div style={{fontWeight: 700, fontSize: 14, color: '#2A2018', marginBottom: 4}}>Appuyez sur <span style={{color: '#8B5E3C'}}>Ajouter</span></div>
+              <div style={{fontSize: 12, color: '#5A4E3D', lineHeight: 1.5}}>Confirmez en haut à droite. L'icône apparaît sur votre écran d'accueil — un tap et c'est ouvert en plein écran avec notifications natives.</div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" onClick={onClose}
+          style={{width: '100%', padding: 13, marginTop: 16, background: 'linear-gradient(135deg,#8B5E3C,#A06B45)', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit'}}>
+          J'ai compris
+        </button>
       </div>
     </div>
   );
@@ -2941,7 +3013,12 @@ function InstallPwaBanner({onClose, aboveActionBar}) {
 
 function App() {
   const [apiLoading, setApiLoading] = useState(true);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  // V18.30 — remplace showInstallBanner v18.5 par un système AlertBanner + overlay PWA iOS.
+  const [pwaAlertVisible, setPwaAlertVisible] = useState(false);
+  const [pwaOverlayOpen, setPwaOverlayOpen] = useState(false);
+  const deferredInstallPromptRef = useRef(null);
+  // V18.31 — placeholder modal "partager mes dossiers" (impl réelle en v18.32).
+  const [sharePlaceholderOpen, setSharePlaceholderOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [appSettings, setAppSettings] = useState({});
   const [clients, setClients] = useState([]);
@@ -3029,12 +3106,56 @@ function App() {
       setApiLoading(false);
       // V18.3 — push setup différé 10s après login pour ne pas bloquer le 1er render.
       setTimeout(() => { setupWebPush(); }, 10000);
-      // Bandeau "Installer l'app" si pas en standalone PWA + dismiss persistant.
-      if (!isStandalonePWA() && !localStorage.getItem('ocre_install_dismissed_v18')) {
-        setTimeout(() => setShowInstallBanner(true), 3000);
+      // V18.30 — bandeau PWA urgent sous header si pas standalone + pas dismissé depuis 7j.
+      if (!isStandalonePWA()) {
+        const dismissedAt = Number(localStorage.getItem('pwa_install_dismissed_at') || 0);
+        const sevenDaysMs = 7 * 86400 * 1000;
+        if (!dismissedAt || (Date.now() - dismissedAt > sevenDaysMs)) {
+          setTimeout(() => setPwaAlertVisible(true), 2500);
+        }
       }
     })();
   }, []);
+  // V18.30 — capture beforeinstallprompt (Android Chrome) pour auto-install en 1 tap.
+  useEffect(() => {
+    function onBip(e) {
+      e.preventDefault();
+      deferredInstallPromptRef.current = e;
+    }
+    function onInstalled() {
+      deferredInstallPromptRef.current = null;
+      setPwaAlertVisible(false);
+      setPwaOverlayOpen(false);
+    }
+    window.addEventListener('beforeinstallprompt', onBip);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBip);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+  function dismissPwaAlert() {
+    setPwaAlertVisible(false);
+    try { localStorage.setItem('pwa_install_dismissed_at', String(Date.now())); } catch (e) {}
+  }
+  async function triggerPwaInstall() {
+    const d = deferredInstallPromptRef.current;
+    if (d && typeof d.prompt === 'function') {
+      try {
+        d.prompt();
+        const choice = await d.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          setPwaAlertVisible(false);
+          deferredInstallPromptRef.current = null;
+        }
+      } catch (e) { /* silent */ }
+    } else if (isIOS()) {
+      setPwaOverlayOpen(true);
+    } else {
+      // Navigateur desktop sans beforeinstallprompt : overlay iOS-like comme fallback.
+      setPwaOverlayOpen(true);
+    }
+  }
   // V18.3 — écoute les clics de notification (postMessage du SW) pour route #client/X?section=4.
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -3229,7 +3350,20 @@ function App() {
       onPickedImageFile={(f) => { setPickedImageFile(f); setView('import_image'); }}
       openClient={(c) => { openClient(c); }}/>;
   }
-  const banner = showInstallBanner && <InstallPwaBanner aboveActionBar={view === 'list'} onClose={() => { setShowInstallBanner(false); localStorage.setItem('ocre_install_dismissed_v18','1'); }}/>;
+  // V18.30 — AlertBanner PWA install (sticky sous header, urgent rouge) rendu dans ListView.
+  const pwaBanner = pwaAlertVisible ? (
+    <AlertBanner type="urgent"
+      icon="📲"
+      title="Installer Ocre sur l'écran d'accueil"
+      message="Pour recevoir les rappels RDV en notifications natives."
+      dismissible={true}
+      onDismiss={dismissPwaAlert}
+      actions={[
+        {label: 'Installer', primary: true, onClick: triggerPwaInstall},
+        {label: 'Plus tard', onClick: dismissPwaAlert},
+      ]}/>
+  ) : null;
+  const pwaOverlay = pwaOverlayOpen ? <PWAInstallOverlay onClose={() => setPwaOverlayOpen(false)}/> : null;
   return (<>{view === 'list' ? (
     <ListView
       clients={clients} country={country} setCountry={setCountry}
@@ -3241,7 +3375,8 @@ function App() {
       listFilter={listFilter} setListFilter={setListFilter}
       listSearch={listSearch} setListSearch={setListSearch}
       stagedCount={stagedCount} openDownloads={() => setView('downloads')}
-      promotedId={promotedId}
+      promotedId={promotedId} pwaBanner={pwaBanner}
+      openSharePlaceholder={() => setSharePlaceholderOpen(true)}
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
       openDictation={() => setView('dictation')}
@@ -3264,7 +3399,23 @@ function App() {
       initialExpandedSection={initialExpandedSection}
       promoteStaged={promoteStaged} deleteStaged={deleteStaged}
     />
-  )}{banner}
+  )}{pwaOverlay}
+  {/* V18.31 — modal placeholder partage dossiers (impl réelle à venir en v18.32). */}
+  {sharePlaceholderOpen && (
+    <div onClick={() => setSharePlaceholderOpen(false)}
+      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      <div onClick={e => e.stopPropagation()}
+        style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, width:'100%', maxWidth:340, boxShadow:'0 20px 50px rgba(0,0,0,.25)', textAlign:'center'}}>
+        <div style={{fontSize:38, marginBottom:10}}>🚧</div>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', marginBottom:8}}>Partager mes dossiers</div>
+        <div style={{fontSize:13, color:'#5A4E3D', lineHeight:1.5, marginBottom:16}}>Fonctionnalité en cours de développement — disponible dans la prochaine version.</div>
+        <button onClick={() => setSharePlaceholderOpen(false)}
+          style={{width:'100%', padding:'11px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+          Compris
+        </button>
+      </div>
+    </div>
+  )}
   {/* V18.20 — ConfirmModal global. Tous les delete passent par window.__ocreAsk(). */}
   {confirmReq && (
     <ConfirmModal title={confirmReq.title} message={confirmReq.message}
@@ -4540,14 +4691,14 @@ function ListView(props) {
         center={<OcreTitle/>}
         right={
           <div style={{display:'flex', alignItems:'center', gap:2}}>
-            {stagedCount > 0 && (
-              <button onClick={() => openDownloads && openDownloads()}
-                style={{background:'#FBF1E4', border:'1px solid #BBA88B', borderRadius:12, padding:'2px 8px', fontSize:12, fontWeight:700, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', marginRight:4, display:'inline-flex', alignItems:'center', gap:3}}
-                title="Téléchargements à valider">
-                <DownloadIcon size={14}/>
-                <span style={{marginLeft:3}}>{stagedCount}</span>
-              </button>
-            )}
+            {/* V18.31 — header droite : IconShare pour partage global (placeholder modal).
+                Le compteur staged reste uniquement sur le FAB bottom → plus de doublon visuel
+                avec l'icône download du FAB. */}
+            <button onClick={() => props.openSharePlaceholder && props.openSharePlaceholder()}
+              title="Partager mes dossiers"
+              style={{background:'none', border:'none', cursor:'pointer', padding:4, color:'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+              <ShareIcon size={20}/>
+            </button>
             <button onClick={toggleSearch}
               style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (showSearch || listSearch) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
               title={showSearch ? 'Fermer la recherche' : 'Rechercher un dossier'}>
@@ -4569,6 +4720,9 @@ function ListView(props) {
         }
         userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs}
       />
+
+      {/* V18.30 — AlertBanner stack sous header (pour l'instant : bandeau PWA install). */}
+      {props.pwaBanner}
 
       {/* V18.19 — SearchBar factorisée (partagée main/archives/downloads). */}
       <SearchBar open={showSearch} value={searchInput} onChange={setSearchInput}
@@ -5408,9 +5562,7 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
 // bouton Document image en dessous, liste staged en bas. Fusion de l'ancien ImportUrlView
 // qui est désormais retiré (logique analyse + createDraft inline ici).
 function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, onPickedImageFile, showToast, toast}) {
-  // V18.24 — 3 refs pour inputs file cachés (Photo caméra / Galerie / Fichier).
-  const refCam = React.useRef(null);
-  const refGal = React.useRef(null);
+  // V18.29 — 1 seul ref input file (iOS/Android affichent leur action sheet natif au tap).
   const refFile = React.useRef(null);
   function handlePicked(f) {
     if (!f) return;
@@ -5627,34 +5779,23 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
           </div>
         )}
 
-        {/* V18.24 — 📸 Importer un document : 3 sous-boutons inline qui déclenchent directement
-            camera/galerie/Fichiers sans passer par un écran intermédiaire. */}
+        {/* V18.29 — 1 seul bouton "Importer un document" avec 3 icônes visuelles qui illustrent
+            les sources possibles (photo / galerie / fichiers). iOS et Android affichent leur
+            action sheet natif au tap sur l'input large accept, évitant le double popup de v18.24. */}
         {!result && !loading && (
           <div style={{marginBottom:14}}>
-            <div style={{fontSize:12, fontWeight:700, color:'#8B5E3C', marginBottom:6, textTransform:'uppercase', letterSpacing:.5}}>📸 Importer un document</div>
-            <input ref={refCam} type="file" accept="image/*" capture="environment" style={{display:'none'}}
-              onChange={e => handlePicked(e.target.files && e.target.files[0])}/>
-            <input ref={refGal} type="file" accept="image/*" style={{display:'none'}}
-              onChange={e => handlePicked(e.target.files && e.target.files[0])}/>
             <input ref={refFile} type="file" accept="image/*,application/pdf" style={{display:'none'}}
               onChange={e => handlePicked(e.target.files && e.target.files[0])}/>
-            <div style={{display:'flex', gap:8, width:'100%'}}>
-              <button onClick={() => refCam.current && refCam.current.click()}
-                style={{flex:1, padding:'12px 8px', background:'#F4ECE3', color:'#8B5E3C', border:'1.5px solid #A67F5A', borderRadius:10, fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, minWidth:0}}>
-                <span style={{fontSize:20, lineHeight:1}}>📷</span>
-                <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%'}}>Photo</span>
-              </button>
-              <button onClick={() => refGal.current && refGal.current.click()}
-                style={{flex:1, padding:'12px 8px', background:'#F4ECE3', color:'#8B5E3C', border:'1.5px solid #A67F5A', borderRadius:10, fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, minWidth:0}}>
-                <span style={{fontSize:20, lineHeight:1}}>🖼</span>
-                <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%'}}>Galerie</span>
-              </button>
-              <button onClick={() => refFile.current && refFile.current.click()}
-                style={{flex:1, padding:'12px 8px', background:'#F4ECE3', color:'#8B5E3C', border:'1.5px solid #A67F5A', borderRadius:10, fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, minWidth:0}}>
-                <span style={{fontSize:20, lineHeight:1}}>📁</span>
-                <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%'}}>Fichier</span>
-              </button>
-            </div>
+            <button onClick={() => refFile.current && refFile.current.click()}
+              style={{width:'100%', padding:'14px 14px', background:'#F4ECE3', color:'#8B5E3C', border:'1.5px solid #A67F5A', borderRadius:10, fontWeight:700, fontSize:13.5, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6}}>
+              <div style={{display:'flex', alignItems:'center', gap:14, fontSize:22, lineHeight:1}}>
+                <span>📷</span>
+                <span>🖼</span>
+                <span>📁</span>
+              </div>
+              <span style={{fontSize:13.5}}>Importer un document</span>
+              <span style={{fontSize:11, fontWeight:500, color:'#8B7F6E'}}>Photo · Galerie · Fichier</span>
+            </button>
           </div>
         )}
 
