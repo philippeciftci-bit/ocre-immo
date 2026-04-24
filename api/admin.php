@@ -3,6 +3,7 @@
 // Tous les handlers exigent requireAdmin() et logguent dans admin_actions.
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/_security.php';
+require_once __DIR__ . '/_email.php';
 setCorsHeaders();
 
 $admin = requireAdmin();
@@ -70,7 +71,7 @@ switch ($action) {
     case 'reset_password': {
         $user_id = (int) ($input['user_id'] ?? 0);
         if (!$user_id) jsonError('user_id requis');
-        $st = db()->prepare("SELECT id, email FROM users WHERE id = ? LIMIT 1");
+        $st = db()->prepare("SELECT id, email, prenom FROM users WHERE id = ? LIMIT 1");
         $st->execute([$user_id]);
         $u = $st->fetch();
         if (!$u) jsonError('User introuvable', 404);
@@ -86,10 +87,75 @@ switch ($action) {
         try { db()->prepare("DELETE FROM sessions WHERE user_id = ?")->execute([$user_id]); } catch (Exception $e) {}
         // Unlock tentatives aussi.
         try { db()->prepare("DELETE FROM login_attempts WHERE email = ?")->execute([$u['email']]); } catch (Exception $e) {}
-        logAdminAction((int) $admin['id'], 'reset_password', $user_id, ['email' => $u['email']]);
+        // V18.42 : envoie du MDP temp par email (bypass opt-out, transac critique).
+        $emailRes = sendEmail(
+            $u['email'],
+            'Mot de passe réinitialisé — OCRE immo',
+            emailTemplatePasswordReset($u['prenom'] ?? '', $temp),
+            'password_reset',
+            (int) $u['id'],
+            ['by_admin' => (int) $admin['id']],
+            true
+        );
+        logAdminAction((int) $admin['id'], 'reset_password', $user_id, [
+            'email' => $u['email'],
+            'email_sent' => $emailRes['ok'],
+            'email_error' => $emailRes['error'] ?? null,
+        ]);
         jsonOk([
-            'temp_password' => $temp,
-            'message' => 'Communique ce mot de passe à l\'utilisateur par un canal sécurisé. Il devra le changer au prochain login.',
+            'email_sent' => $emailRes['ok'],
+            'email_error' => $emailRes['error'] ?? null,
+            // temp_password renvoyé UNIQUEMENT si envoi échoue, comme filet de secours.
+            'temp_password' => $emailRes['ok'] ? null : $temp,
+            'message' => $emailRes['ok']
+                ? 'Email avec mot de passe temporaire envoyé à ' . $u['email'] . '.'
+                : 'Échec envoi email. Communique ce mot de passe manuellement : ' . $temp,
+        ]);
+    }
+
+    case 'send_invitation': {
+        $email  = trim((string) ($input['email'] ?? ''));
+        $prenom = trim((string) ($input['prenom'] ?? ''));
+        $nom    = trim((string) ($input['nom'] ?? ''));
+        $role   = trim((string) ($input['role'] ?? 'expert'));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) jsonError('Email invalide');
+        if (!$prenom || !$nom) jsonError('Prénom et nom requis');
+        // Existe déjà ?
+        $st = db()->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+        $st->execute([$email]);
+        if ($st->fetch()) jsonError('Un compte existe déjà avec cet email', 409);
+        // Génère MDP temp.
+        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        $rand = '';
+        for ($i = 0; $i < 6; $i++) $rand .= $chars[random_int(0, strlen($chars) - 1)];
+        $temp = 'Ocre' . $rand . '!';
+        $hash = password_hash($temp, PASSWORD_BCRYPT);
+        $ins = db()->prepare("INSERT INTO users (email, password_hash, prenom, nom, role, is_admin, active, must_change_password, email_notifications) VALUES (?, ?, ?, ?, ?, 0, 1, 1, 1)");
+        $ins->execute([$email, $hash, $prenom, $nom, $role]);
+        $newId = (int) db()->lastInsertId();
+        $adminName = trim(($admin['prenom'] ?? '') . ' ' . ($admin['nom'] ?? '')) ?: 'Un administrateur';
+        $emailRes = sendEmail(
+            $email,
+            'Invitation sur OCRE immo',
+            emailTemplateInvitation($prenom, $temp, $adminName),
+            'invitation',
+            $newId,
+            ['by_admin' => (int) $admin['id']],
+            true
+        );
+        logAdminAction((int) $admin['id'], 'send_invitation', $newId, [
+            'email' => $email,
+            'email_sent' => $emailRes['ok'],
+            'email_error' => $emailRes['error'] ?? null,
+        ]);
+        jsonOk([
+            'user_id' => $newId,
+            'email_sent' => $emailRes['ok'],
+            'email_error' => $emailRes['error'] ?? null,
+            'temp_password' => $emailRes['ok'] ? null : $temp,
+            'message' => $emailRes['ok']
+                ? 'Invitation envoyée à ' . $email . '.'
+                : 'Compte créé mais envoi email échoué. Mot de passe temporaire : ' . $temp,
         ]);
     }
 

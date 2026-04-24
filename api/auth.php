@@ -153,6 +153,13 @@ switch ($action) {
 
     case 'me': {
         $u = requireAuth();
+        $emailNotif = 1;
+        try {
+            $st = db()->prepare("SELECT email_notifications FROM users WHERE id = ? LIMIT 1");
+            $st->execute([(int)$u['id']]);
+            $row = $st->fetch();
+            if ($row && isset($row['email_notifications'])) $emailNotif = (int)$row['email_notifications'];
+        } catch (Exception $e) { /* colonne absente, default 1 */ }
         jsonOk(['user' => [
             'id' => (int)$u['id'], 'email' => $u['email'],
             'prenom' => $u['prenom'], 'nom' => $u['nom'], 'role' => $u['role'],
@@ -161,7 +168,24 @@ switch ($action) {
             'must_change_password' => (bool)(int)($u['must_change_password'] ?? 0),
             'is_impersonating' => !empty($u['is_impersonating']),
             'impersonated_by' => $u['impersonated_by'] ?? null,
+            'email_notifications' => (bool)$emailNotif,
         ]]);
+    }
+
+    case 'update_email_prefs': {
+        $u = requireAuth();
+        $input = getInput();
+        $val = !empty($input['email_notifications']) ? 1 : 0;
+        try {
+            $st = db()->prepare("UPDATE users SET email_notifications = ? WHERE id = ?");
+            $st->execute([$val, (int)$u['id']]);
+        } catch (Exception $e) {
+            // colonne absente : crée-la.
+            try { db()->exec("ALTER TABLE users ADD COLUMN email_notifications TINYINT(1) NOT NULL DEFAULT 1"); } catch (Exception $e2) {}
+            $st = db()->prepare("UPDATE users SET email_notifications = ? WHERE id = ?");
+            $st->execute([$val, (int)$u['id']]);
+        }
+        jsonOk(['email_notifications' => (bool)$val]);
     }
 
     default:

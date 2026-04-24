@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.41-branding-complete -->
+<!-- ocre-v18.42-smtp-emails -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4870,6 +4870,7 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
   const [loading, setLoading] = React.useState(true);
   const [resetResult, setResetResult] = React.useState(null);
   const [logsFor, setLogsFor] = React.useState(null); // {user_id, email, logs}
+  const [inviteOpen, setInviteOpen] = React.useState(false);
   const token = localStorage.getItem('ocre_token') || '';
 
   async function fetchAll() {
@@ -4896,11 +4897,27 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
     fetchAll();
   }
   async function doReset(uid, email) {
-    if (!(await askConfirm({title:'Reset mot de passe ?', message:'Un mot de passe temporaire sera généré pour ' + email + '. Ses sessions actives seront invalidées.', danger:true}))) return;
+    if (!(await askConfirm({title:'Reset mot de passe ?', message:'Un email avec un mot de passe temporaire sera envoyé à ' + email + '. Ses sessions actives seront invalidées.', danger:true}))) return;
     const r = await fetch(API + '/admin.php?action=reset_password', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token}, body: JSON.stringify({user_id: uid})});
     const d = await r.json();
-    if (d.ok) setResetResult({email, password: d.temp_password});
-    else showToast && showToast(d.error || 'Échec');
+    if (d.ok) {
+      if (d.email_sent) {
+        showToast && showToast('✓ Email envoyé à ' + email);
+      } else {
+        // Fallback : afficher MDP si envoi échoué.
+        setResetResult({email, password: d.temp_password, emailError: d.email_error});
+      }
+    } else showToast && showToast(d.error || 'Échec');
+    fetchAll();
+  }
+  async function doInvite(payload) {
+    const r = await fetch(API + '/admin.php?action=send_invitation', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token}, body: JSON.stringify(payload)});
+    const d = await r.json();
+    if (d.ok) {
+      if (d.email_sent) showToast && showToast('✓ Invitation envoyée à ' + payload.email);
+      else setResetResult({email: payload.email, password: d.temp_password, emailError: d.email_error, mode:'invite'});
+      setInviteOpen(false);
+    } else showToast && showToast(d.error || 'Échec invitation');
     fetchAll();
   }
   async function doSuspend(uid, suspended) {
@@ -4966,7 +4983,10 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
 
         {/* Section 2 — Users */}
         <div style={{marginBottom:18}}>
-          <div style={{fontSize:11, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, margin:'2px 4px 8px'}}>Utilisateurs ({users.length})</div>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', margin:'2px 4px 8px'}}>
+            <div style={{fontSize:11, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>Utilisateurs ({users.length})</div>
+            <button onClick={() => setInviteOpen(true)} style={{background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, padding:'6px 12px', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>+ Inviter</button>
+          </div>
           <div style={{background:'#fff', border:'1px solid #E0CDAE', borderRadius:10, overflow:'hidden'}}>
             {users.map((u, i) => (
               <div key={u.id} style={{padding:'10px 12px', borderTop: i === 0 ? 'none' : '1px solid #F2EBE2', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap'}}>
@@ -5014,10 +5034,11 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
       {resetResult && (
         <div onClick={() => setResetResult(null)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
           <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, maxWidth:420, width:'100%'}}>
-            <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:18, fontWeight:700, color:'#8B5E3C', marginBottom:8}}>🔑 Mot de passe temporaire</div>
+            <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:18, fontWeight:700, color:'#8B5E3C', marginBottom:8}}>⚠ Envoi email échoué — MDP à communiquer</div>
+            <div style={{fontSize:12, color:'#C04B20', marginBottom:8}}>Raison : {resetResult.emailError || 'inconnue'}</div>
             <div style={{fontSize:13, color:'#2A2018', marginBottom:10}}>Pour <b>{resetResult.email}</b> :</div>
             <div style={{background:'#FDFAF4', border:'1.5px solid #A67F5A', borderRadius:9, padding:'12px 14px', fontFamily:'monospace', fontSize:16, fontWeight:700, color:'#2A2018', textAlign:'center', letterSpacing:1, marginBottom:10, userSelect:'all'}}>{resetResult.password}</div>
-            <div style={{fontSize:11, color:'#8B7F6E', marginBottom:14, fontStyle:'italic'}}>Communique-le par un canal sécurisé. L'utilisateur devra le changer au prochain login (flag must_change_password=1).</div>
+            <div style={{fontSize:11, color:'#8B7F6E', marginBottom:14, fontStyle:'italic'}}>Communique-le par un canal sécurisé. L'utilisateur devra le changer au prochain login.</div>
             <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
               <button onClick={() => { try { navigator.clipboard.writeText(resetResult.password); showToast && showToast('Copié'); } catch(e) {} }}
                 style={{padding:'8px 14px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:9, fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>📋 Copier</button>
@@ -5027,6 +5048,9 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
           </div>
         </div>
       )}
+
+      {/* Modal invitation */}
+      {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} onSubmit={doInvite}/>}
 
       {/* Drawer logs user */}
       {logsFor && (
@@ -5051,11 +5075,58 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
   );
 }
 
+function InviteModal({onClose, onSubmit}) {
+  const [email, setEmail] = React.useState('');
+  const [prenom, setPrenom] = React.useState('');
+  const [nom, setNom] = React.useState('');
+  const [role, setRole] = React.useState('expert');
+  const [busy, setBusy] = React.useState(false);
+  const canSubmit = email && prenom && nom && /\S+@\S+\.\S+/.test(email);
+  async function submit() {
+    if (!canSubmit || busy) return;
+    setBusy(true);
+    await onSubmit({email: email.trim(), prenom: prenom.trim(), nom: nom.trim(), role});
+    setBusy(false);
+  }
+  return (
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, maxWidth:420, width:'100%'}}>
+        <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:19, fontWeight:700, color:'#8B5E3C', marginBottom:14}}>+ Inviter un utilisateur</div>
+        <label style={{fontSize:11, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, display:'block', marginBottom:4}}>Email</label>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="nom@exemple.fr" style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:14, fontFamily:'inherit', marginBottom:10, boxSizing:'border-box'}}/>
+        <div style={{display:'flex', gap:8, marginBottom:10}}>
+          <div style={{flex:1}}>
+            <label style={{fontSize:11, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, display:'block', marginBottom:4}}>Prénom</label>
+            <input value={prenom} onChange={e => setPrenom(e.target.value)} style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:14, fontFamily:'inherit', boxSizing:'border-box'}}/>
+          </div>
+          <div style={{flex:1}}>
+            <label style={{fontSize:11, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, display:'block', marginBottom:4}}>Nom</label>
+            <input value={nom} onChange={e => setNom(e.target.value)} style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:14, fontFamily:'inherit', boxSizing:'border-box'}}/>
+          </div>
+        </div>
+        <label style={{fontSize:11, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, display:'block', marginBottom:4}}>Rôle</label>
+        <select value={role} onChange={e => setRole(e.target.value)} style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:14, fontFamily:'inherit', marginBottom:16, boxSizing:'border-box', background:'#fff'}}>
+          <option value="expert">Expert</option>
+          <option value="assistante">Assistante</option>
+          <option value="agent">Agent</option>
+        </select>
+        <div style={{fontSize:11, color:'#8B7F6E', marginBottom:14, fontStyle:'italic'}}>Un mot de passe temporaire sera généré et envoyé par email. L'utilisateur devra le changer à la première connexion.</div>
+        <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+          <button onClick={onClose} disabled={busy} style={{padding:'9px 14px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:9, fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit', opacity: busy ? .5 : 1}}>Annuler</button>
+          <button onClick={submit} disabled={!canSubmit || busy} style={{padding:'9px 16px', background: (canSubmit && !busy) ? 'linear-gradient(135deg,#8B5E3C,#A06B45)' : '#C9B79A', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor: canSubmit ? 'pointer' : 'not-allowed', fontFamily:'inherit'}}>{busy ? 'Envoi…' : 'Inviter'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PrefsView({currentUser, onBack, showToast, toast}) {
   const [prefs, setPrefs] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [emailNotif, setEmailNotif] = useState(!!(currentUser && currentUser.email_notifications !== false));
+  const [emailBusy, setEmailBusy] = useState(false);
   const token = () => localStorage.getItem('ocre_token') || '';
 
   useEffect(() => {
@@ -5067,8 +5138,28 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
         else setPrefs({sync_enabled:false, sync_email:'', sheet_id:'', sheet_url:null});
       } catch (e) { setPrefs({sync_enabled:false, sync_email:'', sheet_id:'', sheet_url:null}); }
       setLoading(false);
+      // Rafraîchit email_notifications depuis /auth.php?action=me
+      try {
+        const me = await fetch(API + '/auth.php?action=me', {headers:{'X-Session-Token': token()}}).then(r => r.json());
+        if (me && me.ok && me.user) setEmailNotif(me.user.email_notifications !== false);
+      } catch (e) {}
     })();
   }, []);
+
+  async function toggleEmailNotif(v) {
+    setEmailBusy(true);
+    setEmailNotif(v);
+    try {
+      const r = await fetch(API + '/auth.php?action=update_email_prefs', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+        body: JSON.stringify({email_notifications: v ? 1 : 0}),
+      });
+      const d = await r.json();
+      if (!d || !d.ok) { setEmailNotif(!v); showToast && showToast('Échec — préférence non sauvegardée'); }
+      else showToast && showToast(v ? 'Emails activés' : 'Emails désactivés');
+    } catch (e) { setEmailNotif(!v); showToast && showToast('Erreur réseau'); }
+    setEmailBusy(false);
+  }
 
   async function save() {
     if (prefs.sync_enabled && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(prefs.sync_email || '')) {
@@ -5177,6 +5268,26 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
                 {syncing ? '⏳ Sync en cours…' : '🔄 Sync maintenant'}
               </button>
             )}
+          </div>
+        )}
+
+        {!loading && (
+          <div className="ocre-card" style={{marginTop:14}}>
+            <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, color:'#8B5E3C', fontWeight:700, marginBottom:6}}>Notifications email</div>
+            <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14, lineHeight:1.5}}>
+              Recevoir les rappels de rendez-vous et messages importants par email à <b>{currentUser && currentUser.email}</b>.
+              Les emails de sécurité (mot de passe réinitialisé, invitation) sont toujours envoyés.
+            </div>
+            <div style={{display:'flex', gap:6}}>
+              {[{v:true, l:'Activées'}, {v:false, l:'Désactivées'}].map(o => {
+                const active = emailNotif === o.v;
+                return (
+                  <button key={String(o.v)} type="button" disabled={emailBusy} onClick={() => toggleEmailNotif(o.v)}
+                    className={'ocre-tile ' + (active ? 'state-selected' : 'state-default')}
+                    style={{flex:1, opacity: emailBusy ? .6 : 1}}>{o.l}</button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

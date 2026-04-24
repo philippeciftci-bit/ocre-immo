@@ -2,3 +2,6 @@ _prod_backup_*
 *.log
 .env
 .DS_Store
+
+# V18.42 — secrets SMTP
+api/_smtp_config.php
