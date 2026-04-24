@@ -1,5 +1,6 @@
 // Ocre v18.3 — Service Worker : push + notificationclick + caching minimal.
-const SW_VERSION = 'ocre-sw-v18.3.0';
+// V18.40.1 — bump cache version pour invalidation icônes PWA (logo v1 cohérent).
+const SW_VERSION = 'ocre-sw-v18.40.1';
 
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
