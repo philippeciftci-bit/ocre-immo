@@ -5,12 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Ocre Immo — Connexion</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500&family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'DM Sans',sans-serif;background:#F4EEE6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:#2A2018}
+body{font-family:'DM Sans',sans-serif;background:#F0E8D8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:#2A2018}
 .card{width:100%;max-width:400px;background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 30px rgba(139,94,60,0.12)}
-.logo-title{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:700;color:#8B5E3C;text-align:center;letter-spacing:.5px}
+/* V18.34 — titre bi-typo OCRE immo cohérent avec la home (OcreTitle React). */
+.logo-title{display:flex;align-items:baseline;justify-content:center;gap:3px;letter-spacing:0}
+.logo-title .ocre{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:34px;letter-spacing:2px;color:#8B5E3C}
+.logo-title .immo{font-family:'Caveat',cursive;font-weight:400;font-size:38px;color:#2A2018;margin-left:2px;line-height:1}
 .logo-tagline{text-align:center;font-size:13px;color:#8B7F6E;margin-top:4px;margin-bottom:24px}
 .tabs{display:flex;background:#FDFAF7;border-radius:10px;padding:4px;margin-bottom:22px}
 .tab{flex:1;padding:9px;border:none;background:transparent;font-weight:700;color:#999;cursor:pointer;border-radius:7px;font-size:13px;font-family:inherit}
@@ -29,7 +34,7 @@ body{font-family:'DM Sans',sans-serif;background:#F4EEE6;min-height:100vh;displa
 </head>
 <body>
 <div class="card">
-  <div class="logo-title">Ocre Immo</div>
+  <div class="logo-title"><span class="ocre">OCRE</span><span class="immo">immo</span></div>
   <div class="logo-tagline">Connexion</div>
 
   <div class="tabs">

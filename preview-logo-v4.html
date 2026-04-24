@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview logo « Oi » v4 — lettres noires, 10 variantes fond</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',system-ui,sans-serif;background:#F0E8D8;color:#2A2018;min-height:100vh;padding:22px 14px 40px}
+h1{font-family:'Cormorant Garamond',serif;font-size:24px;color:#8B5E3C;font-weight:700;text-align:center;margin-bottom:6px}
+p.intro{font-size:13px;color:#8B7F6E;text-align:center;margin-bottom:22px;line-height:1.5;max-width:680px;margin-left:auto;margin-right:auto}
+.grid{display:grid;grid-template-columns:1fr;gap:14px;max-width:1100px;margin:0 auto}
+@media (min-width:500px){.grid{grid-template-columns:1fr 1fr}}
+@media (min-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:1200px){.grid{grid-template-columns:repeat(4,1fr)}}
+.card{background:#fff;border:1px solid #E0CDAE;border-radius:14px;padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 1px 3px rgba(139,94,60,.08)}
+.var-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:#8B7F6E}
+.font-name{font-size:13px;font-weight:600;color:#2A2018;text-align:center;line-height:1.35}
+.font-name .note{display:block;font-size:10.5px;color:#8B7F6E;font-weight:400;margin-top:2px;font-family:monospace}
+
+/* Carré 72×72 radius 10. Gap 2px. Lettres NOIRES partout. Text-shadow léger optionnel. */
+.logo{
+  width:72px;height:72px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;gap:2px;
+  overflow:hidden;position:relative;
+}
+.logo .o{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:38px;line-height:1;color:#0D0A08;position:relative;z-index:1}
+.logo .i{font-family:'Caveat',cursive;font-weight:500;font-size:50px;line-height:1;margin-top:3px;color:#0D0A08;position:relative;z-index:1}
+
+/* 1 · Ocre plein uniforme */
+.v1{background:#8B5E3C;border:2px solid #5C3B1E}
+
+/* 2 · Ocre soutenu haut → crème bas */
+.v2{background:linear-gradient(to bottom,#5C3B1E 0%,#8B5E3C 40%,#E4C99E 100%);border:2px solid #5C3B1E}
+
+/* 3 · Ocre très soutenu haut → ocre moyen bas (subtil) */
+.v3{background:linear-gradient(to bottom,#3D2515 0%,#8B5E3C 100%);border:2px solid #2A1810}
+
+/* 4 · Ocre foncé uniforme + bordure dorée décorative */
+.v4{background:#8B5E3C;border:3px solid #B8860B;box-shadow:inset 0 1px 3px rgba(0,0,0,.15)}
+
+/* 5 · Ocre moyen uniforme */
+.v5{background:#A67C4A;border:2px solid #5C3B1E}
+
+/* 6 · Bicolore haut/bas franc (ligne nette) */
+.v6{background:linear-gradient(to bottom,#5C3B1E 0%,#5C3B1E 50%,#E4C99E 50%,#E4C99E 100%);border:2px solid #3D2515}
+
+/* 7 · Radial burst (halo lumineux derrière lettres) */
+.v7{background:radial-gradient(circle at 50% 55%,#D4A574 0%,#8B5E3C 70%);border:2px solid #5C3B1E}
+
+/* 8 · Ocre avec shadow inset fort (effet creusé 3D) */
+.v8{background:#8B5E3C;border:2px solid #5C3B1E;box-shadow:inset 0 3px 10px rgba(0,0,0,.35), inset 0 -2px 6px rgba(255,255,255,.08)}
+
+/* 9 · Ocre moyen + texture grain (SVG noise via data URI) */
+.v9{background:#A67C4A;border:2px solid #5C3B1E;position:relative}
+.v9::before{
+  content:"";position:absolute;inset:0;border-radius:8px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/></svg>");
+  mix-blend-mode:overlay;pointer-events:none;
+}
+
+/* 10 · Gradient diagonal */
+.v10{background:linear-gradient(135deg,#3D2515 0%,#8B5E3C 60%,#D4A574 100%);border:2px solid #3D2515}
+
+/* léger relief clair uniforme (sauf si inset shadow fort v8) */
+.logo .o, .logo .i { text-shadow:0 1px 0 rgba(255,255,255,.22); }
+.v8 .o, .v8 .i { text-shadow:0 1px 0 rgba(255,255,255,.35); }
+
+footer{text-align:center;margin-top:28px;font-size:11px;color:#8B7F6E;padding:0 14px;line-height:1.5}
+footer a{color:#8B5E3C;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+
+<h1>Logo « Oi » v4 — lettres NOIRES, 10 fonds ocre</h1>
+<p class="intro">Retours v2/v3 : lettres dorées pas demandées. Reset. Lettres <b>O</b> Cormorant + <b>i</b> Caveat <b>noires #0D0A08</b> partout (comme le « i » de « immo » dans le titre). Variation uniquement sur le fond/gradient/border. Carré 72×72, radius 10.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="var-label">Variante 1</div>
+    <div class="font-name">Ocre plein uniforme<span class="note">#8B5E3C · border #5C3B1E</span></div>
+    <div class="logo v1"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 2</div>
+    <div class="font-name">Ocre foncé haut → crème bas<span class="note">#5C3B1E → #8B5E3C → #E4C99E</span></div>
+    <div class="logo v2"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 3</div>
+    <div class="font-name">Ocre profond → moyen<span class="note">#3D2515 → #8B5E3C · border #2A1810</span></div>
+    <div class="logo v3"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 4</div>
+    <div class="font-name">Ocre plein + bordure or<span class="note">#8B5E3C · border 3px #B8860B décoratif</span></div>
+    <div class="logo v4"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 5</div>
+    <div class="font-name">Ocre moyen<span class="note">#A67C4A · border #5C3B1E</span></div>
+    <div class="logo v5"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 6</div>
+    <div class="font-name">Bicolore haut/bas franc<span class="note">50% #5C3B1E / 50% #E4C99E</span></div>
+    <div class="logo v6"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 7</div>
+    <div class="font-name">Radial halo lumineux<span class="note">#D4A574 centre → #8B5E3C bords</span></div>
+    <div class="logo v7"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 8</div>
+    <div class="font-name">Effet creusé 3D<span class="note">#8B5E3C + shadow inset fort</span></div>
+    <div class="logo v8"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 9</div>
+    <div class="font-name">Ocre + grain texture<span class="note">#A67C4A + SVG noise overlay</span></div>
+    <div class="logo v9"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+  <div class="card">
+    <div class="var-label">Variante 10</div>
+    <div class="font-name">Gradient diagonal<span class="note">#3D2515 ↘ #D4A574 135°</span></div>
+    <div class="logo v10"><span class="o">O</span><span class="i">i</span></div>
+  </div>
+
+</div>
+
+<footer>
+  Dis-moi « logo N » (de 1 à 10) et je code le vrai dans l'app.<br>
+  <a href="/">← Retour app</a> · <a href="/preview-logo-v3.html">v3 fonds clairs (lettres dorées)</a> · <a href="/preview-logo-v2.html">v2 fonds sombres</a>
+</footer>
+
+</body>
+</html>
