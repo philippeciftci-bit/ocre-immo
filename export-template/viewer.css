@@ -12,8 +12,9 @@ img{max-width:100%;display:block}
 .topbar-inner{display:flex;align-items:center;gap:12px;max-width:860px;margin:0 auto}
 .topbar-left{display:flex;align-items:center;gap:10px;flex:1}
 .topbar-right{font-size:12px;color:#8B5E3C;font-weight:700;background:#FBF1E4;border:1px solid #BBA88B;border-radius:12px;padding:3px 10px}
-.ocre-logo{width:34px;height:34px;border-radius:8px;border:2.5px solid #3D2515;background:linear-gradient(to bottom,#3D2515 0%,#5C3B1E 20%,#8B5E3C 55%,#F4E4CC 100%);box-shadow:0 1px 3px rgba(60,40,20,.35),inset 0 3px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ocre-logo-i{font-family:'Caveat',cursive;font-size:24px;color:#0D0A08;line-height:1;margin-top:2px;font-weight:500}
+.ocre-logo{width:34px;height:34px;border-radius:8px;border:2.5px solid #3D2515;background:linear-gradient(to bottom,#3D2515 0%,#5C3B1E 20%,#8B5E3C 55%,#F4E4CC 100%);box-shadow:0 1px 3px rgba(60,40,20,.35),inset 0 3px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;gap:1px}
+.ocre-logo-o{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:18px;color:#2A1810;line-height:1}
+.ocre-logo-i{font-family:'Caveat',cursive;font-size:24px;color:#1A1410;line-height:1;margin-top:2px;font-weight:500}
 .ocre-title{display:flex;align-items:baseline;gap:3px}
 .ocre-title-ocre{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:20px;letter-spacing:1.5px;color:#8B5E3C}
 .ocre-title-immo{font-family:'Caveat',cursive;font-weight:400;font-size:23px;color:#2A2018;margin-left:2px}

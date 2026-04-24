@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.32-export-zip-autonomous -->
+<!-- ocre-v18.33-logo-Oi -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -4627,8 +4627,10 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
   );
 }
 
-// V18.28 — logo v3 : sommet quasi-noir détaché, gradient 4-stops, double shadow (externe +
-// inset top). Badge premium lisible sur fond crème #F0E8D8.
+// V18.33 — logo "Oi" : 2 lettres côte à côte, mini-réplique du titre OCRE immo.
+// "O" Cormorant 700 brun foncé (cohérent OCRE) + "i" Caveat 500 noir (cohérent immo).
+// Gradient + border + shadows v18.28 conservés (sommet brun quasi-noir détaché).
+// Fix demande Philippe mal interprétée en v18.19 ("Oi" et pas "i" seul).
 function OcreLogo({size = 36}) {
   return (
     <div style={{
@@ -4637,15 +4639,22 @@ function OcreLogo({size = 36}) {
       background: 'linear-gradient(to bottom, #3D2515 0%, #5C3B1E 20%, #8B5E3C 55%, #F4E4CC 100%)',
       boxShadow: '0 1px 3px rgba(60,40,20,.35), inset 0 3px 8px rgba(0,0,0,.2)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0, position: 'relative',
+      flexShrink: 0, position: 'relative', gap: 1,
     }}>
       <span style={{
+        fontFamily: '"Cormorant Garamond", serif',
+        fontWeight: 700,
+        fontSize: Math.round(size * 0.55),
+        color: '#2A1810',
+        lineHeight: 1,
+      }}>O</span>
+      <span style={{
         fontFamily: '"Caveat", cursive',
+        fontWeight: 500,
         fontSize: Math.round(size * 0.75),
-        color: '#0D0A08',
+        color: '#1A1410',
         lineHeight: 1,
         marginTop: Math.round(size * 0.06),
-        fontWeight: 500,
       }}>i</span>
     </div>
   );
