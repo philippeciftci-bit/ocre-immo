@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.27-search-name-photos -->
+<!-- ocre-v18.28-logo-icons-bg -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,7 +28,7 @@
   --ocre-bg-ultralight:#FDF8F0;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;overflow:hidden;height:100vh;height:100dvh;font-size:13px}
+body{font-family:'DM Sans',sans-serif;background:#F0E8D8;color:#2A2018;overflow:hidden;height:100vh;height:100dvh;font-size:13px}
 #root{height:100%}
 ::-webkit-scrollbar{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -2472,7 +2472,7 @@ function BanqueSelect({label, value, onChange, pays}) {
             <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E'}}>Aucune banque trouvée</div>
           ) : Object.entries(byGroup).map(([g, items]) => (
             <div key={g}>
-              <div style={{padding:'6px 12px', background:'#F4EEE6', fontSize:10, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:1.2, fontWeight:700}}>{g}</div>
+              <div style={{padding:'6px 12px', background:'#F0E8D8', fontSize:10, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:1.2, fontWeight:700}}>{g}</div>
               {items.map(o => (
                 <div key={o.k} onMouseDown={() => pick(o.k)}
                   style={{padding:'10px 12px', fontSize:13, cursor:'pointer', borderBottom:'1px solid #F4EEE6', background: o.k === value ? '#FBF1E4' : '#fff'}}>
@@ -2842,13 +2842,28 @@ function ArchiveIcon({size=22, color='#8B5E3C'}) {
     </svg>
   );
 }
-function ShareIcon({size=22, color='#8B5E3C'}) {
+// V18.28 — icônes système Feather tray + arrow. Remplacent tous les émojis 📤 / 📥.
+function ShareIcon({size=22, color='currentColor'}) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
     </svg>
   );
 }
+function DownloadIcon({size=22, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  );
+}
+// Alias nomenclature Philippe v18.28.
+const IconShare = ShareIcon;
+const IconDownload = DownloadIcon;
 
 // V18.3 — Web Push : enregistre SW, demande permission, subscribe au backend.
 function urlBase64ToUint8Array(base64String) {
@@ -3169,7 +3184,7 @@ function App() {
 
   if (apiLoading) {
     return (
-      <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F4EEE6'}}>
+      <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F0E8D8'}}>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:32, color:'#8B5E3C', fontWeight:700, marginBottom:16}}>Ocre Immo</div>
         <div style={{width:40, height:40, border:'3px solid #E8DDD0', borderTopColor:'#8B5E3C', borderRadius:'50%', animation:'spin 0.7s linear infinite'}}/>
       </div>
@@ -3442,7 +3457,7 @@ function ImportImageView({onBack, onCreated, showToast, toast, fileAlreadySelect
   const sourceTypeLabels = {sms:'💬 SMS', whatsapp:'🟢 WhatsApp', screenshot_web:'🖥 Capture web', photo_annonce_papier:'📄 Annonce papier', photo_panneau:'🪧 Panneau', capture_autre:'📸 Image'};
 
   return (
-    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>📸 Importer un document</div>
@@ -4054,7 +4069,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
 
   if (!supported) {
     return (
-      <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+      <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
         <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
           <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
           <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Dicter un contact</div>
@@ -4074,7 +4089,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
   }
 
   return (
-    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Dicter un contact</div>
@@ -4271,7 +4286,7 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
   }
 
   return (
-    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Préférences</div>
@@ -4345,24 +4360,24 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
   );
 }
 
-// V18.22 — logo contraste radical : brun chocolat profond haut → brand milieu → crème bas.
-// Border 2px + inset shadow top pour densifier. 'i' Caveat décalé légèrement vers le bas.
+// V18.28 — logo v3 : sommet quasi-noir détaché, gradient 4-stops, double shadow (externe +
+// inset top). Badge premium lisible sur fond crème #F0E8D8.
 function OcreLogo({size = 36}) {
   return (
     <div style={{
       width: size, height: size, borderRadius: 8,
-      border: '2px solid #5C3B1E',
-      background: 'linear-gradient(to bottom, #5C3B1E 0%, #8B5E3C 45%, #F4E4CC 100%)',
-      boxShadow: 'inset 0 2px 6px rgba(0,0,0,.15)',
+      border: '2.5px solid #3D2515',
+      background: 'linear-gradient(to bottom, #3D2515 0%, #5C3B1E 20%, #8B5E3C 55%, #F4E4CC 100%)',
+      boxShadow: '0 1px 3px rgba(60,40,20,.35), inset 0 3px 8px rgba(0,0,0,.2)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0, position: 'relative',
     }}>
       <span style={{
         fontFamily: '"Caveat", cursive',
-        fontSize: Math.round(size * 0.72),
-        color: '#1A1410',
+        fontSize: Math.round(size * 0.75),
+        color: '#0D0A08',
         lineHeight: 1,
-        marginTop: Math.round(size * 0.04),
+        marginTop: Math.round(size * 0.06),
         fontWeight: 500,
       }}>i</span>
     </div>
@@ -4519,7 +4534,7 @@ function ListView(props) {
   }, [archivedFiltered]);
 
   return (
-    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <Header
         left={<OcreLogo size={36}/>}
         center={<OcreTitle/>}
@@ -4528,7 +4543,10 @@ function ListView(props) {
             {stagedCount > 0 && (
               <button onClick={() => openDownloads && openDownloads()}
                 style={{background:'#FBF1E4', border:'1px solid #BBA88B', borderRadius:12, padding:'2px 8px', fontSize:12, fontWeight:700, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', marginRight:4, display:'inline-flex', alignItems:'center', gap:3}}
-                title="Téléchargements à valider">📥 {stagedCount}</button>
+                title="Téléchargements à valider">
+                <DownloadIcon size={14}/>
+                <span style={{marginLeft:3}}>{stagedCount}</span>
+              </button>
             )}
             <button onClick={toggleSearch}
               style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (showSearch || listSearch) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
@@ -4617,11 +4635,7 @@ function ListView(props) {
           style={{width:52, height:52, borderRadius:'50%', background:'#FBF1E4', color:'var(--ocre-brand)', border:'2px solid var(--ocre-primary)',
                   fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(139,94,60,0.18)', fontFamily:'inherit',
                   display:'flex', alignItems:'center', justifyContent:'center', padding:0, position:'relative'}}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
+          <DownloadIcon size={24}/>
           {stagedCount > 0 && (
             <span style={{position:'absolute', top:-4, right:-4, background:'#8B5E3C', color:'#fff', borderRadius:10, padding:'1px 6px', fontSize:10, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #fff'}}>{stagedCount}</span>
           )}
@@ -5563,10 +5577,13 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
   const previewCount = previewGroups.reduce((n, g) => n + g.items.length, 0);
 
   return (
-    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1.5px solid #A67F5A', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
-        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>📥 Téléchargements</div>
+        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208', display:'flex', alignItems:'center', justifyContent:'center', gap:6}}>
+          <DownloadIcon size={20} color="#8B5E3C"/>
+          <span>Téléchargements</span>
+        </div>
         <button onClick={toggleSearch}
           style={{background:'none', border:'none', cursor:'pointer', padding:4, color: (showSearch || searchValue) ? 'var(--ocre-primary)' : 'var(--ocre-brand)', display:'flex', alignItems:'center', justifyContent:'center'}}
           title={showSearch ? 'Fermer la recherche' : 'Rechercher'}>
@@ -5682,8 +5699,9 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
         )}
 
         {/* Liste staged (après les cards d'import). */}
-        <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'10px 4px 6px'}}>
-          📥 {n}{searchValue && nTotal !== n ? ' / ' + nTotal : ''} téléchargement{n > 1 ? 's' : ''} en attente
+        <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'10px 4px 6px', display:'flex', alignItems:'center'}}>
+          <DownloadIcon size={13} color="#8B7F6E"/>
+          <span style={{marginLeft:4}}>{n}{searchValue && nTotal !== n ? ' / ' + nTotal : ''} téléchargement{n > 1 ? 's' : ''} en attente</span>
         </div>
         {n === 0 ? (
           <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:'24px 12px', background:'#fff', border:'1px dashed #D4C3A8', borderRadius:10}}>
@@ -6219,7 +6237,7 @@ function FormView(props) {
   const headSubSociety = (profilType === 'Société' && d.societe_nom && (d.prenom || d.nom)) ? d.societe_nom : '';
 
   return (
-    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F4EEE6'}}>
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:8}}>
         <button onClick={backToListFlushed} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>←</button>
         {/* V18.27 — nom Cormorant italic bold centré. "Sans nom" si vide. Société sous-ligne si pro. */}
