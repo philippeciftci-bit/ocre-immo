@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v19-favicon-refonte -->
+<!-- ocre-v20-agent-profiles -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3511,6 +3511,7 @@ function PublishButton({dossier, dossierId, disabled, onOpen, showToast}) {
 function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
   const [loading, setLoading] = React.useState(true);
   const [preview, setPreview] = React.useState(null);
+  const [agentProfile, setAgentProfile] = React.useState(null);
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [vertical, setVertical] = React.useState('');
@@ -3520,10 +3521,14 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
   React.useEffect(() => {
     (async () => {
       try {
-        const r = await fetch(API + '/publish.php?action=preview_data&client_id=' + dossierId, {headers:{'X-Session-Token':token()}});
-        const d = await r.json();
+        const [r1, r2] = await Promise.all([
+          fetch(API + '/publish.php?action=preview_data&client_id=' + dossierId, {headers:{'X-Session-Token':token()}}).then(r => r.json()),
+          fetch(API + '/agent_profile.php?action=get_mine', {headers:{'X-Session-Token':token()}}).then(r => r.json()).catch(() => null),
+        ]);
+        const d = r1;
         if (!d || !d.ok) { showToast && showToast(d.error || 'Erreur chargement preview'); onClose(); return; }
         setPreview(d);
+        if (r2 && r2.ok) setAgentProfile(r2.profile);
         // Pré-remplissage titre auto si pas encore publié.
         const data = d.data || {};
         const projet = d.projet;
@@ -3665,11 +3670,43 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
           </>
         )}
 
-        {/* Encart agent */}
-        <div style={{background:'#FBF7EE', border:'1px solid #E0CDAE', borderRadius:10, padding:'10px 12px', marginTop:14, fontSize:12.5}}>
-          <div style={{fontSize:10, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Contact</div>
-          {preview.agent.prenom} {preview.agent.nom} · {preview.agent.email}
-        </div>
+        {/* V20 — Encart agent enrichi avec photo + tagline + mentions légales Hoguet */}
+        {agentProfile ? (
+          <>
+            <div style={{background:'#FBF7EE', border:'1px solid #E0CDAE', borderRadius:10, padding:'12px 14px', marginTop:14}}>
+              <div style={{fontSize:10, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>Votre agent</div>
+              <div style={{display:'flex', gap:12, alignItems:'center'}}>
+                <div style={{width:60, height:60, borderRadius:'50%', background:'#8B5E3C center/cover no-repeat', backgroundImage: agentProfile.photo_url ? 'url(' + agentProfile.photo_url + ')' : 'none', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700}}>
+                  {!agentProfile.photo_url && ((agentProfile.prenom || '?')[0] + (agentProfile.nom || '')[0]).toUpperCase()}
+                </div>
+                <div style={{flex:1, minWidth:0}}>
+                  <div style={{fontWeight:700, fontSize:14, color:'#2A2018'}}>{agentProfile.prenom} {agentProfile.nom} <span style={{display:'inline-block', marginLeft:6, fontSize:9, background:'#8B5E3C', color:'#fff', padding:'1px 7px', borderRadius:10, fontWeight:700, letterSpacing:.4, verticalAlign:'middle'}}>AGENT OCRE</span></div>
+                  {agentProfile.tagline && <div style={{fontSize:11.5, color:'#5A4E3D', marginTop:2}}>{agentProfile.tagline}</div>}
+                </div>
+              </div>
+              <div style={{marginTop:10, fontSize:12.5}}>
+                {agentProfile.telephone_pro && <div>📞 <a href={'tel:' + agentProfile.telephone_pro} style={{color:'#8B5E3C', textDecoration:'none', fontWeight:600}}>{agentProfile.telephone_pro}</a></div>}
+                {agentProfile.email_pro && <div>✉ <a href={'mailto:' + agentProfile.email_pro} style={{color:'#8B5E3C', textDecoration:'none', fontWeight:600}}>{agentProfile.email_pro}</a></div>}
+              </div>
+              {(agentProfile.carte_pro_numero || agentProfile.rcp_assureur) && (
+                <div style={{marginTop:10, paddingTop:8, borderTop:'1px solid #E0CDAE', fontSize:10.5, color:'#8B7F6E', lineHeight:1.5}}>
+                  {agentProfile.carte_pro_numero && <div>Carte pro N° <b>{agentProfile.carte_pro_numero}</b>{agentProfile.carte_pro_prefecture ? ' — ' + agentProfile.carte_pro_prefecture : ''}</div>}
+                  {agentProfile.rcp_assureur && <div>RCP {agentProfile.rcp_assureur}{agentProfile.rcp_numero_police ? ' N° ' + agentProfile.rcp_numero_police : ''}{agentProfile.rcp_montant_garantie ? ' — Garantie ' + agentProfile.rcp_montant_garantie : ''}</div>}
+                </div>
+              )}
+            </div>
+            {agentProfile.statut_public === 'brouillon' && (
+              <div style={{marginTop:10, padding:'10px 12px', background:'#FFF3EC', border:'1px solid #E8DDD0', borderRadius:8, fontSize:12, color:'#8B5E3C'}}>
+                ⚠ Ton profil agent est en <b>brouillon</b>. Complète-le depuis le menu user → <b>Mon profil public</b> pour que les clients te contactent facilement.
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{background:'#FBF7EE', border:'1px solid #E0CDAE', borderRadius:10, padding:'10px 12px', marginTop:14, fontSize:12.5}}>
+            <div style={{fontSize:10, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Contact</div>
+            {preview.agent.prenom} {preview.agent.nom} · {preview.agent.email}
+          </div>
+        )}
       </div>
 
       {/* Footer sticky actions */}
@@ -4142,6 +4179,9 @@ function App() {
   if (view === 'prefs') {
     return <PrefsView currentUser={currentUser} onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
   }
+  if (view === 'agent_profile') {
+    return <AgentProfileView currentUser={currentUser} onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
+  }
   if (view === 'admin') {
     return <AdminView currentUser={currentUser} onBack={() => setView('list')} showToast={showToast} startImpersonation={startImpersonation}/>;
   }
@@ -4206,6 +4246,7 @@ function App() {
       openSharePlaceholder={() => setSharePlaceholderOpen(true)}
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
+      openAgentProfile={() => { setUserMenu(false); setView('agent_profile'); }}
       openAdmin={() => setView('admin')}
       openDictation={() => setView('dictation')}
       openImportUrl={() => setView('import_url')}
@@ -5456,6 +5497,342 @@ function InviteModal({onClose, onSubmit}) {
   );
 }
 
+// V20 — Écran "Mon profil public". Photo + bio + contact pro + zones + specialites +
+// mentions légales Hoguet + statut_public. Upload photo avec compression client + redimension
+// serveur. Sauvegarde onblur. Bouton publier validé si tous prérequis remplis.
+const AGENT_SPECIALITES = [
+  'Vente résidentiel','Vente investissement locatif','Location longue durée',
+  'Location saisonnière','Neuf/Programme','Ancien/Rénovation','Luxe/Prestige',
+  'Riad','Villa','Appartement','Terrain','Commerces','Bureaux','Viager','International',
+];
+function AgentProfileView({currentUser, onBack, showToast}) {
+  const [p, setP] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [zoneInput, setZoneInput] = React.useState('');
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const tokenGet = () => localStorage.getItem('ocre_token') || '';
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(API + '/agent_profile.php?action=get_mine', {headers:{'X-Session-Token':tokenGet()}});
+        const d = await r.json();
+        if (d && d.ok) setP(d.profile);
+        else showToast && showToast((d && d.error) || 'Erreur chargement profil');
+      } catch (e) { showToast && showToast('Erreur réseau'); }
+      setLoading(false);
+    })();
+  }, []);
+
+  async function save(patch) {
+    setSaving(true);
+    try {
+      const r = await fetch(API + '/agent_profile.php?action=update_mine', {
+        method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tokenGet()},
+        body: JSON.stringify(patch),
+      });
+      const d = await r.json();
+      if (d && d.ok) { setP(d.profile); showToast && showToast('Enregistré'); }
+      else showToast && showToast((d && d.error) || 'Échec');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setSaving(false);
+  }
+
+  async function doPhotoUpload(file) {
+    if (!file) return;
+    // Compression client : Canvas 400x400 qualité 0.85.
+    try {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+      const side = Math.min(img.width, img.height);
+      const cx = (img.width - side) / 2, cy = (img.height - side) / 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, cx, cy, side, side, 0, 0, 400, 400);
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+      const fd = new FormData();
+      fd.append('photo', blob, 'avatar.jpg');
+      const r = await fetch(API + '/agent_profile.php?action=upload_photo', {method:'POST', headers:{'X-Session-Token':tokenGet()}, body: fd});
+      const d = await r.json();
+      if (d && d.ok) { setP({...p, photo_url: d.photo_url}); showToast && showToast('Photo mise à jour'); }
+      else showToast && showToast((d && d.error) || 'Upload échoué');
+    } catch (e) { showToast && showToast('Erreur compression image'); }
+  }
+
+  async function doPhotoDelete() {
+    if (!window.confirm('Supprimer la photo de profil ?')) return;
+    const r = await fetch(API + '/agent_profile.php?action=delete_photo', {method:'POST', headers:{'X-Session-Token':tokenGet()}});
+    const d = await r.json();
+    if (d && d.ok) { setP({...p, photo_url: null}); showToast && showToast('Photo supprimée'); }
+  }
+
+  async function doPublish() {
+    const r = await fetch(API + '/agent_profile.php?action=publish', {method:'POST', headers:{'X-Session-Token':tokenGet()}});
+    const d = await r.json();
+    if (d && d.ok) { setP({...p, statut_public: 'actif', slug: d.slug}); showToast && showToast('Profil actif'); }
+    else showToast && showToast((d && d.error) || 'Profil incomplet');
+  }
+  async function doUnpublish() {
+    if (!window.confirm('Passer le profil en brouillon ? Ton profil et tes annonces ne seront plus visibles.')) return;
+    const r = await fetch(API + '/agent_profile.php?action=unpublish', {method:'POST', headers:{'X-Session-Token':tokenGet()}});
+    const d = await r.json();
+    if (d && d.ok) setP({...p, statut_public: 'brouillon'});
+  }
+
+  function addZone(raw) {
+    const val = (raw || zoneInput).trim();
+    if (!val || val.length > 50) return;
+    const zones = Array.isArray(p.zones_intervention) ? p.zones_intervention : [];
+    if (zones.length >= 30) return showToast && showToast('Max 30 zones');
+    if (zones.includes(val)) { setZoneInput(''); return; }
+    const next = [...zones, val];
+    setP({...p, zones_intervention: next});
+    save({zones_intervention: next});
+    setZoneInput('');
+  }
+  function removeZone(idx) {
+    const zones = [...(p.zones_intervention || [])];
+    zones.splice(idx, 1);
+    setP({...p, zones_intervention: zones});
+    save({zones_intervention: zones});
+  }
+  function toggleSpec(label) {
+    const specs = Array.isArray(p.specialites) ? p.specialites : [];
+    const next = specs.includes(label) ? specs.filter(x => x !== label) : [...specs, label];
+    setP({...p, specialites: next});
+    save({specialites: next});
+  }
+
+  if (loading || !p) {
+    return <div style={{padding:40, textAlign:'center', color:'#8B7F6E'}}>Chargement…</div>;
+  }
+
+  const zones = Array.isArray(p.zones_intervention) ? p.zones_intervention : [];
+  const specs = Array.isArray(p.specialites) ? p.specialites : [];
+  const missing = Array.isArray(p.missing_for_publish) ? p.missing_for_publish : [];
+  const canPublish = missing.length === 0;
+  const statutColor = p.statut_public === 'actif' ? '#2E7D32' : p.statut_public === 'suspendu' ? '#C04B20' : '#8B7F6E';
+  const statutLabel = p.statut_public === 'actif' ? 'Actif' : p.statut_public === 'suspendu' ? 'Suspendu' : 'Brouillon';
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:19, fontWeight:700, color:'#8B5E3C'}}>Mon profil public</div>
+        <span style={{fontSize:11, fontWeight:700, color:'#fff', background:statutColor, padding:'2px 8px', borderRadius:10}}>{statutLabel}</span>
+      </div>
+      <div style={{flex:1, overflowY:'auto', padding:'14px 14px 40px'}}>
+        <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:16, lineHeight:1.5}}>
+          Ces informations apparaîtront sur la vitrine <b>ocre.immo</b> (bientôt disponible) ainsi que sur tes annonces publiées. Tu peux sauvegarder en brouillon et publier uniquement quand ton profil est prêt.
+        </div>
+
+        {/* Section 1 — Identité visuelle */}
+        <div className="ocre-card" style={{marginBottom:14}}>
+          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'#8B5E3C', fontWeight:700, marginBottom:10}}>Identité visuelle</div>
+          <div style={{display:'flex', gap:14, alignItems:'center', marginBottom:12}}>
+            <div style={{width:120, height:120, borderRadius:'50%', background:'#8B5E3C center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'Cormorant Garamond,serif', fontSize:40, fontWeight:700, cursor:'pointer', overflow:'hidden', flexShrink:0}}
+              onClick={() => document.getElementById('agent-photo-input').click()}>
+              {!p.photo_url && ((p.prenom || '?')[0] + (p.nom || '')[0]).toUpperCase()}
+            </div>
+            <div style={{flex:1, minWidth:0}}>
+              <button onClick={() => document.getElementById('agent-photo-input').click()} style={{width:'100%', padding:'9px 10px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:12.5, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>
+                {p.photo_url ? 'Changer la photo' : 'Ajouter une photo'}
+              </button>
+              {p.photo_url && <button onClick={doPhotoDelete} style={{width:'100%', padding:'7px 10px', background:'#fff', color:'#C04B20', border:'1px solid #D64545', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Supprimer</button>}
+              <input id="agent-photo-input" type="file" accept="image/*" style={{display:'none'}}
+                onChange={e => { if (e.target.files && e.target.files[0]) doPhotoUpload(e.target.files[0]); }}/>
+            </div>
+          </div>
+          <label className="ocre-lbl">Prénom / Nom (éditable dans Préférences générales)</label>
+          <div style={{padding:'8px 10px', background:'#FBF7EE', border:'1px solid #E0CDAE', borderRadius:8, fontSize:13, color:'#5A4E3D', marginBottom:10}}>{p.prenom} {p.nom}</div>
+          <label className="ocre-lbl">URL de ta fiche publique</label>
+          <input defaultValue={p.slug || ''} onBlur={e => { const v = e.target.value.trim(); if (v && v !== p.slug) save({slug: v}); }}
+            placeholder="slug-url-de-ta-fiche"
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'monospace', boxSizing:'border-box', marginBottom:6}}/>
+          <div style={{fontSize:11, color:'#8B7F6E'}}>Prévisualisation : <b>ocre.immo/agents/{p.slug || '…'}</b></div>
+        </div>
+
+        {/* Section 2 — Biographie */}
+        <div className="ocre-card" style={{marginBottom:14}}>
+          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'#8B5E3C', fontWeight:700, marginBottom:10}}>Biographie</div>
+          <label className="ocre-lbl">Tagline (1 ligne, max 255 chars)</label>
+          <input defaultValue={p.tagline || ''} placeholder="Agent immobilier spécialiste Marrakech & Ourika"
+            maxLength={255}
+            onBlur={e => { const v = e.target.value; if (v !== (p.tagline || '')) save({tagline: v}); }}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13.5, fontFamily:'inherit', boxSizing:'border-box', marginBottom:10}}/>
+          <label className="ocre-lbl">Bio longue (min 50 chars pour publier, max 2000)</label>
+          <textarea defaultValue={p.bio || ''} placeholder="Présentation longue, parcours, philosophie, engagements…"
+            maxLength={2000} rows={6}
+            onBlur={e => { const v = e.target.value; if (v !== (p.bio || '')) save({bio: v}); }}
+            style={{width:'100%', padding:'10px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', resize:'vertical'}}/>
+        </div>
+
+        {/* Section 3 — Contact pro */}
+        <div className="ocre-card" style={{marginBottom:14}}>
+          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'#8B5E3C', fontWeight:700, marginBottom:10}}>Contact professionnel</div>
+          <label className="ocre-lbl">Téléphone pro</label>
+          <input type="tel" defaultValue={p.telephone_pro || ''} placeholder="+212 6 00 00 00 00"
+            onBlur={e => save({telephone_pro: e.target.value})}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:14, fontFamily:'inherit', boxSizing:'border-box', marginBottom:10}}/>
+          <label className="ocre-lbl">Email pro</label>
+          <input type="email" defaultValue={p.email_pro || ''} placeholder="contact.pro@exemple.fr"
+            onBlur={e => save({email_pro: e.target.value})}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:14, fontFamily:'inherit', boxSizing:'border-box', marginBottom:10}}/>
+          <label className="ocre-lbl">WhatsApp pro (optionnel)</label>
+          <input type="tel" defaultValue={p.whatsapp_pro || ''} placeholder="+212 6 00 00 00 00"
+            onBlur={e => save({whatsapp_pro: e.target.value})}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:14, fontFamily:'inherit', boxSizing:'border-box'}}/>
+        </div>
+
+        {/* Section 4 — Zones */}
+        <div className="ocre-card" style={{marginBottom:14}}>
+          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'#8B5E3C', fontWeight:700, marginBottom:10}}>Zones d'intervention</div>
+          <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:10}}>
+            {zones.map((z, i) => (
+              <span key={z + i} style={{display:'inline-flex', alignItems:'center', gap:5, background:'#FBF1E4', color:'#8B5E3C', border:'1px solid #E0CDAE', borderRadius:14, padding:'4px 8px 4px 10px', fontSize:12, fontWeight:600}}>
+                {z}
+                <button onClick={() => removeZone(i)} style={{background:'none', border:'none', color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', fontSize:14, padding:0, lineHeight:1}}>×</button>
+              </span>
+            ))}
+          </div>
+          <div style={{display:'flex', gap:6}}>
+            <input value={zoneInput} onChange={e => setZoneInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addZone(); } }}
+              placeholder="Ajouter une zone (Enter)"
+              style={{flex:1, padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'inherit', boxSizing:'border-box'}}/>
+            <button onClick={() => addZone()} style={{padding:'0 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>+</button>
+          </div>
+        </div>
+
+        {/* Section 5 — Spécialités */}
+        <div className="ocre-card" style={{marginBottom:14}}>
+          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'#8B5E3C', fontWeight:700, marginBottom:10}}>Spécialités</div>
+          <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+            {AGENT_SPECIALITES.map(s => {
+              const on = specs.includes(s);
+              return (
+                <button key={s} type="button" onClick={() => toggleSpec(s)}
+                  style={{padding:'6px 10px', background: on ? '#8B5E3C' : '#FDFAF7', color: on ? '#fff' : '#5A4E3D', border:'1px solid ' + (on ? '#8B5E3C' : '#E0CDAE'), borderRadius:14, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Section 6 — Mentions légales */}
+        <div className="ocre-card" style={{marginBottom:14}}>
+          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'#8B5E3C', fontWeight:700, marginBottom:6}}>Mentions légales</div>
+          <div style={{fontSize:11.5, color:'#5A4E3D', marginBottom:10, lineHeight:1.4}}>Ces informations apparaîtront obligatoirement sur chacune de tes annonces, en conformité avec la <b>Loi Hoguet</b> (France) et la réglementation immobilière marocaine.</div>
+          <label className="ocre-lbl">Numéro de carte professionnelle</label>
+          <input defaultValue={p.carte_pro_numero || ''} onBlur={e => save({carte_pro_numero: e.target.value})}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', marginBottom:8}}/>
+          <label className="ocre-lbl">Préfecture / Autorité de délivrance</label>
+          <input defaultValue={p.carte_pro_prefecture || ''} onBlur={e => save({carte_pro_prefecture: e.target.value})}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', marginBottom:8}}/>
+          <label className="ocre-lbl">Date de fin de validité</label>
+          <input type="date" defaultValue={p.carte_pro_date_fin || ''} onBlur={e => save({carte_pro_date_fin: e.target.value})}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', marginBottom:12}}/>
+          <label className="ocre-lbl">Assureur RCP</label>
+          <input defaultValue={p.rcp_assureur || ''} onBlur={e => save({rcp_assureur: e.target.value})}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', marginBottom:8}}/>
+          <label className="ocre-lbl">N° de police d'assurance</label>
+          <input defaultValue={p.rcp_numero_police || ''} onBlur={e => save({rcp_numero_police: e.target.value})}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', marginBottom:8}}/>
+          <label className="ocre-lbl">Montant de garantie</label>
+          <input defaultValue={p.rcp_montant_garantie || ''} placeholder="ex. 120 000 €"
+            onBlur={e => save({rcp_montant_garantie: e.target.value})}
+            style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'inherit', boxSizing:'border-box'}}/>
+        </div>
+
+        {/* Section 7 — Statut */}
+        <div className="ocre-card" style={{marginBottom:14}}>
+          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'#8B5E3C', fontWeight:700, marginBottom:6}}>Statut de publication</div>
+          <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:12, lineHeight:1.5}}>
+            {p.statut_public === 'brouillon' && "Ton profil n'est pas visible publiquement. Complète les champs obligatoires pour passer en actif."}
+            {p.statut_public === 'actif' && 'Ton profil et tes annonces publiées sont visibles sur ocre.immo.'}
+            {p.statut_public === 'suspendu' && 'Ton profil est masqué temporairement. Tes annonces restent masquées aussi.'}
+          </div>
+          {missing.length > 0 && p.statut_public === 'brouillon' && (
+            <div style={{background:'#FFF3EC', border:'1px solid #E0CDAE', borderRadius:8, padding:'8px 10px', fontSize:11.5, color:'#8B5E3C', marginBottom:10}}>
+              <b>Manquant pour publier :</b> {missing.join(', ')}
+            </div>
+          )}
+          <div style={{display:'flex', gap:8}}>
+            {p.statut_public !== 'actif' ? (
+              <button onClick={doPublish} disabled={!canPublish} title={canPublish ? '' : 'Complète les champs manquants'}
+                style={{flex:1, padding:'11px', background: canPublish ? 'linear-gradient(135deg,#8B5E3C,#A06B45)' : '#C9B79A', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor: canPublish ? 'pointer' : 'not-allowed', fontFamily:'inherit'}}>
+                Passer en actif
+              </button>
+            ) : (
+              <button onClick={doUnpublish}
+                style={{flex:1, padding:'11px', background:'#fff', color:'#C04B20', border:'1.5px solid #D64545', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                Passer en brouillon
+              </button>
+            )}
+            <button onClick={() => setPreviewOpen(true)}
+              style={{flex:1, padding:'11px', background:'#FFF3EC', color:'#8B5E3C', border:'1.5px solid #BBA88B', borderRadius:8, fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+              Prévisualiser ma fiche
+            </button>
+          </div>
+        </div>
+      </div>
+      {previewOpen && <AgentPreviewModal profile={p} onClose={() => setPreviewOpen(false)}/>}
+    </div>
+  );
+}
+
+function AgentPreviewModal({profile: p, onClose}) {
+  const zones = Array.isArray(p.zones_intervention) ? p.zones_intervention : [];
+  const specs = Array.isArray(p.specialites) ? p.specialites : [];
+  return (
+    <div style={{position:'fixed', inset:0, background:'#F5EFE6', zIndex:220, overflowY:'auto'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #E0CDAE', padding:'12px 14px', display:'flex', alignItems:'center', gap:10, position:'sticky', top:0, zIndex:10}}>
+        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:19, fontWeight:700, color:'#8B5E3C'}}>Aperçu vitrine</div>
+        <button onClick={onClose} style={{background:'none', border:'none', fontSize:24, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', padding:'0 6px'}}>×</button>
+      </div>
+      <div style={{maxWidth:600, margin:'0 auto', padding:20}}>
+        <div style={{display:'flex', alignItems:'center', gap:14, marginBottom:14}}>
+          <div style={{width:110, height:110, borderRadius:'50%', background:'#8B5E3C center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', flexShrink:0, border:'3px solid #8B5E3C', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'Cormorant Garamond,serif', fontSize:38, fontWeight:700}}>
+            {!p.photo_url && ((p.prenom || '?')[0] + (p.nom || '')[0]).toUpperCase()}
+          </div>
+          <div style={{flex:1, minWidth:0}}>
+            <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:24, fontWeight:700, color:'#8B5E3C'}}>{p.prenom} {p.nom}</div>
+            {p.tagline && <div style={{fontSize:13, color:'#5A4E3D', marginTop:4}}>{p.tagline}</div>}
+          </div>
+        </div>
+        {p.bio && <div style={{fontSize:13.5, color:'#2A2018', lineHeight:1.6, whiteSpace:'pre-wrap', marginBottom:16}}>{p.bio}</div>}
+        <div style={{background:'#fff', border:'1px solid #E0CDAE', borderRadius:10, padding:'12px 14px', marginBottom:14}}>
+          <div style={{fontSize:10, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:6}}>Contact</div>
+          {p.telephone_pro && <div style={{fontSize:13, marginBottom:3}}>📞 <a href={'tel:' + p.telephone_pro} style={{color:'#8B5E3C', textDecoration:'none'}}>{p.telephone_pro}</a></div>}
+          {p.email_pro && <div style={{fontSize:13, marginBottom:3}}>✉ <a href={'mailto:' + p.email_pro} style={{color:'#8B5E3C', textDecoration:'none'}}>{p.email_pro}</a></div>}
+          {p.whatsapp_pro && <div style={{fontSize:13}}>💬 WhatsApp : {p.whatsapp_pro}</div>}
+        </div>
+        {zones.length > 0 && (
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:10, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:6}}>Zones d'intervention</div>
+            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>{zones.map((z, i) => <span key={i} style={{background:'#FBF1E4', border:'1px solid #E0CDAE', borderRadius:14, padding:'3px 10px', fontSize:12, color:'#8B5E3C', fontWeight:600}}>{z}</span>)}</div>
+          </div>
+        )}
+        {specs.length > 0 && (
+          <div style={{marginBottom:18}}>
+            <div style={{fontSize:10, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:6}}>Spécialités</div>
+            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>{specs.map((s, i) => <span key={i} style={{background:'#fff', border:'1px solid #BBA88B', borderRadius:14, padding:'3px 10px', fontSize:12, color:'#5A4E3D', fontWeight:600}}>{s}</span>)}</div>
+          </div>
+        )}
+        <div style={{background:'#fff', border:'1px dashed #BBA88B', borderRadius:10, padding:'14px', fontSize:12, color:'#8B7F6E', textAlign:'center', marginBottom:20}}>Vos annonces publiées apparaîtront ici.</div>
+        <div style={{borderTop:'1px solid #E0CDAE', paddingTop:10, fontSize:10.5, color:'#8B7F6E', lineHeight:1.5}}>
+          {p.carte_pro_numero && <div>Carte pro N° <b>{p.carte_pro_numero}</b>{p.carte_pro_prefecture ? ' — ' + p.carte_pro_prefecture : ''}{p.carte_pro_date_fin ? ' (valide jusqu\'au ' + p.carte_pro_date_fin + ')' : ''}</div>}
+          {p.rcp_assureur && <div>RCP {p.rcp_assureur}{p.rcp_numero_police ? ' N° ' + p.rcp_numero_police : ''}{p.rcp_montant_garantie ? ' — Garantie ' + p.rcp_montant_garantie : ''}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PrefsView({currentUser, onBack, showToast, toast}) {
   const [prefs, setPrefs] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -5734,7 +6111,7 @@ function applySearchRank(list, query) {
     .map(x => x.c);
 }
 
-function Header({left, center, right, userMenu, setUserMenu, currentUser, logout, openPrefs, openAdmin}) {
+function Header({left, center, right, userMenu, setUserMenu, currentUser, logout, openPrefs, openAdmin, openAgentProfile}) {
   // V18.9 — compact iPhone : padding 6px 12px (vs 10px 14px), hauteur ~44px.
   // V18.20 — padding horizontal 16px pour respirer le logo et les icônes du bord.
   return (
@@ -5757,6 +6134,9 @@ function Header({left, center, right, userMenu, setUserMenu, currentUser, logout
             {openPrefs && (
               <button onClick={openPrefs} style={{width:'100%', padding:'7px 10px', background:'#FFF3EC', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>⚙ Préférences sync</button>
             )}
+            {openAgentProfile && (
+              <button onClick={openAgentProfile} style={{width:'100%', padding:'7px 10px', background:'#FFF3EC', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>🪪 Mon profil public</button>
+            )}
             <button onClick={logout} style={{width:'100%', padding:'7px 10px', background:'#FDFAF7', color:'#C04B20', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Se déconnecter</button>
           </div>
         )}
@@ -5771,7 +6151,7 @@ function ListView(props) {
          activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          listFilter, setListFilter, listSearch, setListSearch,
          stagedCount, openDownloads, promotedId,
-         openClient, openClientAtSection, openNew, toast, openPrefs,
+         openClient, openClientAtSection, openNew, toast, openPrefs, openAgentProfile,
          matchesById, openMatchModal, matchFor, closeMatchModal,
          findClientById, setEditingFromMatch} = props;
   // V18.19 — recherche dossiers live debounce 150ms. Partagée main/archives via showArchives.
@@ -5894,7 +6274,7 @@ function ListView(props) {
               onClick={() => setShowArchives(!showArchives)}/>
           </div>
         }
-        userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs}
+        userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs} openAgentProfile={openAgentProfile}
       />
 
       {/* V18.19 — SearchBar factorisée (partagée main/archives/downloads). */}
