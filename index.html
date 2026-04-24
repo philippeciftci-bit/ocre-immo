@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v24-photos-unified -->
+<!-- ocre-v27-casquettes-picker -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -215,6 +215,12 @@ const PROFILS_TINT = {
   Bailleur:'#E8EFE9', Locataire:'#F4EFE5', Curieux:'#F0F0F0'
 };
 const BADGES = {Acheteur:'ACH', Vendeur:'VDR', Investisseur:'INV', Bailleur:'BAI', Locataire:'LOC', Curieux:'CUR'};
+// V26 — labels pleins (uppercase) pour remplacer les badges carrés ACH/VDR/INV/BAI/LOC/CUR
+// dans ClientRow (liste d'accueil) + header FormView (page dossier).
+const PROFILS_LABEL = {
+  Acheteur:'ACHETEUR', Vendeur:'VENDEUR', Investisseur:'INVESTISSEUR',
+  Bailleur:'BAILLEUR', Locataire:'LOCATAIRE', Curieux:'CURIEUX'
+};
 // V18.26 — titres sections adaptés par profil. Section II varie (ciblé/en vente/à louer/recherché).
 // Section III : "Budget & rendement" pour Investisseur, "Budget & financement" pour les autres.
 // Section IV : "Suivi & notes" pour tous (renommé depuis "Infos complémentaires").
@@ -6856,8 +6862,28 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         : (importType === 'url' ? ('🔗 ' + (c.source_domain || 'Lien')) : null))
     : null;
 
+  // V26 — labels profil complets en haut du bloc, une ligne, couleur propre par profil.
+  // Combine le profil principal + les liés dans l'ordre naturel. Point médian séparateur.
+  const labelsMain = PROFILS_LABEL[profil] || (profil || '').toUpperCase();
+  const labelsColor = PROFILS[profil] || '#8B5E3C';
+  const labelEntries = [{label: labelsMain, color: labelsColor}].concat(
+    linkedDossiers.map(x => ({
+      label: PROFILS_LABEL[x.projet] || (x.projet || '').toUpperCase(),
+      color: PROFILS[x.projet] || '#8B5E3C',
+    }))
+  );
+
   return (
     <div className="client-row-card" onClick={onClick}>
+      {/* V26 — Ligne labels profil(s) en haut du bloc. Remplace les badges carrés. */}
+      <div style={{padding:'6px 12px 4px', fontSize:9.5, fontWeight:700, letterSpacing:.8, lineHeight:1, fontFamily:'inherit', display:'flex', flexWrap:'wrap', alignItems:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+        {labelEntries.map((e, i) => (
+          <React.Fragment key={e.label + i}>
+            {i > 0 && <span style={{color:'#B5A78F', margin:'0 5px', fontWeight:400}}>·</span>}
+            <span style={{color: e.color}}>{e.label}</span>
+          </React.Fragment>
+        ))}
+      </div>
       <div className="client-row-head" style={{background: tint}}>
         {/* V22 — Miniature photo bien à gauche UNIQUEMENT pour offres (Vendeur/Bailleur).
             Thumb 48x48 mobile (56 desktop via class), IconHome fallback si pas de photo.
@@ -6879,23 +6905,14 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             )}
           </button>
         )}
-        {isStagedRow && importType === 'image' && importImageUrl ? (
+        {/* V26 — badge carré ACH/VDR/INV/BAI/LOC/CUR supprimé, remplacé par labels texte au-dessus.
+            Le badge staged-image (thumbnail import) reste car c'est un signal visuel différent
+            (import en cours de promotion vers dossier complet). */}
+        {isStagedRow && importType === 'image' && importImageUrl && (
           <div className="client-row-badge" style={{background:'#F4EFE5', padding:0, overflow:'hidden'}}>
             <img src={importImageUrl} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}
               onError={e => { e.target.style.display = 'none'; }}/>
           </div>
-        ) : (
-          <div className="client-row-badge" style={{background: col}}>{badge}</div>
-        )}
-        {/* V18.23 — LinkedProfilesBadge collé au badge principal pour lecture instantanée. */}
-        {linkedBadges.length > 0 && (
-          <button type="button"
-            onClick={e => { e.stopPropagation(); openSec(0); }}
-            title="Dossiers liés — voir Section I"
-            style={{display:'inline-flex', alignItems:'center', gap:3, fontSize:11, color: linkedColor, fontWeight:600, letterSpacing:.2, background:'rgba(255,255,255,.6)', border:'1px solid ' + linkedColor, borderRadius:6, padding:'2px 6px', flexShrink:0, cursor:'pointer', fontFamily:'inherit'}}>
-            <span style={{fontSize:11, lineHeight:1}}>🔗</span>
-            <span style={{whiteSpace:'nowrap'}}>{linkedBadges.join(' · ')}</span>
-          </button>
         )}
         <div className="client-row-name">{name}</div>
         {/* V18.47 — badge "En ligne / Masquée" si dossier publié sur vitrine ocre.immo */}
@@ -7894,10 +7911,10 @@ function FormView(props) {
     }, 80);
   }
   function commitAndNext(i) {
-    // V18.7 — flush save + ferme i + ouvre i+1 (ou reste sur i si dernière).
+    // V25 — flush save + ferme la section courante. N'ouvre PLUS la suivante automatiquement.
     commit('_touch', Date.now());
-    if (i < 3) openOnly(i + 1);
-    else setExpanded(prev => prev.map(() => false));
+    setExpanded(prev => prev.map(() => false));
+    showToast && showToast('Enregistré');
   }
   // V18.7 — calcul status + summary par section.
   function computeStatus() {
@@ -8324,27 +8341,45 @@ function FormView(props) {
         </div>
       )}
 
-      <div style={{padding:'10px 14px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
-        <div className="profils-row">
-          {PROFILS_ORDER.map(p => {
-            const active = p === activeProfil;
+      {/* V27 — Header dossier refondu : pills casquettes (active + liées, couleurs PROFILS)
+          + bouton "+ Casquettes" ouvre AddCasquetteModal. Onglets horizontaux et bandeau
+          "Cette personne veut peut-être aussi" supprimés. */}
+      <div style={{padding:'8px 14px 10px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
+        <div style={{display:'flex', flexWrap:'wrap', alignItems:'center', gap:6}}>
+          {/* Pill ACTIVE (profil du dossier courant) */}
+          {(() => {
+            const color = PROFILS[activeProfil] || '#8B5E3C';
             return (
-              <button key={p} onClick={() => setActiveProfil(p)}
-                className={'profil-chip ' + (active ? 'state-selected' : 'state-default')}>{p}</button>
+              <span style={{display:'inline-block', padding:'4px 10px', borderRadius:12, border:'1px solid '+color, background:color, color:'#fff', fontSize:10, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+                {PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()}
+              </span>
             );
-          })}
+          })()}
+          {/* Pills inactives = profils des dossiers liés (tap → navigue vers le dossier lié) */}
+          {(Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
+            .map(id => (clients || []).find(c => c.id === id))
+            .filter(Boolean)
+            .map(lc => {
+              const p = lc.projet || 'Acheteur';
+              const color = PROFILS[p] || '#8B5E3C';
+              return (
+                <button key={lc.id} type="button"
+                  onClick={() => openExistingDossier && openExistingDossier(lc)}
+                  title={'Ouvrir la casquette ' + p}
+                  style={{padding:'4px 10px', borderRadius:12, border:'1px solid '+color, background:'transparent', color:color, fontSize:10, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer'}}>
+                  {PROFILS_LABEL[p] || p.toUpperCase()}
+                </button>
+              );
+            })}
+          {/* Bouton "+ Casquettes" — ouvre le picker d'ajout (existant AddCasquetteModal). */}
+          {editing && editing.id && !String(editing.id).startsWith('tmp-') && (
+            <button type="button" onClick={() => setAddCasquetteOpen(true)}
+              title="Ajouter une casquette à ce client"
+              style={{padding:'4px 10px', borderRadius:12, border:'1px solid #D4C3A8', background:'#fff', color:'#5C3B1E', fontSize:10, fontWeight:700, letterSpacing:.4, fontFamily:'inherit', cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4}}>
+              <IconPlus size={12}/><span>CASQUETTES</span>
+            </button>
+          )}
         </div>
-        {/* V17.15 fix-I1 : banner bascule profil filtre les profils déjà liés. */}
-        {visibleBascules.length > 0 && (
-          <div className="bascule-banner">
-            <span>🔄 Aussi… Cette personne veut peut-être aussi</span>
-            {visibleBascules.map(p => (
-              <button key={p} type="button" className="bascule-btn" onClick={() => createLinkedDossier(p)}>
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       <div style={{flex:1, overflowY:'auto', padding:12}}>
@@ -8408,7 +8443,7 @@ function FormView(props) {
             </>
           )}
           <CustomFieldList sectionKey="client" d={d} set={set}/>
-          <button onClick={() => commitAndNext(0)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Section II →</button>
+          <button onClick={() => commitAndNext(0)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
 
           {/* V18.37 — bouton "Ajouter une casquette" : crée un nouveau dossier avec les mêmes
               coordonnées et un autre profil. Bascule v17.15 en haut Section I conservée. */}
@@ -8433,7 +8468,7 @@ function FormView(props) {
           <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
             d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
             showToast={showToast}/>
-          <button onClick={() => commitAndNext(1)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Section III →</button>
+          <button onClick={() => commitAndNext(1)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
         </Stage>}
 
         {/* V23 — CrossRefPanel milieu de dossier retiré ; recherche Internet déplacée dans
@@ -8473,7 +8508,7 @@ function FormView(props) {
             </>
           )}
           <CustomFieldList sectionKey="financement" d={d} set={set}/>
-          <button onClick={() => commitAndNext(2)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Section IV →</button>
+          <button onClick={() => commitAndNext(2)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
         </Stage>}
 
         </div>
