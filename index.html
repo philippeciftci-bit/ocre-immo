@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v27-casquettes-picker -->
+<!-- ocre-v28-casquettes-section-i -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2847,7 +2847,7 @@ function FinancementForm({activeProfil, d, set, dossierId, showToast}) {
 
 // V18.7 — Stage accordéon strict + status badge + ligne stats compacte fermé.
 // V18.27 — prop highlighted : match loupe → border jaune #F59E0B + bg très léger #FFFBEB.
-function Stage({title, expanded, onToggle, children, status, summary, highlighted}) {
+function Stage({title, expanded, onToggle, children, status, summary, highlighted, customHeader}) {
   // status : 'complete' (✓ vert) | 'partial' (… orange) | 'empty' (— gris)
   const badge = status === 'complete'
     ? {char:'✓', color:'#3E8B5E', bg:'#E8F5EC'}
@@ -2864,7 +2864,9 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
       <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s'}}>
         <div style={{flex:1, minWidth:0}}>
           <div style={{display:'flex', alignItems:'center', gap:8}}>
-            <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{title}</span>
+            {customHeader ? customHeader : (
+              <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{title}</span>
+            )}
             <span title={status === 'complete' ? 'Section complète' : status === 'partial' ? 'Section partielle' : 'Section vide'}
               style={{display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:9, background: badge.bg, color: badge.color, fontSize:11, fontWeight:800, flexShrink:0}}>{badge.char}</span>
           </div>
@@ -3206,10 +3208,9 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
       style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <div onClick={e => e.stopPropagation()}
         style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:20, width:'100%', maxWidth:400, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 50px rgba(0,0,0,.25)'}}>
-        <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:19, fontWeight:700, color:'#8B5E3C', marginBottom:4}}>Ajouter une casquette</div>
-        <div style={{fontSize:13, color:'#2A2018', marginBottom:14}}>à <b>{prenom}{nom ? ' ' + nom : ''}</b></div>
-        <div style={{fontSize:11.5, color:'#8B7F6E', marginBottom:14, fontStyle:'italic'}}>
-          Les coordonnées (tel, email, adresse, résidence) sont copiées. Tu complèteras ensuite Section II/III/IV selon ce nouveau profil.
+        <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:19, fontWeight:700, color:'#8B5E3C', marginBottom:4}}>Casquettes de {prenom}{nom ? ' ' + nom : ''}</div>
+        <div style={{fontSize:11.5, color:'#8B7F6E', marginBottom:14, fontStyle:'italic', lineHeight:1.45}}>
+          Coche les profils pour créer les dossiers liés. Les coordonnées sont partagées ; chaque dossier a son propre bien, budget et suivi. Les cases "Existant" ne peuvent pas être décochées ici (passer par le dossier pour supprimer).
         </div>
 
         <div style={{display:'flex', flexDirection:'column', gap:8}}>
@@ -6875,15 +6876,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
 
   return (
     <div className="client-row-card" onClick={onClick}>
-      {/* V26 — Ligne labels profil(s) en haut du bloc. Remplace les badges carrés. */}
-      <div style={{padding:'6px 12px 4px', fontSize:9.5, fontWeight:700, letterSpacing:.8, lineHeight:1, fontFamily:'inherit', display:'flex', flexWrap:'wrap', alignItems:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-        {labelEntries.map((e, i) => (
-          <React.Fragment key={e.label + i}>
-            {i > 0 && <span style={{color:'#B5A78F', margin:'0 5px', fontWeight:400}}>·</span>}
-            <span style={{color: e.color}}>{e.label}</span>
-          </React.Fragment>
-        ))}
-      </div>
+      {/* V28 — Ligne labels v26 supprimée : les pills sont intégrées dans la ligne nom ci-dessous. */}
       <div className="client-row-head" style={{background: tint}}>
         {/* V22 — Miniature photo bien à gauche UNIQUEMENT pour offres (Vendeur/Bailleur).
             Thumb 48x48 mobile (56 desktop via class), IconHome fallback si pas de photo.
@@ -6914,34 +6907,65 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
               onError={e => { e.target.style.display = 'none'; }}/>
           </div>
         )}
-        <div className="client-row-name">{name}</div>
-        {/* V18.47 — badge "En ligne / Masquée" si dossier publié sur vitrine ocre.immo */}
-        {c.is_published ? (
-          <span title={c.public_visible ? 'Publié en ligne sur ocre.immo' : 'Publication masquée'}
-            style={{fontSize:10, fontWeight:700, color: c.public_visible ? '#2E7D32' : '#8B7F6E', background:'#fff', border:'1px solid ' + (c.public_visible ? '#2E7D32' : '#C9B79A'), borderRadius:10, padding:'2px 7px', whiteSpace:'nowrap', flexShrink:0}}>
-            ● {c.public_visible ? 'En ligne' : 'Masquée'}
-          </span>
-        ) : null}
-        {sourceChip && (
-          <div style={{fontSize:10, color: importType === 'image' ? '#8B6B1E' : '#B26D3A', fontWeight:700, flexShrink:0, background:'#fff', border:'1px solid #E8DDD0', borderRadius:10, padding:'2px 7px', whiteSpace:'nowrap'}}>{sourceChip}</div>
-        )}
-        {primaryTel && primaryTel.valeur ? (
-          tels.length > 1 ? (
-            // Plusieurs tels : PhonePill ouvre le chooser au lieu d'appeler direct.
-            <button type="button"
-              onClick={e => { e.preventDefault(); e.stopPropagation(); setTelChooser(true); }}
-              onTouchStart={e => e.stopPropagation()}
-              style={{background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:4, flexShrink:0}}>
-              <PhonePill tel={primaryTel.valeur} size="sm"/>
-              <span style={{fontSize:10, color:'#B26D3A', fontWeight:700}}>(+{tels.length - 1})</span>
-            </button>
-          ) : (
-            <PhonePill tel={primaryTel.valeur} size="sm"/>
-          )
-        ) : (
-          <button className="client-row-chip-add"
-            onClick={e => { e.stopPropagation(); onOpenSection && onOpenSection(c, 0); }}>+ Contact</button>
-        )}
+        {/* V28 — Bloc empilé : ligne 1 nom + pills, ligne 2 téléphone. Tient dans la hauteur thumb. */}
+        <div style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', gap:2}}>
+          <div style={{display:'flex', alignItems:'center', gap:6, minWidth:0, flexWrap:'nowrap', overflow:'hidden'}}>
+            <span className="client-row-name" style={{minWidth:0, flexShrink:1}}>{name}</span>
+            {/* Pills : active (fond couleur) + liées (outline). 3+ casquettes sur mobile → fallback texte. */}
+            {(() => {
+              const activeColor = PROFILS[profil] || '#8B5E3C';
+              const linkedList = linkedDossiers.map(x => ({projet: x.projet || 'Acheteur', id: x.id, c: x}));
+              const total = 1 + linkedList.length;
+              const useAbbr = total >= 3;
+              return (
+                <>
+                  <span style={{padding: useAbbr ? 0 : '2px 6px', borderRadius:8, border: useAbbr ? 'none' : '1px solid '+activeColor, background: useAbbr ? 'transparent' : activeColor, color: useAbbr ? activeColor : '#fff', fontSize:8.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit'}}>
+                    {useAbbr ? (BADGES[profil] || profil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[profil] || profil.toUpperCase())}
+                  </span>
+                  {linkedList.map(lp => (
+                    <React.Fragment key={'pill-' + lp.id}>
+                      {useAbbr && <span style={{color:'#B5A78F', fontSize:8.5, fontWeight:400, flexShrink:0}}>·</span>}
+                      <button type="button"
+                        onClick={e => { e.stopPropagation(); onOpenSection && onOpenSection(lp.c, 0); }}
+                        style={{padding: useAbbr ? 0 : '2px 6px', borderRadius:8, border: useAbbr ? 'none' : '1px solid ' + (PROFILS[lp.projet] || '#8B5E3C'), background:'transparent', color: PROFILS[lp.projet] || '#8B5E3C', fontSize:8.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', cursor:'pointer'}}>
+                        {useAbbr ? (BADGES[lp.projet] || lp.projet.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[lp.projet] || lp.projet.toUpperCase())}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </>
+              );
+            })()}
+            {/* Badges publication/source à droite si présents */}
+            {c.is_published && (
+              <span title={c.public_visible ? 'Publié en ligne sur ocre.immo' : 'Publication masquée'}
+                style={{fontSize:9.5, fontWeight:700, color: c.public_visible ? '#2E7D32' : '#8B7F6E', background:'#fff', border:'1px solid ' + (c.public_visible ? '#2E7D32' : '#C9B79A'), borderRadius:10, padding:'1px 6px', whiteSpace:'nowrap', flexShrink:0}}>
+                ● {c.public_visible ? 'En ligne' : 'Masquée'}
+              </span>
+            )}
+            {sourceChip && (
+              <div style={{fontSize:9.5, color: importType === 'image' ? '#8B6B1E' : '#B26D3A', fontWeight:700, flexShrink:0, background:'#fff', border:'1px solid #E8DDD0', borderRadius:10, padding:'1px 6px', whiteSpace:'nowrap'}}>{sourceChip}</div>
+            )}
+          </div>
+          {/* Ligne 2 : téléphone primaire */}
+          <div style={{display:'flex', alignItems:'center', gap:6}}>
+            {primaryTel && primaryTel.valeur ? (
+              tels.length > 1 ? (
+                <button type="button"
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); setTelChooser(true); }}
+                  onTouchStart={e => e.stopPropagation()}
+                  style={{background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:4, flexShrink:0}}>
+                  <PhonePill tel={primaryTel.valeur} size="sm"/>
+                  <span style={{fontSize:10, color:'#B26D3A', fontWeight:700}}>(+{tels.length - 1})</span>
+                </button>
+              ) : (
+                <PhonePill tel={primaryTel.valeur} size="sm"/>
+              )
+            ) : (
+              <button className="client-row-chip-add"
+                onClick={e => { e.stopPropagation(); onOpenSection && onOpenSection(c, 0); }}>+ Contact</button>
+            )}
+          </div>
+        </div>
         {matchInfo && matchInfo.count > 0 && (
           <button onClick={e => { e.stopPropagation(); onOpenMatches && onOpenMatches(); }}
             style={{background:'none', border:'none', cursor:'pointer', padding:'2px 4px', fontSize:12, color: matchInfo.max_score > 80 ? '#D64545' : '#B26D3A', fontWeight:700, flexShrink:0, fontFamily:'inherit'}}
@@ -7723,6 +7747,52 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
   );
 }
 
+// V28 — Stage I header bar : nom + pills casquettes (active + liées) + bouton "+" rond.
+// Remplace le titre "I. L'Acheteur / Le Vendeur / ..." dynamique. Permet de gérer les
+// casquettes (ajouter via modal multi-select, naviguer entre liées via tap pill).
+function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, onOpenPicker, canAdd, profilType}) {
+  const displayName = (profilType === 'Société' && d && d.societe_nom)
+    ? d.societe_nom
+    : (((d && d.prenom) || '') + ' ' + ((d && d.nom) || '')).trim();
+  const activeColor = PROFILS[activeProfil] || '#8B5E3C';
+  return (
+    <div style={{display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0, flexWrap:'wrap'}} onClick={e => e.stopPropagation()}>
+      <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flexShrink:1}}>
+        {displayName || 'Nouveau dossier'}
+      </span>
+      {/* Pill ACTIVE */}
+      <span style={{padding:'3px 9px', borderRadius:11, border:'1px solid '+activeColor, background:activeColor, color:'#fff', fontSize:9.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0}}>
+        {PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()}
+      </span>
+      {/* Pills LIÉES (tap → openExistingDossier) */}
+      {linkedDossiers.map(lc => {
+        const p = lc.projet || 'Acheteur';
+        const color = PROFILS[p] || '#8B5E3C';
+        return (
+          <button key={lc.id} type="button"
+            onClick={e => { e.stopPropagation(); openExistingDossier && openExistingDossier(lc); }}
+            title={'Ouvrir la casquette ' + p}
+            style={{padding:'3px 9px', borderRadius:11, border:'1px solid '+color, background:'transparent', color:color, fontSize:9.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer', flexShrink:0}}>
+            {PROFILS_LABEL[p] || p.toUpperCase()}
+          </button>
+        );
+      })}
+      {/* Bouton "+" rond → ouvre le modal multi-select */}
+      {canAdd && (
+        <button type="button"
+          onClick={e => { e.stopPropagation(); onOpenPicker && onOpenPicker(); }}
+          title="Ajouter une casquette à ce client"
+          aria-label="Ajouter une casquette"
+          style={{width:32, height:32, borderRadius:'50%', border:'1.5px solid #D4C3A8', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, flexShrink:0, color:'#8B5E3C', transition:'background .1s'}}
+          onMouseEnter={e => { e.currentTarget.style.background = '#FFF8EF'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}>
+          <IconPlus size={18}/>
+        </button>
+      )}
+    </div>
+  );
+}
+
 function FormView(props) {
   const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          handleSaveLocal, handleDelete, backToList, toast, showToast,
@@ -8341,50 +8411,13 @@ function FormView(props) {
         </div>
       )}
 
-      {/* V27 — Header dossier refondu : pills casquettes (active + liées, couleurs PROFILS)
-          + bouton "+ Casquettes" ouvre AddCasquetteModal. Onglets horizontaux et bandeau
-          "Cette personne veut peut-être aussi" supprimés. */}
-      <div style={{padding:'8px 14px 10px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
-        <div style={{display:'flex', flexWrap:'wrap', alignItems:'center', gap:6}}>
-          {/* Pill ACTIVE (profil du dossier courant) */}
-          {(() => {
-            const color = PROFILS[activeProfil] || '#8B5E3C';
-            return (
-              <span style={{display:'inline-block', padding:'4px 10px', borderRadius:12, border:'1px solid '+color, background:color, color:'#fff', fontSize:10, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap'}}>
-                {PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()}
-              </span>
-            );
-          })()}
-          {/* Pills inactives = profils des dossiers liés (tap → navigue vers le dossier lié) */}
-          {(Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
-            .map(id => (clients || []).find(c => c.id === id))
-            .filter(Boolean)
-            .map(lc => {
-              const p = lc.projet || 'Acheteur';
-              const color = PROFILS[p] || '#8B5E3C';
-              return (
-                <button key={lc.id} type="button"
-                  onClick={() => openExistingDossier && openExistingDossier(lc)}
-                  title={'Ouvrir la casquette ' + p}
-                  style={{padding:'4px 10px', borderRadius:12, border:'1px solid '+color, background:'transparent', color:color, fontSize:10, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer'}}>
-                  {PROFILS_LABEL[p] || p.toUpperCase()}
-                </button>
-              );
-            })}
-          {/* Bouton "+ Casquettes" — ouvre le picker d'ajout (existant AddCasquetteModal). */}
-          {editing && editing.id && !String(editing.id).startsWith('tmp-') && (
-            <button type="button" onClick={() => setAddCasquetteOpen(true)}
-              title="Ajouter une casquette à ce client"
-              style={{padding:'4px 10px', borderRadius:12, border:'1px solid #D4C3A8', background:'#fff', color:'#5C3B1E', fontSize:10, fontWeight:700, letterSpacing:.4, fontFamily:'inherit', cursor:'pointer', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4}}>
-              <IconPlus size={12}/><span>CASQUETTES</span>
-            </button>
-          )}
-        </div>
-      </div>
+      {/* V28 — Header dossier : pills v27 supprimées, déplacées dans Section I ligne nom. */}
 
       <div style={{flex:1, overflowY:'auto', padding:12}}>
         <div data-stage-anchor="0">
-        <Stage title={STAGES[activeProfil][0]} expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
+        <Stage
+               customHeader={<StageIHeaderBar d={d} activeProfil={activeProfil} linkedDossiers={(Array.isArray(d.linked_dossiers) ? d.linked_dossiers : []).map(id => (clients || []).find(c => c.id === id)).filter(Boolean)} openExistingDossier={openExistingDossier} onOpenPicker={() => setAddCasquetteOpen(true)} canAdd={editing && editing.id && !String(editing.id).startsWith('tmp-')} profilType={profilType}/>}
+               expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status} summary={stageStatus[0].summary}>
           <div style={{display:'flex', gap:6, marginBottom:12}}>
             {['Particulier', 'Société'].map(t => (
@@ -8445,20 +8478,8 @@ function FormView(props) {
           <CustomFieldList sectionKey="client" d={d} set={set}/>
           <button onClick={() => commitAndNext(0)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
 
-          {/* V18.37 — bouton "Ajouter une casquette" : crée un nouveau dossier avec les mêmes
-              coordonnées et un autre profil. Bascule v17.15 en haut Section I conservée. */}
-          {editing && editing.id && !String(editing.id).startsWith('tmp-') && (
-            <>
-              <button type="button" onClick={() => setAddCasquetteOpen(true)}
-                style={{width:'100%', padding:'12px 16px', marginTop:16, background:'#FDF8F0', border:'1.5px dashed #8B5E3C', borderRadius:10, color:'#5C3B1E', fontSize:14, fontWeight:600, fontFamily:'inherit', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8}}>
-                <IconPlus size={16}/>
-                <span>Ajouter une casquette à {d.prenom || d.societe_nom || 'ce client'}</span>
-              </button>
-              <div style={{fontSize:11.5, color:'#8B7F6E', textAlign:'center', marginTop:6, lineHeight:1.45, fontStyle:'italic'}}>
-                Crée un nouveau dossier avec ces mêmes coordonnées et un autre profil (Acheteur, Vendeur, Investisseur…).
-              </div>
-            </>
-          )}
+          {/* V28 — bouton "+ Ajouter une casquette" bas Stage I retiré. Accessible via le
+              bouton "+" rond en ligne nom/prénom du header Stage I. */}
         </Stage>
 
         </div>
