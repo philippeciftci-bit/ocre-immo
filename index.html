@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v20-agent-profiles -->
+<!-- ocre-v20.1-icons-svg-purge -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1166,8 +1166,8 @@ function ShareMenu({dossierId, dossierName, onClose, showToast}) {
                 const t = localStorage.getItem('ocre_token') || '';
                 window.open(API + '/export.php?action=pdf&dossier_id=' + dossierId + '&token=' + encodeURIComponent(t), '_blank');
               }} disabled={!dossierId}
-              style={{width:'100%', padding:'11px', marginTop:8, background:'#FFF3EC', color:'#8B5E3C', border:'1.5px solid #BBA88B', borderRadius:10, fontWeight:700, fontSize:13, cursor: dossierId ? 'pointer' : 'not-allowed', opacity: dossierId ? 1 : .5, fontFamily:'inherit'}}>
-              📄 Exporter en PDF
+              style={{width:'100%', padding:'11px', marginTop:8, background:'#FFF3EC', color:'#8B5E3C', border:'1.5px solid #BBA88B', borderRadius:10, fontWeight:700, fontSize:13, cursor: dossierId ? 'pointer' : 'not-allowed', opacity: dossierId ? 1 : .5, fontFamily:'inherit', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8}}>
+              <IconFileText size={15}/> Exporter en PDF
             </button>
           </>
         ) : (
@@ -2969,6 +2969,89 @@ function PillIconButton({icon, onClick, title, active, style}) {
 const IconShare = ShareIcon;
 const IconDownload = DownloadIcon;
 
+// V20.1 — purge émojis décoratifs. SVG inline style Feather/lucide, stroke currentColor,
+// taille défaut 16 (titres/CTA), 14 (inline), 20 (icônes principaux). Drapeaux et status
+// dots (🔴🟢🟠) conservés (fonctionnels/culturels). Checkmarks ✓✗⚠ conservés (fonctionnels).
+function IconSearch({size=16, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <circle cx="11" cy="11" r="8"/>
+      <path d="m21 21-4.3-4.3"/>
+    </svg>
+  );
+}
+function IconMoney({size=16, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M15 8.5c-.917-.683-2.037-1-3-1-2.21 0-4 1.343-4 3s1.79 3 4 3 4 1.343 4 3-1.79 3-4 3c-1.204 0-2.578-.4-3.5-1"/>
+      <line x1="12" y1="4" x2="12" y2="20"/>
+    </svg>
+  );
+}
+function IconHome({size=16, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <path d="M3 9.5 12 3l9 6.5V20a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2V9.5Z"/>
+    </svg>
+  );
+}
+function IconCalendar({size=16, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  );
+}
+function IconGlobe({size=16, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="2" y1="12" x2="22" y2="12"/>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    </svg>
+  );
+}
+function IconFileText({size=16, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <line x1="10" y1="9" x2="8" y2="9"/>
+    </svg>
+  );
+}
+function IconClipboard({size=16, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+    </svg>
+  );
+}
+function IconTarget({size=16, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <circle cx="12" cy="12" r="10"/>
+      <circle cx="12" cy="12" r="6"/>
+      <circle cx="12" cy="12" r="2"/>
+    </svg>
+  );
+}
+function IconPin({size=16, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <path d="M12 22s-8-7.5-8-13a8 8 0 1 1 16 0c0 5.5-8 13-8 13z"/>
+      <circle cx="12" cy="9" r="3"/>
+    </svg>
+  );
+}
+
 // V18.3 — Web Push : enregistre SW, demande permission, subscribe au backend.
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -3200,7 +3283,7 @@ function CrossRefPanel({d, dossierId, onMatchesUpdate, showToast}) {
   return (
     <div style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:12, marginTop:12, marginBottom:12, overflow:'hidden', boxShadow:'0 1px 3px rgba(139,94,60,.06)'}}>
       <div style={{padding:'12px 14px', background:'#FDFAF4', borderBottom:'1px solid #E0CDAE', display:'flex', alignItems:'center', gap:8}}>
-        <span style={{fontSize:16}}>🔍</span>
+        <IconSearch size={16}/>
         <div style={{flex:1, minWidth:0}}>
           <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:15, fontWeight:700, color:'#8B5E3C', lineHeight:1.2}}>Cette annonce ailleurs{matches.length > 0 ? ' (' + matches.length + ')' : ''}</div>
           {lastSearched && (
@@ -3216,7 +3299,7 @@ function CrossRefPanel({d, dossierId, onMatchesUpdate, showToast}) {
             </div>
             <button type="button" onClick={runSearch} disabled={loading}
               style={{width:'100%', padding:'11px', background: loading ? '#BBA88B' : 'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor: loading ? 'wait' : 'pointer', fontFamily:'inherit'}}>
-              {loading ? '⏳ Recherche en cours ~15s…' : '🔍 Chercher sur d\'autres sites'}
+              {loading ? 'Recherche en cours ~15s…' : <><IconSearch size={15}/> Chercher sur d'autres sites</>}
             </button>
           </>
         ) : (
@@ -3483,15 +3566,16 @@ function PWAInstallOverlay({onClose}) {
 function PublishButton({dossier, dossierId, disabled, onOpen, showToast}) {
   const published = !!dossier.is_published;
   const visible = dossier.public_visible !== 0 && dossier.public_visible !== false;
-  let label, subBadge = null, btnStyle;
+  let label, subBadge = null, btnStyle, iconEl;
+  iconEl = <IconGlobe size={15}/>;
   if (disabled) {
-    label = '🌐 Publier sur ocre.immo';
+    label = 'Publier sur ocre.immo';
     btnStyle = {background:'#F2EBE2', color:'#A89882', border:'1.5px solid #E0CDAE', cursor:'not-allowed'};
   } else if (!published) {
-    label = '🌐 Publier sur ocre.immo';
+    label = 'Publier sur ocre.immo';
     btnStyle = {background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', cursor:'pointer'};
   } else {
-    label = '🌐 Gérer la publication';
+    label = 'Gérer la publication';
     btnStyle = {background:'#fff', color:'#8B5E3C', border:'1.5px solid #8B5E3C', cursor:'pointer'};
     subBadge = visible
       ? <span style={{marginLeft:8, fontSize:11, color:'#2E7D32'}}>● En ligne</span>
@@ -3501,8 +3585,8 @@ function PublishButton({dossier, dossierId, disabled, onOpen, showToast}) {
     <div style={{padding:'14px 4px 4px', display:'flex', justifyContent:'center'}}>
       <button type="button" onClick={disabled ? () => showToast && showToast('Complète le dossier avant publication') : onOpen}
         title={disabled ? 'Complète le dossier avant publication' : label}
-        style={{width:'100%', maxWidth:420, padding:'13px 18px', borderRadius:10, fontWeight:700, fontSize:14, fontFamily:'inherit', ...btnStyle}}>
-        {label}{subBadge}
+        style={{width:'100%', maxWidth:420, padding:'13px 18px', borderRadius:10, fontWeight:700, fontSize:14, fontFamily:'inherit', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, ...btnStyle}}>
+        {iconEl}<span>{label}</span>{subBadge}
       </button>
     </div>
   );
@@ -4732,7 +4816,7 @@ function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, sho
   return (
     <div style={{background:'#fff', borderRadius:12, padding:16, border:'1.5px solid #B26D3A', display:'flex', flexDirection:'column', gap:10, maxHeight:'72vh', overflowY:'auto'}}>
       <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, color:'#8B5E3C', fontWeight:700}}>{intentLabel}</div>
-      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700}}>📋 Récapitulatif · {count} point{count > 1 ? 's' : ''} relevé{count > 1 ? 's' : ''}</div>
+      <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, display:'flex', alignItems:'center', gap:5}}><IconClipboard size={12}/> Récapitulatif · {count} point{count > 1 ? 's' : ''} relevé{count > 1 ? 's' : ''}</div>
       {preview.mode === 'heuristic' && <div style={{fontSize:11, color:'#C04B20', fontStyle:'italic'}}>(Extraction heuristique — vérifie les champs)</div>}
 
       {/* Groupes bullets */}
@@ -6399,7 +6483,7 @@ function MatchModal({clientId, clients, findClientById, setEditingFromMatch, onC
   return (
     <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.55)', zIndex:200, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:520, maxHeight:'85vh', borderRadius:'16px 16px 0 0', padding:18, paddingBottom:24, overflowY:'auto'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:4, textAlign:'center'}}>🎯 Matchs potentiels</div>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:4, textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:8}}><IconTarget size={18}/> Matchs potentiels</div>
         <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14, textAlign:'center'}}>Pour <b>{srcName}</b></div>
         {loading && <div style={{textAlign:'center', color:'#8B7F6E', fontSize:13, padding:20}}>Chargement…</div>}
         {error && <div style={{textAlign:'center', color:'#C04B20', fontSize:13, padding:20}}>{error}</div>}
@@ -6640,7 +6724,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       </div>
       <div className="client-row-grid">
         <div className="client-row-sector" onClick={e => openSec(1, e)}>
-          <div className="client-row-sector-label">🏠 Bien</div>
+          <div className="client-row-sector-label"><IconHome size={12}/> Bien</div>
           {(typeBien || villeQuartier || firstPhotoUrl) ? (
             firstPhotoUrl ? (
               // V18.22 — thumbnail photo bien + texte à droite. Badge +N si photoCount > 1.
@@ -6671,7 +6755,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
           )}
         </div>
         <div className="client-row-sector" onClick={e => openSec(2, e)}>
-          <div className="client-row-sector-label">💰 Budget</div>
+          <div className="client-row-sector-label"><IconMoney size={12}/> Budget</div>
           {budgetMain ? (
             <>
               <div className="client-row-sector-l1">{budgetMain}</div>
@@ -6683,8 +6767,8 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         </div>
         <div className="client-row-sector" onClick={e => openSec(3, e)}>
           <div className="client-row-sector-label">
-            📅 Suivi
-            {suivi3 && suivi3.urgent ? <span style={{marginLeft:3}}>🔴</span> : null}
+            <IconCalendar size={12}/> Suivi
+            {suivi3 && suivi3.urgent ? <span style={{marginLeft:3, display:'inline-block', width:6, height:6, borderRadius:'50%', background:'#D64545'}}/> : null}
           </div>
           {suivi3 ? (
             <>
@@ -7017,7 +7101,7 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
     <div>
       {/* A — Prochain RDV */}
       <div style={{...cardStyle, background: nextEvent ? '#FBF1E4' : '#fff', border: nextEvent ? '1.5px solid #B26D3A' : '1px solid #EDE6DC'}}>
-        <div style={cardTitle}>📌 Prochain rendez-vous</div>
+        <div style={{...cardTitle, display:'flex', alignItems:'center', gap:6}}><IconPin size={14}/> Prochain rendez-vous</div>
         {nextEvent ? (
           <div>
             <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
@@ -7061,7 +7145,7 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
 
       {/* C — Agenda */}
       <div style={cardStyle}>
-        <div style={cardTitle}>🗓 Agenda (7j passés + futurs)</div>
+        <div style={{...cardTitle, display:'flex', alignItems:'center', gap:6}}><IconCalendar size={14}/> Agenda (7j passés + futurs)</div>
         {visibleEvents.length === 0 && <div style={{color:'#B5A78F', fontSize:12, fontStyle:'italic', marginBottom:8}}>Aucun événement.</div>}
         {visibleEvents.map(e => {
           const t = new Date(e.when_at.replace(' ','T'));
