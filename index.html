@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.34-login-consistent-title -->
+<!-- ocre-v18.35-no-pwa-compact-import -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2862,6 +2862,15 @@ function DownloadIcon({size=22, color='currentColor'}) {
     </svg>
   );
 }
+// V18.35 — IconPlus Feather réutilisable.
+function IconPlus({size=22, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  );
+}
 // Alias nomenclature Philippe v18.28.
 const IconShare = ShareIcon;
 const IconDownload = DownloadIcon;
@@ -3140,8 +3149,8 @@ function PWAInstallOverlay({onClose}) {
 
 function App() {
   const [apiLoading, setApiLoading] = useState(true);
-  // V18.30 — remplace showInstallBanner v18.5 par un système AlertBanner + overlay PWA iOS.
-  const [pwaAlertVisible, setPwaAlertVisible] = useState(false);
+  // V18.30 — PWAInstallOverlay iOS + beforeinstallprompt Android conservés pour un bouton
+  // futur (roadmap v19+). V18.35 — bandeau auto sous header retiré sur demande Philippe.
   const [pwaOverlayOpen, setPwaOverlayOpen] = useState(false);
   const deferredInstallPromptRef = useRef(null);
   // V18.31 — placeholder modal "partager mes dossiers" (impl réelle en v18.32).
@@ -3233,14 +3242,8 @@ function App() {
       setApiLoading(false);
       // V18.3 — push setup différé 10s après login pour ne pas bloquer le 1er render.
       setTimeout(() => { setupWebPush(); }, 10000);
-      // V18.30 — bandeau PWA urgent sous header si pas standalone + pas dismissé depuis 7j.
-      if (!isStandalonePWA()) {
-        const dismissedAt = Number(localStorage.getItem('pwa_install_dismissed_at') || 0);
-        const sevenDaysMs = 7 * 86400 * 1000;
-        if (!dismissedAt || (Date.now() - dismissedAt > sevenDaysMs)) {
-          setTimeout(() => setPwaAlertVisible(true), 2500);
-        }
-      }
+      // V18.35 — bandeau PWA install retiré. User anticipe seul. PWAInstallOverlay + trigger
+      // restent dispo pour une entrée menu future.
     })();
   }, []);
   // V18.30 — capture beforeinstallprompt (Android Chrome) pour auto-install en 1 tap.
@@ -3251,7 +3254,6 @@ function App() {
     }
     function onInstalled() {
       deferredInstallPromptRef.current = null;
-      setPwaAlertVisible(false);
       setPwaOverlayOpen(false);
     }
     window.addEventListener('beforeinstallprompt', onBip);
@@ -3261,20 +3263,13 @@ function App() {
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
-  function dismissPwaAlert() {
-    setPwaAlertVisible(false);
-    try { localStorage.setItem('pwa_install_dismissed_at', String(Date.now())); } catch (e) {}
-  }
   async function triggerPwaInstall() {
     const d = deferredInstallPromptRef.current;
     if (d && typeof d.prompt === 'function') {
       try {
         d.prompt();
         const choice = await d.userChoice;
-        if (choice && choice.outcome === 'accepted') {
-          setPwaAlertVisible(false);
-          deferredInstallPromptRef.current = null;
-        }
+        if (choice && choice.outcome === 'accepted') deferredInstallPromptRef.current = null;
       } catch (e) { /* silent */ }
     } else if (isIOS()) {
       setPwaOverlayOpen(true);
@@ -3477,19 +3472,6 @@ function App() {
       onPickedImageFile={(f) => { setPickedImageFile(f); setView('import_image'); }}
       openClient={(c) => { openClient(c); }}/>;
   }
-  // V18.30 — AlertBanner PWA install (sticky sous header, urgent rouge) rendu dans ListView.
-  const pwaBanner = pwaAlertVisible ? (
-    <AlertBanner type="urgent"
-      icon="📲"
-      title="Installer Ocre sur l'écran d'accueil"
-      message="Pour recevoir les rappels RDV en notifications natives."
-      dismissible={true}
-      onDismiss={dismissPwaAlert}
-      actions={[
-        {label: 'Installer', primary: true, onClick: triggerPwaInstall},
-        {label: 'Plus tard', onClick: dismissPwaAlert},
-      ]}/>
-  ) : null;
   const pwaOverlay = pwaOverlayOpen ? <PWAInstallOverlay onClose={() => setPwaOverlayOpen(false)}/> : null;
   return (<>{view === 'list' ? (
     <ListView
@@ -3502,7 +3484,7 @@ function App() {
       listFilter={listFilter} setListFilter={setListFilter}
       listSearch={listSearch} setListSearch={setListSearch}
       stagedCount={stagedCount} openDownloads={() => setView('downloads')}
-      promotedId={promotedId} pwaBanner={pwaBanner}
+      promotedId={promotedId}
       openSharePlaceholder={() => setSharePlaceholderOpen(true)}
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
@@ -4846,9 +4828,6 @@ function ListView(props) {
         userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs}
       />
 
-      {/* V18.30 — AlertBanner stack sous header (pour l'instant : bandeau PWA install). */}
-      {props.pwaBanner}
-
       {/* V18.19 — SearchBar factorisée (partagée main/archives/downloads). */}
       <SearchBar open={showSearch} value={searchInput} onChange={setSearchInput}
         placeholder={showArchives ? 'Rechercher dans les archives…' : 'Rechercher un dossier…'}/>
@@ -5904,23 +5883,29 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
           </div>
         )}
 
-        {/* V18.29 — 1 seul bouton "Importer un document" avec 3 icônes visuelles qui illustrent
-            les sources possibles (photo / galerie / fichiers). iOS et Android affichent leur
-            action sheet natif au tap sur l'input large accept, évitant le double popup de v18.24. */}
+        {/* V18.35 — zone import compactée : 4 icônes simples inline (+ / 📷 / 🖼 / 📁), pas
+            de texte. Les 4 déclenchent le même input file — iOS/Android affichent leur action
+            sheet natif au tap. Les émojis restent pour les 3 sources (pas de SVG équivalents). */}
         {!result && !loading && (
           <div style={{marginBottom:14}}>
             <input ref={refFile} type="file" accept="image/*,application/pdf" style={{display:'none'}}
               onChange={e => handlePicked(e.target.files && e.target.files[0])}/>
-            <button onClick={() => refFile.current && refFile.current.click()}
-              style={{width:'100%', padding:'14px 14px', background:'#F4ECE3', color:'#8B5E3C', border:'1.5px solid #A67F5A', borderRadius:10, fontWeight:700, fontSize:13.5, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6}}>
-              <div style={{display:'flex', alignItems:'center', gap:14, fontSize:22, lineHeight:1}}>
-                <span>📷</span>
-                <span>🖼</span>
-                <span>📁</span>
-              </div>
-              <span style={{fontSize:13.5}}>Importer un document</span>
-              <span style={{fontSize:11, fontWeight:500, color:'#8B7F6E'}}>Photo · Galerie · Fichier</span>
-            </button>
+            <div style={{background:'#FDFAF4', border:'1px solid #E0CDAE', borderRadius:10, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'center', gap:20}}>
+              <button type="button" onClick={() => refFile.current && refFile.current.click()}
+                title="Ajouter"
+                style={{background:'none', border:'none', cursor:'pointer', padding:4, color:'#5C3B1E', display:'inline-flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit'}}>
+                <IconPlus size={26}/>
+              </button>
+              <button type="button" onClick={() => refFile.current && refFile.current.click()}
+                title="Photo" aria-label="Photo"
+                style={{background:'none', border:'none', cursor:'pointer', padding:4, fontSize:26, lineHeight:1, color:'#5C3B1E', fontFamily:'inherit'}}>📷</button>
+              <button type="button" onClick={() => refFile.current && refFile.current.click()}
+                title="Galerie" aria-label="Galerie"
+                style={{background:'none', border:'none', cursor:'pointer', padding:4, fontSize:26, lineHeight:1, color:'#5C3B1E', fontFamily:'inherit'}}>🖼</button>
+              <button type="button" onClick={() => refFile.current && refFile.current.click()}
+                title="Fichier" aria-label="Fichier"
+                style={{background:'none', border:'none', cursor:'pointer', padding:4, fontSize:26, lineHeight:1, color:'#5C3B1E', fontFamily:'inherit'}}>📁</button>
+            </div>
           </div>
         )}
 
