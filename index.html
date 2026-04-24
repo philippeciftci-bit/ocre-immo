@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v30-accueil-package -->
+<!-- ocre-v31-fix-doublon-footers -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3454,8 +3454,8 @@ function CrossSearchFooter({d, dossierId, onMatchesUpdate, showToast}) {
       <button type="button" onClick={() => setConfirmOpen(true)} disabled={loading}
         title="Rechercher ce bien sur Internet"
         aria-label="Rechercher ce bien sur Internet"
-        style={{flexShrink:0, width:44, height:44, border:'1.5px solid #D97706', background:'#FFFBF2', borderRadius:10, cursor: loading ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, fontFamily:'inherit'}}>
-        {loading ? <span style={{fontSize:11, color:'#D97706'}}>…</span> : <IconSearchAmber size={20}/>}
+        style={{flexShrink:0, width:38, height:38, border:'1.5px solid #D97706', background:'#FFFBF2', borderRadius:8, cursor: loading ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, fontFamily:'inherit'}}>
+        {loading ? <span style={{fontSize:11, color:'#D97706'}}>…</span> : <IconSearchAmber size={18}/>}
       </button>
       {confirmOpen && (
         <CrossSearchConfirmModal
@@ -6655,7 +6655,7 @@ function ListView(props) {
         <div style={{fontSize:10, color:'var(--text-secondary)', whiteSpace:'nowrap', flexShrink:0, fontWeight:600}}>{showArchives ? filtered.length + ' arch.' : drafts.length + 'b · ' + contacts.length + 'd'}</div>
       </div>
 
-      <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(64px + env(safe-area-inset-bottom, 0px))'}}>
+      <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(50px + env(safe-area-inset-bottom, 0px))'}}>
         {!showArchives && drafts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
@@ -6681,28 +6681,27 @@ function ListView(props) {
         )}
       </div>
 
-      {/* V30 — Footer compacté /2 : boutons 44/44/48 (tap target iOS respecté), padding
-          8/10, hauteur barre ≈ 56px au lieu de ~100px. */}
+      {/* V31 — Footer accueil encore plus fin : boutons 36×36, barre ~42px. */}
       <div style={{position:'fixed', bottom:0, left:0, right:0, zIndex:40,
-                   background:'#fff', borderTop:'1px solid #E8DDD0', boxShadow:'0 -2px 8px rgba(139,94,60,.05)',
-                   padding:'6px 14px calc(6px + env(safe-area-inset-bottom, 0px)) 14px',
+                   background:'#fff', borderTop:'1px solid #E8DDD0', boxShadow:'0 -2px 6px rgba(139,94,60,.05)',
+                   padding:'3px 12px calc(3px + env(safe-area-inset-bottom, 0px)) 12px',
                    display:'flex', justifyContent:'space-around', alignItems:'center', gap:10}}>
         <button onClick={() => props.openDownloads && props.openDownloads()} title="Téléchargements"
-          style={{width:44, height:44, borderRadius:'50%', background:'#FBF1E4', color:'var(--ocre-brand)', border:'2px solid var(--ocre-primary)',
-                  fontSize:16, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 6px rgba(139,94,60,0.14)', fontFamily:'inherit',
+          style={{width:36, height:36, borderRadius:'50%', background:'#FBF1E4', color:'var(--ocre-brand)', border:'1.5px solid var(--ocre-primary)',
+                  cursor:'pointer', boxShadow:'0 1px 4px rgba(139,94,60,0.12)', fontFamily:'inherit',
                   display:'flex', alignItems:'center', justifyContent:'center', padding:0, position:'relative'}}>
-          <DownloadIcon size={18}/>
+          <DownloadIcon size={15}/>
           {stagedCount > 0 && (
-            <span style={{position:'absolute', top:-4, right:-4, background:'#8B5E3C', color:'#fff', borderRadius:10, padding:'1px 5px', fontSize:9.5, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #fff'}}>{stagedCount}</span>
+            <span style={{position:'absolute', top:-4, right:-4, background:'#8B5E3C', color:'#fff', borderRadius:9, padding:'0 4px', fontSize:9, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #fff'}}>{stagedCount}</span>
           )}
         </button>
         <button onClick={() => props.openDictation()} title="Dicter un dossier"
-          style={{width:44, height:44, borderRadius:'50%', background:'#FBF1E4', color:'#8B5E3C', border:'2px solid #B26D3A',
-                  fontSize:18, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 6px rgba(139,94,60,0.14)', fontFamily:'inherit',
+          style={{width:36, height:36, borderRadius:'50%', background:'#FBF1E4', color:'#8B5E3C', border:'1.5px solid #B26D3A',
+                  fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 1px 4px rgba(139,94,60,0.12)', fontFamily:'inherit',
                   display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>🎤</button>
         <button onClick={openNew} title="Saisir un dossier"
-          style={{width:48, height:48, borderRadius:'50%', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none',
-                  fontSize:22, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 12px rgba(139,94,60,0.28)', fontFamily:'inherit',
+          style={{width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none',
+                  fontSize:18, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 8px rgba(139,94,60,0.22)', fontFamily:'inherit',
                   display:'flex', alignItems:'center', justifyContent:'center', padding:0, lineHeight:1}}>+</button>
       </div>
 
@@ -8178,8 +8177,31 @@ function FormView(props) {
       ? d.societe_nom
       : ((d.prenom || '') + ' ' + (d.nom || '')).trim();
     const sec1Society = (profilType === 'Société' && d.societe_nom && (d.prenom || d.nom)) ? d.societe_nom : '';
+    // V31 — Ligne 1 summary Stage I : nom + pills casquettes statiques (mode fermé =
+    // affichage pur, pas de clic, pas de "+"). Pills v31 cohérent avec accueil v28.
+    const linkedForSummary = (Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
+      .map(id => (clients || []).find(cc => cc.id === id)).filter(Boolean);
+    const activeColorSum = PROFILS[activeProfil] || '#8B5E3C';
     const sec1Line1 = sec1Name
-      ? (<span><b style={{color:'#2A2018'}}>{sec1Name}</b>{sec1Society ? <span style={{fontStyle:'italic', color:'#8B7F6E'}}> · {sec1Society}</span> : null}</span>)
+      ? (
+        <span style={{display:'inline-flex', alignItems:'center', gap:5, flexWrap:'wrap'}}>
+          <b style={{color:'#2A2018'}}>{sec1Name}</b>
+          {sec1Society ? <span style={{fontStyle:'italic', color:'#8B7F6E'}}> · {sec1Society}</span> : null}
+          <span style={{display:'inline-block', padding:'2px 6px', borderRadius:6, background:activeColorSum, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+            {PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()}
+          </span>
+          {linkedForSummary.map(lc => {
+            const lp = lc.projet || 'Acheteur';
+            const lcol = PROFILS[lp] || '#8B5E3C';
+            return (
+              <span key={'sum-pill-' + lc.id}
+                style={{display:'inline-block', padding:'2px 6px', borderRadius:6, border:'1px solid '+lcol, background:'transparent', color:lcol, fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+                {PROFILS_LABEL[lp] || lp.toUpperCase()}
+              </span>
+            );
+          })}
+        </span>
+      )
       : <span style={{fontStyle:'italic', color:'#B5A78F'}}>Sans nom</span>;
     const sec1TelRaw = tels[0] && tels[0].valeur ? tels[0].valeur : '';
     const sec1Email = emails[0] && emails[0].valeur ? emails[0].valeur : '';
@@ -8519,18 +8541,45 @@ function FormView(props) {
 
       <div style={{flex:1, overflowY:'auto', padding:12}}>
         <div data-stage-anchor="0">
-        <Stage
-               customHeader={<StageIHeaderBar
-                 d={d} activeProfil={activeProfil}
-                 linkedDossiers={(Array.isArray(d.linked_dossiers) ? d.linked_dossiers : []).map(id => (clients || []).find(c => c.id === id)).filter(Boolean)}
-                 openExistingDossier={openExistingDossier}
-                 onOpenPicker={() => setAddCasquetteOpen(true)}
-                 canAdd={editing && editing.id && !String(editing.id).startsWith('tmp-')}
-                 profilType={profilType}
-                 expanded={expanded[0] || isMatched(0)}
-                 stageComplete={stageStatus[0].status === 'complete'}/>}
+        <Stage title={STAGES[activeProfil][0]}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status} summary={stageStatus[0].summary}>
+          {/* V31 — Bloc top mode déplié : pills casquettes cliquables (naviguer vers dossier lié)
+              + bouton "+" rond pour ouvrir le modal multi-select Variante C v30. */}
+          {(() => {
+            const linkedOpen = (Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
+              .map(id => (clients || []).find(cc => cc.id === id)).filter(Boolean);
+            const activeColorOpen = PROFILS[activeProfil] || '#8B5E3C';
+            const canAdd = editing && editing.id && !String(editing.id).startsWith('tmp-');
+            return (
+              <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:10, padding:'2px 0'}}>
+                <span style={{padding:'2px 6px', borderRadius:6, background:activeColorOpen, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+                  {PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()}
+                </span>
+                {linkedOpen.map(lc => {
+                  const lp = lc.projet || 'Acheteur';
+                  const lcol = PROFILS[lp] || '#8B5E3C';
+                  return (
+                    <button key={'open-pill-' + lc.id} type="button"
+                      onClick={() => openExistingDossier && openExistingDossier(lc)}
+                      title={'Ouvrir la casquette ' + lp}
+                      style={{padding:'2px 6px', borderRadius:6, border:'1px solid '+lcol, background:'transparent', color:lcol, fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer'}}>
+                      {PROFILS_LABEL[lp] || lp.toUpperCase()}
+                    </button>
+                  );
+                })}
+                {canAdd && (
+                  <button type="button"
+                    onClick={() => setAddCasquetteOpen(true)}
+                    title="Ajouter une casquette"
+                    aria-label="Ajouter une casquette"
+                    style={{width:24, height:24, borderRadius:'50%', border:'1px solid #C9B79A', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, color:'#8B5E3C'}}>
+                    <IconPlus size={14}/>
+                  </button>
+                )}
+              </div>
+            );
+          })()}
           <div style={{display:'flex', gap:6, marginBottom:12}}>
             {['Particulier', 'Société'].map(t => (
               <button key={t} onClick={() => { setProfilType(t); commit('profil_type', t); }}
@@ -8703,8 +8752,8 @@ function FormView(props) {
             <PublishButton dossier={d} dossierId={editing.id} disabled={!!d.is_draft}
               onOpen={() => setPublishOpen(true)} showToast={showToast}/>
           )}
-          {/* V23 — Footer : [Loupe ambre (Vendeur/Bailleur/Investisseur)] + Enregistrer + Archiver + Supprimer. */}
-          <div style={{position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:8, alignItems:'center', padding:'12px 4px', background:'#fff', borderTop:'1px solid #E0CDAE', marginTop:12, marginBottom:8}}>
+          {/* V31 — Footer dossier compacté : boutons 36-40 + Enregistrer 40h, hauteur ~50px. */}
+          <div style={{position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:6, alignItems:'center', padding:'4px 10px', background:'#fff', borderTop:'1px solid #E0CDAE', marginTop:8, marginBottom:4}}>
             {['Vendeur','Bailleur','Investisseur'].includes(activeProfil) && editing && editing.id && !String(editing.id).startsWith('tmp-') && (
               <CrossSearchFooter d={d} dossierId={editing.id}
                 showToast={showToast}
@@ -8715,21 +8764,19 @@ function FormView(props) {
                 }}/>
             )}
             <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
-              style={{flex:1, padding:'14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:15, cursor:'pointer', fontFamily:'inherit'}}>
+              style={{flex:1, height:40, padding:'0 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
               Enregistrer
             </button>
             <button onClick={() => commit('archived', !d.archived)}
               title={d.archived ? 'Désarchiver' : 'Archiver'}
-              style={{flexShrink:0, width: smallScreen ? 44 : 'auto', height: smallScreen ? 44 : 'auto', padding: smallScreen ? 0 : '10px 14px', background:'#fff', color:'#8B5E3C', border:'1.5px solid #C9B79A', borderRadius:10, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap: smallScreen ? 0 : 6, fontSize:13, fontWeight:600}}>
-              <span style={{fontSize:16, lineHeight:1}}>📦</span>
-              {!smallScreen && <span>{d.archived ? 'Désarchiver' : 'Archiver'}</span>}
+              style={{flexShrink:0, width:38, height:38, padding:0, background:'#fff', color:'#8B5E3C', border:'1.5px solid #C9B79A', borderRadius:8, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14}}>
+              <span style={{fontSize:14, lineHeight:1}}>📦</span>
             </button>
             {editing && editing.id && (
               <button onClick={() => handleDelete(editing.id)}
                 title="Supprimer ce dossier"
-                style={{flexShrink:0, width: smallScreen ? 44 : 'auto', height: smallScreen ? 44 : 'auto', padding: smallScreen ? 0 : '10px 14px', background:'#fff', color:'#D64545', border:'1.5px solid #D64545', borderRadius:10, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap: smallScreen ? 0 : 6, fontSize:13, fontWeight:600}}>
-                <span style={{fontSize:16, lineHeight:1}}>🗑</span>
-                {!smallScreen && <span>Supprimer</span>}
+                style={{flexShrink:0, width:38, height:38, padding:0, background:'#fff', color:'#D64545', border:'1.5px solid #D64545', borderRadius:8, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14}}>
+                <span style={{fontSize:14, lineHeight:1}}>🗑</span>
               </button>
             )}
           </div>
