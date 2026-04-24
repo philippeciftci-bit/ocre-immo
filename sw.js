@@ -1,9 +1,19 @@
-// Ocre v18.3 — Service Worker : push + notificationclick + caching minimal.
-// V18.40.1 — bump cache version pour invalidation icônes PWA (logo v1 cohérent).
-const SW_VERSION = 'ocre-sw-v18.40.1';
+// V18.44 — SW auto-update. Ne plus skipWaiting() automatiquement : le nouveau SW
+// attend dans l'état "waiting" jusqu'à réception du message {type:'SKIP_WAITING'}
+// envoyé par le client après tap "Actualiser" ou auto-reload idle.
+const SW_VERSION = 'ocre-sw-v18.44';
 
-self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('install', e => {
+  // Pas de skipWaiting() inconditionnel. Le nouveau SW reste "waiting" pour que
+  // le client détecte updatefound et propose le refresh.
+});
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener('push', event => {
   let data = {};

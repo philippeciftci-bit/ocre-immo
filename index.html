@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v18.43-favicon-fix -->
+<!-- ocre-v18.44-sw-autoupdate -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3471,6 +3471,92 @@ function PWAInstallOverlay({onClose}) {
   );
 }
 
+// V18.44 — SW auto-update : détection updatefound + bannière non-bloquante + auto-reload idle.
+// Un seul enregistrement SW au chargement. Le nouveau SW reste "waiting" jusqu'à SKIP_WAITING
+// envoyé depuis la bannière (ou auto-reload si user idle > 5min sans form ouvert).
+(function setupServiceWorkerUpdate() {
+  if (!('serviceWorker' in navigator)) return;
+  if (window.__ocreSwSetup) return;
+  window.__ocreSwSetup = true;
+  (async () => {
+    let reg;
+    try { reg = await navigator.serviceWorker.register('/sw.js'); }
+    catch (e) { return; }
+    window.__ocreSwReg = reg;
+    const armDetection = (nw) => {
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          window.__ocreWaitingSW = reg.waiting || nw;
+          window.dispatchEvent(new CustomEvent('ocre:sw-update'));
+        }
+      });
+    };
+    if (reg.waiting && navigator.serviceWorker.controller) {
+      window.__ocreWaitingSW = reg.waiting;
+      setTimeout(() => window.dispatchEvent(new CustomEvent('ocre:sw-update')), 200);
+    }
+    reg.addEventListener('updatefound', () => armDetection(reg.installing));
+    setInterval(() => { try { reg.update(); } catch (e) {} }, 60000);
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return; reloaded = true;
+      window.location.reload();
+    });
+  })();
+})();
+
+function UpdateBanner() {
+  const [visible, setVisible] = React.useState(false);
+  const [dismissed, setDismissed] = React.useState(false);
+  const lastInteractRef = React.useRef(Date.now());
+
+  React.useEffect(() => {
+    const onUpdate = () => { if (!dismissed) setVisible(true); };
+    window.addEventListener('ocre:sw-update', onUpdate);
+    const onInteract = () => { lastInteractRef.current = Date.now(); };
+    const evts = ['touchstart','mousedown','keydown','input','scroll'];
+    evts.forEach(e => window.addEventListener(e, onInteract, {passive:true, capture:true}));
+    return () => {
+      window.removeEventListener('ocre:sw-update', onUpdate);
+      evts.forEach(e => window.removeEventListener(e, onInteract, {capture:true}));
+    };
+  }, [dismissed]);
+
+  function applyUpdate() {
+    const sw = window.__ocreWaitingSW;
+    if (sw) { try { sw.postMessage({type: 'SKIP_WAITING'}); } catch (e) { window.location.reload(); } }
+    else window.location.reload();
+  }
+
+  React.useEffect(() => {
+    if (!visible) return;
+    // Auto-reload si idle > 5 min et pas de form focus / sync en cours.
+    const iv = setInterval(() => {
+      if (Date.now() - lastInteractRef.current < 5 * 60 * 1000) return;
+      const active = document.activeElement;
+      const tag = active && active.tagName ? active.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if (active && active.isContentEditable) return;
+      if (window.__ocreSyncing) return;
+      applyUpdate();
+    }, 60000);
+    return () => clearInterval(iv);
+  }, [visible]);
+
+  if (!visible || dismissed) return null;
+  return (
+    <div style={{position:'fixed', left:12, right:12, bottom:12, zIndex:180, background:'#F5EFE6', border:'1.5px solid #8B5E3C', borderRadius:12, padding:'12px 14px', boxShadow:'0 4px 16px rgba(60,40,20,.15)', display:'flex', alignItems:'center', gap:10, fontFamily:'inherit', maxWidth:560, margin:'0 auto'}}>
+      <div style={{flex:1, minWidth:0, fontSize:13, color:'#2A2018', lineHeight:1.4}}>
+        <div style={{fontWeight:700, color:'#8B5E3C', marginBottom:2}}>Nouvelle version disponible</div>
+        <div style={{fontSize:11.5, color:'#5A4E3D'}}>Recharge pour profiter des dernières améliorations.</div>
+      </div>
+      <button onClick={() => { setDismissed(true); setVisible(false); }} style={{background:'none', border:'1.5px solid #8B5E3C', color:'#8B5E3C', borderRadius:8, padding:'6px 10px', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>Plus tard</button>
+      <button onClick={applyUpdate} style={{background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, padding:'7px 14px', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>Actualiser</button>
+    </div>
+  );
+}
+
 function App() {
   const [apiLoading, setApiLoading] = useState(true);
   // V18.30 — PWAInstallOverlay iOS + beforeinstallprompt Android conservés pour un bouton
@@ -3907,7 +3993,9 @@ function App() {
       danger={confirmReq.danger}
       confirmLabel={confirmReq.confirmLabel} cancelLabel={confirmReq.cancelLabel}
       onConfirm={() => resolveConfirm(true)} onCancel={() => resolveConfirm(false)}/>
-  )}</>);
+  )}
+  <UpdateBanner/>
+  </>);
 }
 
 // V17.5 Phase 2c — écran Préférences : sync Google Sheet.
