@@ -11,9 +11,11 @@ Options -Indexes
 DirectoryIndex index.html
 ErrorDocument 404 /404.html
 
-# V18.43 — Cache 1 an sur favicons (Safari iOS tab switcher les garde).
-<FilesMatch "^(favicon\.ico|favicon-16\.png|favicon-32\.png|apple-touch-icon\.png|apple-touch-icon-precomposed\.png)$">
-Header set Cache-Control "public, max-age=31536000, immutable"
+# V18.46.1 — Cache 30j sur favicons (retiré `immutable` : Safari iOS pouvait refuser de
+# refetch un apple-touch-icon obsolète). Query string ?v=18.46.1 dans index.html force
+# refetch à chaque bump.
+<FilesMatch "^(favicon\.ico|favicon-16\.png|favicon-32\.png|apple-touch-icon(-(152|167|180|precomposed))?\.png)$">
+Header set Cache-Control "public, max-age=2592000"
 </FilesMatch>
 
 <IfModule mod_rewrite.c>
