@@ -1,21 +1,38 @@
 <?php
-// V18.18 — proxy lecture d'une image importée (auth user + verify ownership).
-// Path attendu : users/user_{N}/imports/{uuid}.jpg. Le N doit correspondre à l'user session.
+// V23 — proxy lecture photo + 2 auth paths : (a) session normale (header X-Session-Token
+// ou ?token=…), (b) URL pré-signée HMAC-SHA256 pour les <img> browser (t + e).
+// Pattern : users/user_{N}/imports/{uuid}.jpg — N doit matcher user session OU signature valide.
 require_once __DIR__ . '/db.php';
+@require_once __DIR__ . '/_image_hmac.php';
 setCorsHeaders();
 
-$user = requireAuth();
 $path = (string) ($_GET['path'] ?? '');
 $path = ltrim($path, '/');
 
-// Sécurité : pas de .., pas de slashes Windows, doit matcher le pattern exact.
+// Sécurité chemin : regex strict.
 if (!preg_match('#^users/user_(\d+)/imports/[a-f0-9]{24}\.(jpe?g|png|webp)$#i', $path, $m)) {
     jsonError('chemin invalide', 400);
 }
 $owner_id = (int) $m[1];
-if ($owner_id !== (int) $user['id']) {
-    // Sauf admin : accès refusé.
-    if (($user['role'] ?? '') !== 'admin') jsonError('Accès refusé', 403);
+
+// === Auth path B : URL pré-signée HMAC ===
+$t = (string) ($_GET['t'] ?? '');
+$e = (int) ($_GET['e'] ?? 0);
+$hmac_ok = false;
+if ($t && $e && defined('IMAGE_HMAC_SECRET')) {
+    if ($e >= time()) {
+        $payload = $path . '|' . $e;
+        $expected = hash_hmac('sha256', $payload, IMAGE_HMAC_SECRET);
+        if (hash_equals($expected, $t)) $hmac_ok = true;
+    }
+}
+
+// === Auth path A : session (header ou ?token=) ===
+if (!$hmac_ok) {
+    $user = requireAuth();
+    if ($owner_id !== (int) $user['id']) {
+        if (($user['role'] ?? '') !== 'admin') jsonError('Accès refusé', 403);
+    }
 }
 
 $base = realpath(__DIR__ . '/../uploads');

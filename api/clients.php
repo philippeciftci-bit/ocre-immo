@@ -1,10 +1,46 @@
 <?php
 require_once __DIR__ . '/db.php';
+@require_once __DIR__ . '/_image_hmac.php';
 setCorsHeaders();
 
 $user = requireAuth();
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
 $input = getInput();
+
+// V23 — signe les URLs de photos dans bien.photos[] pour que les <img> browser
+// passent la contrainte auth. Chaque URL reçoit &t=<hmac>&e=<epoch+2h>. Si le raw n'a
+// pas le préfixe /api/image.php, on le normalise d'abord.
+function signPhotoUrl(string $raw): string {
+    if (!defined('IMAGE_HMAC_SECRET')) return $raw;
+    $path = $raw;
+    if (strpos($raw, '/api/image.php?path=') === 0) {
+        // Extract encoded path
+        $q = parse_url($raw, PHP_URL_QUERY) ?: '';
+        parse_str($q, $qs);
+        $path = $qs['path'] ?? '';
+    } elseif (preg_match('#^https?://#i', $raw)) {
+        return $raw; // URL externe (Mubawab, Vaneau…) — pas notre proxy, pas de signature
+    }
+    $path = ltrim((string) $path, '/');
+    if (!$path) return $raw;
+    $expires = time() + (defined('IMAGE_HMAC_TTL') ? IMAGE_HMAC_TTL : 7200);
+    $t = hash_hmac('sha256', $path . '|' . $expires, IMAGE_HMAC_SECRET);
+    return '/api/image.php?path=' . rawurlencode($path) . '&t=' . $t . '&e=' . $expires;
+}
+
+function signClientPhotos(array &$d): void {
+    if (isset($d['bien']['photos']) && is_array($d['bien']['photos'])) {
+        foreach ($d['bien']['photos'] as $i => $raw) {
+            if (is_string($raw)) $d['bien']['photos'][$i] = signPhotoUrl($raw);
+            elseif (is_array($raw) && isset($raw['url']) && is_string($raw['url'])) {
+                $d['bien']['photos'][$i]['url'] = signPhotoUrl($raw['url']);
+            }
+        }
+    }
+    if (isset($d['import_image_url']) && is_string($d['import_image_url'])) {
+        $d['import_image_url'] = signPhotoUrl($d['import_image_url']);
+    }
+}
 
 // V17.5 Phase 2c — helpers queue sync Google Sheet.
 function ensureSyncSchema() {
@@ -155,6 +191,7 @@ switch ($action) {
                 'next_todo' => $next_todos[$cid] ?? null,
                 'last_interaction' => $last_inter[$cid] ?? null,
             ];
+            signClientPhotos($d);
             $out[] = $d;
         }
         jsonOk(['clients' => $out, 'meta' => ['staged_count' => $stagedCount]]);
@@ -173,6 +210,7 @@ switch ($action) {
         $d['is_draft'] = (bool)(int)$r['is_draft'];
         $d['projet'] = $r['projet'] ?? ($d['projet'] ?? 'Acheteur');
         $d['is_investisseur'] = (bool)(int)($r['is_investisseur'] ?? 0);
+        signClientPhotos($d);
         jsonOk(['client' => $d]);
     }
 

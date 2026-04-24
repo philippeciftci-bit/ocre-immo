@@ -6,3 +6,4 @@ _prod_backup_*
 # V18.42 — secrets SMTP
 api/_smtp_config.php
 scripts/__pycache__/
+api/_image_hmac.php

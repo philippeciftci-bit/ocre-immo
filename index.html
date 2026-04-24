@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v22-thumbnails -->
+<!-- ocre-v23-photos-and-cross-ref -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3054,6 +3054,16 @@ function IconPin({size=16, color='currentColor'}) {
     </svg>
   );
 }
+// V23 — Loupe ambre (même forme qu'IconSearch, stroke #D97706) pour le bouton "rechercher
+// ce bien sur Internet" dans le footer du dossier.
+function IconSearchAmber({size=18}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'-3px', display:'inline-block'}}>
+      <circle cx="11" cy="11" r="8"/>
+      <path d="m21 21-4.3-4.3"/>
+    </svg>
+  );
+}
 
 // V18.3 — Web Push : enregistre SW, demande permission, subscribe au backend.
 function urlBase64ToUint8Array(base64String) {
@@ -3337,6 +3347,158 @@ function CrossRefPanel({d, dossierId, onMatchesUpdate, showToast}) {
             </button>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+// V23 — Loupe ambre footer : remplace le panel "Cette annonce ailleurs" milieu de dossier.
+// Pill PillIconButton ambre, click → CrossSearchConfirmModal avec ville détectée, confirm →
+// runSearch → CrossSearchResultsModal avec cards matches + prix médian + lien externe.
+function CrossSearchFooter({d, dossierId, onMatchesUpdate, showToast}) {
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [resultsOpen, setResultsOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const villeDetected = (d && d.bien && d.bien.ville) || (d && d.ville) || '';
+
+  async function runSearch() {
+    if (!dossierId || String(dossierId).startsWith('tmp-')) {
+      showToast && showToast('Enregistrez d\'abord le dossier');
+      return;
+    }
+    setLoading(true);
+    setConfirmOpen(false);
+    try {
+      const token = localStorage.getItem('ocre_token') || '';
+      const r = await fetch(API + '/cross_search.php?action=search&id=' + encodeURIComponent(dossierId), {
+        method: 'POST', headers: {'X-Session-Token': token},
+      });
+      const j = await r.json();
+      if (j && j.ok) {
+        onMatchesUpdate && onMatchesUpdate(j.matches || [], j.searched_at);
+        setResultsOpen(true);
+      } else {
+        showToast && showToast((j && j.error) || 'Recherche échouée');
+      }
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setLoading(false);
+  }
+
+  return (
+    <>
+      <button type="button" onClick={() => setConfirmOpen(true)} disabled={loading}
+        title="Rechercher ce bien sur Internet"
+        aria-label="Rechercher ce bien sur Internet"
+        style={{flexShrink:0, width:44, height:44, border:'1.5px solid #D97706', background:'#FFFBF2', borderRadius:10, cursor: loading ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, fontFamily:'inherit'}}>
+        {loading ? <span style={{fontSize:11, color:'#D97706'}}>…</span> : <IconSearchAmber size={20}/>}
+      </button>
+      {confirmOpen && (
+        <CrossSearchConfirmModal
+          ville={villeDetected}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={runSearch}/>
+      )}
+      {resultsOpen && (
+        <CrossSearchResultsModal
+          matches={Array.isArray(d && d.cross_matches) ? d.cross_matches : []}
+          ville={villeDetected}
+          onClose={() => setResultsOpen(false)}/>
+      )}
+    </>
+  );
+}
+
+function CrossSearchConfirmModal({ville, onCancel, onConfirm}) {
+  const villeLabel = ville && ville.trim() ? ville.trim() : 'votre région';
+  return (
+    <div onClick={onCancel} style={{position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:230, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'#FFFDF8', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, maxWidth:420, width:'100%'}}>
+        <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:10, display:'flex', alignItems:'center', gap:8}}>
+          <IconSearchAmber size={18}/> Rechercher ce bien sur Internet
+        </div>
+        <div style={{fontSize:13.5, color:'#2A2018', lineHeight:1.55, marginBottom:10}}>
+          L'application va scanner les sites d'annonces immobilières et agences de la région <b>{villeLabel}</b> pour retrouver ce bien. Attention particulière aux photos identiques pour éviter la confusion entre biens similaires d'un lotissement. Résultats en environ 10 à 15 secondes.
+        </div>
+        <div style={{fontSize:11.5, color:'#8B7F6E', fontStyle:'italic', marginBottom:16, lineHeight:1.4}}>
+          Les logos et filigranes d'agences sur les photos sont détectés comme le même bien.
+        </div>
+        <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+          <button onClick={onCancel} style={{padding:'9px 14px', background:'#fff', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:9, fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+          <button onClick={onConfirm} style={{padding:'9px 16px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13.5, cursor:'pointer', fontFamily:'inherit'}}>Lancer la recherche</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CrossSearchResultsModal({matches, ville, onClose}) {
+  const villeLabel = ville && ville.trim() ? ville.trim() : 'votre région';
+  function fmtPrice(p, cur) {
+    const x = Number(p);
+    if (!x) return '—';
+    const label = cur === 'EUR' ? '€' : (cur || '');
+    if (label === '€') {
+      if (x >= 1000000) return (x / 1000000).toFixed(x % 1000000 === 0 ? 0 : 1).replace('.', ',') + ' M€';
+      if (x >= 1000) return Math.round(x / 1000) + 'k€';
+      return x.toLocaleString('fr-FR') + ' €';
+    }
+    return x.toLocaleString('fr-FR') + ' ' + label;
+  }
+  const prices = (matches || []).map(m => Number(m.price_found)).filter(n => !!n);
+  const pMin = prices.length ? Math.min(...prices) : null;
+  const pMax = prices.length ? Math.max(...prices) : null;
+  const pMed = prices.length ? [...prices].sort((a, b) => a - b)[Math.floor(prices.length / 2)] : null;
+  const curRef = (matches && matches[0] && matches[0].currency_found) || 'MAD';
+  return (
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:230, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:20, maxWidth:540, width:'100%', maxHeight:'85vh', display:'flex', flexDirection:'column'}}>
+        <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:4}}>
+          Ce bien trouvé sur {matches ? matches.length : 0} site{matches && matches.length > 1 ? 's' : ''} ({villeLabel})
+        </div>
+        {prices.length > 0 && (
+          <div style={{fontSize:12, color:'#5A4E3D', marginBottom:12}}>
+            Prix médian : <b>{fmtPrice(pMed, curRef)}</b> · Écart {fmtPrice(pMin, curRef)} / {fmtPrice(pMax, curRef)}
+          </div>
+        )}
+        <div style={{flex:1, overflowY:'auto', marginBottom:12, display:'flex', flexDirection:'column', gap:8}}>
+          {!matches || matches.length === 0 ? (
+            <div style={{fontSize:13, color:'#8B7F6E', textAlign:'center', padding:20, lineHeight:1.5}}>
+              Aucune annonce similaire détectée sur les sites de la région {villeLabel}. Le bien est soit exclusif, soit publié récemment.
+            </div>
+          ) : matches.map((m, i) => (
+            <div key={i} style={{background:'#fff', border:'1px solid #E0CDAE', borderRadius:10, padding:12, display:'flex', gap:10, alignItems:'flex-start'}}>
+              {m.thumb_url ? (
+                <div style={{width:60, height:60, borderRadius:8, overflow:'hidden', flexShrink:0, background:'#F4ECE3', border:'1px solid #D4C3A8'}}>
+                  <img src={m.thumb_url} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} onError={e => { e.target.style.display = 'none'; }}/>
+                </div>
+              ) : (
+                <div style={{width:60, height:60, borderRadius:8, flexShrink:0, background:'#F4ECE3', border:'1px solid #D4C3A8', display:'flex', alignItems:'center', justifyContent:'center', color:'#8B5E3C'}}><IconHome size={24}/></div>
+              )}
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{fontSize:13, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                  {m.source_domain || 'Annonce'}{m.agency_name ? ' · ' + m.agency_name : ''}
+                </div>
+                <div style={{fontSize:12.5, color:'#2A2018', marginTop:3}}>
+                  <b>{fmtPrice(m.price_found, m.currency_found || curRef)}</b>
+                  {m.surface_found ? ' · ' + m.surface_found + ' m²' : ''}
+                  {m.rooms_found ? ' · ' + m.rooms_found + ' pièces' : ''}
+                </div>
+                {m.agency_detected_in_photo && (
+                  <div style={{fontSize:11, color:'#2E7D32', marginTop:4}}>✓ Match photos (logo agence {m.agency_name || 'détecté'})</div>
+                )}
+                {m.source_url && (
+                  <a href={m.source_url} target="_blank" rel="noopener noreferrer"
+                    style={{display:'inline-block', marginTop:6, padding:'5px 10px', background:'#fff', color:'#8B5E3C', border:'1.5px solid #8B5E3C', borderRadius:7, fontSize:11.5, fontWeight:600, textDecoration:'none'}}>
+                    Ouvrir l'annonce →
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex', justifyContent:'flex-end'}}>
+          <button onClick={onClose} style={{padding:'9px 18px', background:'#fff', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:9, fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Fermer</button>
+        </div>
       </div>
     </div>
   );
@@ -8239,17 +8401,8 @@ function FormView(props) {
           <button onClick={() => commitAndNext(1)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Section III →</button>
         </Stage>}
 
-        {/* V18.36 — Cross-referencing Option A (amorce) : panel manuel sous Section II. */}
-        {activeProfil !== 'Curieux' && editing && editing.id && !String(editing.id).startsWith('tmp-') && (
-          <CrossRefPanel d={d} dossierId={editing.id}
-            showToast={showToast}
-            onMatchesUpdate={(matches, searchedAt) => {
-              // Update local state d + persiste via commit (auto-save debounce).
-              const next = {...d, cross_matches: matches, cross_search_last_at: searchedAt};
-              setD(next);
-              handleSaveLocal(next);
-            }}/>
-        )}
+        {/* V23 — CrossRefPanel milieu de dossier retiré ; recherche Internet déplacée dans
+            la loupe ambre du footer (composant CrossSearchFooter plus bas dans la sticky bar). */}
 
         {/* V17.6 Section III : FinancementForm pour Acheteur/Investisseur, fields legacy pour Vendeur/Bailleur/Locataire, masqué pour Curieux. */}
         </div>
@@ -8347,7 +8500,17 @@ function FormView(props) {
             <PublishButton dossier={d} dossierId={editing.id} disabled={!!d.is_draft}
               onOpen={() => setPublishOpen(true)} showToast={showToast}/>
           )}
+          {/* V23 — Footer : [Loupe ambre (Vendeur/Bailleur/Investisseur)] + Enregistrer + Archiver + Supprimer. */}
           <div style={{position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:8, alignItems:'center', padding:'12px 4px', background:'#fff', borderTop:'1px solid #E0CDAE', marginTop:12, marginBottom:8}}>
+            {['Vendeur','Bailleur','Investisseur'].includes(activeProfil) && editing && editing.id && !String(editing.id).startsWith('tmp-') && (
+              <CrossSearchFooter d={d} dossierId={editing.id}
+                showToast={showToast}
+                onMatchesUpdate={(matches, searchedAt) => {
+                  const next = {...d, cross_matches: matches, cross_search_last_at: searchedAt};
+                  setD(next);
+                  handleSaveLocal(next);
+                }}/>
+            )}
             <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
               style={{flex:1, padding:'14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:15, cursor:'pointer', fontFamily:'inherit'}}>
               Enregistrer
@@ -8367,6 +8530,12 @@ function FormView(props) {
               </button>
             )}
           </div>
+          {/* V23 — Note discrète pour profils demande (Acheteur/Locataire/Curieux). */}
+          {['Acheteur','Locataire','Curieux'].includes(activeProfil) && (
+            <div style={{fontSize:10.5, color:'#A89882', textAlign:'center', padding:'0 8px 6px', lineHeight:1.4, fontStyle:'italic'}}>
+              Recherche Internet disponible uniquement pour les biens en offre (Vendeur / Bailleur / Investisseur).
+            </div>
+          )}
           {publishOpen && (
             <PublishPreviewModal dossierId={editing && editing.id}
               onClose={() => setPublishOpen(false)}
