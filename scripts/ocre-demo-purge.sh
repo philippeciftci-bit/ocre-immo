@@ -31,17 +31,24 @@ RES=$(curl -sS -4 --max-time 30 "$ENDPOINT_BASE")
 DELETED=$(echo "$RES" | jq -r '.deleted_count')
 log "DB purge OK — $DELETED dossiers supprimés."
 
-# Purge photos FTP via lftp (réutilise mêmes ids).
-if [ -n "$IDS" ]; then
-  {
-    echo "set ftp:ssl-allow no"
-    echo "cd /ocre/app/uploads/"
-    # Dossiers démo v20 stockent leurs photos dans users/user_1/imports — partagé avec
-    # les autres dossiers Philippe : on ne purge PAS ce répertoire, trop risqué.
-    # Note : les photos démo restent sur disk mais leurs refs en DB sont perdues.
-    echo "bye"
-  } | lftp -u "expergh,$(cat /root/.secrets/ovh_ftp_expergh)" ftp.cluster121.hosting.ovh.net >/dev/null 2>&1 || log "WARN lftp cleanup non-fatal"
+# Agent profile reset check.
+PROFILE_RESET=$(echo "$RES" | jq -r '.agent_profile_reset // false')
+PID=$(echo "$RES" | jq -r '.philippe_user_id')
+if [ "$PROFILE_RESET" = "true" ]; then
+  log "Profil agent Philippe (user_id=$PID) reset (bio démo détectée)."
+  # rm avatars FTP
+  lftp -u "expergh,$(cat /root/.secrets/ovh_ftp_expergh)" ftp.cluster121.hosting.ovh.net <<LFTP >/dev/null 2>&1 || log "WARN lftp avatar rm non-fatal"
+set ftp:ssl-allow no
+cd /ocre/app/uploads/agents/$PID
+rm avatar-400.jpg
+rm avatar-120.jpg
+bye
+LFTP
 fi
+
+# Note : photos des dossiers démo stockées /uploads/users/user_1/imports/ — partagées
+# avec les imports légitimes de Philippe, on ne purge PAS ce répertoire (trop risqué).
+# Les photos orphelines restent sur disk mais ne sont plus référencées en DB.
 
 # Notif Telegram.
 if [ -x /root/bin/notify ]; then

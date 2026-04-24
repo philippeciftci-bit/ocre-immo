@@ -27,6 +27,24 @@ if (!$dry && $ids) {
     $pdo->prepare("DELETE FROM clients WHERE id IN ($in) AND user_id = ?")->execute(array_merge($ids, [$PID]));
 }
 
+// V20 complément — reset aussi le profil agent si bio contient [DEMO-2026-04-24].
+$profileReset = false;
+$chkBio = $pdo->prepare("SELECT id, bio FROM users WHERE id = ? AND bio LIKE '%[DEMO-2026-04-24%' LIMIT 1");
+$chkBio->execute([$PID]);
+$hasDemoProfile = $chkBio->fetch() ? true : false;
+
+if (!$dry && $hasDemoProfile) {
+    $pdo->prepare("UPDATE users SET
+        photo_url = NULL, slug = NULL, tagline = NULL, bio = NULL,
+        telephone_pro = NULL, email_pro = NULL, whatsapp_pro = NULL,
+        zones_intervention = NULL, specialites = NULL,
+        carte_pro_numero = NULL, carte_pro_prefecture = NULL, carte_pro_date_fin = NULL,
+        rcp_assureur = NULL, rcp_numero_police = NULL, rcp_montant_garantie = NULL,
+        statut_public = 'brouillon'
+        WHERE id = ?")->execute([$PID]);
+    $profileReset = true;
+}
+
 header('Content-Type: application/json; charset=utf-8');
 echo json_encode([
     'ok' => true,
@@ -34,4 +52,7 @@ echo json_encode([
     'deleted_count' => $dry ? 0 : count($ids),
     'matched_ids' => $ids,
     'matched_rows' => $rows,
+    'philippe_user_id' => $PID,
+    'agent_profile_is_demo' => $hasDemoProfile,
+    'agent_profile_reset' => $profileReset,
 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
