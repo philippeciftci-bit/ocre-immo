@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v57-search-engine -->
+<!-- ocre-v60-chevron-section1-conditional -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -108,7 +108,7 @@ input, select, textarea, button { font-size:13px }
 .search-bar-clear{background:#EDE6DC;border:none;width:26px;height:26px;border-radius:13px;cursor:pointer;font-size:12px;color:#8B7F6E;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;font-family:inherit}
 
 /* V18.15 — ClientRow 3 lignes grid secteurs. V18.20 : contours +50%. */
-.client-row-card{background:#fff;border:none;border-radius:10px;margin-bottom:10px;overflow:hidden;cursor:pointer;box-shadow:0 0 0 1px rgba(139,94,60,.08), 0 1px 2px rgba(26,18,8,.04), 0 2px 6px rgba(139,94,60,.06)}
+.client-row-card{background:#fff;border:1.5px solid #8B5E3C;border-radius:10px;margin-bottom:10px;overflow:hidden;cursor:pointer;box-shadow:0 2px 5px rgba(139,94,60,.10)}
 .client-row-head{display:flex;align-items:center;gap:10px;padding:8px 12px;min-height:40px}
 .client-row-badge{width:32px;height:32px;border-radius:7px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.3px;flex-shrink:0}
 .client-row-thumb{width:48px;height:48px;transition:transform .1s}
@@ -7911,6 +7911,47 @@ function V57RangeInputs({label, vMin, vMax, onMin, onMax, suffix}) {
     </div>
   );
 }
+// V58 — modale multi-select bottom sheet réutilisable pour pays + types bien.
+function V58MultiSelectModal({title, options, selected, onToggle, onClose, max}) {
+  const [q, setQ] = React.useState('');
+  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const nq = norm(q);
+  const filtered = nq ? options.filter(o => norm(o.label).includes(nq) || norm(o.value).includes(nq)) : options;
+  return (
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,12,4,0.55)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:520, maxHeight:'75vh', borderRadius:'16px 16px 0 0', display:'flex', flexDirection:'column', boxShadow:'0 -10px 40px rgba(0,0,0,.3)'}}>
+        <div style={{padding:'14px 16px 8px', borderBottom:'1px solid #E8DDD0', display:'flex', alignItems:'center', gap:10}}>
+          <span style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C'}}>{title}</span>
+          <button type="button" onClick={onClose} style={{padding:'8px 14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontWeight:700, fontSize:12, cursor:'pointer'}}>OK ({selected.length})</button>
+        </div>
+        <div style={{padding:'8px 16px', borderBottom:'1px solid #F0E9DC'}}>
+          <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher…"
+            style={{width:'100%', padding:'9px 11px', fontSize:13, border:'1.5px solid #C9B79A', borderRadius:8, fontFamily:'inherit', outline:'none', boxSizing:'border-box'}}/>
+        </div>
+        <div style={{flex:1, overflowY:'auto', padding:'4px 0'}}>
+          {filtered.map(o => {
+            const on = selected.includes(o.value);
+            const disabled = !on && max != null && selected.length >= max;
+            return (
+              <button key={o.value} type="button" onClick={() => !disabled && onToggle(o.value)}
+                disabled={disabled}
+                style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background: on ? '#FBF1E4' : 'transparent', border:'none', borderBottom:'1px solid #F0E9DC', cursor: disabled ? 'not-allowed' : 'pointer', textAlign:'left', fontFamily:'inherit', opacity: disabled ? .5 : 1}}>
+                <span style={{width:22, height:22, borderRadius:6, border:'1.5px solid ' + (on ? '#8B5E3C' : '#C9B79A'), background: on ? '#8B5E3C' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'#fff', fontSize:14, fontWeight:800}}>{on ? '✓' : ''}</span>
+                {o.flag && <span style={{fontSize:18}}>{o.flag}</span>}
+                <span style={{flex:1, fontSize:14, color:'#2A2018'}}>{o.label}</span>
+                {o.dial && <span style={{fontSize:11, color:'#8B7F6E', fontFamily:'Menlo,monospace'}}>+{o.dial}</span>}
+              </button>
+            );
+          })}
+        </div>
+        {max != null && (
+          <div style={{padding:'6px 16px 10px', fontSize:10.5, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', borderTop:'1px solid #F0E9DC'}}>Sélection max : {max}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCount}) {
   const PROFS = ['Acheteur','Vendeur','Locataire','Bailleur'];
   const setC = (patch) => setCriteria(prev => ({...prev, ...patch}));
@@ -7920,47 +7961,111 @@ function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCo
   const toggleOpt = (o) => setC({options: {...criteria.options, [o]: !criteria.options[o]}});
   const reset = () => setCriteria(v57DefaultCriteria());
   const paysOpts = (typeof PAYS !== 'undefined' && PAYS) ? PAYS : [];
-  const titleStyle = {fontSize:10.5, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:6, marginTop:10};
+  const titleStyle = {fontSize:10.5, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:5, marginTop:8};
+
+  // V58 — état modales pays + types
+  const [paysModalOpen, setPaysModalOpen] = React.useState(false);
+  const [typeModalOpen, setTypeModalOpen] = React.useState(false);
+  const [villeFocused, setVilleFocused] = React.useState(false);
+  // Villes uniques pour autocomplete
+  const villesAvailable = React.useMemo(() => {
+    const set = new Set();
+    (clients || []).forEach(c => {
+      const v = (c.bien && c.bien.ville) || c.ville;
+      if (v && String(v).trim()) set.add(String(v).trim());
+    });
+    return Array.from(set).sort();
+  }, [clients]);
+  const villeQ = (criteria.ville || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const villeSugg = villeFocused && villeQ.length >= 2
+    ? villesAvailable.filter(v => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(villeQ)).slice(0, 6)
+    : [];
+
+  // Pays selected display
+  const paysSelObjs = paysOpts.filter(p => criteria.pays.includes(p.c));
+  const paysLabel = paysSelObjs.length === 0 ? 'Pays'
+    : paysSelObjs.length === 1 ? paysSelObjs[0].f + ' ' + paysSelObjs[0].n
+    : paysSelObjs[0].f + ' +' + (paysSelObjs.length - 1);
+
   return (
-    <div style={{background:'#fff', borderTop:'1px solid #E8DDD0', borderBottom:'1px solid #E8DDD0', maxHeight:'70vh', overflowY:'auto', padding:'10px 14px 12px', boxShadow:'0 4px 8px rgba(139,94,60,.06) inset'}}>
-      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+    <div style={{background:'#fff', borderTop:'1px solid #E8DDD0', borderBottom:'1px solid #E8DDD0', maxHeight:'70vh', overflowY:'auto', padding:'8px 12px 10px', boxShadow:'0 4px 8px rgba(139,94,60,.06) inset'}}>
+      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4}}>
         <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'#8B5E3C', flex:1}}>Recherche avancée</span>
-        <button type="button" onClick={onClose} style={{background:'none', border:'none', fontSize:18, color:'#8B5E3C', cursor:'pointer', padding:'4px 8px'}}>×</button>
+        <button type="button" onClick={onClose}
+          style={{width:36, height:36, padding:0, background:'#FBF1E4', border:'1px solid #C9B79A', borderRadius:18, fontSize:18, color:'#8B5E3C', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit', flexShrink:0}}>×</button>
       </div>
 
+      {/* V58 FIX 1 : profils 1 seule ligne scroll horizontal + sépareur Investisseur */}
       <div style={titleStyle}>Profils ciblés</div>
-      <V57ChipsMulti options={PROFS} value={criteria.profils} onToggle={toggleProf}/>
-      <button type="button" onClick={() => setC({investisseur: !criteria.investisseur})}
-        style={{marginTop:6, padding:'5px 10px', fontSize:11, fontWeight:600, fontFamily:'inherit',
-                border:'1.5px solid ' + (criteria.investisseur ? '#6B4A8E' : '#C9B79A'),
-                background: criteria.investisseur ? '#6B4A8E' : '#FBF1E4',
-                color: criteria.investisseur ? '#fff' : '#5C3B1E',
-                borderRadius:14, cursor:'pointer'}}>
-        ⊕ Investisseur
-      </button>
-
-      <div style={titleStyle}>Localisation</div>
-      <div style={{display:'flex', flexWrap:'wrap', gap:5, marginBottom:6, maxHeight:80, overflowY:'auto'}}>
-        {paysOpts.slice(0, 30).map(p => {
-          const on = criteria.pays.includes(p.c);
+      <div style={{display:'flex', flexWrap:'nowrap', overflowX:'auto', gap:6, paddingBottom:2, scrollbarWidth:'none', msOverflowStyle:'none'}}
+        className="profils-row">
+        {PROFS.map(p => {
+          const on = criteria.profils.includes(p);
           return (
-            <button key={p.c} type="button" onClick={() => togglePays(p.c)}
-              style={{padding:'4px 8px', fontSize:10.5, fontWeight:600, fontFamily:'inherit',
+            <button key={p} type="button" onClick={() => toggleProf(p)}
+              style={{padding:'6px 11px', fontSize:12, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
                       border:'1.5px solid ' + (on ? '#8B5E3C' : '#C9B79A'),
                       background: on ? '#8B5E3C' : '#FBF1E4',
                       color: on ? '#fff' : '#5C3B1E',
-                      borderRadius:12, cursor:'pointer'}}>
-              {p.f} {p.c}
+                      borderRadius:14, cursor:'pointer'}}>
+              {p}
             </button>
           );
         })}
+        {/* Séparateur visuel | avant Investisseur */}
+        <span style={{flexShrink:0, alignSelf:'center', width:1, height:20, background:'#E0CDAE', margin:'0 4px'}}/>
+        <button type="button" onClick={() => setC({investisseur: !criteria.investisseur})}
+          style={{padding:'6px 11px', fontSize:12, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
+                  border:'1.5px solid ' + (criteria.investisseur ? '#6B4A8E' : '#C9B79A'),
+                  background: criteria.investisseur ? '#6B4A8E' : '#FBF1E4',
+                  color: criteria.investisseur ? '#fff' : '#5C3B1E',
+                  borderRadius:14, cursor:'pointer'}}>
+          ⊕ Investisseur
+        </button>
       </div>
-      <input type="text" placeholder="Ville (ex: Marrakech)" value={criteria.ville}
-        onChange={e => setC({ville: e.target.value})}
-        style={{width:'100%', padding:'8px 10px', borderRadius:8, fontSize:13, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#FFFCF5', color:'#2A2018', outline:'none', boxSizing:'border-box'}}/>
 
+      {/* V58 FIX 2 : Pays + Ville côte à côte 50/50 */}
+      <div style={titleStyle}>Localisation</div>
+      <div style={{display:'flex', gap:8, alignItems:'flex-start'}}>
+        <button type="button" onClick={() => setPaysModalOpen(true)}
+          style={{flex:1, padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
+                  border:'1.5px solid ' + (paysSelObjs.length > 0 ? '#8B5E3C' : '#C9B79A'),
+                  background: paysSelObjs.length > 0 ? '#FBF1E4' : '#FFFCF5',
+                  color:'#5C3B1E', borderRadius:8, cursor:'pointer',
+                  display:'flex', alignItems:'center', justifyContent:'space-between', minWidth:0, minHeight:38}}>
+          <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{paysLabel}{paysSelObjs.length > 1 ? ' (' + paysSelObjs.length + ')' : ''}</span>
+          <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
+        </button>
+        <div style={{flex:1, position:'relative', minWidth:0}}>
+          <input type="text" placeholder="Ville" value={criteria.ville || ''}
+            onChange={e => setC({ville: e.target.value})}
+            onFocus={() => setVilleFocused(true)}
+            onBlur={() => setTimeout(() => setVilleFocused(false), 180)}
+            style={{width:'100%', padding:'9px 10px', borderRadius:8, fontSize:12.5, fontFamily:'inherit', border:'1.5px solid ' + ((criteria.ville && criteria.ville.trim()) ? '#8B5E3C' : '#C9B79A'), background: (criteria.ville && criteria.ville.trim()) ? '#FBF1E4' : '#FFFCF5', color:'#2A2018', outline:'none', boxSizing:'border-box', minHeight:38}}/>
+          {villeSugg.length > 0 && (
+            <div style={{position:'absolute', top:'100%', left:0, right:0, marginTop:2, background:'#fff', border:'1px solid #C9B79A', borderRadius:8, boxShadow:'0 4px 12px rgba(139,94,60,.15)', maxHeight:180, overflowY:'auto', zIndex:10}}>
+              {villeSugg.map(v => (
+                <button key={v} type="button" onMouseDown={e => { e.preventDefault(); setC({ville: v}); setVilleFocused(false); }}
+                  style={{width:'100%', padding:'8px 10px', textAlign:'left', background:'transparent', border:'none', borderBottom:'1px solid #F0E9DC', fontSize:12.5, color:'#2A2018', cursor:'pointer', fontFamily:'inherit'}}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* V58 FIX 3 : Type de bien dans modal */}
       <div style={titleStyle}>Type de bien</div>
-      <V57ChipsMulti options={V57_TYPES} value={criteria.types_bien} onToggle={toggleType}/>
+      <button type="button" onClick={() => setTypeModalOpen(true)}
+        style={{width:'100%', padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
+                border:'1.5px solid ' + (criteria.types_bien.length > 0 ? '#8B5E3C' : '#C9B79A'),
+                background: criteria.types_bien.length > 0 ? '#FBF1E4' : '#FFFCF5',
+                color:'#5C3B1E', borderRadius:8, cursor:'pointer',
+                display:'flex', alignItems:'center', justifyContent:'space-between', minHeight:38}}>
+        <span>Type de bien{criteria.types_bien.length > 0 ? ' (' + criteria.types_bien.length + ')' : ''}</span>
+        <span style={{color:'#8B5E3C'}}>▾</span>
+      </button>
 
       <V57RangeInputs label="Surface" suffix="m²" vMin={criteria.surface_min} vMax={criteria.surface_max} onMin={v => setC({surface_min: v})} onMax={v => setC({surface_max: v})}/>
       <V57RangeInputs label="Chambres" vMin={criteria.chambres_min} vMax={criteria.chambres_max} onMin={v => setC({chambres_min: v})} onMax={v => setC({chambres_max: v})}/>
@@ -7973,7 +8078,7 @@ function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCo
       <div style={titleStyle}>Options</div>
       <V57ChipsMulti options={V57_OPTIONS} value={criteria.options} onToggle={toggleOpt}/>
 
-      <div style={{display:'flex', gap:8, marginTop:14, alignItems:'center'}}>
+      <div style={{display:'flex', gap:8, marginTop:12, alignItems:'center'}}>
         <button type="button" onClick={onClose}
           style={{flex:1, padding:'10px 14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
           Rechercher ({resultsCount} résultat{resultsCount !== 1 ? 's' : ''})
@@ -7983,6 +8088,24 @@ function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCo
           Réinitialiser
         </button>
       </div>
+
+      {paysModalOpen && (
+        <V58MultiSelectModal
+          title="Sélectionner pays"
+          options={paysOpts.map(p => ({value: p.c, label: p.n, flag: p.f}))}
+          selected={criteria.pays}
+          onToggle={togglePays}
+          onClose={() => setPaysModalOpen(false)}
+          max={5}/>
+      )}
+      {typeModalOpen && (
+        <V58MultiSelectModal
+          title="Type de bien"
+          options={V57_TYPES.map(t => ({value: t, label: t}))}
+          selected={criteria.types_bien}
+          onToggle={toggleType}
+          onClose={() => setTypeModalOpen(false)}/>
+      )}
     </div>
   );
 }
@@ -10962,7 +11085,7 @@ function FormView(props) {
         <Stage title={STAGES[activeProfil][0]}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status} summary={stageStatus[0].summary}
-               hideChevron={true}>
+               hideChevron={hasHeadName}>
           {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
               opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
               bouton "+" rond pour ouvrir le modal multi-select Variante C v30. */}
