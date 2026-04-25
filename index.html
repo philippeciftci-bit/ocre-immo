@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v45-payment-plan -->
+<!-- ocre-v45-extract -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -5349,9 +5349,61 @@ function ImportImageView({onBack, onCreated, showToast, toast, fileAlreadySelect
     if (r.neuf_ancien) bien.neuf_ancien = r.neuf_ancien;
     // L'image importée devient photo primaire du bien (visible colonne Photo Sheet après promote).
     if (imagePath) bien.photos = ['/api/image.php?path=' + encodeURIComponent(imagePath)];
+    // V45 — overlay schéma exhaustif si présent (transaction / bien_meta / prix_meta / conditions / localisation / description_libre / source).
+    const tx = r.transaction || {};
+    const bm = r.bien_meta || {};
+    const pm = r.prix_meta || {};
+    const cd = r.conditions || {};
+    const lo = r.localisation || {};
+    const sr = r.source || {};
+    if (tx.type) {
+      const txMap = {location_longue:'Bailleur', location_courte:'Bailleur', vente:'Vendeur', investissement:'Investisseur', colocation:'Bailleur'};
+      client.projet = txMap[tx.type] || client.projet || 'Vendeur';
+      client.transaction_type = tx.type;
+      if (tx.periode) client.transaction_periode = tx.periode;
+      if (tx.negociable != null) client.negociable = !!tx.negociable;
+    }
+    if (bm.type && !bien.type) { bien.type = bm.type; bien.types = [bm.type]; }
+    if (bm.surface_m2 && !bien.surface) bien.surface = bm.surface_m2;
+    if (bm.terrain_m2 && !bien.surface_terrain) bien.surface_terrain = bm.terrain_m2;
+    if (bm.chambres && !bien.chambres) bien.chambres = bm.chambres;
+    if (bm.salles_de_bains && !bien.sdb) bien.sdb = bm.salles_de_bains;
+    if (bm.salons) bien.salons = bm.salons;
+    if (bm.etat) bien.etat = bm.etat;
+    if (Array.isArray(bm.equipements) && bm.equipements.length) bien.equipements = bm.equipements;
+    if (Array.isArray(lo.reperes) && lo.reperes.length) bien.reperes = lo.reperes;
+    if (lo.ville && !bien.ville) bien.ville = lo.ville;
+    if (lo.quartier && !bien.quartier) bien.quartier = lo.quartier;
+    if (lo.adresse_precise) bien.adresse = lo.adresse_precise;
+    if (r.description_libre) bien.description = r.description_libre;
     if (Object.keys(bien).length) client.bien = bien;
-    if (r.prix) { client.financement = {prix_affiche: r.prix, devise: r.devise || '€'}; client.prix_affiche = r.prix; }
+    // Prix : si prix_meta présent, mappe avec période. Auto-construire payment_plan.
+    const finalPrix = pm.montant || r.prix;
+    const finalDev = pm.devise || r.devise;
+    if (finalPrix) {
+      client.financement = Object.assign({prix_affiche: finalPrix, devise: finalDev || '€'}, client.financement || {});
+      client.prix_affiche = finalPrix;
+      if (pm.periode) client.prix_periode = pm.periode;
+      // V45 — auto payment_plan ligne 1.
+      const ppCur = (finalDev === 'MAD' || finalDev === 'EUR' || finalDev === 'USD') ? finalDev : 'MAD';
+      client.payment_plan = [{id: 'pp_' + Math.random().toString(36).slice(2, 10), amount: Number(finalPrix), currency: ppCur, method: 'wire'}];
+    }
     if (r.code_postal) client.code_postal = r.code_postal;
+    // Conditions → notes appendix.
+    const condParts = [];
+    if (cd.caution_mois) condParts.push('Caution : ' + cd.caution_mois + ' mois');
+    if (cd.avance_mois) condParts.push('Avance : ' + cd.avance_mois + ' mois');
+    if (cd.disponibilite === 'immediate') condParts.push('Disponible immédiatement');
+    else if (cd.date_disponibilite) condParts.push('Disponible : ' + cd.date_disponibilite);
+    if (cd.frais_agence_pct) condParts.push('Frais agence : ' + cd.frais_agence_pct + '%');
+    if (cd.charges) condParts.push('Charges : ' + cd.charges);
+    if (condParts.length) {
+      client.notes = (client.notes ? client.notes + '\n\n' : '') + 'Conditions :\n• ' + condParts.join('\n• ');
+    }
+    // Source enrichie + raw_ocr en fin de notes pour debug.
+    if (sr.type) client.source_type = sr.type;
+    if (sr.url) client.source_url = sr.url;
+    if (r.raw_text_visible) client.raw_ocr = r.raw_text_visible;
 
     try {
       const resp = await fetch(API + '/clients.php?action=save', {
@@ -8319,11 +8371,57 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
     if (result.balcon_terrasse) carac.push('Balcon/Terrasse');
     if (carac.length) bien.caracteristiques = carac;
     if (Array.isArray(result.photos) && result.photos.length) bien.photos = result.photos;
+    // V45 — overlay schéma exhaustif (transaction / bien_meta / prix_meta / conditions / localisation / description_libre / source).
+    const tx = result.transaction || {};
+    const bm = result.bien_meta || {};
+    const pm = result.prix_meta || {};
+    const cd = result.conditions || {};
+    const lo = result.localisation || {};
+    const sr = result.source || {};
+    if (tx.type) {
+      const txMap = {location_longue:'Bailleur', location_courte:'Bailleur', vente:'Vendeur', investissement:'Investisseur', colocation:'Bailleur'};
+      client.projet = txMap[tx.type] || client.projet || 'Vendeur';
+      client.transaction_type = tx.type;
+      if (tx.periode) client.transaction_periode = tx.periode;
+      if (tx.negociable != null) client.negociable = !!tx.negociable;
+    }
+    if (bm.type && !bien.type) { bien.type = bm.type; bien.types = [bm.type]; }
+    if (bm.surface_m2 && !bien.surface) bien.surface = bm.surface_m2;
+    if (bm.terrain_m2 && !bien.surface_terrain) bien.surface_terrain = bm.terrain_m2;
+    if (bm.chambres && !bien.chambres) bien.chambres = bm.chambres;
+    if (bm.salles_de_bains && !bien.sdb) bien.sdb = bm.salles_de_bains;
+    if (bm.salons) bien.salons = bm.salons;
+    if (bm.etat) bien.etat = bm.etat;
+    if (Array.isArray(bm.equipements) && bm.equipements.length) bien.equipements = bm.equipements;
+    if (Array.isArray(lo.reperes) && lo.reperes.length) bien.reperes = lo.reperes;
+    if (lo.ville && !bien.ville) bien.ville = lo.ville;
+    if (lo.quartier && !bien.quartier) bien.quartier = lo.quartier;
+    if (lo.adresse_precise) bien.adresse = lo.adresse_precise;
+    if (result.description_libre) bien.description = result.description_libre;
     if (Object.keys(bien).length) client.bien = bien;
     const fin = {};
-    if (result.prix) { fin.prix_affiche = result.prix; client.prix_affiche = result.prix; }
-    if (result.devise) fin.devise = result.devise;
+    const finalPrix = pm.montant || result.prix;
+    const finalDev = pm.devise || result.devise;
+    if (finalPrix) { fin.prix_affiche = finalPrix; client.prix_affiche = finalPrix; }
+    if (finalDev) fin.devise = finalDev;
+    if (pm.periode) client.prix_periode = pm.periode;
     if (Object.keys(fin).length) client.financement = fin;
+    if (finalPrix) {
+      const ppCur = (finalDev === 'MAD' || finalDev === 'EUR' || finalDev === 'USD') ? finalDev : 'MAD';
+      client.payment_plan = [{id: 'pp_' + Math.random().toString(36).slice(2, 10), amount: Number(finalPrix), currency: ppCur, method: 'wire'}];
+    }
+    const condParts = [];
+    if (cd.caution_mois) condParts.push('Caution : ' + cd.caution_mois + ' mois');
+    if (cd.avance_mois) condParts.push('Avance : ' + cd.avance_mois + ' mois');
+    if (cd.disponibilite === 'immediate') condParts.push('Disponible immédiatement');
+    else if (cd.date_disponibilite) condParts.push('Disponible : ' + cd.date_disponibilite);
+    if (cd.frais_agence_pct) condParts.push('Frais agence : ' + cd.frais_agence_pct + '%');
+    if (cd.charges) condParts.push('Charges : ' + cd.charges);
+    if (condParts.length) {
+      client.notes = (client.notes ? client.notes + '\n\n' : '') + 'Conditions :\n• ' + condParts.join('\n• ');
+    }
+    if (sr.type && !client.source_type) client.source_type = sr.type;
+    if (result.raw_text_visible) client.raw_ocr = result.raw_text_visible;
     try {
       const r = await fetch(API + '/clients.php?action=save', {
         method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token},

@@ -125,32 +125,58 @@ function saveUploadedImage(array $file, int $user_id): array {
 }
 
 function claudeExtractFromImage(string $base64, string $mime, string $apiKey): ?array {
-    $sys = "Tu extrais d'une IMAGE d'annonce immobilier (capture SMS/WhatsApp, photo annonce papier, panneau, screenshot) les infos en JSON valide uniquement.\n"
-         . "Schéma complet :\n"
-         . "{titre, description_complete (texte intégral lisible sur l'image, max 5000 chars),\n"
-         . " prix (nombre), devise (EUR|MAD|USD),\n"
-         . " surface_habitable (m²), surface_terrain (m² distinct),\n"
-         . " nombre_pieces, nombre_chambres, nombre_sdb,\n"
-         . " etage (number), ascenseur, parking, cave, balcon_terrasse (bool),\n"
-         . " dpe_class (A-G), dpe_ges (A-G), annee_construction, neuf_ancien,\n"
-         . " types_bien (array : Villa|Appartement|Riad|Maison|Terrain|Commerce|Ferme|Bureau / plateau|Bâtiment industriel),\n"
-         . " pays_bien (MA|FR|ES), ville_bien, quartier_bien, code_postal,\n"
-         . " annonceur_type ('professionnel'|'particulier'), annonceur_nom,\n"
-         . " annonceur_tel_mentionne (E.164 +33/+212 si visible, sinon null),\n"
-         . " annonceur_email_mentionne (email si visible, sinon null),\n"
-         . " source_type (enum strict : 'sms'|'whatsapp'|'screenshot_web'|'photo_annonce_papier'|'photo_panneau'|'capture_autre'),\n"
-         . " source_context (1 phrase résumé : contexte de la capture, ex 'SMS d'un prospecteur à 15h32'),\n"
-         . " layout_type (enum : 'single_photo' | 'collage_multiple' | 'conversation_with_photos' | 'text_only'),\n"
-         . " visible_photos_count (nombre de photos distinctes du bien visibles, 0 si aucune)}\n\n"
-         . "Règles :\n"
-         . "- null si non trouvé. '500k'→500000, '1,8M'→1800000.\n"
-         . "- source_type : si bulles SMS/chat visibles avec horodatage iOS→'sms' ; WhatsApp (fond vert, avatar rond, coche double)→'whatsapp' ; URL/navigateur visible→'screenshot_web' ; papier tenu main/scan→'photo_annonce_papier' ; panneau 'À VENDRE' rue→'photo_panneau' ; sinon 'capture_autre'.\n"
-         . "- Si SMS/WhatsApp visible en haut : extrait tel/nom expéditeur dans annonceur_tel_mentionne/annonceur_nom. Sinon null.\n"
-         . "- annonceur_tel_mentionne : SEULEMENT si visible dans le texte de l'image.";
+    // V45 — refonte exhaustive : extraction de TOUT le contenu visible (équipements,
+    // conditions, négociation, périodicité, repères, description verbatim, OCR brut).
+    $sys = "Tu extrais d'une IMAGE d'annonce immobilier (capture Facebook Marketplace, WhatsApp, SMS, fiche agence, photo papier, panneau, screenshot) TOUT le contenu visible. Tu retournes UNIQUEMENT un JSON valide, sans markdown.\n\n"
+         . "RÈGLE D'OR : Aucune information visible ne doit être ignorée. Si tu vois un mot-clé d'équipement (hammam, piscine, climatisation, jardin, terrasse, parking, cheminée, fontaine, patio, vue, ascenseur…), tu l'ajoutes au tableau equipements. Si le texte mentionne 'À LOUER', 'À VENDRE', 'EN LOCATION', tu remplis transaction.type. Si une période apparaît (par mois, par an, par nuit), tu remplis transaction.periode et prix.periode.\n\n"
+         . "Cherche activement : chambre/pièce/dormitorio/bedroom = pareil. Salle de bain/sdb/bathroom = pareil. Caution/dépôt de garantie = pareil.\n\n"
+         . "SCHÉMA EXHAUSTIF :\n"
+         . "{\n"
+         . "  // V45 — schéma exhaustif\n"
+         . "  transaction: {type: 'location_longue'|'location_courte'|'vente'|'investissement'|'colocation'|null, periode: 'mois'|'annee'|'nuit'|'semaine'|null, negociable: bool|null},\n"
+         . "  bien_meta: {type: 'riad'|'villa'|'appartement'|'maison'|'terrain'|'local_commercial'|'loft'|'duplex'|'penthouse'|'autre'|null, etat: 'neuf'|'renove'|'a_renover'|'meuble'|'semi_meuble'|'vide'|null, surface_m2: number|null, terrain_m2: number|null, chambres: number|null, salles_de_bains: number|null, salons: number|null, etages: number|null, etage_du_bien: number|null, ascenseur: bool|null, equipements: ['climatisation','hammam','piscine','jardin','terrasse','parking','cave','cheminee','cuisine_equipee','buanderie','patio','fontaine','vue_atlas','vue_mer','ascenseur',...]},\n"
+         . "  localisation: {ville: str|null, quartier: str|null, secteur: str|null, reperes: [str], adresse_precise: str|null, pays: 'Maroc'|'France'|'Espagne'|str|null},\n"
+         . "  prix_meta: {montant: number|null, devise: 'MAD'|'EUR'|'USD', periode: 'mois'|'annee'|'nuit'|'semaine'|'total', negociable: bool|null, prix_au_m2: number|null},\n"
+         . "  conditions: {caution_mois: number|null, caution_montant: number|null, avance_mois: number|null, frais_agence_pct: number|null, frais_agence_montant: number|null, charges: number|null, disponibilite: 'immediate'|'date_specifique'|null, date_disponibilite: str|null, duree_min: str|null, animaux_acceptes: bool|null},\n"
+         . "  contact: {nom: str|null, telephone: str|null, email: str|null, whatsapp: str|null, type: 'agence'|'particulier'|null, agence_nom: str|null, agence_url: str|null},\n"
+         . "  description_libre: 'verbatim du texte de l\\'annonce, en intégralité, sans coupure',\n"
+         . "  source: {type: 'facebook_marketplace'|'whatsapp'|'sms'|'panneau'|'fiche_agence'|'annonce_web'|'email'|'audio'|'note_manuelle'|'autre', url: str|null, date_capture: 'ISO 8601', auteur_apparent: str|null},\n"
+         . "  confidence: 'high'|'medium'|'low',\n"
+         . "  raw_text_visible: 'TOUT le texte OCR détecté dans le document, brut, ligne par ligne',\n\n"
+         . "  // ─── champs LEGACY (à remplir AUSSI pour rétrocompat frontend v44 et antérieurs) ───\n"
+         . "  titre: str|null, description_complete: str|null,\n"
+         . "  prix: number|null, devise: 'EUR'|'MAD'|'USD'|null,\n"
+         . "  surface_habitable: number|null, surface_terrain: number|null,\n"
+         . "  nombre_pieces: number|null, nombre_chambres: number|null, nombre_sdb: number|null,\n"
+         . "  etage: number|null, ascenseur: bool|null, parking: bool|null, cave: bool|null, balcon_terrasse: bool|null,\n"
+         . "  dpe_class: str|null, dpe_ges: str|null, annee_construction: number|null, neuf_ancien: 'neuf'|'ancien'|null,\n"
+         . "  types_bien: [str], pays_bien: 'MA'|'FR'|'ES'|null, ville_bien: str|null, quartier_bien: str|null, code_postal: str|null,\n"
+         . "  annonceur_type: 'professionnel'|'particulier'|null, annonceur_nom: str|null,\n"
+         . "  annonceur_tel_mentionne: str|null, annonceur_email_mentionne: str|null,\n"
+         . "  source_type: 'sms'|'whatsapp'|'screenshot_web'|'photo_annonce_papier'|'photo_panneau'|'capture_autre',\n"
+         . "  source_context: str,\n"
+         . "  layout_type: 'single_photo'|'collage_multiple'|'conversation_with_photos'|'text_only',\n"
+         . "  visible_photos_count: number\n"
+         . "}\n\n"
+         . "RÈGLES DE NORMALISATION :\n"
+         . "- null si vraiment introuvable, mais cherche d'abord intensivement.\n"
+         . "- '500k'→500000, '1,8M'→1800000, '60 000 DH'→60000 (devise MAD), '€'/'EUR'→'EUR'.\n"
+         . "- Si 'À LOUER' / 'EN LOCATION' visible → transaction.type='location_longue' (sauf si 'courte durée'/'à la nuit'/'Airbnb').\n"
+         . "- Si 'À VENDRE' / 'EN VENTE' visible → transaction.type='vente'.\n"
+         . "- Si '60 000 DH/mois' → prix_meta.montant=60000, prix_meta.devise=MAD, prix_meta.periode=mois.\n"
+         . "- Si 'négociable' / 'à débattre' → transaction.negociable=true et prix_meta.negociable=true.\n"
+         . "- Si '1 mois caution' ou 'caution = 1 mois' → conditions.caution_mois=1.\n"
+         . "- Si 'disponible immédiatement' / 'libre de suite' → conditions.disponibilite='immediate'.\n"
+         . "- Pour repères : extraire références géographiques (ex: 'proche Jemaa el-Fna', '5 min des souks', 'face à la mer').\n"
+         . "- Pour equipements : tableau STRINGS en français normalisé. Inclure tout ce qui est mentionné même brièvement.\n"
+         . "- Champs LEGACY : remplir aussi (titre, prix, devise, ville_bien, etc.) car le front v44 les attend.\n"
+         . "- description_libre + description_complete : copier verbatim TOUT le bloc descriptif lisible.\n"
+         . "- raw_text_visible : reproduire ligne par ligne TOUT le texte OCR de l'image, brut.\n"
+         . "- source_type : si bulles SMS/iOS→'sms' ; WhatsApp (vert/coche)→'whatsapp' ; Marketplace/Facebook→'screenshot_web' (et source.type='facebook_marketplace') ; URL navigateur visible→'screenshot_web' ; papier→'photo_annonce_papier' ; panneau→'photo_panneau' ; sinon 'capture_autre'.";
 
     $payload = [
         'model' => CLAUDE_MODEL,
-        'max_tokens' => 2500,
+        'max_tokens' => 4500,
         'system' => $sys,
         'messages' => [[
             'role' => 'user',

@@ -293,31 +293,51 @@ function claudeStructure($html, $url, $apiKey) {
     $excerpt = preg_replace('#<style[^>]*>.*?</style>#is', '', $excerpt);
     $excerpt = preg_replace('/\s+/', ' ', strip_tags($excerpt));
     $excerpt = mb_substr($excerpt, 0, 8000);
-    // V18.11 — schéma enrichi : surfaces, pièces/SDB/étage, DPE/GES, équipements, annonceur, description complète.
-    $sys = "Tu extrais d'une page HTML d'annonce immobilier (FR/MA) les infos en JSON valide uniquement.\n"
-         . "Schéma complet :\n"
-         . "{titre, description_complete (texte intégral non-tronqué, max 5000 chars),\n"
-         . " prix (nombre), devise (EUR|MAD|USD),\n"
-         . " surface_habitable (m²), surface_terrain (m², distinct de surface_habitable),\n"
-         . " nombre_pieces (T2→2, T3→3, sinon nb explicite), nombre_chambres, nombre_sdb,\n"
-         . " etage (number, ex 3 pour 'au 3e étage'), ascenseur (bool), parking (bool), cave (bool), balcon_terrasse (bool),\n"
-         . " dpe_class (A-G), dpe_ges (A-G), annee_construction (4 digits), neuf_ancien ('neuf' si vefa/neuf/récent, sinon 'ancien'),\n"
-         . " types_bien (array : Villa|Appartement|Riad|Maison|Terrain|Commerce|Ferme|Bureau / plateau|Bâtiment industriel),\n"
-         . " pays_bien (MA|FR|ES), ville_bien, quartier_bien, code_postal,\n"
-         . " photos (array d'URL absolues https://… directement utilisables en <img src>, max 10 ; privilégier les versions HD et non-lazyload ; exclure placeholders/logos/bannières publicitaires),\n"
-         . " annonceur_type ('professionnel' si JSON-LD offers.seller.@type=Organization OU agence/SARL/SAS dans nom, sinon 'particulier'),\n"
-         . " annonceur_nom (raison sociale agence ou nom particulier),\n"
-         . " annonceur_tel_mentionne (numéro tel UNIQUEMENT si écrit dans la description ou texte de l'annonce, format E.164 +33/+212 ; null si caché derrière bouton 'Contacter'),\n"
-         . " annonceur_email_mentionne (email UNIQUEMENT si écrit dans le texte, sinon null),\n"
-         . " annonceur_ville (si mentionnée pour l'annonceur)}\n\n"
-         . "Règles :\n"
-         . "- null si non trouvé. Convertis '500k' → 500000, '1,8M' → 1800000.\n"
-         . "- description_complete = texte intégral du paragraphe descriptif, sans tronquer, sans markdown.\n"
-         . "- annonceur_tel_mentionne / annonceur_email_mentionne : SEULEMENT si visible dans le texte de l'annonce. Beaucoup d'annonceurs mettent leur numéro dans la description pour contourner les boutons 'Contacter' anti-bot. Ne pas inventer.\n"
-         . "- Pour pieces/chambres/sdb : un T3 = 3 pièces (séjour + 2 chambres typique), retourne 3 dans nombre_pieces.";
+    // V45 — refonte exhaustive identique à import_image (transaction / bien_meta / prix_meta / conditions / localisation / description verbatim / source).
+    $sys = "Tu extrais d'une page HTML d'annonce immobilier (FR/MA/ES) TOUT le contenu visible. Tu retournes UNIQUEMENT un JSON valide, sans markdown.\n\n"
+         . "RÈGLE D'OR : Aucune information visible ne doit être ignorée. Si tu vois un mot-clé d'équipement (hammam, piscine, climatisation, jardin, terrasse, parking, cheminée, fontaine, patio, vue…), tu l'ajoutes au tableau bien_meta.equipements. Si le texte mentionne 'À LOUER', 'À VENDRE', 'EN LOCATION', tu remplis transaction.type. Si une période apparaît (par mois, par an, par nuit), tu remplis prix_meta.periode.\n\n"
+         . "Cherche activement : chambre/pièce/dormitorio/bedroom = pareil. Salle de bain/sdb/bathroom = pareil. Caution/dépôt de garantie = pareil.\n\n"
+         . "SCHÉMA EXHAUSTIF :\n"
+         . "{\n"
+         . "  // V45 — schéma exhaustif\n"
+         . "  transaction: {type: 'location_longue'|'location_courte'|'vente'|'investissement'|'colocation'|null, periode: 'mois'|'annee'|'nuit'|'semaine'|null, negociable: bool|null},\n"
+         . "  bien_meta: {type: 'riad'|'villa'|'appartement'|'maison'|'terrain'|'local_commercial'|'loft'|'duplex'|'penthouse'|'autre'|null, etat: 'neuf'|'renove'|'a_renover'|'meuble'|'semi_meuble'|'vide'|null, surface_m2: number|null, terrain_m2: number|null, chambres: number|null, salles_de_bains: number|null, salons: number|null, etages: number|null, etage_du_bien: number|null, ascenseur: bool|null, equipements: ['climatisation','hammam','piscine','jardin','terrasse','parking','cave','cheminee','cuisine_equipee','buanderie','patio','fontaine','vue_atlas','vue_mer',...]},\n"
+         . "  localisation: {ville: str|null, quartier: str|null, secteur: str|null, reperes: [str], adresse_precise: str|null, pays: 'Maroc'|'France'|'Espagne'|null},\n"
+         . "  prix_meta: {montant: number|null, devise: 'MAD'|'EUR'|'USD', periode: 'mois'|'annee'|'nuit'|'semaine'|'total', negociable: bool|null, prix_au_m2: number|null},\n"
+         . "  conditions: {caution_mois: number|null, caution_montant: number|null, avance_mois: number|null, frais_agence_pct: number|null, frais_agence_montant: number|null, charges: number|null, disponibilite: 'immediate'|'date_specifique'|null, date_disponibilite: str|null, duree_min: str|null, animaux_acceptes: bool|null},\n"
+         . "  contact: {nom: str|null, telephone: str|null, email: str|null, whatsapp: str|null, type: 'agence'|'particulier'|null, agence_nom: str|null, agence_url: str|null},\n"
+         . "  description_libre: 'verbatim du texte de l\\'annonce, en intégralité, sans coupure',\n"
+         . "  source: {type: 'annonce_web'|'fiche_agence'|'autre', url: str|null, date_capture: 'ISO 8601', auteur_apparent: str|null},\n"
+         . "  confidence: 'high'|'medium'|'low',\n"
+         . "  raw_text_visible: 'TOUT le texte de la page lié à l\\'annonce, sans coupure',\n\n"
+         . "  // ─── champs LEGACY (à remplir AUSSI pour rétrocompat) ───\n"
+         . "  titre: str|null, description_complete: str|null,\n"
+         . "  prix: number|null, devise: 'EUR'|'MAD'|'USD'|null,\n"
+         . "  surface_habitable: number|null, surface_terrain: number|null,\n"
+         . "  nombre_pieces: number|null, nombre_chambres: number|null, nombre_sdb: number|null,\n"
+         . "  etage: number|null, ascenseur: bool|null, parking: bool|null, cave: bool|null, balcon_terrasse: bool|null,\n"
+         . "  dpe_class: str|null, dpe_ges: str|null, annee_construction: number|null, neuf_ancien: 'neuf'|'ancien'|null,\n"
+         . "  types_bien: [str], pays_bien: 'MA'|'FR'|'ES'|null, ville_bien: str|null, quartier_bien: str|null, code_postal: str|null,\n"
+         . "  photos: [str absolu HD],\n"
+         . "  annonceur_type: 'professionnel'|'particulier'|null, annonceur_nom: str|null,\n"
+         . "  annonceur_tel_mentionne: str|null, annonceur_email_mentionne: str|null, annonceur_ville: str|null\n"
+         . "}\n\n"
+         . "RÈGLES DE NORMALISATION :\n"
+         . "- null si vraiment introuvable. '500k'→500000, '1,8M'→1800000, '60 000 DH'→60000 (devise MAD).\n"
+         . "- Si 'À LOUER' / 'EN LOCATION' visible → transaction.type='location_longue' (sauf si 'courte durée'/'à la nuit').\n"
+         . "- Si 'À VENDRE' / 'EN VENTE' visible → transaction.type='vente'.\n"
+         . "- Si '60 000 DH/mois' → prix_meta.montant=60000, prix_meta.devise=MAD, prix_meta.periode=mois.\n"
+         . "- Si 'négociable' / 'à débattre' → transaction.negociable=true et prix_meta.negociable=true.\n"
+         . "- Si '1 mois caution' → conditions.caution_mois=1.\n"
+         . "- Si 'disponible immédiatement' → conditions.disponibilite='immediate'.\n"
+         . "- Pour repères : références géographiques type 'proche Jemaa el-Fna', 'face mer'.\n"
+         . "- LEGACY : remplir aussi (titre, prix, devise, ville_bien, etc.) pour le frontend.\n"
+         . "- description_libre + description_complete : copier verbatim TOUT le bloc descriptif sans tronquer.\n"
+         . "- annonceur_tel/email_mentionne : SEULEMENT si visible dans le texte. Pas inventer.\n"
+         . "- T3 = 3 pièces. Studio = 1 pièce.";
     $payload = [
         'model' => CLAUDE_MODEL,
-        'max_tokens' => 2400,
+        'max_tokens' => 4500,
         'system' => $sys,
         'messages' => [
             ['role' => 'user', 'content' => "URL: $url\n\n" . $excerpt],
