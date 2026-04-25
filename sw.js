@@ -1,7 +1,7 @@
 // V18.44 — SW auto-update. Ne plus skipWaiting() automatiquement : le nouveau SW
 // attend dans l'état "waiting" jusqu'à réception du message {type:'SKIP_WAITING'}
 // envoyé par le client après tap "Actualiser" ou auto-reload idle.
-const SW_VERSION = 'ocre-sw-v52.4';
+const SW_VERSION = 'ocre-sw-v52.4.1';
 
 self.addEventListener('install', e => {
   // V52.3 — purge tous caches existants à l'install pour forcer fresh fetch.

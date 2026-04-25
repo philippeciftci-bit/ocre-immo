@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v52.4-no-create-empty -->
+<!-- ocre-v52.4.1-guard-all-paths -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -5005,6 +5005,24 @@ function App() {
 
   async function handleSaveLocal(data) {
     const incoming = {...(editing || {}), ...data, projet: activeProfil, is_investisseur: isInvestisseur};
+    // V52.4.1 — GUARD ROOT : bloque CRÉATION (pas update) d'un dossier vide depuis
+    // n'importe quel chemin (commit, debounce 1.5s, pushNow, beaconSave, backToListFlushed,
+    // pagehide). Si pas d'id existant ET aucune donnée significative → skip save.
+    const hasRealId = !!(incoming && incoming.id && !String(incoming.id).startsWith('tmp-'));
+    if (!hasRealId) {
+      const hasIdentity = !!(incoming.prenom || incoming.nom || incoming.societe_nom
+                             || incoming.tel || incoming.email
+                             || (Array.isArray(incoming.tels) && incoming.tels.some(t => t && t.valeur))
+                             || (Array.isArray(incoming.emails) && incoming.emails.some(e => e && e.valeur)));
+      const hasContent = !!(incoming.bien && Object.keys(incoming.bien).filter(k => incoming.bien[k]).length)
+                      || !!(incoming.financement && Object.keys(incoming.financement).filter(k => incoming.financement[k]).length)
+                      || !!(Array.isArray(incoming.payment_plan) && incoming.payment_plan.some(l => l && Number(l.amount) > 0))
+                      || !!(incoming.notes && String(incoming.notes).trim());
+      if (!hasIdentity && !hasContent) {
+        // Pas d'INSERT, ni de toucher au clients[] state → quitte silencieusement.
+        return;
+      }
+    }
     // V18.17 — si staged, mettre à jour le tableau staged (pas clients principaux).
     const isStagedSave = !!(editing && editing.is_staged);
     if (isStagedSave) {
@@ -9507,8 +9525,22 @@ function FormView(props) {
   }
   function beaconSave() {
     try {
+      // V52.4.1 — GUARD : pas de beacon save si dossier neuf vide (sinon INSERT parasite
+      // au pagehide / fermeture d'onglet sans aucune donnée saisie).
+      const c = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
+      const hasRealId = !!(c.id && !String(c.id).startsWith('tmp-'));
+      if (!hasRealId) {
+        const hasIdentity = !!(c.prenom || c.nom || c.societe_nom || c.tel || c.email
+                               || (Array.isArray(c.tels) && c.tels.some(t => t && t.valeur))
+                               || (Array.isArray(c.emails) && c.emails.some(e => e && e.valeur)));
+        const hasContent = !!(c.bien && Object.keys(c.bien).filter(k => c.bien[k]).length)
+                        || !!(c.financement && Object.keys(c.financement).filter(k => c.financement[k]).length)
+                        || !!(Array.isArray(c.payment_plan) && c.payment_plan.some(l => l && Number(l.amount) > 0))
+                        || !!(c.notes && String(c.notes).trim());
+        if (!hasIdentity && !hasContent) return;
+      }
       const token = localStorage.getItem('ocre_token') || '';
-      const payload = {client: {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'}};
+      const payload = {client: c};
       const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
       navigator.sendBeacon(API + '/clients.php?action=save&token=' + encodeURIComponent(token), blob);
     } catch (e) {}
