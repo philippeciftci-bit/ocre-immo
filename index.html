@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v44-group-restore -->
+<!-- ocre-v45-payment-plan -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2786,6 +2786,309 @@ function DocumentsChecklist({docs, value, onChange, dossierId, showToast}) {
   );
 }
 
+// V45 — Plan de paiement multi-lignes + Encaissements reçus + solde par monnaie.
+// payment_plan / received_payments : tableaux d'objets {id, amount, currency, method[, date]}
+// Currencies supportées : MAD / EUR / USD. Methods : cash (Liquide) / wire (Virement).
+const PP_CURRENCIES = ['MAD', 'EUR', 'USD'];
+const PP_METHODS = [
+  {k: 'wire', l: 'Virement', bg: '#F3EFF8', fg: '#6B4A8E', border: '#D6C9E6'},
+  {k: 'cash', l: 'Liquide', bg: '#F8F1EB', fg: '#8B5E3C', border: '#E0CDAE'},
+];
+function ppMethodMeta(k) { return PP_METHODS.find(m => m.k === k) || PP_METHODS[0]; }
+function ppNewId() { return 'pp_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+function ppFmtAmount(n) {
+  const x = Number(n);
+  if (!x) return '';
+  return Math.round(x).toLocaleString('fr-FR').replace(/\u202F/g, ' ');
+}
+function ppParseAmount(s) {
+  if (s === null || s === undefined) return 0;
+  const cleaned = String(s).replace(/[^0-9.,]/g, '').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return isFinite(n) && n > 0 ? n : 0;
+}
+function ppFmtDateFR(iso) {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  return m[3] + '/' + m[2] + '/' + m[1];
+}
+function ppParseDateFR(s) {
+  const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const dd = parseInt(m[1], 10), mm = parseInt(m[2], 10), yy = parseInt(m[3], 10);
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const dt = new Date(yy, mm - 1, dd);
+  if (dt.getFullYear() !== yy || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) return null;
+  return yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+}
+// V45 — migration legacy : si pas de payment_plan mais un budget legacy, dériver.
+function ppDeriveLegacy(d) {
+  if (!d || typeof d !== 'object') return [];
+  const fin = (d.financement && typeof d.financement === 'object') ? d.financement : {};
+  const amount = Number(fin.budget_total || d.budget_max || d.prix_affiche || d.loyer_demande || d.loyer_max || 0);
+  if (!amount) return [];
+  const pays = (d.bien && d.bien.pays) || 'MA';
+  const currency = pays === 'MA' ? 'MAD' : (pays === 'ES' ? 'EUR' : (pays === 'FR' ? 'EUR' : 'EUR'));
+  return [{id: ppNewId(), amount, currency, method: 'wire'}];
+}
+
+function PaymentRow({line, onChange, onRemove, withDate}) {
+  const meta = ppMethodMeta(line.method);
+  const filled = Number(line.amount) > 0;
+  const fieldBg = filled ? '#F4FAF5' : '#FDF1F1';
+  const fieldBorder = filled ? '#9CC9A8' : '#E8B5B5';
+  const [amountText, setAmountText] = React.useState(line.amount ? ppFmtAmount(line.amount) : '');
+  React.useEffect(() => {
+    setAmountText(line.amount ? ppFmtAmount(line.amount) : '');
+  }, [line.amount]);
+  const [dateText, setDateText] = React.useState(line.date ? ppFmtDateFR(line.date) : '');
+  React.useEffect(() => {
+    setDateText(line.date ? ppFmtDateFR(line.date) : '');
+  }, [line.date]);
+  function cycleCurrency() {
+    const i = PP_CURRENCIES.indexOf(line.currency);
+    const next = PP_CURRENCIES[(i + 1) % PP_CURRENCIES.length];
+    onChange({...line, currency: next});
+  }
+  function cycleMethod() {
+    const i = PP_METHODS.findIndex(m => m.k === line.method);
+    const next = PP_METHODS[(i + 1) % PP_METHODS.length].k;
+    onChange({...line, method: next});
+  }
+  return (
+    <div style={{display:'flex', gap:6, alignItems:'center', marginBottom:6, flexWrap:'nowrap'}}>
+      {withDate && (
+        <input type="text" inputMode="numeric" maxLength={10} placeholder="JJ/MM/AAAA"
+          value={dateText} onChange={e => setDateText(e.target.value)}
+          onBlur={() => {
+            const iso = ppParseDateFR(dateText);
+            if (iso) onChange({...line, date: iso});
+            else if (!dateText.trim()) onChange({...line, date: null});
+            else setDateText(line.date ? ppFmtDateFR(line.date) : '');
+          }}
+          style={{
+            width:96, flexShrink:0, padding:'8px 8px', borderRadius:8, fontSize:12, fontFamily:'inherit',
+            border: '1.5px solid ' + (line.date ? '#9CC9A8' : '#E8B5B5'),
+            background: line.date ? '#F4FAF5' : '#FDF1F1',
+            color:'#2A2018', outline:'none', textAlign:'center',
+            fontVariantNumeric:'tabular-nums',
+          }}/>
+      )}
+      <input type="text" inputMode="decimal" pattern="[0-9 ]*" placeholder="Montant"
+        value={amountText} onChange={e => setAmountText(e.target.value)}
+        onBlur={() => {
+          const n = ppParseAmount(amountText);
+          onChange({...line, amount: n});
+          setAmountText(n ? ppFmtAmount(n) : '');
+        }}
+        style={{
+          flex:1, minWidth:0, padding:'8px 10px', borderRadius:8, fontSize:13, fontFamily:'inherit',
+          border:'1.5px solid ' + fieldBorder, background: fieldBg, color:'#2A2018',
+          textAlign:'right', fontVariantNumeric:'tabular-nums', fontWeight:600, outline:'none',
+        }}/>
+      <button type="button" onClick={cycleCurrency}
+        style={{
+          flexShrink:0, padding:'7px 9px', borderRadius:8, fontSize:11, fontWeight:700, fontFamily:'inherit',
+          border:'1.5px solid #C9B79A', background:'#FDF8F0', color:'#5C3B1E', cursor:'pointer',
+          letterSpacing:.4, minWidth:48,
+        }}>{line.currency}</button>
+      <button type="button" onClick={cycleMethod}
+        style={{
+          flexShrink:0, padding:'7px 9px', borderRadius:8, fontSize:11, fontWeight:700, fontFamily:'inherit',
+          border:'1.5px solid ' + meta.border, background: meta.bg, color: meta.fg, cursor:'pointer',
+          letterSpacing:.3, minWidth:64,
+        }}>{meta.l}</button>
+      <button type="button" onClick={onRemove} title="Supprimer"
+        style={{
+          flexShrink:0, width:28, height:28, padding:0, borderRadius:8, fontFamily:'inherit',
+          border:'none', background:'transparent', color:'rgba(139,94,60,.5)', cursor:'pointer',
+          display:'flex', alignItems:'center', justifyContent:'center',
+        }}>
+        <IconX size={14}/>
+      </button>
+    </div>
+  );
+}
+
+function PaymentPlanModule({d, set}) {
+  // V45 — payment_plan + received_payments (séparés). Migration legacy douce au mount.
+  const planRaw = Array.isArray(d.payment_plan) ? d.payment_plan : null;
+  const receivedRaw = Array.isArray(d.received_payments) ? d.received_payments : [];
+  // Si pas de plan ET legacy budget existe, dériver une ligne au premier rendu.
+  const initialPlan = planRaw || ppDeriveLegacy(d);
+  const plan = initialPlan;
+  const received = receivedRaw;
+
+  function setPlan(next) {
+    set('payment_plan', next);
+    // Recalculer un budget_summary lisible pour aperçu accueil.
+    const summary = computePlanSummary(next);
+    set('budget_summary', summary);
+  }
+  function setReceived(next) {
+    set('received_payments', next);
+  }
+  function addPlanLine() {
+    const next = [...plan, {id: ppNewId(), amount: 0, currency: 'MAD', method: 'wire'}];
+    setPlan(next);
+  }
+  function updatePlanLine(idx, line) {
+    const next = plan.slice(); next[idx] = line; setPlan(next);
+  }
+  function removePlanLine(idx) {
+    const next = plan.filter((_, i) => i !== idx); setPlan(next);
+  }
+  function addReceivedLine() {
+    const today = new Date().toISOString().slice(0, 10);
+    const next = [...received, {id: ppNewId(), date: today, amount: 0, currency: 'MAD', method: 'wire'}];
+    setReceived(next);
+  }
+  function updateReceivedLine(idx, line) {
+    const next = received.slice(); next[idx] = line; setReceived(next);
+  }
+  function removeReceivedLine(idx) {
+    const next = received.filter((_, i) => i !== idx); setReceived(next);
+  }
+  // Sous-totaux par monnaie.
+  const totals = {};
+  plan.forEach(l => {
+    const c = l.currency || 'MAD';
+    totals[c] = totals[c] || {planned: 0, received: 0};
+    totals[c].planned += Number(l.amount) || 0;
+  });
+  received.forEach(l => {
+    const c = l.currency || 'MAD';
+    totals[c] = totals[c] || {planned: 0, received: 0};
+    totals[c].received += Number(l.amount) || 0;
+  });
+  const totalCurrencies = Object.keys(totals);
+  return (
+    <div style={{marginTop:8, marginBottom:14, padding:12, borderRadius:10, border:'1.5px solid #E0CDAE', background:'#FFFCF5'}}>
+      <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:8}}>
+        <IconBanknote size={15} color="#8B5E3C"/>
+        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:15, fontWeight:600, color:'#8B5E3C'}}>Plan de paiement</span>
+        {plan.length > 0 && plan.every(l => Number(l.amount) > 0) && (
+          <span style={{display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:9, background:'#E8F5EC', color:'#3E8B5E', fontSize:11, fontWeight:800, marginLeft:2}}>✓</span>
+        )}
+      </div>
+      {plan.length === 0 && (
+        <div style={{padding:'10px 8px', textAlign:'center', color:'#8B7F6E', fontStyle:'italic', fontSize:12}}>
+          Aucun versement prévu
+        </div>
+      )}
+      {plan.map((l, i) => (
+        <PaymentRow key={l.id || i} line={l} onChange={ln => updatePlanLine(i, ln)} onRemove={() => removePlanLine(i)}/>
+      ))}
+      <button type="button" onClick={addPlanLine}
+        style={{
+          width:'100%', marginTop:4, padding:'10px', borderRadius:8, fontFamily:'inherit',
+          border:'1.5px dashed #C9B79A', background:'#FBF1E4', color:'#8B5E3C',
+          fontWeight:600, fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+        }}>
+        <IconPlus size={14} color="#8B5E3C"/> Ajouter un versement
+      </button>
+      {plan.some(l => Number(l.amount) > 0) && (
+        <div style={{marginTop:10, paddingTop:8, borderTop:'1px dashed #E0CDAE'}}>
+          <div style={{fontSize:10, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, fontWeight:700, marginBottom:3}}>Total prévu</div>
+          {Object.keys(totals).filter(c => (totals[c].planned || 0) > 0).map(c => (
+            <div key={c} style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:600, color:'#2A2018', fontVariantNumeric:'tabular-nums'}}>
+              {ppFmtAmount(totals[c].planned)} {c}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Sous-section Encaissements reçus */}
+      <div style={{marginTop:14, paddingTop:12, borderTop:'1px solid #E8DDD0'}}>
+        <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:8}}>
+          <IconCheck size={14} color="#8B5E3C"/>
+          <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:14, fontWeight:600, color:'#8B5E3C'}}>Encaissements reçus</span>
+        </div>
+        {received.length === 0 && (
+          <div style={{padding:'8px', textAlign:'center', color:'#8B7F6E', fontStyle:'italic', fontSize:12}}>
+            Aucun encaissement enregistré
+          </div>
+        )}
+        {received.map((l, i) => (
+          <PaymentRow key={l.id || i} line={l} onChange={ln => updateReceivedLine(i, ln)} onRemove={() => removeReceivedLine(i)} withDate/>
+        ))}
+        <button type="button" onClick={addReceivedLine}
+          style={{
+            width:'100%', marginTop:4, padding:'10px', borderRadius:8, fontFamily:'inherit',
+            border:'1.5px dashed #C9B79A', background:'#FBF1E4', color:'#8B5E3C',
+            fontWeight:600, fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+          }}>
+          <IconPlus size={14} color="#8B5E3C"/> Encaissement
+        </button>
+        {totalCurrencies.length > 0 && (plan.some(l => Number(l.amount) > 0) || received.some(l => Number(l.amount) > 0)) && (
+          <div style={{marginTop:10, padding:'10px 12px', borderRadius:8, background:'#FBF7F0', border:'1px solid #E0CDAE'}}>
+            {totalCurrencies.map(c => {
+              const planned = totals[c].planned || 0;
+              const got = totals[c].received || 0;
+              const balance = planned - got;
+              const orphan = planned === 0 && got > 0;
+              const settled = planned > 0 && balance <= 0;
+              return (
+                <div key={c} style={{marginBottom:4, fontSize:12, fontVariantNumeric:'tabular-nums'}}>
+                  {orphan ? (
+                    <span style={{color:'#8B5E3C'}}>Reçu hors plan : <b>{ppFmtAmount(got)} {c}</b></span>
+                  ) : (
+                    <>
+                      <div><span style={{color:'#8B7F6E'}}>Prévu :</span> <b style={{color:'#2A2018'}}>{ppFmtAmount(planned)} {c}</b></div>
+                      <div><span style={{color:'#8B7F6E'}}>Reçu :</span> <b style={{color: got > 0 ? '#3E8B5E' : '#8B7F6E'}}>{ppFmtAmount(got)} {c}</b></div>
+                      <div>
+                        <span style={{color:'#8B7F6E'}}>Solde :</span>{' '}
+                        {settled
+                          ? <b style={{color:'#3E8B5E'}}>Soldé ✓</b>
+                          : <b style={{color: balance > 0 ? '#C04B20' : '#3E8B5E'}}>{ppFmtAmount(Math.max(0, balance))} {c}</b>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// V45 — Résumé compact ClientRow accueil. Multi-monnaies → plus grosse + suffixe ⁺N.
+function computePlanSummary(plan) {
+  if (!Array.isArray(plan) || plan.length === 0) return '';
+  const byCur = {};
+  plan.forEach(l => {
+    const c = l.currency || 'MAD';
+    byCur[c] = (byCur[c] || 0) + (Number(l.amount) || 0);
+  });
+  const entries = Object.entries(byCur).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  return entries.map(([c, v]) => ppFmtAmount(v) + ' ' + c).join(' + ');
+}
+function computePlanCompact(plan) {
+  if (!Array.isArray(plan) || plan.length === 0) return '';
+  const byCur = {};
+  plan.forEach(l => {
+    const c = l.currency || 'MAD';
+    byCur[c] = (byCur[c] || 0) + (Number(l.amount) || 0);
+  });
+  const entries = Object.entries(byCur).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) return '';
+  function abbr(n) {
+    if (n >= 1000000) {
+      const v = n / 1000000;
+      return (v === Math.floor(v) ? v.toFixed(0) : v.toFixed(1).replace('.', ',')) + 'M';
+    }
+    if (n >= 1000) return Math.round(n / 1000) + 'k';
+    return Math.round(n).toString();
+  }
+  const [c0, v0] = entries[0];
+  const main = abbr(v0) + ' ' + c0;
+  if (entries.length > 1) return main + ' \u207A' + (entries.length - 1);
+  return main;
+}
+
 // V17.6 Section III — FinancementForm : mode + budget + banque + timeline + docs.
 function FinancementForm({activeProfil, d, set, dossierId, showToast}) {
   const bien = d.bien || {};
@@ -3199,6 +3502,55 @@ function IconPin({size=16, color='currentColor'}) {
     </svg>
   );
 }
+// V45 — icons supplémentaires (Mic, MicVocal, Check, X, Trash, Banknote) pour toggle
+// Whisper contrasté + module Plan de paiement / Encaissements.
+function IconMic({size=14, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline-block', flexShrink:0}}>
+      <rect x="9" y="2" width="6" height="11" rx="3"/>
+      <path d="M5 10v2a7 7 0 0 0 14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="22"/>
+      <line x1="8" y1="22" x2="16" y2="22"/>
+    </svg>
+  );
+}
+function IconMicVocal({size=14, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline-block', flexShrink:0}}>
+      <path d="M6 9a6 6 0 0 1 12 0v3a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z"/>
+      <path d="M3 12h2"/>
+      <path d="M19 12h2"/>
+      <path d="M9 18h6"/>
+      <path d="M12 15v6"/>
+    </svg>
+  );
+}
+function IconCheck({size=14, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline-block', flexShrink:0}}>
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  );
+}
+function IconX({size=14, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline-block', flexShrink:0}}>
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  );
+}
+function IconBanknote({size=14, color='currentColor'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline-block', flexShrink:0}}>
+      <rect x="2" y="6" width="20" height="12" rx="2"/>
+      <circle cx="12" cy="12" r="2.5"/>
+      <path d="M6 12h.01"/>
+      <path d="M18 12h.01"/>
+    </svg>
+  );
+}
+
 // V23 — Loupe ambre (même forme qu'IconSearch, stroke #D97706) pour le bouton "rechercher
 // ce bien sur Internet" dans le footer du dossier.
 function IconSearchAmber({size=18}) {
@@ -5658,16 +6010,31 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
       <div style={{flex:1, padding:20, display:'flex', flexDirection:'column', gap:14, overflowY:'auto'}}>
         {phase === 'record' && (
           <>
-            {/* V18.6 — toggle mode capture */}
-            <div style={{display:'flex', gap:6, background:'#FDFAF7', padding:4, borderRadius:10, border:'1px solid #EDE6DC'}}>
-              {[['realtime','🎙 Temps réel','rapide'], ['recording','📼 Enregistrement','précis (Whisper)']].map(([k, lbl, hint]) => (
-                <button key={k} type="button" onClick={() => setCaptureMode(k)}
-                  style={{flex:1, padding:'8px 6px', borderRadius:8, border:'none', background: captureMode === k ? '#fff' : 'transparent',
-                          color: captureMode === k ? '#8B5E3C' : '#8B7F6E', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit',
-                          boxShadow: captureMode === k ? '0 1px 3px rgba(139,94,60,.15)' : 'none', display:'flex', flexDirection:'column', gap:2}}>
-                  <span>{lbl}</span><span style={{fontSize:10, fontWeight:500, opacity:.75}}>{hint}</span>
-                </button>
-              ))}
+            {/* V45 — toggle mode capture contrasté ocre/crème + SVG lucide (zéro émoji). */}
+            <div style={{display:'flex', gap:8, padding:4, borderRadius:12, border:'1px solid #E8DDD0', background:'#FBF7F0'}}>
+              {[['realtime', IconMic, 'Temps réel', 'rapide'], ['recording', IconMicVocal, 'Enregistrement', 'précis (Whisper)']].map(([k, Ico, lbl, hint]) => {
+                const active = captureMode === k;
+                return (
+                  <button key={k} type="button" onClick={() => setCaptureMode(k)}
+                    style={{
+                      flex:1, padding:'10px 8px', borderRadius:10, cursor:'pointer', fontFamily:'inherit',
+                      border: active ? '1.5px solid #8B5E3C' : '1.5px solid #C9B79A',
+                      background: active ? '#8B5E3C' : '#FBF1E4',
+                      color: active ? '#fff' : '#5C3B1E',
+                      fontWeight: active ? 700 : 600,
+                      transition: 'background .25s ease, color .25s ease, border-color .25s ease',
+                      boxShadow: active ? 'inset 0 0 0 2px rgba(0,0,0,0.06), 0 2px 6px rgba(139,94,60,0.25)' : 'none',
+                      display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+                    }}>
+                    <span style={{display:'flex', alignItems:'center', gap:6}}>
+                      {active && <IconCheck size={13} color="#fff"/>}
+                      <Ico size={14} color={active ? '#fff' : '#8B5E3C'}/>
+                      <span style={{fontSize:13, fontWeight:700, letterSpacing:.2}}>{lbl}</span>
+                    </span>
+                    <span style={{fontSize:11, fontWeight:500, opacity: active ? .85 : .7}}>{hint}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {captureMode === 'realtime' ? (
@@ -7102,7 +7469,11 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     return x.toLocaleString('fr-FR') + ' ' + cur;
   }
   let budgetMain = '', budgetSub = '';
-  if (profil === 'Acheteur' || profil === 'Investisseur') {
+  // V45 — Si payment_plan défini, l'utiliser en priorité (résumé compact multi-monnaies).
+  const planLines = Array.isArray(c.payment_plan) ? c.payment_plan.filter(l => Number(l.amount) > 0) : [];
+  if (planLines.length > 0) {
+    budgetMain = computePlanCompact(planLines);
+  } else if (profil === 'Acheteur' || profil === 'Investisseur') {
     const f = (c.financement && typeof c.financement === 'object') ? c.financement : {};
     const b = f.budget_total || c.budget_max || c.budget_min;
     if (b) budgetMain = fmtMoney(b, currency);
@@ -7115,6 +7486,14 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     budgetMain = fmtMoney(c.loyer_demande, currency) + '/mois';
   } else if (profil === 'Locataire' && c.loyer_max) {
     budgetMain = '≤ ' + fmtMoney(c.loyer_max, currency) + '/mois';
+  }
+  // Sub line : reçu si encaissements présents.
+  const recvLines = Array.isArray(c.received_payments) ? c.received_payments.filter(l => Number(l.amount) > 0) : [];
+  if (planLines.length > 0 && recvLines.length > 0 && !budgetSub) {
+    const recvByCur = {};
+    recvLines.forEach(l => { const cur = l.currency || 'MAD'; recvByCur[cur] = (recvByCur[cur] || 0) + Number(l.amount); });
+    const top = Object.entries(recvByCur).sort((a, b) => b[1] - a[1])[0];
+    if (top) budgetSub = 'reçu ' + computePlanCompact([{amount: top[1], currency: top[0]}]);
   }
 
   // tel primary (migration legacy à la volée).
@@ -8593,9 +8972,11 @@ function FormView(props) {
 
     // ─── Section III · Budget ─────────────────────────────────────────
     const fin = (d.financement && typeof d.financement === 'object') ? d.financement : {};
+    // V45 — payment_plan prioritaire pour le statut.
+    const planLines3 = Array.isArray(d.payment_plan) ? d.payment_plan.filter(l => Number(l.amount) > 0) : [];
     const budgetVal = fin.budget_total || fin.budget_max || d.budget_max || d.budget_min
                    || d.prix_affiche || d.loyer_demande || d.loyer_max;
-    const sec3Status = budgetVal ? 'complete' : 'empty';
+    const sec3Status = (planLines3.length > 0 || budgetVal) ? 'complete' : 'empty';
     const modeLabels = {classique:'💳 Classique', comptant:'💵 Comptant', mourabaha:'🕌 Mourabaha', ijara:'🕌 Ijara'};
     const modeLabel = fin.mode ? (modeLabels[fin.mode] || fin.mode) : '';
     const budgetLine1 = budgetVal ? (
@@ -8613,13 +8994,23 @@ function FormView(props) {
       (fin.travaux || d.travaux) ? ('🔨 +' + fmtBudget(fin.travaux || d.travaux, currency).replace(' ', '') + ' travaux') : '',
       (d.rendement_cible && activeProfil === 'Investisseur') ? ('📈 ' + d.rendement_cible + '% rendement') : '',
     ].filter(Boolean).join(' · ');
-    const sec3Summary = budgetVal ? (
+    // V45 — résumé prioritaire payment_plan (multi-monnaies + sous-ligne reçu/solde).
+    const planSummary3 = planLines3.length > 0 ? computePlanSummary(planLines3) : '';
+    const recvLines3 = Array.isArray(d.received_payments) ? d.received_payments.filter(l => Number(l.amount) > 0) : [];
+    const recvSummary3 = recvLines3.length > 0 ? computePlanSummary(recvLines3) : '';
+    const sec3Summary = planLines3.length > 0 ? (
+      <>
+        <div><b style={{color:'#2A2018'}}>💰 {planSummary3}</b></div>
+        {recvSummary3 && <div style={{marginTop:2, color:'#3E8B5E'}}>Reçu : {recvSummary3}</div>}
+        {modeLine && <div style={{marginTop:2}}>{modeLine}</div>}
+      </>
+    ) : (budgetVal ? (
       <>
         <div>{budgetLine1}</div>
         {modeLine && <div style={{marginTop:2}}>{modeLine}</div>}
         {extras && <div style={{marginTop:2}}>{extras}</div>}
       </>
-    ) : emptyHint('Ajouter le budget');
+    ) : emptyHint('Ajouter le budget'));
 
     // ─── Section IV · Suivi & notes ────────────────────────────────────
     const su = d.suivi || {};
@@ -9003,6 +9394,8 @@ function FormView(props) {
         <div data-stage-anchor="2">
         {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
                status={stageStatus[2].status} summary={stageStatus[2].summary}>
+          {/* V45 — Plan de paiement multi-lignes + Encaissements (toutes casquettes hors Curieux) */}
+          <PaymentPlanModule d={d} set={set}/>
           {(activeProfil === 'Acheteur' || activeProfil === 'Investisseur') ? (
             <FinancementForm activeProfil={activeProfil} d={d} set={set}
               dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}

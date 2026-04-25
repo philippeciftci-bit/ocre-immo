@@ -56,6 +56,9 @@ function ensureSyncSchema() {
             "ALTER TABLE clients ADD COLUMN is_staged TINYINT NOT NULL DEFAULT 0",
             "ALTER TABLE clients ADD COLUMN promoted_at DATETIME NULL",
             "ALTER TABLE clients ADD INDEX idx_staged (user_id, is_staged)",
+            // V45 — Plan de paiement multi-lignes + Encaissements reçus (mirror du JSON data).
+            "ALTER TABLE clients ADD COLUMN payment_plan JSON NULL DEFAULT NULL",
+            "ALTER TABLE clients ADD COLUMN received_payments JSON NULL DEFAULT NULL",
         ] as $sql) {
             try { db()->exec($sql); } catch (Exception $e) {}
         }
@@ -231,7 +234,50 @@ switch ($action) {
         $societe_nom = substr(trim((string)($c['societe_nom'] ?? '')), 0, 150);
         $tel = substr(trim((string)($c['tel'] ?? '')), 0, 30);
         $email = substr(trim((string)($c['email'] ?? '')), 0, 150);
+        // V45 — payment_plan + received_payments validés et mirrorés en colonnes JSON.
+        $payment_plan = null;
+        if (isset($c['payment_plan']) && is_array($c['payment_plan'])) {
+            $valid = [];
+            foreach ($c['payment_plan'] as $line) {
+                if (!is_array($line)) continue;
+                $amt = isset($line['amount']) ? (float)$line['amount'] : 0;
+                $cur = isset($line['currency']) ? (string)$line['currency'] : 'MAD';
+                $met = isset($line['method']) ? (string)$line['method'] : 'wire';
+                if ($amt <= 0) continue;
+                if (!in_array($cur, ['MAD','EUR','USD'], true)) $cur = 'MAD';
+                if (!in_array($met, ['cash','wire'], true)) $met = 'wire';
+                $valid[] = [
+                    'id' => isset($line['id']) ? (string)$line['id'] : null,
+                    'amount' => $amt, 'currency' => $cur, 'method' => $met,
+                ];
+            }
+            $payment_plan = $valid;
+            $c['payment_plan'] = $valid;
+        }
+        $received_payments = null;
+        if (isset($c['received_payments']) && is_array($c['received_payments'])) {
+            $valid = [];
+            foreach ($c['received_payments'] as $line) {
+                if (!is_array($line)) continue;
+                $amt = isset($line['amount']) ? (float)$line['amount'] : 0;
+                $cur = isset($line['currency']) ? (string)$line['currency'] : 'MAD';
+                $met = isset($line['method']) ? (string)$line['method'] : 'wire';
+                $dt = isset($line['date']) ? (string)$line['date'] : '';
+                if ($amt <= 0) continue;
+                if (!in_array($cur, ['MAD','EUR','USD'], true)) $cur = 'MAD';
+                if (!in_array($met, ['cash','wire'], true)) $met = 'wire';
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dt)) $dt = null;
+                $valid[] = [
+                    'id' => isset($line['id']) ? (string)$line['id'] : null,
+                    'date' => $dt, 'amount' => $amt, 'currency' => $cur, 'method' => $met,
+                ];
+            }
+            $received_payments = $valid;
+            $c['received_payments'] = $valid;
+        }
         $data = json_encode($c, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $payment_plan_json = $payment_plan === null ? null : json_encode($payment_plan, JSON_UNESCAPED_UNICODE);
+        $received_payments_json = $received_payments === null ? null : json_encode($received_payments, JSON_UNESCAPED_UNICODE);
 
         $wasStaged = false;
         if ($id > 0) {
@@ -243,20 +289,25 @@ switch ($action) {
             $stmt = db()->prepare(
                 "UPDATE clients SET data = ?, projet = ?, is_investisseur = ?, archived = ?,
                    is_draft = ?, prenom = ?, nom = ?, societe_nom = ?, tel = ?, email = ?,
+                   payment_plan = ?, received_payments = ?,
                    updated_at = NOW()
                  WHERE id = ? AND user_id = ?"
             );
             $stmt->execute([$data, $projet, $is_investisseur, $archived, $is_draft,
-                            $prenom, $nom, $societe_nom, $tel, $email, $id, $user['id']]);
+                            $prenom, $nom, $societe_nom, $tel, $email,
+                            $payment_plan_json, $received_payments_json,
+                            $id, $user['id']]);
         } else {
             $stmt = db()->prepare(
                 "INSERT INTO clients (user_id, data, projet, is_investisseur, archived,
                                       is_draft, is_staged, prenom, nom, societe_nom, tel, email,
+                                      payment_plan, received_payments,
                                       created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
             );
             $stmt->execute([$user['id'], $data, $projet, $is_investisseur, $archived, $is_draft, $is_staged_new,
-                            $prenom, $nom, $societe_nom, $tel, $email]);
+                            $prenom, $nom, $societe_nom, $tel, $email,
+                            $payment_plan_json, $received_payments_json]);
             $id = (int)db()->lastInsertId();
             $wasStaged = (bool)$is_staged_new;
         }
