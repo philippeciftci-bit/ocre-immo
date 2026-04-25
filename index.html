@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v52.8-deco-chevron-chips -->
+<!-- ocre-v52.9-sheet-col-client-compact -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -8865,7 +8865,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
             </tr>
             {/* Rangée 2 — noms de colonnes */}
             <tr>
-              <th style={Object.assign({}, colHeaderStyle, {position:'sticky', left:0, top:28, zIndex:5, minWidth:220, maxWidth:240, background:'#F5ECD9', borderRight:'2px solid #C9B79A'})}>Client</th>
+              <th style={Object.assign({}, colHeaderStyle, {position:'sticky', left:0, top:28, zIndex:5, minWidth:110, maxWidth:130, padding:'7px 6px 7px 8px', textAlign:'left', background:'#F5ECD9', borderRight:'2px solid #C9B79A'})}>Client</th>
               <th style={colHeaderStyle}>Tél.</th>
               <th style={colHeaderStyle}>Email</th>
               <th style={colHeaderStyle}>Photos</th>
@@ -8943,15 +8943,15 @@ function SheetView({onBack, clients, openClient, showToast}) {
                   onMouseEnter={e => e.currentTarget.style.background = '#FDF8F0'}
                   onMouseLeave={e => e.currentTarget.style.background = rowBg}
                   onClick={() => openClient && openClient(c)}>
-                  {/* I.1 Client */}
-                  <td style={Object.assign({}, cellStyle, {position:'sticky', left:0, zIndex:2, background:'inherit', borderRight:'2px solid #C9B79A', minWidth:220, maxWidth:240})}>
-                    <div style={{display:'flex', alignItems:'center', gap:8}}>
-                      <div style={{width:28, height:28, borderRadius:'50%', background: profilColor, color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'inherit'}}>{initials}</div>
+                  {/* I.1 Client — V52.9 col compactée iPhone : 110-130px, wrap 2 lignes, align left, no ellipsis. */}
+                  <td style={Object.assign({}, cellStyle, {position:'sticky', left:0, zIndex:2, background:'inherit', borderRight:'2px solid #C9B79A', minWidth:110, maxWidth:130, padding:'5px 6px 5px 8px', textAlign:'left', whiteSpace:'normal', verticalAlign:'middle'})}>
+                    <div style={{display:'flex', alignItems:'center', gap:6}}>
+                      <div style={{width:24, height:24, borderRadius:'50%', background: profilColor, color:'#fff', fontSize:10, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'inherit'}}>{initials}</div>
                       <div style={{flex:1, minWidth:0}}>
-                        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:14, fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:12.5, fontWeight:600, color:'#2A2018', whiteSpace:'normal', wordBreak:'break-word', lineHeight:1.2, textAlign:'left'}}>
                           {((c.prenom || '') + ' ' + (c.nom || '')).trim() || c.societe_nom || '—'}
                         </div>
-                        <span style={{display:'inline-block', marginTop:2, padding:'1px 6px', fontSize:9, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', borderRadius:8, background: pl.bg, color: pl.fg}}>{profil}</span>
+                        <span style={{display:'inline-block', marginTop:2, padding:'0px 5px', fontSize:8.5, fontWeight:700, letterSpacing:.3, textTransform:'uppercase', borderRadius:6, background: pl.bg, color: pl.fg, whiteSpace:'nowrap'}}>{profil}</span>
                       </div>
                     </div>
                   </td>
