@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v56-pays-universels -->
+<!-- ocre-v57-search-engine -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -7777,6 +7777,216 @@ function OnboardingBanner({clients}) {
   );
 }
 
+// V57 — Moteur de recherche avancé multi-critères. Calcul score matching + filtrage.
+function v57DefaultCriteria() {
+  return {
+    profils: [],     // ['Acheteur','Vendeur',...] vide = tous
+    investisseur: false,
+    pays: [],        // codes alpha-2
+    ville: '',
+    types_bien: [],
+    surface_min: '', surface_max: '',
+    chambres_min: '', chambres_max: '',
+    sdb_min: '', sdb_max: '',
+    prix_min: '', prix_max: '',
+    loyer_min: '', loyer_max: '',
+    options: {},     // {piscine:true, jardin:true, ...}
+  };
+}
+const V57_OPTIONS = ['piscine','jardin','terrasse','balcon','parking','cave','ascenseur','vue_mer','vue_atlas','vue_montagne','meuble','climatisation'];
+const V57_TYPES = ['Appartement','Villa','Maison','Riad','Studio','Loft','Bureau','Commerce','Terrain','Autre'];
+function v57Score(c, crit) {
+  let score = 0;
+  const bien = c.bien || {};
+  // Profil match (filter only, no pts)
+  if (crit.profils.length > 0 && !crit.profils.includes(c.projet)) return 0;
+  if (crit.investisseur && !c.is_investisseur && c.projet !== 'Investisseur') return 0;
+  // Localisation
+  if (crit.pays.length > 0) {
+    const p = bien.pays || (c.pays_residence === 'Maroc' ? 'MA' : '');
+    if (crit.pays.includes(p)) score += 25;
+    else return 0; // hard filter pays si specified
+  }
+  if (crit.ville && crit.ville.trim()) {
+    const q = crit.ville.toLowerCase();
+    const v = (bien.ville || c.ville || '').toLowerCase();
+    if (v === q) score += 15;
+    else if (v.includes(q)) score += 8;
+  }
+  // Type bien
+  if (crit.types_bien.length > 0) {
+    const t = bien.type || (Array.isArray(bien.types) && bien.types[0]) || '';
+    if (crit.types_bien.includes(t)) score += 15;
+    else return 0;
+  }
+  // Surface overlap
+  const surf = Number(bien.surface) || 0;
+  const sMin = Number(crit.surface_min) || 0, sMax = Number(crit.surface_max) || 0;
+  if ((sMin || sMax) && surf > 0) {
+    if ((!sMin || surf >= sMin) && (!sMax || surf <= sMax)) score += 15;
+    else return 0;
+  }
+  // Chambres
+  const ch = Number(bien.chambres) || 0;
+  const cMin = Number(crit.chambres_min) || 0, cMax = Number(crit.chambres_max) || 0;
+  if ((cMin || cMax) && ch > 0) {
+    if ((!cMin || ch >= cMin) && (!cMax || ch <= cMax)) score += 10;
+  }
+  // SDB
+  const sdb = Number(bien.sdb) || 0;
+  const sbMin = Number(crit.sdb_min) || 0, sbMax = Number(crit.sdb_max) || 0;
+  if ((sbMin || sbMax) && sdb > 0) {
+    if ((!sbMin || sdb >= sbMin) && (!sbMax || sdb <= sbMax)) score += 5;
+  }
+  // Prix
+  const fin = c.financement || {};
+  const prix = Number(c.prix_affiche || fin.prix_affiche || c.budget_max || fin.budget_total) || 0;
+  const pMin = Number(crit.prix_min) || 0, pMax = Number(crit.prix_max) || 0;
+  if ((pMin || pMax) && prix > 0) {
+    if ((!pMin || prix >= pMin) && (!pMax || prix <= pMax)) score += 15;
+    else if (c.projet === 'Acheteur' || c.projet === 'Vendeur' || c.projet === 'Investisseur') return 0;
+  }
+  // Loyer
+  const loyer = Number(c.loyer_demande || c.loyer_max) || 0;
+  const lMin = Number(crit.loyer_min) || 0, lMax = Number(crit.loyer_max) || 0;
+  if ((lMin || lMax) && loyer > 0) {
+    if ((!lMin || loyer >= lMin) && (!lMax || loyer <= lMax)) score += 15;
+    else if (c.projet === 'Locataire' || c.projet === 'Bailleur') return 0;
+  }
+  // Options
+  const equipements = Array.isArray(bien.equipements) ? bien.equipements.map(e => String(e).toLowerCase()) : [];
+  Object.keys(crit.options || {}).forEach(opt => {
+    if (crit.options[opt] && equipements.some(e => e.includes(opt.toLowerCase()))) score += 3;
+  });
+  // Boost recent
+  if (c.created_at) {
+    const ageDays = (Date.now() - new Date(c.created_at).getTime()) / 86400000;
+    if (ageDays < 7) score += 2;
+  }
+  return Math.min(100, score);
+}
+function v57HasCriteria(crit) {
+  return (crit.profils.length > 0)
+    || crit.investisseur
+    || crit.pays.length > 0
+    || (crit.ville && crit.ville.trim())
+    || crit.types_bien.length > 0
+    || crit.surface_min || crit.surface_max
+    || crit.chambres_min || crit.chambres_max
+    || crit.sdb_min || crit.sdb_max
+    || crit.prix_min || crit.prix_max
+    || crit.loyer_min || crit.loyer_max
+    || Object.values(crit.options || {}).some(v => v);
+}
+function V57ChipsMulti({options, value, onToggle, color = '#8B5E3C'}) {
+  return (
+    <div style={{display:'flex', flexWrap:'wrap', gap:5}}>
+      {options.map(opt => {
+        const on = Array.isArray(value) ? value.includes(opt) : !!value[opt];
+        return (
+          <button key={opt} type="button" onClick={() => onToggle(opt)}
+            style={{padding:'5px 10px', fontSize:11, fontWeight:600, fontFamily:'inherit',
+                    border:'1.5px solid ' + (on ? color : '#C9B79A'),
+                    background: on ? color : '#FBF1E4',
+                    color: on ? '#fff' : '#5C3B1E',
+                    borderRadius:14, cursor:'pointer'}}>
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+function V57RangeInputs({label, vMin, vMax, onMin, onMax, suffix}) {
+  return (
+    <div style={{marginBottom:8}}>
+      <div style={{fontSize:10.5, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:3}}>{label}</div>
+      <div style={{display:'flex', gap:8}}>
+        <input type="text" inputMode="numeric" placeholder="Min" value={vMin} onChange={e => onMin(e.target.value.replace(/[^0-9]/g, ''))}
+          style={{flex:1, padding:'8px 10px', borderRadius:8, fontSize:13, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#FFFCF5', color:'#2A2018', outline:'none', minWidth:0, boxSizing:'border-box'}}/>
+        <input type="text" inputMode="numeric" placeholder="Max" value={vMax} onChange={e => onMax(e.target.value.replace(/[^0-9]/g, ''))}
+          style={{flex:1, padding:'8px 10px', borderRadius:8, fontSize:13, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#FFFCF5', color:'#2A2018', outline:'none', minWidth:0, boxSizing:'border-box'}}/>
+        {suffix && <span style={{alignSelf:'center', fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap'}}>{suffix}</span>}
+      </div>
+    </div>
+  );
+}
+function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCount}) {
+  const PROFS = ['Acheteur','Vendeur','Locataire','Bailleur'];
+  const setC = (patch) => setCriteria(prev => ({...prev, ...patch}));
+  const toggleProf = (p) => setC({profils: criteria.profils.includes(p) ? criteria.profils.filter(x => x !== p) : [...criteria.profils, p]});
+  const togglePays = (code) => setC({pays: criteria.pays.includes(code) ? criteria.pays.filter(x => x !== code) : (criteria.pays.length < 5 ? [...criteria.pays, code] : criteria.pays)});
+  const toggleType = (t) => setC({types_bien: criteria.types_bien.includes(t) ? criteria.types_bien.filter(x => x !== t) : [...criteria.types_bien, t]});
+  const toggleOpt = (o) => setC({options: {...criteria.options, [o]: !criteria.options[o]}});
+  const reset = () => setCriteria(v57DefaultCriteria());
+  const paysOpts = (typeof PAYS !== 'undefined' && PAYS) ? PAYS : [];
+  const titleStyle = {fontSize:10.5, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:6, marginTop:10};
+  return (
+    <div style={{background:'#fff', borderTop:'1px solid #E8DDD0', borderBottom:'1px solid #E8DDD0', maxHeight:'70vh', overflowY:'auto', padding:'10px 14px 12px', boxShadow:'0 4px 8px rgba(139,94,60,.06) inset'}}>
+      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'#8B5E3C', flex:1}}>Recherche avancée</span>
+        <button type="button" onClick={onClose} style={{background:'none', border:'none', fontSize:18, color:'#8B5E3C', cursor:'pointer', padding:'4px 8px'}}>×</button>
+      </div>
+
+      <div style={titleStyle}>Profils ciblés</div>
+      <V57ChipsMulti options={PROFS} value={criteria.profils} onToggle={toggleProf}/>
+      <button type="button" onClick={() => setC({investisseur: !criteria.investisseur})}
+        style={{marginTop:6, padding:'5px 10px', fontSize:11, fontWeight:600, fontFamily:'inherit',
+                border:'1.5px solid ' + (criteria.investisseur ? '#6B4A8E' : '#C9B79A'),
+                background: criteria.investisseur ? '#6B4A8E' : '#FBF1E4',
+                color: criteria.investisseur ? '#fff' : '#5C3B1E',
+                borderRadius:14, cursor:'pointer'}}>
+        ⊕ Investisseur
+      </button>
+
+      <div style={titleStyle}>Localisation</div>
+      <div style={{display:'flex', flexWrap:'wrap', gap:5, marginBottom:6, maxHeight:80, overflowY:'auto'}}>
+        {paysOpts.slice(0, 30).map(p => {
+          const on = criteria.pays.includes(p.c);
+          return (
+            <button key={p.c} type="button" onClick={() => togglePays(p.c)}
+              style={{padding:'4px 8px', fontSize:10.5, fontWeight:600, fontFamily:'inherit',
+                      border:'1.5px solid ' + (on ? '#8B5E3C' : '#C9B79A'),
+                      background: on ? '#8B5E3C' : '#FBF1E4',
+                      color: on ? '#fff' : '#5C3B1E',
+                      borderRadius:12, cursor:'pointer'}}>
+              {p.f} {p.c}
+            </button>
+          );
+        })}
+      </div>
+      <input type="text" placeholder="Ville (ex: Marrakech)" value={criteria.ville}
+        onChange={e => setC({ville: e.target.value})}
+        style={{width:'100%', padding:'8px 10px', borderRadius:8, fontSize:13, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#FFFCF5', color:'#2A2018', outline:'none', boxSizing:'border-box'}}/>
+
+      <div style={titleStyle}>Type de bien</div>
+      <V57ChipsMulti options={V57_TYPES} value={criteria.types_bien} onToggle={toggleType}/>
+
+      <V57RangeInputs label="Surface" suffix="m²" vMin={criteria.surface_min} vMax={criteria.surface_max} onMin={v => setC({surface_min: v})} onMax={v => setC({surface_max: v})}/>
+      <V57RangeInputs label="Chambres" vMin={criteria.chambres_min} vMax={criteria.chambres_max} onMin={v => setC({chambres_min: v})} onMax={v => setC({chambres_max: v})}/>
+      <V57RangeInputs label="SDB" vMin={criteria.sdb_min} vMax={criteria.sdb_max} onMin={v => setC({sdb_min: v})} onMax={v => setC({sdb_max: v})}/>
+
+      <div style={titleStyle}>Budget</div>
+      <V57RangeInputs label="Prix" suffix="€/MAD" vMin={criteria.prix_min} vMax={criteria.prix_max} onMin={v => setC({prix_min: v})} onMax={v => setC({prix_max: v})}/>
+      <V57RangeInputs label="Loyer" suffix="/mois" vMin={criteria.loyer_min} vMax={criteria.loyer_max} onMin={v => setC({loyer_min: v})} onMax={v => setC({loyer_max: v})}/>
+
+      <div style={titleStyle}>Options</div>
+      <V57ChipsMulti options={V57_OPTIONS} value={criteria.options} onToggle={toggleOpt}/>
+
+      <div style={{display:'flex', gap:8, marginTop:14, alignItems:'center'}}>
+        <button type="button" onClick={onClose}
+          style={{flex:1, padding:'10px 14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+          Rechercher ({resultsCount} résultat{resultsCount !== 1 ? 's' : ''})
+        </button>
+        <button type="button" onClick={reset}
+          style={{padding:'10px 14px', background:'#FBF1E4', color:'#8B5E3C', border:'1.5px solid #C9B79A', borderRadius:10, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>
+          Réinitialiser
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ListView(props) {
   const {clients, country, setCountry, showArchives, setShowArchives,
          userMenu, setUserMenu, currentUser, logout,
@@ -7790,6 +8000,16 @@ function ListView(props) {
   // Le composant <SearchBar/> gère son propre ref/autofocus.
   const [showSearch, setShowSearch] = useState(Boolean(listSearch));
   const [searchInput, setSearchInput] = useState(listSearch || '');
+  // V57 — moteur recherche avancé. State session-only (sessionStorage rehydraté au mount).
+  const [advancedOpen, setAdvancedOpen] = React.useState(false);
+  const [advancedCriteria, setAdvancedCriteria] = React.useState(() => {
+    try { const raw = sessionStorage.getItem('ocre.advsearch'); if (raw) return Object.assign(v57DefaultCriteria(), JSON.parse(raw)); } catch (e) {}
+    return v57DefaultCriteria();
+  });
+  React.useEffect(() => {
+    try { sessionStorage.setItem('ocre.advsearch', JSON.stringify(advancedCriteria)); } catch (e) {}
+  }, [advancedCriteria]);
+  const advActive = v57HasCriteria(advancedCriteria);
   useEffect(() => {
     const t = setTimeout(() => { setListSearch(searchInput); }, 150);
     return () => clearTimeout(t);
@@ -7805,6 +8025,7 @@ function ListView(props) {
   }
 
   // V30 — pipeline filtres : archive → listFilter (profil radio OU '__drafts__') → search.
+  // V57 — pipeline étendu : ajoute filtre advancedCriteria si actif (intersection).
   const archivedFiltered = clients.filter(c => !!c.archived === showArchives);
   const profilFiltered = listFilter === '__drafts__'
     ? archivedFiltered.filter(c => !!c.is_draft)
@@ -7814,7 +8035,14 @@ function ListView(props) {
             return cp === listFilter;
           })
         : archivedFiltered);
-  const filtered = applySearchRank(profilFiltered, listSearch);
+  // V57 — appliquer le moteur recherche avancé en intersection. Score injecté sur chaque dossier matchant.
+  const advFilteredScored = React.useMemo(() => {
+    if (!advActive) return profilFiltered.map(c => ({...c, _v57_score: null}));
+    const scored = profilFiltered.map(c => ({c, score: v57Score(c, advancedCriteria)})).filter(x => x.score >= 30);
+    scored.sort((a, b) => (b.score - a.score) || (new Date(b.c.created_at || 0) - new Date(a.c.created_at || 0)));
+    return scored.slice(0, 100).map(x => ({...x.c, _v57_score: x.score}));
+  }, [advActive, advancedCriteria, profilFiltered]);
+  const filtered = applySearchRank(advFilteredScored, listSearch);
   const drafts = filtered.filter(c => c.is_draft);
   const contacts = filtered.filter(c => !c.is_draft);
   // V18.37 — Union-Find sur linked_dossiers pour regrouper les casquettes d'un même client.
@@ -7925,6 +8153,20 @@ function ListView(props) {
       {/* V30 — Barre filtres : palette pastel/pleine + onglet Brouillons. Style inline
           remplace la classe .profil-chip pour appliquer les couleurs par profil. */}
       <div style={{padding:'5px 10px', background:'#fff', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:8, minHeight:36}}>
+        {/* V57 — bouton recherche avancée à gauche, devant les onglets profil. */}
+        <button type="button" onClick={() => setAdvancedOpen(v => !v)}
+          title="Recherche avancée"
+          style={{flexShrink:0, padding:'6px 10px', borderRadius:14, fontSize:12, fontWeight:700, fontFamily:'inherit',
+                  border:'1.5px solid ' + (advancedOpen || advActive ? '#8B5E3C' : '#C9B79A'),
+                  background: advancedOpen || advActive ? '#8B5E3C' : '#FBF1E4',
+                  color: advancedOpen || advActive ? '#fff' : '#5C3B1E',
+                  cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap'}}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          Filtres
+          {advActive && <span style={{padding:'0 5px', fontSize:9, fontWeight:800, background:'#fff', color:'#8B5E3C', borderRadius:8, marginLeft:2}}>{advFilteredScored.length}</span>}
+        </button>
         <div className="profils-row" style={{flex:1, minWidth:0}}>
           {(() => {
             const PAL = {
@@ -7977,6 +8219,24 @@ function ListView(props) {
           <div style={{fontSize:10, color:'var(--text-secondary)', whiteSpace:'nowrap', flexShrink:0, fontWeight:600}}>{filtered.length + ' arch.'}</div>
         )}
       </div>
+      {/* V57 — Panel recherche avancée (accordéon descendant entre onglets et liste). */}
+      {advancedOpen && (
+        <AdvancedSearchPanel
+          clients={clients}
+          criteria={advancedCriteria}
+          setCriteria={setAdvancedCriteria}
+          onClose={() => setAdvancedOpen(false)}
+          resultsCount={advFilteredScored.length}/>
+      )}
+      {advActive && !advancedOpen && (
+        <div style={{padding:'8px 14px', background:'#FFF9F0', borderBottom:'1px solid #E8DDD0', display:'flex', alignItems:'center', gap:10}}>
+          <span style={{flex:1, fontSize:12, fontWeight:600, color:'#5C3B1E'}}>Résultats : {advFilteredScored.length} dossier{advFilteredScored.length !== 1 ? 's' : ''}</span>
+          <button onClick={() => setAdvancedCriteria(v57DefaultCriteria())}
+            style={{padding:'5px 10px', fontSize:11, fontWeight:600, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#FBF1E4', color:'#8B5E3C', borderRadius:10, cursor:'pointer'}}>
+            Effacer
+          </button>
+        </div>
+      )}
 
       <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(50px + env(safe-area-inset-bottom, 0px))'}}>
         {/* V48 — bandeau onboarding pour les comptes ayant des dossiers démo. Dismissable. */}
