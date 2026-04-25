@@ -186,31 +186,40 @@ if ($action === 'consume') {
         exit;
     }
 
-    // V51.1 — REDIRECT SERVEUR SOLIDE : si possible header Location vers /app/?t=<token>,
-    // ce qui rend le flow robuste même si JS désactivé / Safari iOS bloque setTimeout.
-    // Le SPA peut lire ?t= et faire le bootstrap. En complément, on garde la page bridge
-    // HTML qui set localStorage pour les utilisateurs déjà connectés.
+    // V52.2 — bridge HTML qui FORCE l'écrasement du localStorage (override session
+    // précédente) + désinscription SW pour invalider tout cache, puis redirect /app/.
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store, no-cache, must-revalidate');
-    // Refresh meta + JS double-failsafe + lien manuel cliquable si tout échoue.
     $tokenJs = json_encode($sessionToken);
-    $redirect = '/app/?mt_token=' . urlencode($sessionToken);
+    $emailJs = json_encode($u['email'] ?? '');
+    // V52.3 — cache-buster timestamp pour forcer Safari iOS à fetch un index.html frais.
+    $redirect = '/app/index.html?v=' . time() . '&mt_token=' . urlencode($sessionToken);
     echo '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Connexion OCRE…</title>'
         . '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        . '<meta http-equiv="refresh" content="1;url=' . htmlspecialchars($redirect) . '">'
+        . '<meta http-equiv="refresh" content="2;url=' . htmlspecialchars($redirect) . '">'
         . '<style>'
         . 'body{margin:0;background:#FBF7EF;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;color:#8B5E3C}'
         . '.b{text-align:center;padding:24px}.s{width:36px;height:36px;border:3px solid #E8DDD0;border-top-color:#8B5E3C;border-radius:50%;animation:r .7s linear infinite;margin:0 auto 12px}'
         . '@keyframes r{to{transform:rotate(360deg)}}h1{font-family:"Cormorant Garamond",serif;font-size:22px;font-weight:700;margin:0 0 8px}'
         . 'a.fb{display:inline-block;margin-top:12px;padding:8px 16px;background:#8B5E3C;color:#fff;text-decoration:none;border-radius:8px;font-size:13px;font-weight:700}'
         . '</style></head><body><div class="b"><div class="s"></div><h1>Bienvenue sur OCRE Immo…</h1>'
-        . '<p style="font-size:12px;color:#8B7F6E">Redirection en cours…</p>'
+        . '<p style="font-size:12px;color:#8B7F6E">Connexion en cours…</p>'
         . '<a class="fb" href="' . htmlspecialchars($redirect) . '">Continuer manuellement</a>'
         . '</div>'
         . '<script>'
-        . 'try{localStorage.setItem("ocre_token",' . $tokenJs . ');'
-        . 'localStorage.setItem("ocre_first_login","1");}catch(e){}'
-        . 'window.location.replace(' . json_encode($redirect) . ');'
+        // FORCE OVERRIDE : remove tout, puis set le nouveau token Ophelie.
+        . 'try{'
+        . '["ocre_token","ocre_user","ocre.session_token","ocre.user_email","ocre_impersonation_token","ocre_user_email"].forEach(function(k){localStorage.removeItem(k);});'
+        . 'localStorage.setItem("ocre_token",' . $tokenJs . ');'
+        . 'localStorage.setItem("ocre_user_email",' . $emailJs . ');'
+        . 'localStorage.setItem("ocre_first_login","1");'
+        . '}catch(e){}'
+        // Invalidation SW + caches pour forcer fresh fetch /app/.
+        . 'try{if(navigator.serviceWorker){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});}'
+        . 'if(window.caches){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}}catch(e){}'
+        // V52.3 — pre-fetch index frais en background pendant le setTimeout.
+        . 'try{fetch("/app/index.html?_bust="+Date.now(),{cache:"reload",credentials:"same-origin"}).catch(function(){});}catch(e){}'
+        . 'setTimeout(function(){window.location.replace(' . json_encode($redirect) . ');},250);'
         . '</script></body></html>';
     exit;
     } catch (Throwable $t) { // V51.2 DEBUG WRAP
