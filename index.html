@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v50-protection -->
+<!-- ocre-v51-finition -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -8563,6 +8563,22 @@ function SheetView({onBack, clients, openClient, showToast}) {
           style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#FBF1E4', color:'#5C3B1E', borderRadius:8, cursor:'pointer'}}>
           ↓ Export
         </button>
+        {/* V51 — téléchargement .csv serveur (auth, contenu complet, BOM UTF-8 Excel). */}
+        <button type="button" onClick={() => {
+            const token = localStorage.getItem('ocre_token') || '';
+            fetch('/api/export_xlsx.php', {headers: {'X-Session-Token': token}})
+              .then(r => r.blob()).then(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'ocre-immo-' + new Date().toISOString().slice(0,10) + '.csv';
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+              });
+          }}
+          title="Télécharger tableau complet (iCloud / Fichiers)"
+          style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #8B5E3C', background:'#8B5E3C', color:'#fff', borderRadius:8, cursor:'pointer'}}>
+          ↓ xlsx
+        </button>
       </div>
       {/* Tableau */}
       <div style={{flex:1, overflow:'auto', WebkitOverflowScrolling:'touch'}}>
@@ -8799,29 +8815,60 @@ function SheetView({onBack, clients, openClient, showToast}) {
         </table>
       </div>
       {photosFor && <SheetPhotosModal client={photosFor} onClose={() => setPhotosFor(null)}/>}
-      {/* V50 — modal teaser première utilisation Sheet (protection données / Google Drive phase 2). */}
+      {/* V51 — modal complète Sheet première utilisation : xlsx actif + Drive bientôt. */}
       {teaserOpen && (
         <div onClick={dismissTeaser} style={{position:'fixed', inset:0, background:'rgba(20,12,4,0.55)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
-          <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:16, padding:22, maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,.4)', textAlign:'center'}}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8B5E3C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom:6}}>
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-              <polyline points="17 21 17 13 7 13 7 21"/>
-              <polyline points="7 3 7 8 15 8"/>
-            </svg>
-            <h2 style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', margin:'6px 0 10px'}}>Sauvegarde de ton tableau</h2>
-            <p style={{fontSize:13, color:'#2A2018', lineHeight:1.55, margin:'0 0 10px'}}>
-              Bientôt tu pourras connecter ton <b>Google Drive</b> pour sauvegarder ton tableau <code style={{background:'#FBF1E4', padding:'1px 6px', borderRadius:4, fontSize:12}}>&lt;prénom&gt;.ocre.immo</code> automatiquement chaque semaine.
-            </p>
-            <p style={{fontSize:13, color:'#2A2018', lineHeight:1.55, margin:'0 0 10px'}}>
-              Pour <b>iCloud</b> : tu pourras télécharger un fichier <code style={{background:'#FBF1E4', padding:'1px 6px', borderRadius:4, fontSize:12}}>.xlsx</code> et le sauvegarder dans Files.
-            </p>
-            <p style={{fontSize:12, color:'#5C3B1E', fontStyle:'italic', margin:'0 0 14px'}}>
-              En attendant, tes données sont protégées par 3 niveaux de sauvegarde automatique sur nos serveurs.
-            </p>
-            <button onClick={dismissTeaser}
-              style={{padding:'10px 22px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
-              Plus tard
+          <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:16, padding:22, maxWidth:420, width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,.4)'}}>
+            <div style={{textAlign:'center', marginBottom:14}}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8B5E3C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              <h2 style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', margin:'6px 0 6px'}}>Sauvegarde de ton tableau</h2>
+              <p style={{fontSize:12.5, color:'#5C3B1E', margin:0, lineHeight:1.45}}>Tu peux sauvegarder ton tableau de dossiers en dehors de l'application :</p>
+            </div>
+            <button onClick={() => {
+                const token = localStorage.getItem('ocre_token') || '';
+                const url = '/api/export_xlsx.php?t=' + encodeURIComponent(token);
+                // Auth via header impossible pour download direct : fallback fetch→blob→link.
+                fetch('/api/export_xlsx.php', {headers: {'X-Session-Token': token}})
+                  .then(r => r.blob()).then(blob => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'ocre-immo-' + new Date().toISOString().slice(0,10) + '.csv';
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+                  });
+              }}
+              style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', marginBottom:8, borderRadius:10, border:'1.5px solid #8B5E3C', background:'#FBF1E4', color:'#5C3B1E', cursor:'pointer', fontFamily:'inherit', textAlign:'left'}}>
+              <span style={{width:32, height:32, background:'#8B5E3C', color:'#fff', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </span>
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{fontSize:13, fontWeight:700}}>Télécharger .csv / .xlsx</div>
+                <div style={{fontSize:11, color:'#8B7F6E'}}>Sauvegarde manuelle dans Fichiers / iCloud Drive</div>
+              </div>
             </button>
+            <button onClick={() => showToast && showToast('Google Drive arrive dans les prochains jours. En attendant, utilise le téléchargement xlsx.')}
+              style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', marginBottom:10, borderRadius:10, border:'1.5px solid #C9B79A', background:'#FFFCF5', color:'#8B7F6E', cursor:'pointer', fontFamily:'inherit', textAlign:'left', opacity:.85}}>
+              <span style={{width:32, height:32, background:'#C9B79A', color:'#fff', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07L11.76 5.24"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07L12.24 19"/></svg>
+              </span>
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{fontSize:13, fontWeight:700, display:'flex', alignItems:'center', gap:6}}>Connecter Google Drive <span style={{fontSize:9, background:'#C9B79A', color:'#fff', padding:'1px 6px', borderRadius:6, fontWeight:700, letterSpacing:.3}}>BIENTÔT</span></div>
+                <div style={{fontSize:11, color:'#8B7F6E'}}>Sync auto hebdo &lt;prénom&gt;.ocre.immo</div>
+              </div>
+            </button>
+            <p style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', margin:'0 0 14px', textAlign:'center', lineHeight:1.5}}>
+              Tes données sont déjà protégées par 3 niveaux de sauvegarde serveur automatiques.
+            </p>
+            <div style={{textAlign:'center'}}>
+              <button onClick={dismissTeaser}
+                style={{padding:'10px 22px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                Plus tard
+              </button>
+            </div>
           </div>
         </div>
       )}
