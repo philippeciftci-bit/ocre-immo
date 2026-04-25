@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v52.4.1-guard-all-paths -->
+<!-- ocre-v52.4.2-localstorage-clear -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -4881,15 +4881,30 @@ function App() {
   const [matchFor, setMatchFor] = useState(null);  // client_id pour modal ouvert
 
   useEffect(() => {
-    // V51.2 — fallback : si ?mt_token=<session> dans l'URL (magic link bridge),
-    // l'enregistrer en localStorage et nettoyer l'URL avant suite du flow.
+    // V52.4.2 — fallback magic link : si ?mt_token=<session> dans l'URL, PURGE TOTAL
+    // localStorage + sessionStorage (état zombie iPad, ancienne session Philippe, etc)
+    // puis enregistre le nouveau token et nettoie l'URL.
     try {
       const u = new URL(window.location.href);
       const mt = u.searchParams.get('mt_token');
       if (mt && mt.length >= 30) {
+        // PURGE complète : on garde uniquement les préférences UI (densité Sheet, etc).
+        const keepKeys = ['ocre.sheet.density'];
+        const kept = {};
+        keepKeys.forEach(k => { try { const v = localStorage.getItem(k); if (v != null) kept[k] = v; } catch (e) {} });
+        try { localStorage.clear(); } catch (e) {}
+        try { sessionStorage.clear(); } catch (e) {}
+        Object.keys(kept).forEach(k => { try { localStorage.setItem(k, kept[k]); } catch (e) {} });
+        // Set nouveau token + flag premier login.
         localStorage.setItem('ocre_token', mt);
         localStorage.setItem('ocre_first_login', '1');
+        // Désinscription SW + purge caches PWA.
+        try {
+          if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+          if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k)));
+        } catch (e) {}
         u.searchParams.delete('mt_token');
+        u.searchParams.delete('v');
         window.history.replaceState({}, '', u.pathname + (u.search ? u.search : '') + u.hash);
       }
     } catch (e) {}
