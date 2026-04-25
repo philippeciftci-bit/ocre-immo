@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v52.3-htaccess-bust -->
+<!-- ocre-v52.4-no-create-empty -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -9452,6 +9452,21 @@ function FormView(props) {
   function commit(k, v) {
     const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
     setD(next);
+    // V52.4 — anti-create-on-empty : ne sauve PAS si dossier neuf (pas d'id) ET aucun
+    // champ essentiel rempli. Ouvrir une section ou commitAndNext ne crée plus de
+    // brouillon parasite tant que l'utilisateur n'a saisi aucune donnée significative.
+    const hasIdentity = !!(next.prenom || next.nom || next.societe_nom || next.tel || next.email
+                           || (Array.isArray(next.tels) && next.tels.some(t => t && t.valeur))
+                           || (Array.isArray(next.emails) && next.emails.some(e => e && e.valeur)));
+    const hasContent = !!(next.bien && Object.keys(next.bien).length)
+                    || !!(next.financement && Object.keys(next.financement).length)
+                    || !!(Array.isArray(next.payment_plan) && next.payment_plan.length)
+                    || !!next.notes;
+    const isExisting = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+    if (!isExisting && !hasIdentity && !hasContent) {
+      // Touch sans données réelles → ignore. Pas d'INSERT côté DB.
+      return;
+    }
     handleSaveLocal(next);
   }
 
