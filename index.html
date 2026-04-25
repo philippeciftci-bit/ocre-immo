@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v52.4.2-localstorage-clear -->
+<!-- ocre-v52.6-profil-picker -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -4881,6 +4881,12 @@ function App() {
   const [matchFor, setMatchFor] = useState(null);  // client_id pour modal ouvert
 
   useEffect(() => {
+    // V52.5 DIAG — beacon TRES TOT pour confirmer que cette version du SPA tourne
+    // bien sur le device. Logged dans _diag.log via api/_v52_5_ping.php.
+    try {
+      fetch('/app/api/_v52_5_ping.php?stage=boot&ua=' + encodeURIComponent(navigator.userAgent.slice(0, 60)) + '&href=' + encodeURIComponent(window.location.href.slice(0, 120)),
+            {cache: 'no-store', credentials: 'omit'}).catch(() => {});
+    } catch (e) {}
     // V52.4.2 — fallback magic link : si ?mt_token=<session> dans l'URL, PURGE TOTAL
     // localStorage + sessionStorage (état zombie iPad, ancienne session Philippe, etc)
     // puis enregistre le nouveau token et nettoie l'URL.
@@ -5093,6 +5099,14 @@ function App() {
     setView('form');
   }
   function openNew() {
+    // V52.6 — restaure le sélecteur de profil v17 avant le formulaire.
+    setEditing(null);
+    setFormKey(k => k + 1);
+    setView('profil_picker');
+  }
+  function pickProfilAndOpenForm(profil, isInvest) {
+    setActiveProfil(profil);
+    setIsInvestisseur(!!isInvest);
     setEditing(null);
     setFormKey(k => k + 1);
     setView('form');
@@ -5192,6 +5206,9 @@ function App() {
   if (view === 'sheet') {
     return <SheetView onBack={() => setView('list')}
       clients={clients} openClient={openClient} showToast={showToast} toast={toast}/>;
+  }
+  if (view === 'profil_picker') {
+    return <ProfilPickerView onBack={() => setView('list')} onPick={pickProfilAndOpenForm}/>;
   }
   if (view === 'downloads') {
     return <DownloadsView onBack={() => setView('list')}
@@ -8401,6 +8418,84 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
 // V18.21 — DownloadsView : textarea URL directement prête (pas de page intermédiaire),
 // bouton Document image en dessous, liste staged en bas. Fusion de l'ancien ImportUrlView
 // qui est désormais retiré (logique analyse + createDraft inline ici).
+// V52.6 — ProfilPickerView : écran de sélection de profil avant création d'un nouveau
+// dossier. Restaure le flow v17 cassé entre v17 et v52.x. 4 tuiles principales
+// (Acheteur / Vendeur / Locataire / Bailleur) + toggle Investisseur séparé. iPhone-first.
+function ProfilPickerView({onBack, onPick}) {
+  const [isInvest, setIsInvest] = React.useState(false);
+  const profils = [
+    {k:'Acheteur',  l:'Acheteur',  desc:'Cherche un bien à acquérir',     color:'#8B5E3C', tint:'#F4ECE3'},
+    {k:'Vendeur',   l:'Vendeur',   desc:'Met un bien en vente',           color:'#1E3A5F', tint:'#E8EBEF'},
+    {k:'Locataire', l:'Locataire', desc:'Recherche un logement à louer',  color:'#8B6B1E', tint:'#F4EFE5'},
+    {k:'Bailleur',  l:'Bailleur',  desc:'Met un bien en location',        color:'#2D6B3F', tint:'#E8EFE9'},
+  ];
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#FBF7EF'}}>
+      <div style={{background:'#fff', borderBottom:'1.5px solid #E8DDD0', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} aria-label="Retour" style={{background:'none', border:'none', fontSize:22, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', padding:'4px 8px'}}>←</button>
+        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#1A1208', textAlign:'center'}}>Nouveau dossier</div>
+        <div style={{width:36}}/>
+      </div>
+      <div style={{flex:1, overflowY:'auto', padding:'18px 16px 24px'}}>
+        <div style={{maxWidth:480, margin:'0 auto'}}>
+          <p style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'#5C3B1E', textAlign:'center', margin:'4px 0 18px', lineHeight:1.4}}>
+            Quel est le profil de ce contact ?
+          </p>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+            {profils.map(p => (
+              <button key={p.k} type="button" onClick={() => onPick(p.k, isInvest)}
+                style={{
+                  minHeight:120, padding:'18px 14px', border:'1.5px solid ' + p.color, borderRadius:14,
+                  background:'#fff', cursor:'pointer', display:'flex', flexDirection:'column',
+                  alignItems:'flex-start', justifyContent:'flex-start', gap:6, textAlign:'left',
+                  boxShadow:'0 1px 3px rgba(60,40,20,.06)', fontFamily:'inherit',
+                  transition:'transform .15s, box-shadow .15s',
+                }}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+                <span style={{display:'inline-block', padding:'3px 10px', borderRadius:12, background:p.tint, color:p.color, fontSize:10.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase'}}>
+                  {p.l}
+                </span>
+                <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:600, color:'#2A2018', marginTop:2}}>
+                  {p.l}
+                </span>
+                <span style={{fontSize:12.5, color:'#5C3B1E', lineHeight:1.4}}>
+                  {p.desc}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div style={{marginTop:22, padding:'14px 16px', background:'#fff', border:'1.5px solid #E8DDD0', borderRadius:12, display:'flex', alignItems:'center', gap:10}}>
+            <div style={{flex:1, minWidth:0}}>
+              <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:600, color:'#6B4E8B'}}>Profil investisseur ?</div>
+              <div style={{fontSize:11.5, color:'#5C3B1E', marginTop:2, lineHeight:1.4}}>
+                Active si le contact achète pour investir / louer (rendement, dispositif fiscal). Bascule la Section III en mode rendement.
+              </div>
+            </div>
+            <button type="button" onClick={() => setIsInvest(v => !v)}
+              role="switch" aria-checked={isInvest}
+              style={{
+                flexShrink:0, width:52, height:30, borderRadius:15, border:'none',
+                background: isInvest ? '#6B4E8B' : '#E8DDD0', position:'relative', cursor:'pointer',
+                transition:'background .2s',
+              }}>
+              <span style={{
+                position:'absolute', top:3, left: isInvest ? 25 : 3, width:24, height:24,
+                borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.25)',
+                transition:'left .2s',
+              }}/>
+            </button>
+          </div>
+          <div style={{marginTop:18, fontSize:11, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', lineHeight:1.5}}>
+            Tu peux changer de profil plus tard depuis le dossier ouvert (entête).
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // V47 — SheetView : 22 colonnes regroupées en 4 sections colorées (I Contact / II Bien
 // / III Finance / IV Suivi). Sticky thead 2 rangées, sticky col 1 (Client), densité
 // configurable Compact/Normal/Relâché, recherche live, filtres pills, modal photos
