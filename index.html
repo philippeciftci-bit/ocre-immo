@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v54-cards-soft-edge -->
+<!-- ocre-v55-financier-pro -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -3091,6 +3091,414 @@ function computePlanCompact(plan) {
   const main = abbr(v0) + ' ' + c0;
   if (entries.length > 1) return main + ' \u207A' + (entries.length - 1);
   return main;
+}
+
+// V55 — Helpers Section III financier pro.
+function fmtMoneyV55(n, devise) {
+  const x = Number(n);
+  if (!isFinite(x) || x === 0) return '';
+  const formatted = Math.round(x).toLocaleString('fr-FR').replace(/\u202F/g, ' ');
+  if (devise === 'MAD') return formatted + ' MAD';
+  if (devise === 'USD') return formatted + ' $';
+  return formatted + ' €';
+}
+function parseDateFRV55(s) {
+  const m = String(s || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  const dd = +m[1], mm = +m[2], yy = +m[3];
+  const dt = new Date(yy, mm - 1, dd);
+  if (dt.getFullYear() !== yy || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) return null;
+  return yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+}
+function fmtDateFRV55(iso) {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  return m[3] + '/' + m[2] + '/' + m[1];
+}
+function addMonthsISOV55(iso, months) {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  const dt = new Date(+m[1], +m[2] - 1, +m[3]);
+  dt.setMonth(dt.getMonth() + (Number(months) || 0));
+  return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+}
+function fraisNotaireDefault(paysBien, neufAncien) {
+  if (paysBien === 'MA') return 0.06;
+  if (paysBien === 'FR' && neufAncien === 'neuf') return 0.03;
+  if (paysBien === 'FR') return 0.075;
+  return 0.075;
+}
+
+// V55 — Champ ligne label/valeur compact, iPhone-first 44px. Type number/text/date(JJ/MM/AAAA)/select/toggle.
+function V55Field({label, value, onChange, type='text', options, suffix, placeholder, disabled, hint}) {
+  const [localText, setLocalText] = React.useState(() => {
+    if (type === 'date_fr') return value ? fmtDateFRV55(value) : '';
+    return value != null ? String(value) : '';
+  });
+  React.useEffect(() => {
+    if (type === 'date_fr') setLocalText(value ? fmtDateFRV55(value) : '');
+    else setLocalText(value != null ? String(value) : '');
+  }, [value, type]);
+  const baseInput = {
+    width:'100%', padding:'10px 11px', borderRadius:8, fontSize:14, outline:'none',
+    fontFamily:'inherit', color:'#2A2018',
+    border:'1.5px solid ' + (value !== '' && value != null ? '#BBA88B' : '#E8DDD0'),
+    background: value !== '' && value != null ? '#FFFCF5' : '#FDFAF7',
+    boxSizing:'border-box', minHeight:44,
+  };
+  return (
+    <div style={{marginBottom:10}}>
+      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>
+      {type === 'select' ? (
+        <select value={value || ''} onChange={e => onChange(e.target.value || null)} disabled={disabled}
+          style={Object.assign({}, baseInput, {appearance:'none', backgroundImage:'linear-gradient(45deg, transparent 50%, #8B5E3C 50%), linear-gradient(135deg, #8B5E3C 50%, transparent 50%)', backgroundPosition:'calc(100% - 16px) 19px, calc(100% - 11px) 19px', backgroundSize:'5px 5px, 5px 5px', backgroundRepeat:'no-repeat', paddingRight:34})}>
+          <option value="">—</option>
+          {(options || []).map(o => {
+            const v = typeof o === 'string' ? o : o.value;
+            const l = typeof o === 'string' ? o : o.label;
+            return <option key={v} value={v}>{l}</option>;
+          })}
+        </select>
+      ) : type === 'toggle' ? (
+        <div style={{display:'flex', alignItems:'center', gap:10, padding:'4px 0'}}>
+          <button type="button" onClick={() => onChange(!value)} role="switch" aria-checked={!!value}
+            style={{width:50, height:28, borderRadius:14, border:'none', cursor:'pointer', position:'relative',
+                    background: value ? '#8B5E3C' : '#E8DDD0', transition:'background .2s', flexShrink:0}}>
+            <span style={{position:'absolute', top:2, left: value ? 24 : 2, width:24, height:24, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.25)', transition:'left .2s'}}/>
+          </button>
+          <span style={{fontSize:13, color: value ? '#5C3B1E' : '#8B7F6E'}}>{value ? 'Activé' : 'Désactivé'}</span>
+        </div>
+      ) : type === 'date_fr' ? (
+        <input type="text" inputMode="numeric" maxLength={10} placeholder="JJ/MM/AAAA"
+          value={localText} onChange={e => setLocalText(e.target.value)}
+          onBlur={() => {
+            const iso = parseDateFRV55(localText);
+            if (iso) onChange(iso);
+            else if (!localText.trim()) onChange(null);
+            else setLocalText(value ? fmtDateFRV55(value) : '');
+          }}
+          disabled={disabled}
+          style={Object.assign({}, baseInput, disabled ? {background:'#F4ECE3', color:'#8B7F6E'} : {})}/>
+      ) : (
+        <div style={{position:'relative'}}>
+          <input
+            type={type === 'number' || type === 'pct' ? 'text' : 'text'}
+            inputMode={type === 'number' || type === 'pct' ? 'decimal' : 'text'}
+            value={localText}
+            onChange={e => setLocalText(e.target.value)}
+            onBlur={() => {
+              if (type === 'number' || type === 'pct') {
+                const cleaned = localText.replace(/[^0-9.,]/g, '').replace(',', '.');
+                const n = parseFloat(cleaned);
+                onChange(isFinite(n) ? n : null);
+                setLocalText(isFinite(n) ? String(n) : '');
+              } else {
+                onChange(localText.trim() || null);
+              }
+            }}
+            placeholder={placeholder || ''}
+            disabled={disabled}
+            style={Object.assign({}, baseInput, suffix ? {paddingRight:36} : {}, disabled ? {background:'#F4ECE3', color:'#8B7F6E'} : {})}/>
+          {suffix && (
+            <span style={{position:'absolute', right:11, top:12, fontSize:13, color:'#8B7F6E', pointerEvents:'none', fontWeight:600}}>{suffix}</span>
+          )}
+        </div>
+      )}
+      {hint && <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:3, fontStyle:'italic'}}>{hint}</div>}
+    </div>
+  );
+}
+
+function V55Bloc({title, children}) {
+  return (
+    <div style={{background:'#fff', borderRadius:10, padding:'14px 14px 4px', marginBottom:12, boxShadow:'0 0 0 1px rgba(139,94,60,.08), 0 1px 2px rgba(26,18,8,.04)'}}>
+      <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:600, color:'#8B5E3C', marginBottom:10, paddingBottom:6, borderBottom:'1px solid #F0E9DC'}}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function V55ReadOnly({label, value, hint}) {
+  return (
+    <div style={{marginBottom:10}}>
+      <div style={{fontSize:11, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:4}}>{label}</div>
+      <div style={{padding:'10px 11px', borderRadius:8, background:'#F7F0E6', border:'1.5px solid #E2D8CC', color:'#2A2018', fontWeight:700, fontSize:14, fontFamily:'inherit', minHeight:44, boxSizing:'border-box', display:'flex', alignItems:'center'}}>
+        {value || '—'}
+      </div>
+      {hint && <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:3, fontStyle:'italic'}}>{hint}</div>}
+    </div>
+  );
+}
+
+// V55 — Section III pro : selon profil + invest. Stockage dans d (data JSON, pas de migration DB).
+function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}) {
+  const paysBien = (d.bien && d.bien.pays) || (d.pays_residence === 'Maroc' ? 'MA' : 'FR');
+  const devise = paysBien === 'MA' ? 'MAD' : 'EUR';
+  const neufAncien = (d.bien && d.bien.neuf_ancien) || 'ancien';
+
+  // ─── ACHETEUR ─────────────────────────────────────────────────────────
+  if (activeProfil === 'Acheteur' || activeProfil === 'Investisseur') {
+    const mode = d.mode_financement || '';
+    const showPret = mode === 'Crédit' || mode === 'Mixte';
+    const honoCharge = d.honoraires_charge || '';
+    const budget = Number(d.budget_max) || 0;
+    const fraisNotPct = d.frais_notaire_pct != null ? Number(d.frais_notaire_pct) : fraisNotaireDefault(paysBien, neufAncien) * 100;
+    const fraisNotEst = budget > 0 ? Math.round(budget * fraisNotPct / 100) : 0;
+    const honoEst = Number(d.honoraires_montant_estime) || 0;
+    const coutTotal = budget + (honoCharge === 'Acheteur' ? honoEst : 0) + fraisNotEst;
+    return (
+      <>
+        <V55Bloc title="Capacité d'achat">
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55Field label="Budget min" type="number" value={d.budget_min} onChange={v => set('budget_min', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+            <V55Field label="Budget max" type="number" value={d.budget_max} onChange={v => set('budget_max', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          </div>
+          <V55Field label="Apport personnel" type="number" value={d.apport_personnel} onChange={v => set('apport_personnel', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          <V55Field label="Mode de financement" type="select" value={d.mode_financement} onChange={v => set('mode_financement', v)}
+            options={['Comptant','Crédit','Mixte']}/>
+          {showPret && (
+            <>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+                <V55Field label="Montant prêt" type="number" value={d.pret_montant} onChange={v => set('pret_montant', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+                <V55Field label="Durée (années)" type="number" value={d.pret_duree_annees} onChange={v => set('pret_duree_annees', v)} suffix="ans"/>
+              </div>
+              <V55Field label="Taux estimé" type="pct" value={d.pret_taux_estime} onChange={v => set('pret_taux_estime', v)} suffix="%"/>
+            </>
+          )}
+        </V55Bloc>
+
+        <V55Bloc title="Frais d'acquisition (estimation)">
+          <V55Field label="Honoraires à charge" type="select" value={d.honoraires_charge} onChange={v => set('honoraires_charge', v)}
+            options={['Vendeur','Acheteur','Partagés']}/>
+          {honoCharge === 'Acheteur' && (
+            <V55Field label="Honoraires estimés" type="number" value={d.honoraires_montant_estime} onChange={v => set('honoraires_montant_estime', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          )}
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55Field label={'Frais notaire %' + (paysBien === 'FR' ? (neufAncien === 'neuf' ? ' (FR neuf 3%)' : ' (FR ancien 7,5%)') : ' (MA 6%)')}
+              type="pct" value={d.frais_notaire_pct} onChange={v => set('frais_notaire_pct', v)} suffix="%"
+              placeholder={String(fraisNotaireDefault(paysBien, neufAncien) * 100)}/>
+            <V55ReadOnly label="Frais notaire estimés" value={budget > 0 ? fmtMoneyV55(fraisNotEst, devise) : '—'}/>
+          </div>
+          <V55ReadOnly label="Coût total estimé" value={budget > 0 ? fmtMoneyV55(coutTotal, devise) : '—'} hint="Budget + honoraires (si charge acheteur) + frais notaire"/>
+        </V55Bloc>
+
+        {(isInvestisseur || activeProfil === 'Investisseur') && (
+          <V55Bloc title="Stratégie investissement">
+            <V55Field label="Stratégie" type="select" value={d.strategie_invest} onChange={v => set('strategie_invest', v)}
+              options={['Locatif nu','Meublé LMNP','Saisonnier/Airbnb','Fix and Flip','Pinel (FR)']}/>
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+              <V55Field label="Rendement brut cible" type="pct" value={d.rendement_brut_cible} onChange={v => set('rendement_brut_cible', v)} suffix="%"/>
+              <V55Field label="Rendement net cible" type="pct" value={d.rendement_net_cible} onChange={v => set('rendement_net_cible', v)} suffix="%"/>
+            </div>
+            <V55Field label="Horizon (années)" type="number" value={d.horizon_annees} onChange={v => set('horizon_annees', v)} suffix="ans"/>
+            <V55Field label="Régime fiscal (estimation)" type="select" value={d.regime_fiscal} onChange={v => set('regime_fiscal', v)}
+              options={paysBien === 'MA'
+                ? ['Auto-entrepreneur','SARL','Personne physique','Autre']
+                : ['LMNP','LMP','SCI à l\'IR','SCI à l\'IS','Micro-foncier','Régime réel']}
+              hint="Estimation indicative — vérifier avec expert-comptable."/>
+          </V55Bloc>
+        )}
+      </>
+    );
+  }
+
+  // ─── VENDEUR ──────────────────────────────────────────────────────────
+  if (activeProfil === 'Vendeur') {
+    const prix = Number(d.prix_affiche) || 0;
+    const commMode = d.commission_mode || 'Pourcentage';
+    const commTaux = Number(d.commission_taux) || 0;
+    const commForfait = Number(d.commission_forfait) || 0;
+    const commCalc = commMode === 'Pourcentage' ? Math.round(prix * commTaux / 100) : commForfait;
+    const coCourtage = !!d.co_courtage_actif;
+    const coPct = Number(d.co_courtage_pct) || 0;
+    const coMontant = Math.round(commCalc * coPct / 100);
+    const commNette = commCalc - coMontant;
+    const partAgPct = d.part_agent_pct != null ? Number(d.part_agent_pct) : 50;
+    const partAg = Math.round(commNette * partAgPct / 100);
+    const partAgence = commNette - partAg;
+    const dateSig = d.mandat_date_signature || '';
+    const duree = Number(d.mandat_duree_mois) || 3;
+    const dateExpAuto = dateSig ? addMonthsISOV55(dateSig, duree) : '';
+    return (
+      <>
+        <V55Bloc title="Prix">
+          <V55Field label="Prix affiché" type="number" value={d.prix_affiche} onChange={v => set('prix_affiche', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          <V55Field label="Prix plancher (confidentiel)" type="number" value={d.prix_plancher} onChange={v => set('prix_plancher', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint="Visible uniquement par l'agent"/>
+          <V55Field label="Date de disponibilité" type="date_fr" value={d.date_disponibilite} onChange={v => set('date_disponibilite', v)}/>
+        </V55Bloc>
+
+        <V55Bloc title="Mandat">
+          <V55Field label="Type" type="select" value={d.mandat_type} onChange={v => set('mandat_type', v)}
+            options={['Simple','Exclusif','Semi-exclusif','Co-exclusif']}/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55Field label="Durée (mois)" type="number" value={d.mandat_duree_mois != null ? d.mandat_duree_mois : 3} onChange={v => set('mandat_duree_mois', v)} suffix="mois"/>
+            <V55Field label="N° mandat" value={d.mandat_numero} onChange={v => set('mandat_numero', v)} placeholder="MV-2026-042"/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55Field label="Date signature" type="date_fr" value={d.mandat_date_signature} onChange={v => set('mandat_date_signature', v)}/>
+            <V55Field label="Date expiration"
+              type="date_fr"
+              value={d.mandat_date_expiration || dateExpAuto}
+              onChange={v => set('mandat_date_expiration', v)}
+              hint={dateExpAuto && !d.mandat_date_expiration ? 'Auto : ' + fmtDateFRV55(dateExpAuto) : ''}/>
+          </div>
+        </V55Bloc>
+
+        <V55Bloc title="Honoraires (commission)">
+          <V55Field label="Mode" type="select" value={d.commission_mode || 'Pourcentage'} onChange={v => set('commission_mode', v)}
+            options={['Pourcentage','Forfait']}/>
+          {commMode === 'Pourcentage' ? (
+            <V55Field label="Taux commission" type="pct" value={d.commission_taux} onChange={v => set('commission_taux', v)} suffix="%"/>
+          ) : (
+            <V55Field label="Forfait" type="number" value={d.commission_forfait} onChange={v => set('commission_forfait', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          )}
+          <V55Field label="À la charge de" type="select" value={d.commission_charge} onChange={v => set('commission_charge', v)}
+            options={['Vendeur','Acheteur','Partagés']}/>
+          {d.commission_charge === 'Partagés' && (
+            <V55Field label="Part vendeur" type="pct" value={d.commission_split_vendeur_pct != null ? d.commission_split_vendeur_pct : 50} onChange={v => set('commission_split_vendeur_pct', v)} suffix="%"
+              hint="Le reste à la charge de l'acheteur"/>
+          )}
+          <V55Field label="TTC ou HT" type="select" value={d.commission_ttc_ou_ht || 'TTC'} onChange={v => set('commission_ttc_ou_ht', v)}
+            options={['TTC','HT']} hint="TVA 20% France"/>
+          <V55ReadOnly label="Commission calculée" value={fmtMoneyV55(commCalc, devise)} hint={commMode === 'Pourcentage' ? `${prix.toLocaleString('fr-FR')} × ${commTaux}%` : 'Forfait'}/>
+        </V55Bloc>
+
+        <V55Bloc title="Co-courtage / apporteur">
+          <V55Field label="Co-courtage actif" type="toggle" value={coCourtage} onChange={v => set('co_courtage_actif', v)}/>
+          {coCourtage && (
+            <>
+              <V55Field label="Nom co-courtier / apporteur" value={d.co_courtage_nom} onChange={v => set('co_courtage_nom', v)}/>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+                <V55Field label="% rétrocédé" type="pct" value={d.co_courtage_pct} onChange={v => set('co_courtage_pct', v)} suffix="%"/>
+                <V55ReadOnly label="Montant rétrocédé" value={fmtMoneyV55(coMontant, devise)}/>
+              </div>
+            </>
+          )}
+        </V55Bloc>
+
+        <V55Bloc title="Répartition interne">
+          <V55Field label="Part agent" type="pct" value={d.part_agent_pct != null ? d.part_agent_pct : 50} onChange={v => set('part_agent_pct', v)} suffix="%" hint="% de la commission nette agence"/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55ReadOnly label="Part agent" value={fmtMoneyV55(partAg, devise)}/>
+            <V55ReadOnly label="Part agence" value={fmtMoneyV55(partAgence, devise)}/>
+          </div>
+          <V55ReadOnly label="Commission nette" value={fmtMoneyV55(commNette, devise)} hint="Commission − co-courtage"/>
+        </V55Bloc>
+      </>
+    );
+  }
+
+  // ─── LOCATAIRE ────────────────────────────────────────────────────────
+  if (activeProfil === 'Locataire') {
+    return (
+      <>
+        <V55Bloc title="Capacité locative">
+          <V55Field label="Loyer max charges comprises" type="number" value={d.loyer_max} onChange={v => set('loyer_max', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
+          <V55Field label="Durée souhaitée" type="select" value={d.duree_souhaitee} onChange={v => set('duree_souhaitee', v)}
+            options={['Bail meublé 1 an','Bail nu 3 ans','Saisonnier','Indéterminé']}/>
+          <V55Field label="Date emménagement souhaitée" type="date_fr" value={d.date_emmenagement_souhaitee} onChange={v => set('date_emmenagement_souhaitee', v)}/>
+        </V55Bloc>
+
+        <V55Bloc title="Garanties">
+          <V55Field label="Type de garantie" type="select" value={d.type_garantie} onChange={v => set('type_garantie', v)}
+            options={['Caution physique','GLI (souscrite par bailleur)','Visale','Caution bancaire','Aucune']}/>
+          <V55Field label="Garants" type="toggle" value={!!d.garants_oui} onChange={v => set('garants_oui', v)}/>
+          {d.garants_oui && (
+            <V55Field label="Revenus mensuels totaux des garants" type="number" value={d.garants_revenus_mensuel_total} onChange={v => set('garants_revenus_mensuel_total', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          )}
+          <V55Field label="Capacité dépôt de garantie" type="number" value={d.depot_garantie_capacite} onChange={v => set('depot_garantie_capacite', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+        </V55Bloc>
+
+        <V55Bloc title="Frais à sa charge (estimation)">
+          <V55Field label="Honoraires locataire estimés" type="number" value={d.honoraires_locataire_estimes} onChange={v => set('honoraires_locataire_estimes', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? 'Encadré ALUR France ~10-13€/m² selon zone tendue' : 'MA usage variable, souvent payés par bailleur'}/>
+          <V55Field label="Frais de dossier" type="number" value={d.frais_dossier} onChange={v => set('frais_dossier', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+        </V55Bloc>
+      </>
+    );
+  }
+
+  // ─── BAILLEUR ─────────────────────────────────────────────────────────
+  if (activeProfil === 'Bailleur') {
+    const loyer = Number(d.loyer_demande) || 0;
+    const honoMode = d.honoraires_bailleur_mode || '% loyer mensuel';
+    const honoTaux = d.honoraires_bailleur_taux != null ? Number(d.honoraires_bailleur_taux) : 100;
+    const honoForfait = Number(d.honoraires_bailleur_forfait) || 0;
+    const honoMontant = honoMode === 'Forfait' ? honoForfait : Math.round(loyer * honoTaux / 100);
+    const gestionActif = !!d.mandat_gestion_actif;
+    const acquisitionPrix = Number(d.prix_acquisition_estime) || 0;
+    const rendementBrutAuto = acquisitionPrix > 0 && loyer > 0 ? Math.round((loyer * 12) / acquisitionPrix * 1000) / 10 : null;
+    return (
+      <>
+        <V55Bloc title="Loyer & charges">
+          <V55Field label="Loyer demandé (hors charges)" type="number" value={d.loyer_demande} onChange={v => set('loyer_demande', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
+          <V55Field label="Loyer plancher (confidentiel)" type="number" value={d.loyer_plancher} onChange={v => set('loyer_plancher', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55Field label="Charges récupérables" type="number" value={d.charges_recuperables != null ? d.charges_recuperables : d.charges} onChange={v => set('charges_recuperables', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
+            <V55Field label="Charges non récupérables" type="number" value={d.charges_non_recuperables} onChange={v => set('charges_non_recuperables', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} hint="À la charge propriétaire"/>
+          </div>
+          <V55Field label="Dépôt de garantie demandé" type="number" value={d.depot_garantie_demande != null ? d.depot_garantie_demande : d.depot} onChange={v => set('depot_garantie_demande', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? 'France : 1 mois nu / 2 mois meublé' : ''}/>
+        </V55Bloc>
+
+        <V55Bloc title="Honoraires de location">
+          <V55Field label="Mode" type="select" value={d.honoraires_bailleur_mode || '% loyer mensuel'} onChange={v => set('honoraires_bailleur_mode', v)}
+            options={['% loyer mensuel','Forfait']}/>
+          {honoMode === '% loyer mensuel' ? (
+            <V55Field label="% du loyer mensuel" type="pct" value={d.honoraires_bailleur_taux != null ? d.honoraires_bailleur_taux : 100} onChange={v => set('honoraires_bailleur_taux', v)} suffix="%" hint="100% = 1 mois de loyer"/>
+          ) : (
+            <V55Field label="Forfait" type="number" value={d.honoraires_bailleur_forfait} onChange={v => set('honoraires_bailleur_forfait', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          )}
+          <V55ReadOnly label="Honoraires bailleur (auto)" value={fmtMoneyV55(honoMontant, devise)}/>
+          <V55Field label="Honoraires partagés avec locataire" type="toggle" value={!!d.honoraires_locataire_partage_oui} onChange={v => set('honoraires_locataire_partage_oui', v)}/>
+          {d.honoraires_locataire_partage_oui && (
+            <V55Field label="Montant à charge locataire" type="number" value={d.honoraires_locataire_montant} onChange={v => set('honoraires_locataire_montant', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          )}
+        </V55Bloc>
+
+        <V55Bloc title="Mandat de gestion (optionnel)">
+          <V55Field label="Mandat de gestion actif" type="toggle" value={gestionActif} onChange={v => set('mandat_gestion_actif', v)}/>
+          {gestionActif && (
+            <>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+                <V55Field label="% loyer mensuel" type="pct" value={d.mandat_gestion_taux != null ? d.mandat_gestion_taux : 7.5} onChange={v => set('mandat_gestion_taux', v)} suffix="%" hint="Default 7-8%"/>
+                <V55Field label="Frais relocation" type="number" value={d.mandat_gestion_frais_relocation} onChange={v => set('mandat_gestion_frais_relocation', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+              </div>
+              <V55Field label="Durée (années)" type="number" value={d.mandat_gestion_duree_annees != null ? d.mandat_gestion_duree_annees : 1} onChange={v => set('mandat_gestion_duree_annees', v)} suffix="ans" hint="Tacite reconduction sous-entendue"/>
+            </>
+          )}
+        </V55Bloc>
+
+        <V55Bloc title="Garantie loyers impayés (GLI)">
+          <V55Field label="GLI proposée" type="toggle" value={!!d.gli_proposee} onChange={v => set('gli_proposee', v)}/>
+          {d.gli_proposee && (
+            <V55Field label="Taux GLI" type="pct" value={d.gli_taux != null ? d.gli_taux : 2.5} onChange={v => set('gli_taux', v)} suffix="%" hint="Du loyer charges comprises"/>
+          )}
+        </V55Bloc>
+
+        {isInvestisseur && (
+          <V55Bloc title="Performance investissement">
+            <V55Field label="Prix d'acquisition estimé" type="number" value={d.prix_acquisition_estime} onChange={v => set('prix_acquisition_estime', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+            {rendementBrutAuto != null && (
+              <V55ReadOnly label="Rendement brut actuel (auto)" value={rendementBrutAuto + ' %'} hint="(Loyer × 12) / prix acquisition"/>
+            )}
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+              <V55Field label="Rendement brut actuel" type="pct" value={d.rendement_brut_actuel} onChange={v => set('rendement_brut_actuel', v)} suffix="%"/>
+              <V55Field label="Rendement brut cible" type="pct" value={d.rendement_brut_cible} onChange={v => set('rendement_brut_cible', v)} suffix="%"/>
+            </div>
+            <V55Field label="Rendement net actuel" type="pct" value={d.rendement_net_actuel} onChange={v => set('rendement_net_actuel', v)} suffix="%" hint="Après charges + fiscalité"/>
+            <V55Field label="Régime fiscal en cours (estimation)" type="select" value={d.regime_fiscal_en_cours} onChange={v => set('regime_fiscal_en_cours', v)}
+              options={paysBien === 'MA'
+                ? ['Auto-entrepreneur','SARL','Personne physique','Autre']
+                : ['LMNP','LMP','SCI à l\'IR','SCI à l\'IS','Micro-foncier','Régime réel']}/>
+            <V55Field label="Travaux à amortir" type="number" value={d.travaux_a_amortir} onChange={v => set('travaux_a_amortir', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          </V55Bloc>
+        )}
+      </>
+    );
+  }
+
+  return null;
 }
 
 // V17.6 Section III — FinancementForm : mode + budget + banque + timeline + docs.
@@ -10421,33 +10829,12 @@ function FormView(props) {
                status={stageStatus[2].status} summary={stageStatus[2].summary}>
           {/* V45 — Plan de paiement multi-lignes + Encaissements (toutes casquettes hors Curieux) */}
           <PaymentPlanModule d={d} set={set}/>
-          {(activeProfil === 'Acheteur' || activeProfil === 'Investisseur') ? (
+          {/* V55 — Section III pro : blocs adaptatifs Acheteur/Vendeur/Locataire/Bailleur + Investisseur. */}
+          <SectionFinanciereV55 activeProfil={activeProfil} isInvestisseur={isInvestisseur} profilType={profilType} d={d} set={set}/>
+          {(activeProfil === 'Acheteur' || activeProfil === 'Investisseur') && (
             <FinancementForm activeProfil={activeProfil} d={d} set={set}
               dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
               showToast={showToast}/>
-          ) : (
-            <>
-              {activeProfil === 'Vendeur' && (
-                <>
-                  <Field label="Prix affiché" type="number" value={d.prix_affiche} onChange={v => set('prix_affiche', v)}/>
-                  <Field label="Prix plancher (confidentiel)" type="number" value={d.prix_plancher} onChange={v => set('prix_plancher', v)}/>
-                </>
-              )}
-              {activeProfil === 'Locataire' && (
-                <>
-                  <Field label="Loyer max" type="number" value={d.loyer_max} onChange={v => set('loyer_max', v)}/>
-                  <Field label="Garants" value={d.garants} onChange={v => set('garants', v)}/>
-                </>
-              )}
-              {activeProfil === 'Bailleur' && (
-                <>
-                  <Field label="Loyer demandé" type="number" value={d.loyer_demande} onChange={v => set('loyer_demande', v)}/>
-                  <Field label="Loyer plancher (confidentiel)" type="number" value={d.loyer_plancher} onChange={v => set('loyer_plancher', v)}/>
-                  <Field label="Charges" type="number" value={d.charges} onChange={v => set('charges', v)}/>
-                  <Field label="Dépôt de garantie" type="number" value={d.depot} onChange={v => set('depot', v)}/>
-                </>
-              )}
-            </>
           )}
           <CustomFieldList sectionKey="financement" d={d} set={set}/>
           <button onClick={() => commitAndNext(2)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
