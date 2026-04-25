@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v52.6-profil-picker -->
+<!-- ocre-v52.7-chevron-section1 -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -10176,8 +10176,7 @@ function FormView(props) {
         <div data-stage-anchor="0">
         <Stage title={STAGES[activeProfil][0]}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
-               status={stageStatus[0].status} summary={stageStatus[0].summary}
-               hideChevron={true}>
+               status={stageStatus[0].status} summary={stageStatus[0].summary}>
           {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
               opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
               bouton "+" rond pour ouvrir le modal multi-select Variante C v30. */}
