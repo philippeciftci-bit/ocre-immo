@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v47-sheet -->
+<!-- ocre-v48-ophelie -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -7166,6 +7166,28 @@ function Header({left, center, right, userMenu, setUserMenu, currentUser, logout
   );
 }
 
+// V48 — Bandeau onboarding (premier login Ophélie). Visible uniquement si l'utilisateur
+// a des dossiers is_demo et n'a pas encore dismissé. Persisté en localStorage.
+function OnboardingBanner({clients}) {
+  const [dismissed, setDismissed] = React.useState(() => localStorage.getItem('ocre.onboarding.dismissed') === '1');
+  const hasDemo = Array.isArray(clients) && clients.some(c => c && c.is_demo);
+  if (dismissed || !hasDemo) return null;
+  return (
+    <div style={{position:'relative', background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:12, padding:'12px 14px', marginBottom:12, boxShadow:'0 1px 3px rgba(139,94,60,.08)'}}>
+      <button type="button" onClick={() => { localStorage.setItem('ocre.onboarding.dismissed', '1'); setDismissed(true); }}
+        aria-label="Fermer"
+        style={{position:'absolute', top:8, right:8, width:26, height:26, padding:0, border:'none', background:'transparent', color:'#8B5E3C', cursor:'pointer', borderRadius:13, fontSize:16, fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>×</button>
+      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+        <span style={{fontSize:18}}>👋</span>
+        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'#8B5E3C'}}>Bienvenue sur OCRE Immo</span>
+      </div>
+      <div style={{fontSize:12.5, color:'#5C3B1E', lineHeight:1.5, paddingRight:18}}>
+        Voici 6 dossiers d'exemple pour te familiariser avec l'app. Tu peux les ouvrir, modifier, archiver ou supprimer en toute liberté — ce sont des données fictives marquées <b>DÉMO</b>. Demande à Philippe quand tu veux passer aux vrais dossiers.
+      </div>
+    </div>
+  );
+}
+
 function ListView(props) {
   const {clients, country, setCountry, showArchives, setShowArchives,
          userMenu, setUserMenu, currentUser, logout,
@@ -7367,6 +7389,8 @@ function ListView(props) {
       </div>
 
       <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(50px + env(safe-area-inset-bottom, 0px))'}}>
+        {/* V48 — bandeau onboarding pour les comptes ayant des dossiers démo. Dismissable. */}
+        <OnboardingBanner clients={clients}/>
         {!showArchives && drafts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
@@ -7795,6 +7819,10 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             )}
             {sourceChip && (
               <div style={{fontSize:9, color: importType === 'image' ? '#8B6B1E' : '#B26D3A', fontWeight:700, flexShrink:0, background:'#fff', border:'1px solid #E8DDD0', borderRadius:8, padding:'1px 5px', whiteSpace:'nowrap'}}>{sourceChip}</div>
+            )}
+            {/* V48 — badge DÉMO (dossiers Ophélie pré-remplis). */}
+            {c.is_demo && (
+              <span title="Dossier de démonstration" style={{fontSize:9, fontWeight:700, letterSpacing:.5, color:'#fff', background:'#8B5E3C', borderRadius:8, padding:'1px 6px', whiteSpace:'nowrap', flexShrink:0}}>DÉMO</span>
             )}
             {/* Pill profil principal — toujours collée à droite */}
             <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:9.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background: PROFILS[profil] || '#8B5E3C', color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
