@@ -4881,6 +4881,18 @@ function App() {
   const [matchFor, setMatchFor] = useState(null);  // client_id pour modal ouvert
 
   useEffect(() => {
+    // V51.2 — fallback : si ?mt_token=<session> dans l'URL (magic link bridge),
+    // l'enregistrer en localStorage et nettoyer l'URL avant suite du flow.
+    try {
+      const u = new URL(window.location.href);
+      const mt = u.searchParams.get('mt_token');
+      if (mt && mt.length >= 30) {
+        localStorage.setItem('ocre_token', mt);
+        localStorage.setItem('ocre_first_login', '1');
+        u.searchParams.delete('mt_token');
+        window.history.replaceState({}, '', u.pathname + (u.search ? u.search : '') + u.hash);
+      }
+    } catch (e) {}
     const token = localStorage.getItem('ocre_token');
     if (!token) { window.location = '/login/'; return; }
     (async () => {

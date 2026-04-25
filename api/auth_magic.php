@@ -111,6 +111,8 @@ if ($action === 'list') {
 }
 
 if ($action === 'consume') {
+    // V51.2 — affichage erreurs OFF en prod (le wrap Throwable se charge du fail-safe HTML).
+    ini_set('display_errors', '0');
     $token = $_GET['mt'] ?? '';
     function magicErrorPage(string $msg): void {
         header('Content-Type: text/html; charset=utf-8');
@@ -123,6 +125,7 @@ if ($action === 'consume') {
             . '<p style="font-size:12px;color:#8B7F6E">Demande à Philippe un nouveau lien.</p></div></body></html>';
     }
     if (!$token || strlen($token) < 30) { http_response_code(400); magicErrorPage('Token manquant ou invalide.'); exit; }
+    try { // V51.2 DEBUG WRAP
     $hash = hash('sha256', $token);
     $stmt = db()->prepare("SELECT id, user_id, expires_at, consumed_at, multi_use, revoked_at, consume_count FROM magic_tokens WHERE token_hash = ? LIMIT 1");
     $stmt->execute([$hash]);
@@ -142,36 +145,86 @@ if ($action === 'consume') {
     // V51 — multi_use : ne pas setter consumed_at, incrémenter compteur + last_consumed_at.
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 1000);
-    if ($is_multi) {
-        db()->prepare("UPDATE magic_tokens SET consume_count = consume_count + 1, last_consumed_at = NOW(), ip_consume = ?, ua_consume = ? WHERE id = ?")
-            ->execute([$ip, $ua, (int)$row['id']]);
-    } else {
-        db()->prepare("UPDATE magic_tokens SET consumed_at = NOW(), ip_consume = ?, ua_consume = ? WHERE id = ?")
-            ->execute([$ip, $ua, (int)$row['id']]);
+    try {
+        if ($is_multi) {
+            db()->prepare("UPDATE magic_tokens SET consume_count = consume_count + 1, last_consumed_at = NOW(), ip_consume = ?, ua_consume = ? WHERE id = ?")
+                ->execute([$ip, $ua, (int)$row['id']]);
+        } else {
+            db()->prepare("UPDATE magic_tokens SET consumed_at = NOW(), ip_consume = ?, ua_consume = ? WHERE id = ?")
+                ->execute([$ip, $ua, (int)$row['id']]);
+        }
+    } catch (Throwable $e) { error_log('[magic-consume-update] ' . $e->getMessage()); }
+
+    // Crée session (réutilise sessions table existante).
+    // V51.1 — wrap dans try/catch pour ne JAMAIS rester bloqué : si l'INSERT sessions
+    // échoue (contrainte / colonne manquante), on continue le flow et on rapporte l'erreur.
+    $sessionToken = bin2hex(random_bytes(32));
+    $session_ok = false;
+    $session_err = '';
+    try {
+        $expires_seconds = MAGIC_SESSION_DAYS * 86400;
+        db()->prepare("INSERT INTO sessions (token, user_id, expires_at, ip, user_agent) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), ?, ?)")
+            ->execute([$sessionToken, (int)$u['id'], $expires_seconds, $ip, $ua]);
+        $session_ok = true;
+    } catch (Throwable $e) {
+        $session_err = $e->getMessage();
+        error_log('[magic-consume-session] ' . $e->getMessage());
+    }
+    try { db()->prepare("UPDATE users SET last_login = NOW() WHERE id = ?")->execute([(int)$u['id']]); } catch (Throwable $e) {}
+    if (function_exists('logAccess')) { try { logAccess((int)$u['id'], 'magic_login_ok', ['token_id'=>(int)$row['id'], 'session_ok'=>$session_ok]); } catch (Throwable $e) {} }
+
+    if (!$session_ok) {
+        // Fail-safe : page erreur explicite plutôt que page blanche.
+        http_response_code(500);
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Erreur connexion OCRE</title></head><body style="font-family:system-ui;padding:24px;background:#FBF7EF;color:#2A2018">'
+            . '<h1 style="color:#C04B20">Erreur de connexion</h1>'
+            . '<p>La session n\'a pas pu être créée côté serveur. Détail technique :</p>'
+            . '<pre style="background:#fff;padding:10px;border-radius:8px;font-size:11px;overflow-x:auto">' . htmlspecialchars($session_err) . '</pre>'
+            . '<p style="font-size:13px">Demande à Philippe de regénérer un nouveau lien.</p>'
+            . '</body></html>';
+        exit;
     }
 
-    // Crée session (réutilise sessions table existante)
-    $sessionToken = bin2hex(random_bytes(32));
-    db()->prepare("INSERT INTO sessions (token, user_id, expires_at, ip, user_agent) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? DAY), ?, ?)")
-        ->execute([$sessionToken, (int)$u['id'], MAGIC_SESSION_DAYS, $ip, $ua]);
-    db()->prepare("UPDATE users SET last_login = NOW() WHERE id = ?")->execute([(int)$u['id']]);
-    try { logAccess((int)$u['id'], 'magic_login_ok', ['token_id'=>(int)$row['id']]); } catch (Exception $e) {}
-
-    // Page bridge HTML : injecte token dans localStorage puis redirige vers /app/.
-    // Le SPA refait `auth.php?action=me` et hydrate currentUser. ocre_first_login = bandeau onboarding.
+    // V51.1 — REDIRECT SERVEUR SOLIDE : si possible header Location vers /app/?t=<token>,
+    // ce qui rend le flow robuste même si JS désactivé / Safari iOS bloque setTimeout.
+    // Le SPA peut lire ?t= et faire le bootstrap. En complément, on garde la page bridge
+    // HTML qui set localStorage pour les utilisateurs déjà connectés.
     header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    // Refresh meta + JS double-failsafe + lien manuel cliquable si tout échoue.
+    $tokenJs = json_encode($sessionToken);
+    $redirect = '/app/?mt_token=' . urlencode($sessionToken);
     echo '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Connexion OCRE…</title>'
-        . '<meta name="viewport" content="width=device-width, initial-scale=1"><style>'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<meta http-equiv="refresh" content="1;url=' . htmlspecialchars($redirect) . '">'
+        . '<style>'
         . 'body{margin:0;background:#FBF7EF;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;color:#8B5E3C}'
-        . '.b{text-align:center}.s{width:36px;height:36px;border:3px solid #E8DDD0;border-top-color:#8B5E3C;border-radius:50%;animation:r .7s linear infinite;margin:0 auto 12px}'
-        . '@keyframes r{to{transform:rotate(360deg)}}h1{font-family:"Cormorant Garamond",serif;font-size:22px;font-weight:700;margin:0}'
-        . '</style></head><body><div class="b"><div class="s"></div><h1>Bienvenue sur OCRE Immo…</h1></div>'
+        . '.b{text-align:center;padding:24px}.s{width:36px;height:36px;border:3px solid #E8DDD0;border-top-color:#8B5E3C;border-radius:50%;animation:r .7s linear infinite;margin:0 auto 12px}'
+        . '@keyframes r{to{transform:rotate(360deg)}}h1{font-family:"Cormorant Garamond",serif;font-size:22px;font-weight:700;margin:0 0 8px}'
+        . 'a.fb{display:inline-block;margin-top:12px;padding:8px 16px;background:#8B5E3C;color:#fff;text-decoration:none;border-radius:8px;font-size:13px;font-weight:700}'
+        . '</style></head><body><div class="b"><div class="s"></div><h1>Bienvenue sur OCRE Immo…</h1>'
+        . '<p style="font-size:12px;color:#8B7F6E">Redirection en cours…</p>'
+        . '<a class="fb" href="' . htmlspecialchars($redirect) . '">Continuer manuellement</a>'
+        . '</div>'
         . '<script>'
-        . 'try{localStorage.setItem("ocre_token",' . json_encode($sessionToken) . ');'
+        . 'try{localStorage.setItem("ocre_token",' . $tokenJs . ');'
         . 'localStorage.setItem("ocre_first_login","1");}catch(e){}'
-        . 'setTimeout(function(){window.location.replace("/app/");},400);'
+        . 'window.location.replace(' . json_encode($redirect) . ');'
         . '</script></body></html>';
     exit;
+    } catch (Throwable $t) { // V51.2 DEBUG WRAP
+        http_response_code(500);
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!doctype html><html><head><meta charset="utf-8"></head><body style="font-family:monospace;padding:20px;background:#FFF7F0">';
+        echo '<h2 style="color:#C04B20;font-family:system-ui">[magic-consume DEBUG] ' . htmlspecialchars(get_class($t)) . '</h2>';
+        echo '<p><b>Message:</b> ' . htmlspecialchars($t->getMessage()) . '</p>';
+        echo '<p><b>File:</b> ' . htmlspecialchars($t->getFile()) . ':' . (int)$t->getLine() . '</p>';
+        echo '<pre style="background:#fff;padding:10px;border-radius:6px;font-size:11px;overflow-x:auto">' . htmlspecialchars($t->getTraceAsString()) . '</pre>';
+        echo '</body></html>';
+        error_log('[magic-consume-throwable] ' . $t->getMessage() . ' @ ' . $t->getFile() . ':' . $t->getLine());
+        exit;
+    }
 }
 
 http_response_code(400);
