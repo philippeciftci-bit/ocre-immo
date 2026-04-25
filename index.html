@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v46-spinner-extract -->
+<!-- ocre-v47-sheet -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -5144,6 +5144,10 @@ function App() {
         setView('downloads');
       }}/>;
   }
+  if (view === 'sheet') {
+    return <SheetView onBack={() => setView('list')}
+      clients={clients} openClient={openClient} showToast={showToast} toast={toast}/>;
+  }
   if (view === 'downloads') {
     return <DownloadsView onBack={() => setView('list')}
       showToast={showToast} toast={toast}
@@ -5182,6 +5186,7 @@ function App() {
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
       openAgentProfile={() => { setUserMenu(false); setView('agent_profile'); }}
+      openSheet={() => { setUserMenu(false); setView('sheet'); }}
       openAdmin={() => setView('admin')}
       openDictation={() => setView('dictation')}
       openImportUrl={() => setView('import_url')}
@@ -7124,7 +7129,7 @@ function applySearchRank(list, query) {
     .map(x => x.c);
 }
 
-function Header({left, center, right, userMenu, setUserMenu, currentUser, logout, openPrefs, openAdmin, openAgentProfile}) {
+function Header({left, center, right, userMenu, setUserMenu, currentUser, logout, openPrefs, openAdmin, openAgentProfile, openSheet}) {
   // V18.9 — compact iPhone : padding 6px 12px (vs 10px 14px), hauteur ~44px.
   // V18.20 — padding horizontal 16px pour respirer le logo et les icônes du bord.
   return (
@@ -7149,6 +7154,9 @@ function Header({left, center, right, userMenu, setUserMenu, currentUser, logout
             )}
             {openAgentProfile && (
               <button onClick={openAgentProfile} style={{width:'100%', padding:'7px 10px', background:'#FFF3EC', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>🪪 Mon profil public</button>
+            )}
+            {openSheet && (
+              <button onClick={openSheet} style={{width:'100%', padding:'7px 10px', background:'#FFF3EC', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>▦ Vue tableau</button>
             )}
             <button onClick={logout} style={{width:'100%', padding:'7px 10px', background:'#FDFAF7', color:'#C04B20', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Se déconnecter</button>
           </div>
@@ -7295,7 +7303,7 @@ function ListView(props) {
               onClick={() => setShowArchives(!showArchives)}/>
           </div>
         }
-        userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs} openAgentProfile={openAgentProfile}
+        userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs} openAgentProfile={openAgentProfile} openSheet={props.openSheet}
       />
 
       {/* V18.19 — SearchBar factorisée (partagée main/archives/downloads). */}
@@ -8298,6 +8306,448 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
 // V18.21 — DownloadsView : textarea URL directement prête (pas de page intermédiaire),
 // bouton Document image en dessous, liste staged en bas. Fusion de l'ancien ImportUrlView
 // qui est désormais retiré (logique analyse + createDraft inline ici).
+// V47 — SheetView : 22 colonnes regroupées en 4 sections colorées (I Contact / II Bien
+// / III Finance / IV Suivi). Sticky thead 2 rangées, sticky col 1 (Client), densité
+// configurable Compact/Normal/Relâché, recherche live, filtres pills, modal photos
+// agrégeant 4 sources. iPhone-first : scroll horizontal natif, header reste visible.
+const SHEET_SECTIONS = [
+  {key:'contact', label:'I. Contact',  num:'I.',   color:'#8B5E3C', cols:4},
+  {key:'bien',    label:'II. Bien',    num:'II.',  color:'#3B4D7A', cols:6},
+  {key:'finance', label:'III. Finance',num:'III.', color:'#2E6B3F', cols:7},
+  {key:'suivi',   label:'IV. Suivi',   num:'IV.',  color:'#6B4A8E', cols:5},
+];
+// V47 — formatage tel chip [FR] 6 12 34 56 78 (premier digit isolé puis paires).
+function formatPhoneChip(e164) {
+  if (!e164) return {flag:'', local:''};
+  const s = String(e164).replace(/[^+0-9]/g, '');
+  function pairs(rest) {
+    if (!rest) return '';
+    const first = rest.charAt(0);
+    const tail = rest.slice(1).match(/.{1,2}/g) || [];
+    return ([first].concat(tail)).join(' ');
+  }
+  if (s.startsWith('+33')) return {flag:'FR', local: pairs(s.slice(3))};
+  if (s.startsWith('+212')) return {flag:'MA', local: pairs(s.slice(4))};
+  if (s.startsWith('+34')) return {flag:'ES', local: pairs(s.slice(3))};
+  if (s.startsWith('+39')) return {flag:'IT', local: pairs(s.slice(3))};
+  if (s.startsWith('+1')) return {flag:'US', local: (s.slice(2).match(/.{1,3}/g) || []).join(' ')};
+  return {flag:'', local: s};
+}
+const SHEET_DENSITIES = {
+  compact:  {row: 28, font: 12,   pad: '4px 8px'},
+  normal:   {row: 34, font: 12.5, pad: '6px 10px'},
+  relaxed:  {row: 40, font: 13,   pad: '9px 12px'},
+};
+function fmtSheetMoney(n) {
+  if (n === null || n === undefined || n === '') return '—';
+  const x = Number(n);
+  if (!isFinite(x) || x <= 0) return '—';
+  return Math.round(x).toLocaleString('fr-FR').replace(/\u202F/g, '\u202F');
+}
+function fmtSheetDate(s) {
+  if (!s) return '—';
+  const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '—';
+  const dn = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const dt = new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+  return dn[dt.getDay()] + ' ' + m[3] + '/' + m[2];
+}
+function aggregatePhotos(c) {
+  // V47 — agrège les photos de 4 sources : bien.photos[], cross_matches[].photos,
+  // import_image_url, payment_plan composantes (si jamais étendu plus tard).
+  const out = [];
+  const bien = c.bien || {};
+  if (Array.isArray(bien.photos)) {
+    bien.photos.forEach(p => {
+      const url = typeof p === 'string' ? p : (p && p.url) || '';
+      if (url) out.push({url, origin:'Bien'});
+    });
+  }
+  const matches = Array.isArray(c.cross_matches) ? c.cross_matches : [];
+  matches.forEach(m => {
+    if (Array.isArray(m.photos)) m.photos.forEach(u => {
+      if (typeof u === 'string' && u) out.push({url: u, origin:'Annonce'});
+    });
+  });
+  if (c.import_image_url) {
+    out.push({url: '/api/image.php?path=' + encodeURIComponent(String(c.import_image_url).replace(/^\//, '')), origin:'Doc'});
+  }
+  return out;
+}
+function SheetPhotosModal({client, onClose}) {
+  const photos = aggregatePhotos(client);
+  return (
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,12,4,0.65)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20, fontFamily:'inherit'}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'#FFF9F0', borderRadius:14, maxWidth:680, width:'100%', maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,.4)'}}>
+        <div style={{display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderBottom:'1px solid #E8DDD0'}}>
+          <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C'}}>
+            {(client.prenom || '') + ' ' + (client.nom || '')}
+          </div>
+          <div style={{fontSize:12, color:'#8B7F6E'}}>{photos.length} photo{photos.length > 1 ? 's' : ''}</div>
+          <button onClick={onClose} style={{background:'none', border:'none', fontSize:22, color:'#8B5E3C', cursor:'pointer', padding:'0 4px'}}>×</button>
+        </div>
+        <div style={{flex:1, overflowY:'auto', padding:16}}>
+          {photos.length === 0 ? (
+            <div style={{textAlign:'center', color:'#8B7F6E', fontStyle:'italic', padding:'30px 0'}}>Aucune photo disponible.</div>
+          ) : (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8}}>
+              {photos.map((p, i) => (
+                <div key={i} style={{position:'relative', aspectRatio:'1', borderRadius:8, overflow:'hidden', background:'#F4ECE3', border:'1px solid #E8DDD0'}}>
+                  <img src={p.url} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
+                    onError={e => { e.target.style.display = 'none'; }}/>
+                  <div style={{position:'absolute', top:4, left:4, background:'rgba(139,94,60,0.85)', color:'#fff', padding:'2px 6px', borderRadius:4, fontSize:9, fontWeight:700, letterSpacing:.4, textTransform:'uppercase'}}>
+                    {p.origin}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SheetView({onBack, clients, openClient, showToast}) {
+  const [search, setSearch] = React.useState('');
+  const [filter, setFilter] = React.useState('all');
+  const [density, setDensity] = React.useState(() => localStorage.getItem('ocre.sheet.density') || 'normal');
+  const [photosFor, setPhotosFor] = React.useState(null);
+  React.useEffect(() => { localStorage.setItem('ocre.sheet.density', density); }, [density]);
+  const dens = SHEET_DENSITIES[density] || SHEET_DENSITIES.normal;
+  const filtered = (clients || []).filter(c => {
+    if (c.archived || c.is_staged) return false;
+    if (filter !== 'all') {
+      const map = {Vdr:'Vendeur', Ach:'Acheteur', Bai:'Bailleur', Loc:'Locataire', Inv:'Investisseur'};
+      if (c.projet !== map[filter]) return false;
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      const hay = [
+        c.prenom, c.nom, c.societe_nom, c.tel, c.email,
+        c.bien && c.bien.ville, c.bien && c.bien.quartier, c.bien && c.bien.type,
+      ].filter(Boolean).join(' ').toLowerCase();
+      const eq = (c.bien && Array.isArray(c.bien.equipements)) ? c.bien.equipements.join(' ').toLowerCase() : '';
+      if (hay.indexOf(q) === -1 && eq.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+  const totalCount = filtered.length;
+  function exportCSV() {
+    const headers = ['Client','Tel','Email','Photos','Type','Localisation','Surface','Pieces','SDB','Equipements','Prix demande','Prix accepte','Periode','Frais %','Frais montant','Statut','Recu %','Etape','Score','Dernier contact','Prochaine action','Taches'];
+    const lines = [headers.join(';')];
+    filtered.forEach(c => {
+      const fin = c.financement || {};
+      const bien = c.bien || {};
+      const plan = Array.isArray(c.payment_plan) ? c.payment_plan : [];
+      const recv = Array.isArray(c.received_payments) ? c.received_payments : [];
+      const planTot = plan.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+      const recvTot = recv.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+      const pct = planTot > 0 ? Math.round((recvTot / planTot) * 100) : 0;
+      const row = [
+        ((c.prenom || '') + ' ' + (c.nom || '')).trim() || c.societe_nom || '—',
+        c.tel || '', c.email || '',
+        aggregatePhotos(c).length,
+        bien.type || '', [bien.ville, bien.quartier].filter(Boolean).join(' · '),
+        bien.surface ? bien.surface + ' m²' : '',
+        bien.pieces || '', bien.sdb || '',
+        Array.isArray(bien.equipements) ? bien.equipements.join('|') : '',
+        fmtSheetMoney(fin.prix_affiche || c.prix_affiche || planTot),
+        '—', c.prix_periode || 'Total',
+        fin.frais_pct || '', fmtSheetMoney(fin.frais_montant || ''),
+        recvTot >= planTot && planTot > 0 ? 'Soldé' : (recvTot > 0 ? 'Partiel' : 'Devis'),
+        pct + ' %', '', '', '', '', '',
+      ];
+      lines.push(row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';'));
+    });
+    const blob = new Blob(['\ufeff' + lines.join('\n')], {type:'text/csv;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ocre-sheet-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  const cellStyle = {padding: dens.pad, borderBottom:'1px solid #F0E9DC', borderRight:'1px solid #F0E9DC', fontSize: dens.font, color:'#2A2018', whiteSpace:'nowrap', verticalAlign:'middle', height: dens.row, fontFamily:'inherit'};
+  const colHeaderStyle = {padding:'7px 10px', background:'#F5ECD9', fontSize:10, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', color:'#8B7F6E', borderBottom:'1.5px solid #C9B79A', borderRight:'1px solid #E8DDD0', position:'sticky', top: 28, zIndex:3, whiteSpace:'nowrap', textAlign:'left', fontFamily:'inherit'};
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#FBF7EF'}}>
+      {/* Header */}
+      <div style={{background:'#fff', borderBottom:'1.5px solid #A67F5A', padding:'10px 14px', position:'sticky', top:0, zIndex:20, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208', display:'flex', alignItems:'center', gap:6}}>
+          <span style={{fontSize:18}}>▦</span>
+          <span>Vue tableau</span>
+          <span style={{fontSize:11, color:'#8B7F6E', fontFamily:'inherit', fontWeight:500, marginLeft:6}}>{totalCount} dossier{totalCount > 1 ? 's' : ''}</span>
+        </div>
+      </div>
+      {/* Toolbar */}
+      <div style={{background:'#FFF9F0', borderBottom:'1px solid #E8DDD0', padding:'8px 12px', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+        <div style={{flex:1, minWidth:180, position:'relative'}}>
+          <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher · nom, ville, téléphone, équipement…"
+            style={{width:'100%', padding:'7px 10px 7px 30px', fontSize:12, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#fff', borderRadius:8, outline:'none', color:'#2A2018'}}/>
+          <div style={{position:'absolute', left:8, top:7, color:'#8B7F6E'}}><IconSearch size={14}/></div>
+        </div>
+        <div style={{display:'flex', gap:4}}>
+          {[['all','Tous'],['Vdr','Vdr'],['Ach','Ach'],['Bai','Bai'],['Loc','Loc'],['Inv','Inv']].map(([k, lbl]) => (
+            <button key={k} type="button" onClick={() => setFilter(k)}
+              style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'1.5px solid ' + (filter === k ? '#8B5E3C' : '#C9B79A'), background: filter === k ? '#8B5E3C' : '#FBF1E4', color: filter === k ? '#fff' : '#5C3B1E', borderRadius:14, cursor:'pointer'}}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+        <div style={{display:'flex', gap:0, border:'1.5px solid #C9B79A', borderRadius:8, overflow:'hidden'}}>
+          {[['compact','Compact'],['normal','Normal'],['relaxed','Relâché']].map(([k, lbl], i) => (
+            <button key={k} type="button" onClick={() => setDensity(k)}
+              style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'none', borderLeft: i > 0 ? '1px solid #C9B79A' : 'none', background: density === k ? '#8B5E3C' : '#FBF1E4', color: density === k ? '#fff' : '#5C3B1E', cursor:'pointer'}}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={exportCSV}
+          style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#FBF1E4', color:'#5C3B1E', borderRadius:8, cursor:'pointer'}}>
+          ↓ Export
+        </button>
+      </div>
+      {/* Tableau */}
+      <div style={{flex:1, overflow:'auto', WebkitOverflowScrolling:'touch'}}>
+        <table style={{borderCollapse:'separate', borderSpacing:0, tableLayout:'auto', minWidth:1800, width:'100%'}}>
+          <thead>
+            {/* Rangée 1 — sections colorées sticky top 0 */}
+            <tr>
+              {SHEET_SECTIONS.map(s => (
+                <th key={s.key} colSpan={s.cols}
+                  style={{background:s.color, color:'#fff', padding:'6px 12px', fontSize:10.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase', borderRight:'1.5px solid rgba(255,255,255,0.2)', position:'sticky', top:0, zIndex:4, textAlign:'left', fontFamily:'inherit'}}>
+                  <span style={{fontFamily:'Cormorant Garamond,serif', fontStyle:'italic', fontSize:13, marginRight:8, opacity:.85}}>{s.num}</span>
+                  <span>{s.label.replace(/^[IVX]+\.\s*/, '')}</span>
+                </th>
+              ))}
+            </tr>
+            {/* Rangée 2 — noms de colonnes */}
+            <tr>
+              <th style={Object.assign({}, colHeaderStyle, {position:'sticky', left:0, top:28, zIndex:5, minWidth:220, maxWidth:240, background:'#F5ECD9', borderRight:'2px solid #C9B79A'})}>Client</th>
+              <th style={colHeaderStyle}>Tél.</th>
+              <th style={colHeaderStyle}>Email</th>
+              <th style={colHeaderStyle}>Photos</th>
+              <th style={colHeaderStyle}>Type</th>
+              <th style={colHeaderStyle}>Localisation</th>
+              <th style={colHeaderStyle}>Surface</th>
+              <th style={colHeaderStyle}>Pièces</th>
+              <th style={colHeaderStyle}>SDB</th>
+              <th style={colHeaderStyle}>Équipements</th>
+              <th style={colHeaderStyle}>Prix demandé</th>
+              <th style={colHeaderStyle}>Prix accepté</th>
+              <th style={colHeaderStyle}>Période</th>
+              <th style={colHeaderStyle}>Frais %</th>
+              <th style={colHeaderStyle}>Frais montant</th>
+              <th style={colHeaderStyle}>Statut $</th>
+              <th style={colHeaderStyle}>Reçu</th>
+              <th style={colHeaderStyle}>Étape</th>
+              <th style={colHeaderStyle}>Score</th>
+              <th style={colHeaderStyle}>Dernier contact</th>
+              <th style={colHeaderStyle}>Prochaine action</th>
+              <th style={colHeaderStyle}>Tâches</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((c, idx) => {
+              const bien = c.bien || {};
+              const fin = c.financement || {};
+              const profil = c.projet || 'Acheteur';
+              const profilColor = (typeof PROFILS !== 'undefined' && PROFILS[profil]) || '#8B5E3C';
+              const initials = ((c.prenom || '?').charAt(0) + (c.nom || ' ').charAt(0)).toUpperCase();
+              const tel = formatPhoneChip(c.tel);
+              const photos = aggregatePhotos(c);
+              const equip = Array.isArray(bien.equipements) ? bien.equipements : [];
+              const plan = Array.isArray(c.payment_plan) ? c.payment_plan.filter(l => Number(l.amount) > 0) : [];
+              const recv = Array.isArray(c.received_payments) ? c.received_payments.filter(l => Number(l.amount) > 0) : [];
+              const planTot = plan.reduce((s, l) => s + Number(l.amount), 0);
+              const recvTot = recv.reduce((s, l) => s + Number(l.amount), 0);
+              const planCur = plan[0] && plan[0].currency || fin.devise || 'MAD';
+              const prixDem = fin.prix_affiche || c.prix_affiche || planTot;
+              const pct = planTot > 0 ? Math.round((recvTot / planTot) * 100) : (recvTot > 0 ? 100 : 0);
+              const statut = planTot > 0 && recvTot >= planTot ? 'Soldé'
+                : recvTot > 0 ? 'Partiel'
+                : (c.is_published ? 'Compromis' : 'Devis');
+              const periode = c.prix_periode === 'mois' ? '/ mois'
+                : c.prix_periode === 'annee' ? '/ an'
+                : c.prix_periode === 'semaine' ? '/ semaine'
+                : c.prix_periode === 'nuit' ? '/ nuit'
+                : 'Total';
+              const suivi = c.suivi || {};
+              const lastInter = suivi.last_interaction;
+              const nextEvent = suivi.next_event;
+              const nextTodo = suivi.next_todo;
+              const score = (c.score || 0) || 70;
+              const scoreColor = score >= 80 ? '#3E8B5E' : (score >= 60 ? '#D4A437' : '#C04B20');
+              const stages = [
+                {k:'prospect', l:'Prospect', c:'#8B7F6E'},
+                {k:'qualifie', l:'Qualifié', c:'#3B4D7A'},
+                {k:'visite', l:'Visite', c:'#6B4A8E'},
+                {k:'offre', l:'Offre', c:'#D4A437'},
+                {k:'compromis', l:'Compromis', c:'#B26D3A'},
+                {k:'acte', l:'Acte', c:'#3E8B5E'},
+                {k:'solde', l:'Soldé', c:'#2E6B3F'},
+              ];
+              const stagePtr = c.etape || (recvTot >= planTot && planTot > 0 ? 'solde' : (recvTot > 0 ? 'compromis' : 'prospect'));
+              const stage = stages.find(s => s.k === stagePtr) || stages[0];
+              const todoCount = (Array.isArray(c.todos) ? c.todos.filter(t => !t.done).length : 0) || (nextTodo ? 1 : 0);
+              const todoOverdue = nextTodo && nextTodo.due_at && new Date(nextTodo.due_at) < new Date();
+              const todoBg = todoOverdue ? '#FEE4E2' : (todoCount > 1 ? '#FEF3C7' : '#E8F5EC');
+              const todoFg = todoOverdue ? '#C04B20' : (todoCount > 1 ? '#A06B45' : '#3E8B5E');
+              const rowBg = idx % 2 === 0 ? '#FFFCF5' : '#FBF7EF';
+              const profilLabels = {Vendeur:{bg:'#E8EEF8', fg:'#3B4D7A'}, Acheteur:{bg:'#FBF1E4', fg:'#8B5E3C'}, Bailleur:{bg:'#E8F5EC', fg:'#3E8B5E'}, Locataire:{bg:'#FEF3C7', fg:'#A06B45'}, Investisseur:{bg:'#F0EAF8', fg:'#6B4A8E'}, Curieux:{bg:'#F4ECE3', fg:'#8B7F6E'}};
+              const pl = profilLabels[profil] || profilLabels.Acheteur;
+              return (
+                <tr key={c.id} style={{background: rowBg, cursor:'pointer'}}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FDF8F0'}
+                  onMouseLeave={e => e.currentTarget.style.background = rowBg}
+                  onClick={() => openClient && openClient(c)}>
+                  {/* I.1 Client */}
+                  <td style={Object.assign({}, cellStyle, {position:'sticky', left:0, zIndex:2, background:'inherit', borderRight:'2px solid #C9B79A', minWidth:220, maxWidth:240})}>
+                    <div style={{display:'flex', alignItems:'center', gap:8}}>
+                      <div style={{width:28, height:28, borderRadius:'50%', background: profilColor, color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'inherit'}}>{initials}</div>
+                      <div style={{flex:1, minWidth:0}}>
+                        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:14, fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                          {((c.prenom || '') + ' ' + (c.nom || '')).trim() || c.societe_nom || '—'}
+                        </div>
+                        <span style={{display:'inline-block', marginTop:2, padding:'1px 6px', fontSize:9, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', borderRadius:8, background: pl.bg, color: pl.fg}}>{profil}</span>
+                      </div>
+                    </div>
+                  </td>
+                  {/* I.2 Tél */}
+                  <td style={cellStyle}>
+                    {tel.local ? (
+                      <a href={'tel:' + (c.tel || '').replace(/[^+0-9]/g, '')} onClick={e => e.stopPropagation()}
+                        style={{display:'inline-flex', alignItems:'center', gap:5, textDecoration:'none', color:'#2A2018'}}>
+                        {tel.flag && <span style={{background:'#8B5E3C', color:'#fff', fontSize:9, fontWeight:700, padding:'1px 4px', borderRadius:4}}>{tel.flag}</span>}
+                        <span style={{fontFamily:'Menlo,monospace', fontSize:11, letterSpacing:.5}}>{tel.local}</span>
+                      </a>
+                    ) : <span style={{color:'#C4B5A0'}}>—</span>}
+                  </td>
+                  {/* I.3 Email */}
+                  <td style={cellStyle}>
+                    {c.email ? (
+                      <a href={'mailto:' + c.email} onClick={e => e.stopPropagation()}
+                        style={{textDecoration:'none', color:'#5C3B1E', display:'inline-flex', alignItems:'center', gap:4, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        <span style={{overflow:'hidden', textOverflow:'ellipsis'}}>{c.email}</span>
+                      </a>
+                    ) : <span style={{color:'#C4B5A0'}}>—</span>}
+                  </td>
+                  {/* I.4 Photos */}
+                  <td style={cellStyle}>
+                    <button type="button" onClick={e => { e.stopPropagation(); setPhotosFor(c); }}
+                      style={{display:'inline-flex', alignItems:'center', gap:5, padding:'3px 9px', borderRadius:14, border:'1px solid ' + (photos.length ? '#C9B79A' : '#E8DDD0'), background: photos.length ? '#FDF8F0' : '#FBF7EF', color:'#5C3B1E', cursor:'pointer', fontFamily:'inherit', fontSize:11, fontWeight:600}}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                      <span style={{fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:12}}>{photos.length}</span>
+                    </button>
+                  </td>
+                  {/* II.5 Type */}
+                  <td style={cellStyle}>{bien.type || '—'}</td>
+                  {/* II.6 Localisation */}
+                  <td style={cellStyle}>{[bien.ville, bien.quartier].filter(Boolean).join(' · ') || '—'}</td>
+                  {/* II.7 Surface */}
+                  <td style={cellStyle}>{bien.surface ? bien.surface + ' m²' : '—'}{bien.surface_terrain ? <div style={{fontSize:10, color:'#8B7F6E'}}>{bien.surface_terrain} m² ter.</div> : null}</td>
+                  {/* II.8 Pièces */}
+                  <td style={cellStyle}>{bien.pieces || bien.chambres || '—'}</td>
+                  {/* II.9 SDB */}
+                  <td style={cellStyle}>{bien.sdb || '—'}</td>
+                  {/* II.10 Équipements */}
+                  <td style={cellStyle}>
+                    {equip.length ? (
+                      <span style={{display:'inline-flex', gap:3, flexWrap:'nowrap'}}>
+                        {equip.slice(0, 2).map((e, i) => (
+                          <span key={i} style={{padding:'1px 6px', fontSize:10, fontWeight:600, borderRadius:8, background:'#FBF1E4', color:'#8B5E3C', border:'1px solid #E0CDAE'}}>{e}</span>
+                        ))}
+                        {equip.length > 2 && (
+                          <span title={equip.slice(2).join(', ')} style={{padding:'1px 6px', fontSize:10, fontWeight:700, borderRadius:8, background:'#8B5E3C', color:'#fff'}}>+{equip.length - 2}</span>
+                        )}
+                      </span>
+                    ) : <span style={{color:'#C4B5A0'}}>—</span>}
+                  </td>
+                  {/* III.11 Prix demandé */}
+                  <td style={cellStyle}>
+                    {prixDem ? <span><b style={{fontFamily:'Cormorant Garamond,serif', fontSize:13.5, color:'#2A2018'}}>{fmtSheetMoney(prixDem)}</b> <small style={{color:'#5C3B1E', fontSize:10, fontWeight:600}}>{planCur}</small></span> : <span style={{color:'#C4B5A0'}}>—</span>}
+                  </td>
+                  {/* III.12 Prix accepté */}
+                  <td style={cellStyle}><span style={{color:'#C4B5A0'}}>—</span></td>
+                  {/* III.13 Période */}
+                  <td style={cellStyle}><span style={{fontSize:11, color:'#5C3B1E'}}>{periode}</span></td>
+                  {/* III.14 Frais % */}
+                  <td style={cellStyle}>
+                    {fin.frais_pct ? <span style={{padding:'1px 6px', fontSize:10, fontWeight:700, borderRadius:8, background:'#E8F5EC', color:'#3E8B5E'}}>{fin.frais_pct} %</span> : <span style={{color:'#C4B5A0'}}>—</span>}
+                  </td>
+                  {/* III.15 Frais montant */}
+                  <td style={cellStyle}>
+                    {fin.frais_montant ? <b style={{fontFamily:'Cormorant Garamond,serif', fontSize:12.5}}>{fmtSheetMoney(fin.frais_montant)}</b> : <span style={{color:'#C4B5A0'}}>—</span>}
+                  </td>
+                  {/* III.16 Statut */}
+                  <td style={cellStyle}>
+                    <span style={{padding:'1px 7px', fontSize:10, fontWeight:700, letterSpacing:.3, borderRadius:8, background: statut === 'Soldé' ? '#E8F5EC' : (statut === 'Partiel' ? '#FEF3C7' : '#F4ECE3'), color: statut === 'Soldé' ? '#3E8B5E' : (statut === 'Partiel' ? '#A06B45' : '#8B5E3C')}}>{statut}</span>
+                  </td>
+                  {/* III.17 Reçu */}
+                  <td style={cellStyle}>
+                    {planTot > 0 ? (
+                      <div style={{display:'flex', alignItems:'center', gap:6}}>
+                        <div style={{width:40, height:5, borderRadius:3, background:'#F0E9DC', overflow:'hidden'}}>
+                          <div style={{width: pct + '%', height:'100%', background: pct >= 100 ? '#3E8B5E' : '#8B5E3C'}}/>
+                        </div>
+                        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:12, fontWeight:700, color:'#2A2018'}}>{pct} %</span>
+                      </div>
+                    ) : <span style={{color:'#C4B5A0'}}>—</span>}
+                  </td>
+                  {/* IV.18 Étape */}
+                  <td style={cellStyle}>
+                    <span style={{display:'inline-flex', alignItems:'center', gap:5}}>
+                      <span style={{width:8, height:8, borderRadius:'50%', background: stage.c, flexShrink:0}}/>
+                      <span style={{fontSize:11}}>{stage.l}</span>
+                    </span>
+                  </td>
+                  {/* IV.19 Score */}
+                  <td style={cellStyle}>
+                    <span style={{padding:'1px 8px', borderRadius:9, background:'#F4ECE3', color: scoreColor, fontFamily:'Cormorant Garamond,serif', fontSize:13, fontWeight:700, border:'1px solid ' + scoreColor + '33'}}>{score}</span>
+                  </td>
+                  {/* IV.20 Dernier contact */}
+                  <td style={cellStyle}>
+                    {lastInter && lastInter.ts ? (
+                      <span><span style={{fontSize:11}}>{fmtSheetDate(lastInter.ts)}</span>{lastInter.kind ? <span style={{fontSize:10, color:'#8B7F6E', display:'block'}}>{lastInter.kind}</span> : null}</span>
+                    ) : <span style={{color:'#C4B5A0'}}>—</span>}
+                  </td>
+                  {/* IV.21 Prochaine action */}
+                  <td style={cellStyle}>
+                    {nextEvent && nextEvent.when_at ? (
+                      <span><span style={{fontSize:11}}>{fmtSheetDate(nextEvent.when_at)}</span>{nextEvent.title ? <span style={{fontSize:10, color:'#8B7F6E', display:'block'}}>{String(nextEvent.title).slice(0, 22)}</span> : null}</span>
+                    ) : (nextTodo && nextTodo.due_at ? (
+                      <span><span style={{fontSize:11}}>{fmtSheetDate(nextTodo.due_at)}</span>{nextTodo.title ? <span style={{fontSize:10, color:'#8B7F6E', display:'block'}}>{String(nextTodo.title).slice(0, 22)}</span> : null}</span>
+                    ) : <span style={{color:'#C4B5A0'}}>—</span>)}
+                  </td>
+                  {/* IV.22 Tâches */}
+                  <td style={cellStyle}>
+                    {todoCount > 0 ? (
+                      <span style={{padding:'1px 7px', fontSize:11, fontWeight:700, borderRadius:9, background: todoBg, color: todoFg}}>
+                        {todoOverdue ? '1 retard' : todoCount + (todoCount > 1 ? ' aujourd\u2019hui' : ' à faire')}
+                      </span>
+                    ) : <span style={{color:'#C4B5A0'}}>—</span>}
+                  </td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={22} style={{padding:'40px 20px', textAlign:'center', color:'#8B7F6E', fontStyle:'italic'}}>Aucun dossier ne correspond aux filtres en cours.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {photosFor && <SheetPhotosModal client={photosFor} onClose={() => setPhotosFor(null)}/>}
+    </div>
+  );
+}
+
 function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, onPickedImageFile, showToast, toast}) {
   // V18.29 — 1 seul ref input file (iOS/Android affichent leur action sheet natif au tap).
   const refFile = React.useRef(null);
