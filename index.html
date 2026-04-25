@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v60-chevron-section1-conditional -->
+<!-- ocre-v66-section2-pays-type-compact -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -108,7 +108,7 @@ input, select, textarea, button { font-size:13px }
 .search-bar-clear{background:#EDE6DC;border:none;width:26px;height:26px;border-radius:13px;cursor:pointer;font-size:12px;color:#8B7F6E;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;font-family:inherit}
 
 /* V18.15 — ClientRow 3 lignes grid secteurs. V18.20 : contours +50%. */
-.client-row-card{background:#fff;border:1.5px solid #8B5E3C;border-radius:10px;margin-bottom:10px;overflow:hidden;cursor:pointer;box-shadow:0 2px 5px rgba(139,94,60,.10)}
+.client-row-card{background:#fff;border:1px solid #8B5E3C;border-radius:14px;margin-bottom:10px;overflow:hidden;cursor:pointer;box-shadow:0 2px 5px rgba(139,94,60,.10);box-sizing:border-box;-webkit-mask-image:-webkit-radial-gradient(white,black)}
 .client-row-head{display:flex;align-items:center;gap:10px;padding:8px 12px;min-height:40px}
 .client-row-badge{width:32px;height:32px;border-radius:7px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.3px;flex-shrink:0}
 .client-row-thumb{width:48px;height:48px;transition:transform .1s}
@@ -1489,6 +1489,61 @@ function MultiPicker({label, values, options, onChange, placeholder='Choisir…'
 const HABITABLE_TYPES = ['Villa','Appartement','Riad','Maison'];
 
 // V17.2 Phase 2a — BienForm : Section II "Le bien", country-first × type-driven (multi depuis v17.9).
+// V64 — Ruban d'ancres Section II : 4 chips qui scrollent vers les sous-blocs id=sec2-*.
+// IntersectionObserver met en avant le chip de la sous-section actuellement visible.
+function SectionAnchorRibbon() {
+  const anchors = [
+    {id: 'sec2-identite',         label: 'Identité'},
+    {id: 'sec2-caracteristiques', label: 'Caractéristiques'},
+    {id: 'sec2-photos',           label: 'Photos'},
+    {id: 'sec2-localisation',     label: 'Localisation'},
+  ];
+  const [active, setActive] = React.useState('sec2-identite');
+  React.useEffect(() => {
+    const els = anchors.map(a => document.getElementById(a.id)).filter(Boolean);
+    if (els.length === 0) return;
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+    }, {rootMargin: '-30% 0px -50% 0px', threshold: 0});
+    els.forEach(el => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
+  function scrollTo(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const toolbar = document.querySelector('[data-formview-header]');
+    const tbH = toolbar ? toolbar.getBoundingClientRect().height : 0;
+    const ribbonH = 44;
+    const rect = el.getBoundingClientRect();
+    const targetY = rect.top + window.scrollY - tbH - ribbonH - 6;
+    window.scrollTo({top: Math.max(0, targetY), behavior: 'smooth'});
+  }
+  return (
+    <div style={{
+      position:'sticky', top:46, zIndex:8,
+      background:'rgba(255,255,255,.92)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
+      borderBottom:'1px solid rgba(139,94,60,.08)',
+      margin:'0 -16px 10px', padding:'8px 14px',
+      display:'flex', gap:6, overflowX:'auto', flexWrap:'nowrap',
+      scrollbarWidth:'none', msOverflowStyle:'none',
+    }} className="profils-row">
+      {anchors.map(a => {
+        const on = active === a.id;
+        return (
+          <button key={a.id} type="button" onClick={() => scrollTo(a.id)}
+            style={{padding:'5px 11px', fontSize:12, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
+                    border:'1px solid ' + (on ? '#8B5E3C' : '#C9B79A'),
+                    background: on ? '#8B5E3C' : '#FBF1E4',
+                    color: on ? '#fff' : '#5C3B1E',
+                    borderRadius:14, cursor:'pointer'}}>
+            {a.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) {
   const bien = d.bien || {};
   function setB(k, v) { set('bien', {...bien, [k]: v}); }
@@ -1519,64 +1574,70 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
     else if (next.length === 0) setShowTypesGrid(true);
   }
 
+  // V66 — modales pays + types (réutilise V58MultiSelectModal pour types).
+  const [v66PaysModal, setV66PaysModal] = React.useState(false);
+  const [v66TypeModal, setV66TypeModal] = React.useState(false);
+  const paysSel = PAYS_BIEN.find(p => p.c === bien.pays);
   return (
     <>
-      {/* V17.9 : Pays + Type(s) en 1 ligne. V18.7 : Type(s) en checkboxes visibles 2 cols + chips × en haut. */}
-      <PickerDropdown label="Pays du bien"
-        value={bien.pays}
-        displayValue={bien.pays ? ((PAYS_BIEN.find(p => p.c === bien.pays) || {}).f + ' ' + (PAYS_BIEN.find(p => p.c === bien.pays) || {}).n) : ''}
-        options={PAYS_BIEN.map(p => ({k: p.c, l: p.f + ' ' + p.n}))}
-        onChange={v => setB('pays', v)} placeholder="Choisir…"/>
-
-      {bien.pays && (
-        <div style={{marginBottom:10}}>
-          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:6, textTransform:'uppercase', letterSpacing:.4}}>
-            Types de bien (cochez un ou plusieurs)
-          </label>
-          {/* Chips sélectionnés en haut avec × */}
-          {types.length > 0 && (
-            <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:8}}>
-              {types.map(t => (
-                <button key={t} type="button" onClick={() => toggleType(t)}
-                  style={{padding:'5px 10px', background:'#FBF1E4', border:'1.5px solid #B26D3A', borderRadius:999,
-                          fontSize:12, fontWeight:700, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit',
-                          display:'inline-flex', alignItems:'center', gap:5}}>
-                  {t} <span style={{fontSize:14, lineHeight:1, color:'#B26D3A'}}>×</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {/* V33 — Grille checkboxes visible uniquement si aucun type sélectionné OU si
-              l'utilisateur a tapé "+ Ajouter un autre type" pour la déplier. */}
-          {(types.length === 0 || showTypesGrid) ? (
-            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:6}}>
-              {typesDispo.map(t => {
-                const checked = types.includes(t);
-                return (
-                  <label key={t} style={{display:'flex', alignItems:'center', gap:8, padding:'10px 12px',
-                                         background: checked ? '#FBF1E4' : '#FDFAF7',
-                                         border: '1.5px solid ' + (checked ? '#B26D3A' : '#E8DDD0'),
-                                         borderRadius:8, fontSize:13, fontWeight: checked ? 700 : 500,
-                                         color: checked ? '#8B4E22' : '#2A2018', cursor:'pointer', fontFamily:'inherit'}}>
-                    <span style={{width:18, height:18, borderRadius:4, border:'1.5px solid ' + (checked ? '#B26D3A' : '#C4B5A0'),
-                                  background: checked ? '#B26D3A' : '#fff',
-                                  display:'inline-flex', alignItems:'center', justifyContent:'center',
-                                  color:'#fff', fontSize:12, fontWeight:800, flexShrink:0}}>{checked ? '✓' : ''}</span>
-                    <input type="checkbox" checked={checked} onChange={() => toggleType(t)} style={{display:'none'}}/>
-                    <span style={{flex:1, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{t}</span>
-                  </label>
-                );
-              })}
-            </div>
-          ) : (
-            <button type="button" onClick={() => setShowTypesGrid(true)}
-              style={{display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', background:'#fff', border:'1.5px solid #D4C3A8', borderRadius:10, color:'#8B5E3C', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
-              <IconPlus size={14}/> Ajouter un autre type
-            </button>
-          )}
+      {/* V64 — Ruban d'ancres horizontales en haut de Section II */}
+      <SectionAnchorRibbon/>
+      <div id="sec2-identite"/>
+      {/* V66 — Pays + Type de bien sur 1 ligne 50/50, modales dédiées (cohérence v58 panel recherche). */}
+      <div style={{display:'flex', gap:8, marginBottom:10}}>
+        <button type="button" onClick={() => setV66PaysModal(true)}
+          style={{flex:1, padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
+                  border:'1.5px solid ' + (bien.pays ? '#8B5E3C' : '#C9B79A'),
+                  background: bien.pays ? '#FBF1E4' : '#FFFCF5',
+                  color:'#5C3B1E', borderRadius:8, cursor:'pointer',
+                  display:'flex', alignItems:'center', justifyContent:'space-between', minWidth:0, minHeight:38}}>
+          <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+            {paysSel ? (paysSel.f + ' ' + paysSel.n) : 'Pays'}
+          </span>
+          <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
+        </button>
+        <button type="button" onClick={() => bien.pays && setV66TypeModal(true)}
+          disabled={!bien.pays}
+          style={{flex:1, padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
+                  border:'1.5px solid ' + (types.length > 0 ? '#8B5E3C' : '#C9B79A'),
+                  background: bien.pays ? (types.length > 0 ? '#FBF1E4' : '#FFFCF5') : '#F4ECE3',
+                  color: bien.pays ? '#5C3B1E' : '#8B7F6E',
+                  borderRadius:8, cursor: bien.pays ? 'pointer' : 'not-allowed',
+                  display:'flex', alignItems:'center', justifyContent:'space-between', minHeight:38, opacity: bien.pays ? 1 : 0.6}}>
+          <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+            {types.length > 0 ? ('Type de bien (' + types.length + ')') : 'Type de bien'}
+          </span>
+          <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
+        </button>
+      </div>
+      {!bien.pays && <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'2px 0 6px'}}>Choisissez un pays pour voir les types disponibles.</div>}
+      {types.length > 0 && (
+        <div style={{display:'flex', flexWrap:'wrap', gap:5, marginBottom:10}}>
+          {types.map(t => (
+            <span key={t} style={{padding:'3px 8px', background:'#FBF1E4', border:'1px solid #C9B79A', borderRadius:12, fontSize:11, fontWeight:600, color:'#5C3B1E', display:'inline-flex', alignItems:'center', gap:4}}>
+              {t}
+              <button type="button" onClick={() => toggleType(t)}
+                style={{background:'none', border:'none', color:'#B26D3A', cursor:'pointer', padding:0, fontSize:14, lineHeight:1, fontFamily:'inherit'}}>×</button>
+            </span>
+          ))}
         </div>
       )}
-      {!bien.pays && <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'2px 0 6px'}}>Choisissez un pays pour voir les types disponibles.</div>}
+      {v66PaysModal && (
+        <V58MultiSelectModal
+          title="Pays du bien"
+          options={PAYS_BIEN.map(p => ({value: p.c, label: p.n, flag: p.f}))}
+          selected={bien.pays ? [bien.pays] : []}
+          onToggle={(code) => { setB('pays', code === bien.pays ? '' : code); setV66PaysModal(false); }}
+          onClose={() => setV66PaysModal(false)}/>
+      )}
+      {v66TypeModal && (
+        <V58MultiSelectModal
+          title="Type de bien"
+          options={typesDispo.map(t => ({value: t, label: t}))}
+          selected={types}
+          onToggle={toggleType}
+          onClose={() => setV66TypeModal(false)}/>
+      )}
 
       {/* V18.7 — Étape 2 progressive : révélée après pays + au moins 1 type cochés. */}
       <AnimatedReveal show={!!(bien.pays && anyType)}>
@@ -1589,10 +1650,11 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
           </div>
           {bien.pays === 'MA' && <Field label="GPS (texte, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589"/>}
-          {/* V17.3 Phase 2b : carte interactive (fallback sur champ texte ci-dessus) */}
-          <MapPicker bien={bien} setB={setB} showToast={showToast}/>
+          {/* V61 — Carte masquable persisted localStorage. Default fermée (gain hauteur iPhone). */}
+          <MapPickerToggle bien={bien} setB={setB} showToast={showToast}/>
 
           {/* 4. Champs spécifiques par type (V17.9 : itère sur types[], une section par type) */}
+          <div id="sec2-caracteristiques"/>
           {types.includes('Villa') && <VillaFields bien={bien} setB={setB} askingMode={askingMode}/>}
           {types.includes('Appartement') && <AppartFields bien={bien} setB={setB} askingMode={askingMode}/>}
           {types.includes('Riad') && <RiadFields bien={bien} setB={setB} askingMode={askingMode}/>}
@@ -1704,7 +1766,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           )}
 
           {/* 7. Photos — V24 : source unique bien.photos[], lu/écrit via parent setB. */}
-          <div style={{marginTop:14}}>
+          <div id="sec2-photos" style={{marginTop:14}}>
             <PhotoUpload dossierId={dossierId} showToast={showToast}
               photos={Array.isArray(bien.photos) ? bien.photos : []}
               onPhotosChange={v => setB('photos', v)}/>
@@ -2327,6 +2389,44 @@ async function reverseGeocodeNominatim(lat, lng) {
       display_name: j.display_name,
     };
   } catch (e) { return null; }
+}
+
+// V61 — wrapper masquable autour de MapPicker. Bouton toggle persiste localStorage.
+function MapPickerToggle({bien, setB, showToast}) {
+  const [visible, setVisible] = React.useState(() => {
+    try { return localStorage.getItem('ocre.section2.map.visible') === '1'; } catch (e) { return false; }
+  });
+  function toggle() {
+    setVisible(v => {
+      const next = !v;
+      try { localStorage.setItem('ocre.section2.map.visible', next ? '1' : '0'); } catch (e) {}
+      return next;
+    });
+  }
+  return (
+    <div id="sec2-localisation" style={{marginTop:8, marginBottom:8}}>
+      <button type="button" onClick={toggle}
+        style={{width:'100%', padding:'10px 12px', borderRadius:10, fontFamily:'inherit',
+                background: visible ? '#FFF3EC' : '#FBF1E4',
+                border:'1.5px solid #C9B79A', color:'#5C3B1E',
+                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between',
+                fontSize:13, fontWeight:600, minHeight:40}}>
+        <span style={{display:'inline-flex', alignItems:'center', gap:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5E3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+            <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+          </svg>
+          {visible ? 'Masquer la carte' : 'Afficher la carte'}
+        </span>
+        <span style={{color:'#8B5E3C', fontSize:14}}>{visible ? '▴' : '▾'}</span>
+      </button>
+      {visible && (
+        <div style={{marginTop:8}}>
+          <MapPicker bien={bien} setB={setB} showToast={showToast}/>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // V17.3 Phase 2b — MapPicker Leaflet + OpenStreetMap. Mode précis (marker) ou zone (cercle).
@@ -3232,7 +3332,18 @@ function V55ReadOnly({label, value, hint}) {
   );
 }
 
+// V62 — sous-titre regroupant pour les blocs "détails" en bas de section.
+function V62SubTitle({children}) {
+  return (
+    <div style={{fontFamily:'DM Sans,inherit', fontSize:11.5, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginTop:18, marginBottom:6, paddingBottom:4, borderBottom:'1px solid #F0E9DC'}}>
+      {children}
+    </div>
+  );
+}
+
 // V55 — Section III pro : selon profil + invest. Stockage dans d (data JSON, pas de migration DB).
+// V62 — réordonné : essentiels (Prix / Frais agence / Frais notaire / Coût total) en haut,
+// détails (Capacité, Mandat, Co-courtage, Répartition, Stratégie, Performance) en bas.
 function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}) {
   const paysBien = (d.bien && d.bien.pays) || (d.pays_residence === 'Maroc' ? 'MA' : 'FR');
   const devise = paysBien === 'MA' ? 'MAD' : 'EUR';
@@ -3250,11 +3361,41 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const coutTotal = budget + (honoCharge === 'Acheteur' ? honoEst : 0) + fraisNotEst;
     return (
       <>
-        <V55Bloc title="Capacité d'achat">
+        {/* V62 — Bloc essentiels en haut */}
+        <V55Bloc title="Prix">
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <V55Field label="Budget min" type="number" value={d.budget_min} onChange={v => set('budget_min', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
             <V55Field label="Budget max" type="number" value={d.budget_max} onChange={v => set('budget_max', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
           </div>
+        </V55Bloc>
+
+        <V55Bloc title="Frais d'agence">
+          <V55Field label="Honoraires à charge" type="select" value={d.honoraires_charge} onChange={v => set('honoraires_charge', v)}
+            options={['Vendeur','Acheteur','Partagés']}/>
+          {honoCharge === 'Acheteur' && (
+            <V55Field label="Honoraires estimés à votre charge" type="number" value={d.honoraires_montant_estime} onChange={v => set('honoraires_montant_estime', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          )}
+          {honoCharge === 'Vendeur' && (
+            <V55ReadOnly label="Honoraires" value="Supportés par le vendeur" hint="Aucun frais d'agence à votre charge"/>
+          )}
+        </V55Bloc>
+
+        <V55Bloc title="Frais de notaire (estimation)">
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55Field label={'Taux %' + (paysBien === 'FR' ? (neufAncien === 'neuf' ? ' (FR neuf 3%)' : ' (FR ancien 7,5%)') : ' (MA 6%)')}
+              type="pct" value={d.frais_notaire_pct} onChange={v => set('frais_notaire_pct', v)} suffix="%"
+              placeholder={String(fraisNotaireDefault(paysBien, neufAncien) * 100)}/>
+            <V55ReadOnly label="Montant estimé" value={budget > 0 ? fmtMoneyV55(fraisNotEst, devise) : '—'}/>
+          </div>
+        </V55Bloc>
+
+        <V55Bloc title="Coût total estimé">
+          <V55ReadOnly label="Coût total acquisition" value={budget > 0 ? fmtMoneyV55(coutTotal, devise) : '—'} hint="Budget + frais agence (si charge acheteur) + frais notaire"/>
+        </V55Bloc>
+
+        {/* V62 — Détails financement en bas */}
+        <V62SubTitle>Détails de financement</V62SubTitle>
+        <V55Bloc title="Capacité d'achat">
           <V55Field label="Apport personnel" type="number" value={d.apport_personnel} onChange={v => set('apport_personnel', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
           <V55Field label="Mode de financement" type="select" value={d.mode_financement} onChange={v => set('mode_financement', v)}
             options={['Comptant','Crédit','Mixte']}/>
@@ -3269,22 +3410,9 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           )}
         </V55Bloc>
 
-        <V55Bloc title="Frais d'acquisition (estimation)">
-          <V55Field label="Honoraires à charge" type="select" value={d.honoraires_charge} onChange={v => set('honoraires_charge', v)}
-            options={['Vendeur','Acheteur','Partagés']}/>
-          {honoCharge === 'Acheteur' && (
-            <V55Field label="Honoraires estimés" type="number" value={d.honoraires_montant_estime} onChange={v => set('honoraires_montant_estime', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
-          )}
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <V55Field label={'Frais notaire %' + (paysBien === 'FR' ? (neufAncien === 'neuf' ? ' (FR neuf 3%)' : ' (FR ancien 7,5%)') : ' (MA 6%)')}
-              type="pct" value={d.frais_notaire_pct} onChange={v => set('frais_notaire_pct', v)} suffix="%"
-              placeholder={String(fraisNotaireDefault(paysBien, neufAncien) * 100)}/>
-            <V55ReadOnly label="Frais notaire estimés" value={budget > 0 ? fmtMoneyV55(fraisNotEst, devise) : '—'}/>
-          </div>
-          <V55ReadOnly label="Coût total estimé" value={budget > 0 ? fmtMoneyV55(coutTotal, devise) : '—'} hint="Budget + honoraires (si charge acheteur) + frais notaire"/>
-        </V55Bloc>
-
         {(isInvestisseur || activeProfil === 'Investisseur') && (
+          <>
+          <V62SubTitle>Stratégie investissement</V62SubTitle>
           <V55Bloc title="Stratégie investissement">
             <V55Field label="Stratégie" type="select" value={d.strategie_invest} onChange={v => set('strategie_invest', v)}
               options={['Locatif nu','Meublé LMNP','Saisonnier/Airbnb','Fix and Flip','Pinel (FR)']}/>
@@ -3299,6 +3427,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
                 : ['LMNP','LMP','SCI à l\'IR','SCI à l\'IS','Micro-foncier','Régime réel']}
               hint="Estimation indicative — vérifier avec expert-comptable."/>
           </V55Bloc>
+          </>
         )}
       </>
     );
@@ -3323,27 +3452,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const dateExpAuto = dateSig ? addMonthsISOV55(dateSig, duree) : '';
     return (
       <>
+        {/* V62 — Bloc essentiels en haut */}
         <V55Bloc title="Prix">
           <V55Field label="Prix affiché" type="number" value={d.prix_affiche} onChange={v => set('prix_affiche', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
           <V55Field label="Prix plancher (confidentiel)" type="number" value={d.prix_plancher} onChange={v => set('prix_plancher', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint="Visible uniquement par l'agent"/>
           <V55Field label="Date de disponibilité" type="date_fr" value={d.date_disponibilite} onChange={v => set('date_disponibilite', v)}/>
-        </V55Bloc>
-
-        <V55Bloc title="Mandat">
-          <V55Field label="Type" type="select" value={d.mandat_type} onChange={v => set('mandat_type', v)}
-            options={['Simple','Exclusif','Semi-exclusif','Co-exclusif']}/>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <V55Field label="Durée (mois)" type="number" value={d.mandat_duree_mois != null ? d.mandat_duree_mois : 3} onChange={v => set('mandat_duree_mois', v)} suffix="mois"/>
-            <V55Field label="N° mandat" value={d.mandat_numero} onChange={v => set('mandat_numero', v)} placeholder="MV-2026-042"/>
-          </div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <V55Field label="Date signature" type="date_fr" value={d.mandat_date_signature} onChange={v => set('mandat_date_signature', v)}/>
-            <V55Field label="Date expiration"
-              type="date_fr"
-              value={d.mandat_date_expiration || dateExpAuto}
-              onChange={v => set('mandat_date_expiration', v)}
-              hint={dateExpAuto && !d.mandat_date_expiration ? 'Auto : ' + fmtDateFRV55(dateExpAuto) : ''}/>
-          </div>
         </V55Bloc>
 
         <V55Bloc title="Honoraires (commission)">
@@ -3365,6 +3478,37 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           <V55ReadOnly label="Commission calculée" value={fmtMoneyV55(commCalc, devise)} hint={commMode === 'Pourcentage' ? `${prix.toLocaleString('fr-FR')} × ${commTaux}%` : 'Forfait'}/>
         </V55Bloc>
 
+        {/* V62 — Frais notaire (info à charge acheteur) */}
+        <V55Bloc title="Frais de notaire (à la charge de l'acheteur)">
+          {(() => {
+            const taux = fraisNotaireDefault(paysBien, neufAncien) * 100;
+            const fraisAch = prix > 0 ? Math.round(prix * taux / 100) : 0;
+            return (
+              <V55ReadOnly label={'Estimation ' + (paysBien === 'FR' ? (neufAncien === 'neuf' ? 'FR neuf 3%' : 'FR ancien 7,5%') : 'MA 6%')} value={prix > 0 ? fmtMoneyV55(fraisAch, devise) : '—'} hint="Information : ces frais sont supportés par l'acheteur."/>
+            );
+          })()}
+        </V55Bloc>
+
+        {/* V62 — Détails plus bas */}
+        <V62SubTitle>Mandat</V62SubTitle>
+        <V55Bloc title="Mandat">
+          <V55Field label="Type" type="select" value={d.mandat_type} onChange={v => set('mandat_type', v)}
+            options={['Simple','Exclusif','Semi-exclusif','Co-exclusif']}/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55Field label="Durée (mois)" type="number" value={d.mandat_duree_mois != null ? d.mandat_duree_mois : 3} onChange={v => set('mandat_duree_mois', v)} suffix="mois"/>
+            <V55Field label="N° mandat" value={d.mandat_numero} onChange={v => set('mandat_numero', v)} placeholder="MV-2026-042"/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55Field label="Date signature" type="date_fr" value={d.mandat_date_signature} onChange={v => set('mandat_date_signature', v)}/>
+            <V55Field label="Date expiration"
+              type="date_fr"
+              value={d.mandat_date_expiration || dateExpAuto}
+              onChange={v => set('mandat_date_expiration', v)}
+              hint={dateExpAuto && !d.mandat_date_expiration ? 'Auto : ' + fmtDateFRV55(dateExpAuto) : ''}/>
+          </div>
+        </V55Bloc>
+
+        <V62SubTitle>Co-courtage / Apporteur</V62SubTitle>
         <V55Bloc title="Co-courtage / apporteur">
           <V55Field label="Co-courtage actif" type="toggle" value={coCourtage} onChange={v => set('co_courtage_actif', v)}/>
           {coCourtage && (
@@ -3378,6 +3522,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           )}
         </V55Bloc>
 
+        <V62SubTitle>Répartition interne</V62SubTitle>
         <V55Bloc title="Répartition interne">
           <V55Field label="Part agent" type="pct" value={d.part_agent_pct != null ? d.part_agent_pct : 50} onChange={v => set('part_agent_pct', v)} suffix="%" hint="% de la commission nette agence"/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
@@ -3391,16 +3536,26 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
   }
 
   // ─── LOCATAIRE ────────────────────────────────────────────────────────
+  // V62 — réordonné : Loyer / Honoraires location / Durée+emménagement / Garanties (en bas)
   if (activeProfil === 'Locataire') {
     return (
       <>
-        <V55Bloc title="Capacité locative">
+        <V55Bloc title="Loyer">
           <V55Field label="Loyer max charges comprises" type="number" value={d.loyer_max} onChange={v => set('loyer_max', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
+        </V55Bloc>
+
+        <V55Bloc title="Honoraires location (estimation)">
+          <V55Field label="Honoraires locataire estimés" type="number" value={d.honoraires_locataire_estimes} onChange={v => set('honoraires_locataire_estimes', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? 'Encadré ALUR France ~10-13€/m² selon zone tendue' : 'MA usage variable, souvent payés par bailleur'}/>
+          <V55Field label="Frais de dossier" type="number" value={d.frais_dossier} onChange={v => set('frais_dossier', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+        </V55Bloc>
+
+        <V55Bloc title="Durée & emménagement">
           <V55Field label="Durée souhaitée" type="select" value={d.duree_souhaitee} onChange={v => set('duree_souhaitee', v)}
             options={['Bail meublé 1 an','Bail nu 3 ans','Saisonnier','Indéterminé']}/>
           <V55Field label="Date emménagement souhaitée" type="date_fr" value={d.date_emmenagement_souhaitee} onChange={v => set('date_emmenagement_souhaitee', v)}/>
         </V55Bloc>
 
+        <V62SubTitle>Garanties</V62SubTitle>
         <V55Bloc title="Garanties">
           <V55Field label="Type de garantie" type="select" value={d.type_garantie} onChange={v => set('type_garantie', v)}
             options={['Caution physique','GLI (souscrite par bailleur)','Visale','Caution bancaire','Aucune']}/>
@@ -3409,11 +3564,6 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
             <V55Field label="Revenus mensuels totaux des garants" type="number" value={d.garants_revenus_mensuel_total} onChange={v => set('garants_revenus_mensuel_total', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
           )}
           <V55Field label="Capacité dépôt de garantie" type="number" value={d.depot_garantie_capacite} onChange={v => set('depot_garantie_capacite', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
-        </V55Bloc>
-
-        <V55Bloc title="Frais à sa charge (estimation)">
-          <V55Field label="Honoraires locataire estimés" type="number" value={d.honoraires_locataire_estimes} onChange={v => set('honoraires_locataire_estimes', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? 'Encadré ALUR France ~10-13€/m² selon zone tendue' : 'MA usage variable, souvent payés par bailleur'}/>
-          <V55Field label="Frais de dossier" type="number" value={d.frais_dossier} onChange={v => set('frais_dossier', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
         </V55Bloc>
       </>
     );
@@ -3456,6 +3606,8 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           )}
         </V55Bloc>
 
+        {/* V62 — Détails plus bas */}
+        <V62SubTitle>Mandat de gestion</V62SubTitle>
         <V55Bloc title="Mandat de gestion (optionnel)">
           <V55Field label="Mandat de gestion actif" type="toggle" value={gestionActif} onChange={v => set('mandat_gestion_actif', v)}/>
           {gestionActif && (
@@ -3469,6 +3621,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           )}
         </V55Bloc>
 
+        <V62SubTitle>Garantie loyers impayés (GLI)</V62SubTitle>
         <V55Bloc title="Garantie loyers impayés (GLI)">
           <V55Field label="GLI proposée" type="toggle" value={!!d.gli_proposee} onChange={v => set('gli_proposee', v)}/>
           {d.gli_proposee && (
@@ -3477,6 +3630,8 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         </V55Bloc>
 
         {isInvestisseur && (
+          <>
+          <V62SubTitle>Performance investissement</V62SubTitle>
           <V55Bloc title="Performance investissement">
             <V55Field label="Prix d'acquisition estimé" type="number" value={d.prix_acquisition_estime} onChange={v => set('prix_acquisition_estime', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
             {rendementBrutAuto != null && (
@@ -3493,6 +3648,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
                 : ['LMNP','LMP','SCI à l\'IR','SCI à l\'IS','Micro-foncier','Régime réel']}/>
             <V55Field label="Travaux à amortir" type="number" value={d.travaux_a_amortir} onChange={v => set('travaux_a_amortir', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
           </V55Bloc>
+          </>
         )}
       </>
     );
@@ -10595,8 +10751,27 @@ function FormView(props) {
     backToList();
   }
   // V18.7 — accordéon strict : ouvre i et ferme tous les autres.
+  // V61 — auto-scroll smooth au header de la section ouverte (uniquement à l'ouverture user).
   function toggleStage(i) {
-    setExpanded(prev => prev.map((v, idx) => idx === i ? !v : false));
+    setExpanded(prev => {
+      const wasOpen = !!prev[i];
+      const next = prev.map((v, idx) => idx === i ? !v : false);
+      if (!wasOpen) {
+        // double rAF pour laisser le content s'expand avant calcul scroll.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          const stages = document.querySelectorAll('[data-stage-anchor]');
+          const target = stages[i];
+          if (!target) return;
+          // toolbar offset : header sticky de FormView (1er sticky top:0 visible).
+          const toolbar = document.querySelector('[data-formview-header]');
+          const tbH = toolbar ? toolbar.getBoundingClientRect().height : 0;
+          const rect = target.getBoundingClientRect();
+          const targetY = rect.top + window.scrollY - tbH - 4;
+          window.scrollTo({top: Math.max(0, targetY), behavior: 'smooth'});
+        }));
+      }
+      return next;
+    });
   }
   function openOnly(i) {
     setExpanded(prev => prev.map((v, idx) => idx === i));
@@ -11002,7 +11177,7 @@ function FormView(props) {
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
-      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:8}}>
+      <div data-formview-header style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:8}}>
         <button onClick={backToListFlushed} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>←</button>
         {/* V29 — Titre Cormorant grand du header supprimé. Le nom apparaît désormais
             uniquement dans le bandeau compact Section I (Variante C). */}
