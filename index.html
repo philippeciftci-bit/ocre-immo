@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v45-extract -->
+<!-- ocre-v46-spinner-extract -->
 <meta charset="UTF-8">
+<!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -3974,6 +3978,37 @@ function CrossRefPanel({d, dossierId, onMatchesUpdate, showToast}) {
 // V23 — Loupe ambre footer : remplace le panel "Cette annonce ailleurs" milieu de dossier.
 // Pill PillIconButton ambre, click → CrossSearchConfirmModal avec ville détectée, confirm →
 // runSearch → CrossSearchResultsModal avec cards matches + prix médian + lien externe.
+// V46 — Overlay scan réutilisable (calqué sur l'overlay radar v42 de la recherche
+// internet). Utilisé pendant l'extraction de document, l'analyse URL, etc.
+function OcreScanOverlay({label = 'Recherche de correspondances…', sublabel}) {
+  return (
+    <div style={{
+      position:'fixed', inset:0, background:'rgba(245, 236, 217, 0.85)',
+      backdropFilter:'blur(2px)', WebkitBackdropFilter:'blur(2px)',
+      zIndex:9998, display:'flex', flexDirection:'column',
+      alignItems:'center', justifyContent:'center',
+      opacity:1, transition:'opacity 250ms ease', pointerEvents:'auto'
+    }}>
+      <div style={{position:'relative', width:72, height:72}}>
+        <div style={{position:'absolute', inset:0, border:'2px solid rgba(139, 94, 60, 0.25)', borderTopColor:'#8B5E3C', borderRadius:'50%', animation:'ocreSpin 1.2s linear infinite'}}/>
+        <div style={{position:'absolute', inset:8, border:'1.5px solid rgba(139, 94, 60, 0.15)', borderRightColor:'#8B5E3C', borderRadius:'50%', animation:'ocreSpin 1.6s linear infinite reverse'}}/>
+        <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#8B5E3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{padding:16, display:'block', boxSizing:'border-box'}}>
+          <circle cx="11" cy="11" r="7"/>
+          <line x1="16" y1="16" x2="21" y2="21"/>
+        </svg>
+      </div>
+      <div style={{marginTop:14, fontSize:13, fontWeight:600, color:'#8B5E3C', letterSpacing:.3, fontFamily:'inherit', textAlign:'center', padding:'0 24px'}}>
+        {label}
+      </div>
+      {sublabel && (
+        <div style={{marginTop:6, fontSize:11, fontWeight:500, color:'#A89580', letterSpacing:.2, fontFamily:'inherit', textAlign:'center', padding:'0 32px', maxWidth:320}}>
+          {sublabel}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CrossSearchFooter({d, dossierId, onMatchesUpdate, showToast}) {
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [resultsOpen, setResultsOpen] = React.useState(false);
@@ -5283,6 +5318,8 @@ function ImportImageView({onBack, onCreated, showToast, toast, fileAlreadySelect
   async function doExtract() {
     if (!file) return;
     setExtracting(true);
+    // V46 — délai minimum 500ms pour eviter le flash de l'overlay si la reponse arrive vite.
+    const startedAt = Date.now();
     try {
       const uploadFile = await downscaleIfNeeded(file);
       const fd = new FormData();
@@ -5293,6 +5330,8 @@ function ImportImageView({onBack, onCreated, showToast, toast, fileAlreadySelect
         body: fd,
       });
       const d = await r.json();
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < 500) await new Promise(res => setTimeout(res, 500 - elapsed));
       if (d && d.ok) {
         setResult(d.extracted || {});
         setImagePath(d.image_path || null);
@@ -5423,6 +5462,12 @@ function ImportImageView({onBack, onCreated, showToast, toast, fileAlreadySelect
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
+      {/* V46 — overlay scan loupe-style pendant l'extraction document. */}
+      {extracting && (
+        <OcreScanOverlay
+          label="Analyse de votre document en cours…"
+          sublabel="Lecture du contenu, extraction des informations utiles. Environ 5 à 10 secondes."/>
+      )}
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>📸 Importer un document</div>
@@ -8303,6 +8348,8 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
     if (!u) { showToast && showToast('Aucune URL détectée'); return; }
     setLoading(true);
     setResult(null);
+    // V46 — délai minimum 500ms pour eviter le flash de l'overlay.
+    const startedAt = Date.now();
     const token = localStorage.getItem('ocre_token') || '';
     try {
       const r = await fetch(API + '/import_url.php?action=extract', {
@@ -8310,6 +8357,8 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
         body: JSON.stringify({url: u}),
       });
       const d = await r.json();
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < 500) await new Promise(res => setTimeout(res, 500 - elapsed));
       if (d && d.ok) setResult(d.extracted);
       else showToast && showToast((d && d.error) || 'Échec extraction');
     } catch (e) { showToast && showToast('Erreur réseau'); }
@@ -8468,6 +8517,12 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
+      {/* V46 — overlay scan loupe-style pendant l'analyse URL. */}
+      {loading && (
+        <OcreScanOverlay
+          label="Analyse de votre lien en cours…"
+          sublabel="Lecture de l'annonce, extraction des informations utiles. Environ 5 à 10 secondes."/>
+      )}
       <div style={{background:'#fff', borderBottom:'1.5px solid #A67F5A', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208', display:'flex', alignItems:'center', justifyContent:'center', gap:6}}>

@@ -172,7 +172,29 @@ function claudeExtractFromImage(string $base64, string $mime, string $apiKey): ?
          . "- Champs LEGACY : remplir aussi (titre, prix, devise, ville_bien, etc.) car le front v44 les attend.\n"
          . "- description_libre + description_complete : copier verbatim TOUT le bloc descriptif lisible.\n"
          . "- raw_text_visible : reproduire ligne par ligne TOUT le texte OCR de l'image, brut.\n"
-         . "- source_type : si bulles SMS/iOS→'sms' ; WhatsApp (vert/coche)→'whatsapp' ; Marketplace/Facebook→'screenshot_web' (et source.type='facebook_marketplace') ; URL navigateur visible→'screenshot_web' ; papier→'photo_annonce_papier' ; panneau→'photo_panneau' ; sinon 'capture_autre'.";
+         . "- source_type : si bulles SMS/iOS→'sms' ; WhatsApp (vert/coche)→'whatsapp' ; Marketplace/Facebook→'screenshot_web' (et source.type='facebook_marketplace') ; URL navigateur visible→'screenshot_web' ; papier→'photo_annonce_papier' ; panneau→'photo_panneau' ; sinon 'capture_autre'.\n\n"
+         . "EXEMPLE OBLIGATOIRE — pour cette annonce :\n"
+         . '"RIAD MEUBLÉ À LOUER – MÉDINA DE MARRAKECH. 3 chambres confortables, salon lumineux, salles de bains, hammam traditionnel, climatisation. Situé à quelques minutes de Jemaa el-Fna. Loyer 60 000 DH/mois, 1 mois de caution + 1 mois de loyer. Loyer négociable. Disponible immédiatement."' . "\n\n"
+         . "Tu DOIS retourner :\n"
+         . "{\n"
+         . '  "transaction": {"type": "location_longue", "periode": "mois", "negociable": true},' . "\n"
+         . '  "bien_meta": {"type": "riad", "etat": "meuble", "chambres": 3, "salons": 1, "salles_de_bains": 1, "equipements": ["hammam", "climatisation", "salon_lumineux", "meuble"]},' . "\n"
+         . '  "localisation": {"ville": "Marrakech", "quartier": "Médina", "reperes": ["proche Jemaa el-Fna"], "pays": "Maroc"},' . "\n"
+         . '  "prix_meta": {"montant": 60000, "devise": "MAD", "periode": "mois", "negociable": true},' . "\n"
+         . '  "conditions": {"caution_mois": 1, "avance_mois": 1, "disponibilite": "immediate"},' . "\n"
+         . '  "contact": {"type": "particulier"},' . "\n"
+         . '  "description_libre": "RIAD MEUBLÉ À LOUER – MÉDINA DE MARRAKECH. 3 chambres confortables, salon lumineux, salles de bains, hammam traditionnel, climatisation. Situé à quelques minutes de Jemaa el-Fna. Loyer 60 000 DH/mois, 1 mois de caution + 1 mois de loyer. Loyer négociable. Disponible immédiatement.",' . "\n"
+         . '  "raw_text_visible": "RIAD MEUBLÉ À LOUER\\nMÉDINA DE MARRAKECH\\n3 chambres confortables\\nSalon lumineux\\nSalles de bains\\nHammam traditionnel\\nClimatisation\\nLoyer 60 000 DH / mois\\n1 mois caution + 1 mois loyer\\nLoyer négociable\\nDisponible immédiatement",' . "\n"
+         . '  "confidence": "high",' . "\n"
+         . '  "source": {"type": "facebook_marketplace"},' . "\n"
+         . '  "titre": "RIAD MEUBLÉ À LOUER – MÉDINA DE MARRAKECH",' . "\n"
+         . '  "prix": 60000, "devise": "MAD",' . "\n"
+         . '  "nombre_chambres": 3, "nombre_sdb": 1, "nombre_pieces": 4,' . "\n"
+         . '  "ville_bien": "Marrakech", "quartier_bien": "Médina", "pays_bien": "MA",' . "\n"
+         . '  "types_bien": ["Riad"], "annonceur_type": "particulier",' . "\n"
+         . '  "source_type": "screenshot_web"' . "\n"
+         . "}\n\n"
+         . "Suis ce niveau d'exhaustivité POUR CHAQUE image. Aucun champ visible n'est ignoré.";
 
     $payload = [
         'model' => CLAUDE_MODEL,
@@ -208,7 +230,22 @@ function claudeExtractFromImage(string $base64, string $mime, string $apiKey): ?
     foreach ($j['content'] as $c) if (($c['type'] ?? '') === 'text') $text .= $c['text'];
     if (preg_match('/\{[\s\S]*\}/', $text, $m)) {
         $parsed = json_decode($m[0], true);
-        if (is_array($parsed)) { $parsed['_raw_model'] = CLAUDE_MODEL; return $parsed; }
+        if (is_array($parsed)) {
+            $parsed['_raw_model'] = CLAUDE_MODEL;
+            // V46 — log de diagnostic non-bloquant (compte les champs non-null pour preuves).
+            $count_nonnull = 0;
+            $walker = function ($x) use (&$walker, &$count_nonnull) {
+                if (is_array($x)) { foreach ($x as $v) $walker($v); }
+                elseif ($x !== null && $x !== '') $count_nonnull++;
+            };
+            $walker($parsed);
+            $eq = is_array($parsed['bien_meta']['equipements'] ?? null) ? count($parsed['bien_meta']['equipements']) : 0;
+            $rp = is_array($parsed['localisation']['reperes'] ?? null) ? count($parsed['localisation']['reperes']) : 0;
+            $tx = $parsed['transaction']['type'] ?? 'null';
+            $pp = $parsed['prix_meta']['periode'] ?? 'null';
+            error_log("[v46-extract] non-null=$count_nonnull eq=$eq rep=$rp tx=$tx period=$pp model=" . CLAUDE_MODEL);
+            return $parsed;
+        }
     }
     return null;
 }
