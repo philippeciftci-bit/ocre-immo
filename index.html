@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v49-nav -->
+<!-- ocre-v50-protection -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -8455,6 +8455,9 @@ function SheetView({onBack, clients, openClient, showToast}) {
   const [filter, setFilter] = React.useState('all');
   const [density, setDensity] = React.useState(() => localStorage.getItem('ocre.sheet.density') || 'normal');
   const [photosFor, setPhotosFor] = React.useState(null);
+  // V50 — modal teaser première utilisation Sheet.
+  const [teaserOpen, setTeaserOpen] = React.useState(() => !localStorage.getItem('ocre.sheet.first_seen'));
+  function dismissTeaser() { localStorage.setItem('ocre.sheet.first_seen', '1'); setTeaserOpen(false); }
   React.useEffect(() => { localStorage.setItem('ocre.sheet.density', density); }, [density]);
   const dens = SHEET_DENSITIES[density] || SHEET_DENSITIES.normal;
   const filtered = (clients || []).filter(c => {
@@ -8796,6 +8799,32 @@ function SheetView({onBack, clients, openClient, showToast}) {
         </table>
       </div>
       {photosFor && <SheetPhotosModal client={photosFor} onClose={() => setPhotosFor(null)}/>}
+      {/* V50 — modal teaser première utilisation Sheet (protection données / Google Drive phase 2). */}
+      {teaserOpen && (
+        <div onClick={dismissTeaser} style={{position:'fixed', inset:0, background:'rgba(20,12,4,0.55)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+          <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:16, padding:22, maxWidth:400, width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,.4)', textAlign:'center'}}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8B5E3C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom:6}}>
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/>
+              <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <h2 style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', margin:'6px 0 10px'}}>Sauvegarde de ton tableau</h2>
+            <p style={{fontSize:13, color:'#2A2018', lineHeight:1.55, margin:'0 0 10px'}}>
+              Bientôt tu pourras connecter ton <b>Google Drive</b> pour sauvegarder ton tableau <code style={{background:'#FBF1E4', padding:'1px 6px', borderRadius:4, fontSize:12}}>&lt;prénom&gt;.ocre.immo</code> automatiquement chaque semaine.
+            </p>
+            <p style={{fontSize:13, color:'#2A2018', lineHeight:1.55, margin:'0 0 10px'}}>
+              Pour <b>iCloud</b> : tu pourras télécharger un fichier <code style={{background:'#FBF1E4', padding:'1px 6px', borderRadius:4, fontSize:12}}>.xlsx</code> et le sauvegarder dans Files.
+            </p>
+            <p style={{fontSize:12, color:'#5C3B1E', fontStyle:'italic', margin:'0 0 14px'}}>
+              En attendant, tes données sont protégées par 3 niveaux de sauvegarde automatique sur nos serveurs.
+            </p>
+            <button onClick={dismissTeaser}
+              style={{padding:'10px 22px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+              Plus tard
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

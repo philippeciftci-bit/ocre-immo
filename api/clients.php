@@ -1,7 +1,10 @@
 <?php
 require_once __DIR__ . '/db.php';
 @require_once __DIR__ . '/_image_hmac.php';
+require_once __DIR__ . '/_audit.php';
 setCorsHeaders();
+// V50 — migration idempotente audit + soft-delete au moindre hit.
+auditEnsureSchema();
 
 $user = requireAuth();
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
@@ -119,16 +122,17 @@ switch ($action) {
         // V18.17 — filtre is_staged (0 = liste principale, défaut / 1 = téléchargements).
         ensureSyncSchema();
         $staged = isset($_GET['staged']) ? (int)$_GET['staged'] : 0;
+        // V50 — soft-delete filter : masquer les deleted_at NOT NULL.
         $stmt = db()->prepare(
             "SELECT id, data, is_draft, archived, projet, is_investisseur, is_staged, promoted_at, updated_at
-             FROM clients WHERE user_id = ? AND is_staged = ? ORDER BY updated_at DESC"
+             FROM clients WHERE user_id = ? AND is_staged = ? AND deleted_at IS NULL ORDER BY updated_at DESC"
         );
         $stmt->execute([$user['id'], $staged ? 1 : 0]);
         $rows = $stmt->fetchAll();
         // V18.17 — count staged séparé pour badge header 📥 N.
         $stagedCount = 0;
         try {
-            $c = db()->prepare("SELECT COUNT(*) n FROM clients WHERE user_id = ? AND is_staged = 1");
+            $c = db()->prepare("SELECT COUNT(*) n FROM clients WHERE user_id = ? AND is_staged = 1 AND deleted_at IS NULL");
             $c->execute([$user['id']]);
             $stagedCount = (int)($c->fetch()['n'] ?? 0);
         } catch (Exception $e) {}
@@ -280,12 +284,14 @@ switch ($action) {
         $received_payments_json = $received_payments === null ? null : json_encode($received_payments, JSON_UNESCAPED_UNICODE);
 
         $wasStaged = false;
+        $audit_before = null;
         if ($id > 0) {
-            $chk = db()->prepare("SELECT id, is_staged FROM clients WHERE id = ? AND user_id = ?");
-            $chk->execute([$id, $user['id']]);
-            $existing = $chk->fetch();
-            if (!$existing) jsonError('Accès refusé', 403);
-            $wasStaged = (int)($existing['is_staged'] ?? 0) === 1;
+            // V50 — capture before-state pour audit_log UPDATE.
+            $beforeStmt = db()->prepare("SELECT * FROM clients WHERE id = ? AND user_id = ?");
+            $beforeStmt->execute([$id, $user['id']]);
+            $audit_before = $beforeStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$audit_before) jsonError('Accès refusé', 403);
+            $wasStaged = (int)($audit_before['is_staged'] ?? 0) === 1;
             $stmt = db()->prepare(
                 "UPDATE clients SET data = ?, projet = ?, is_investisseur = ?, archived = ?,
                    is_draft = ?, prenom = ?, nom = ?, societe_nom = ?, tel = ?, email = ?,
@@ -315,6 +321,14 @@ switch ($action) {
         $c['is_draft'] = (bool)$is_draft;
         $c['archived'] = (bool)$archived;
         $c['is_staged'] = $wasStaged;
+        // V50 — audit INSERT/UPDATE avec before/after (JSON data + champs plats).
+        $audit_after = [
+            'id' => $id, 'projet' => $projet, 'is_draft' => $is_draft, 'archived' => $archived,
+            'is_staged' => $wasStaged ? 1 : 0, 'prenom' => $prenom, 'nom' => $nom,
+            'societe_nom' => $societe_nom, 'tel' => $tel, 'email' => $email,
+            'payment_plan' => $payment_plan, 'received_payments' => $received_payments,
+        ];
+        audit_log((int)$user['id'], 'clients', $id, $audit_before ? 'UPDATE' : 'INSERT', $audit_before, $audit_after);
         // V17.5 Phase 2c : enqueue sync Google Sheet si user sync_enabled. V18.17 : skip si staged.
         if (!$wasStaged) enqueueSync((int)$user['id'], $id, 'upsert');
         jsonOk(['client' => $c]);
@@ -337,13 +351,26 @@ switch ($action) {
     }
 
     case 'delete': {
+        // V50 — soft delete (zéro destruction directe). Rétention 90j via cron, puis purge
+        // physique avec dump JSON /root/backups. Restaurable via restore.php.
         $id = (int)($input['id'] ?? 0);
         if (!$id) jsonError('id requis');
-        $stmt = db()->prepare("DELETE FROM clients WHERE id = ? AND user_id = ?");
-        $stmt->execute([$id, $user['id']]);
-        logAction((int)$user['id'], 'client_delete', "id=$id");
+        $ok = soft_delete('clients', $id, (int)$user['id'], (int)$user['id']);
+        if (!$ok) jsonError('Introuvable ou déjà supprimé', 404);
+        logAction((int)$user['id'], 'client_soft_delete', "id=$id");
         enqueueSync((int)$user['id'], $id, 'delete');
-        jsonOk(['deleted' => $id]);
+        jsonOk(['deleted' => $id, 'soft' => true]);
+    }
+
+    case 'restore': {
+        // V50 — restauration soft-delete.
+        $id = (int)($input['id'] ?? ($_GET['id'] ?? 0));
+        if (!$id) jsonError('id requis');
+        $ok = soft_restore('clients', $id, (int)$user['id'], (int)$user['id']);
+        if (!$ok) jsonError('Introuvable ou pas supprimé', 404);
+        logAction((int)$user['id'], 'client_restore', "id=$id");
+        enqueueSync((int)$user['id'], $id, 'upsert');
+        jsonOk(['restored' => $id]);
     }
 
     case 'sync_prefs_get': {
