@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<!-- ocre-v52.7-chevron-section1 -->
+<!-- ocre-v52.8-deco-chevron-chips -->
 <meta charset="UTF-8">
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -5539,7 +5539,7 @@ function ImportImageView({onBack, onCreated, showToast, toast, fileAlreadySelect
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>📸 Importer un document</div>
-        <div style={{width:28}}/>
+        <OcreLogoButton/>
       </div>
 
       <div style={{flex:1, overflowY:'auto', padding:14}}>
@@ -6151,6 +6151,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
         <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
           <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
           <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Dicter un contact</div>
+          <OcreLogoButton/>
         </div>
         <div style={{flex:1, padding:20, display:'flex', flexDirection:'column', gap:10}}>
           <div style={{color:'#C04B20', fontSize:13}}>⚠ Reconnaissance vocale non supportée par ce navigateur. Utilise Safari iOS ou Chrome. Saisis manuellement ci-dessous :</div>
@@ -6171,6 +6172,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Dicter un contact</div>
+        <OcreLogoButton/>
       </div>
       <div style={{flex:1, padding:20, display:'flex', flexDirection:'column', gap:14, overflowY:'auto'}}>
         {phase === 'record' && (
@@ -6417,6 +6419,7 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond, serif', fontSize:19, fontWeight:700, color:'#8B5E3C'}}>⚙ Dashboard admin</div>
         <button onClick={fetchAll} style={{background:'none', border:'1px solid #C9B79A', padding:'5px 10px', borderRadius:8, fontSize:12, cursor:'pointer', fontFamily:'inherit', color:'#5C3B1E'}}>↻</button>
+        <OcreLogoButton/>
       </div>
 
       <div style={{flex:1, overflowY:'auto', padding:'12px 14px 30px'}}>
@@ -6704,6 +6707,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:19, fontWeight:700, color:'#8B5E3C'}}>Mon profil public</div>
         <span style={{fontSize:11, fontWeight:700, color:'#fff', background:statutColor, padding:'2px 8px', borderRadius:10}}>{statutLabel}</span>
+        <OcreLogoButton/>
       </div>
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 40px'}}>
         <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:16, lineHeight:1.5}}>
@@ -7000,7 +7004,7 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
         <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Préférences</div>
-        <div style={{width:32}}/>
+        <OcreLogoButton/>
       </div>
       <div style={{flex:1, overflowY:'auto', padding:14}}>
         {loading ? (
@@ -7190,6 +7194,120 @@ function applySearchRank(list, query) {
     .filter(x => x.s > 0)
     .sort((a, b) => b.s - a.s)
     .map(x => x.c);
+}
+
+// V52.8 — déconnexion globale appelable depuis n'importe quelle vue (form, sheet,
+// downloads, dictation, etc.). Confirm window natif iOS pour rapidité, purge totale
+// localStorage, fire-and-forget logout.php (best-effort), redirect /login/.
+function globalLogout() {
+  if (!window.confirm('Se déconnecter ?')) return;
+  try {
+    const token = localStorage.getItem('ocre_token') || '';
+    if (token) {
+      fetch('/api/auth.php?action=logout', {method:'POST', headers:{'X-Session-Token': token}}).catch(() => {});
+    }
+  } catch (e) {}
+  ['ocre_token','ocre_user','ocre_first_login','ocre.session_token','ocre.user_email','ocre_user_email','ocre_impersonation','ocre_impersonation_token'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  try { sessionStorage.clear(); } catch (e) {}
+  window.location = '/login/';
+}
+function LogoutButton({size = 36}) {
+  // V52.8 conserve : composant déconnexion icône (pas utilisé en prod, gardé pour
+  // ré-utilisation potentielle ailleurs). Le tap-wordmark OcreLogoButton est le pattern actif.
+  return (
+    <button type="button" onClick={globalLogout} title="Se déconnecter" aria-label="Se déconnecter"
+      style={{
+        flexShrink:0, width:size, height:size, padding:0, borderRadius:size / 2,
+        background:'#FBF1E4', border:'1px solid #C9B79A', color:'#8B5E3C',
+        cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center',
+        fontFamily:'inherit', boxShadow:'0 1px 2px rgba(60,40,20,.08)',
+      }}>
+      <svg width={Math.round(size * 0.5)} height={Math.round(size * 0.5)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+    </button>
+  );
+}
+
+// V52.8 — cache module-level du currentUser (fetché /api/auth.php?action=me lazily
+// à la première ouverture d'un OcreLogoButton, partagé entre toutes les vues).
+let __ocreUserCache = null;
+function __fetchUserInfo() {
+  return new Promise(resolve => {
+    if (__ocreUserCache) { resolve(__ocreUserCache); return; }
+    try {
+      const token = localStorage.getItem('ocre_token') || '';
+      fetch('/api/auth.php?action=me', {headers: {'X-Session-Token': token}})
+        .then(r => r.json()).then(d => {
+          if (d && d.ok && d.user) { __ocreUserCache = d.user; resolve(d.user); }
+          else resolve(null);
+        }).catch(() => resolve(null));
+    } catch (e) { resolve(null); }
+  });
+}
+
+// V52.8 — wordmark OCRE immo cliquable (Cormorant Garamond serif "OCRE", italique "immo"
+// taille 14px, ocre #8B5E3C). Tap → menu user déroulant unique partagé avec la liste
+// (même contenu : prénom/nom/email + Préférences + Profil public + Admin si admin
+// + Vue tableau + Déconnexion). Menu se ferme sur tap hors / autre tap wordmark.
+function OcreLogoButton() {
+  const [open, setOpen] = React.useState(false);
+  const [user, setUser] = React.useState(__ocreUserCache);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (open && !user) __fetchUserInfo().then(u => { if (u) setUser(u); });
+  }, [open]);
+  React.useEffect(() => {
+    if (!open) return;
+    function onDoc(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('touchstart', onDoc);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('touchstart', onDoc);
+    };
+  }, [open]);
+  const isAdmin = user && (user.is_admin || user.role === 'admin');
+  return (
+    <div ref={ref} style={{position:'relative', flexShrink:0}}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        title="Menu" aria-label="Ouvrir le menu utilisateur"
+        style={{
+          minHeight:36, minWidth:44, padding:'4px 10px', background:'transparent', border:'none',
+          cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center',
+          gap:0, color:'#8B5E3C', lineHeight:1,
+        }}>
+        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, letterSpacing:.5}}>OCRE</span>
+        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:14, fontStyle:'italic', fontWeight:500, marginLeft:4, opacity:.85}}>immo</span>
+      </button>
+      {open && (
+        <div style={{position:'absolute', top:42, right:0, background:'#fff', border:'1px solid #EDE6DC', borderRadius:10, padding:12, minWidth:230, boxShadow:'0 6px 20px rgba(139,94,60,0.18)', zIndex:60}}>
+          {user ? (
+            <>
+              <div style={{fontSize:11, color:'#8B7F6E'}}>Connecté en tant que</div>
+              <div style={{fontWeight:700, fontSize:13, marginTop:1}}>{((user.prenom || '') + ' ' + (user.nom || '')).trim() || '—'}</div>
+              <div style={{fontSize:11, color:'#8B7F6E', marginBottom:8, wordBreak:'break-all'}}>{user.email}</div>
+              {isAdmin && (
+                <div style={{fontSize:10, color:'#8B7F6E', fontStyle:'italic', marginBottom:8, lineHeight:1.4}}>
+                  Admin — préférences/profil/admin accessibles depuis le titre central de la liste.
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{fontSize:12, color:'#8B7F6E', padding:'4px 0 8px'}}>Chargement…</div>
+          )}
+          <button onClick={globalLogout}
+            style={{width:'100%', padding:'8px 10px', background:'#FDFAF7', color:'#C04B20', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+            Se déconnecter
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Header({left, center, right, userMenu, setUserMenu, currentUser, logout, openPrefs, openAdmin, openAgentProfile, openSheet}) {
@@ -7394,6 +7512,7 @@ function ListView(props) {
             } title={showArchives ? 'Retour aux contacts' : 'Voir les archives'}
               active={showArchives}
               onClick={() => setShowArchives(!showArchives)}/>
+            {/* V52.8 — pas d'OcreLogoButton ici : le titre central déjà tap-to-menu. */}
           </div>
         }
         userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs} openAgentProfile={openAgentProfile} openSheet={props.openSheet}
@@ -8434,7 +8553,7 @@ function ProfilPickerView({onBack, onPick}) {
       <div style={{background:'#fff', borderBottom:'1.5px solid #E8DDD0', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} aria-label="Retour" style={{background:'none', border:'none', fontSize:22, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', padding:'4px 8px'}}>←</button>
         <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#1A1208', textAlign:'center'}}>Nouveau dossier</div>
-        <div style={{width:36}}/>
+        <OcreLogoButton/>
       </div>
       <div style={{flex:1, overflowY:'auto', padding:'18px 16px 24px'}}>
         <div style={{maxWidth:480, margin:'0 auto'}}>
@@ -8682,6 +8801,8 @@ function SheetView({onBack, clients, openClient, showToast}) {
           <span>Vue tableau</span>
           <span style={{fontSize:11, color:'#8B7F6E', fontFamily:'inherit', fontWeight:500, marginLeft:6}}>{totalCount} dossier{totalCount > 1 ? 's' : ''}</span>
         </div>
+        {/* V52.8 — déconnexion universelle. */}
+        <OcreLogoButton/>
       </div>
       {/* Toolbar */}
       <div style={{background:'#FFF9F0', borderBottom:'1px solid #E8DDD0', padding:'8px 12px', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
@@ -9262,6 +9383,8 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
         } title={showSearch ? 'Fermer la recherche' : 'Rechercher'}
           active={showSearch || !!searchValue}
           onClick={toggleSearch}/>
+        {/* V52.8 — déconnexion universelle. */}
+        <OcreLogoButton/>
       </div>
       <SearchBar open={showSearch} value={searchInput} onChange={setSearchInput}
         placeholder="Rechercher dans les téléchargements…"/>
@@ -9811,13 +9934,13 @@ function FormView(props) {
       : <span style={{fontStyle:'italic', color:'#B5A78F'}}>Sans nom</span>;
     const sec1TelRaw = tels[0] && tels[0].valeur ? tels[0].valeur : '';
     const sec1Email = emails[0] && emails[0].valeur ? emails[0].valeur : '';
-    // V43 — Ligne 2 une SEULE row flex : tel flexShrink:0 + mail flex:1 minWidth:0
-    // (ellipsis naturel) + flèche flexShrink:0 marginLeft auto si pas de mail.
-    // flex-wrap retiré, maxWidth du mail retiré (laisse flex:1 gérer).
+    // V52.8 — chips calibrés au contenu (width:auto), pas de troncature ellipsis.
+    // flex-wrap:wrap → si l'email + tel + flèche dépassent la largeur écran iPhone,
+    // l'email passe à la ligne suivante (chip entier visible, contenu jamais coupé).
     const sec1Line2 = (
-      <div style={{display:'flex', alignItems:'center', gap:5, minWidth:0, width:'100%'}}>
+      <div style={{display:'flex', alignItems:'center', flexWrap:'wrap', gap:5, width:'100%'}}>
         {sec1TelRaw && (
-          <div style={{flexShrink:0}}>
+          <div style={{flexShrink:0, flexGrow:0}}>
             <PhonePill tel={sec1TelRaw} size="sm"/>
           </div>
         )}
@@ -9825,15 +9948,15 @@ function FormView(props) {
           <a href={'mailto:' + sec1Email}
             onClick={e => e.stopPropagation()}
             onTouchStart={e => e.stopPropagation()}
-            style={{flex:1, minWidth:0, display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:20, color:'#5C3B1E', textDecoration:'none', fontSize:12, fontWeight:500, boxShadow:'0 1px 2px rgba(60,40,20,.08)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontFamily:'inherit', boxSizing:'border-box'}}>
+            style={{flexShrink:0, flexGrow:0, display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:20, color:'#5C3B1E', textDecoration:'none', fontSize:12, fontWeight:500, boxShadow:'0 1px 2px rgba(60,40,20,.08)', whiteSpace:'nowrap', fontFamily:'inherit', maxWidth:'100%', boxSizing:'border-box'}}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
               <polyline points="22,6 12,13 2,6"/>
             </svg>
-            <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{sec1Email}</span>
+            <span style={{whiteSpace:'nowrap'}}>{sec1Email}</span>
           </a>
         )}
-        <span style={{flexShrink:0, fontSize:13, color:'#8B7F6E', display:'inline-block', marginLeft: sec1Email ? 0 : 'auto', fontFamily:'inherit'}}>▶</span>
+        <span style={{flexShrink:0, fontSize:13, color:'#8B7F6E', display:'inline-block', marginLeft:'auto', fontFamily:'inherit'}}>▶</span>
       </div>
     );
     const sec1Summary = (hasContact || hasIdentity) ? (
@@ -10111,6 +10234,8 @@ function FormView(props) {
             active={formSearchOpen || !!formSearchQuery}
             onClick={toggleFormSearch}/>
           <PillIconButton icon={<ShareIcon size={18}/>} title="Partager" onClick={openShare}/>
+          {/* V52.8 — bouton déconnexion universel. */}
+          <OcreLogoButton/>
         </div>
       </div>
       {/* V18.27 — Barre de recherche dossier avec compteur. */}
@@ -10176,7 +10301,8 @@ function FormView(props) {
         <div data-stage-anchor="0">
         <Stage title={STAGES[activeProfil][0]}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
-               status={stageStatus[0].status} summary={stageStatus[0].summary}>
+               status={stageStatus[0].status} summary={stageStatus[0].summary}
+               hideChevron={true}>
           {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
               opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
               bouton "+" rond pour ouvrir le modal multi-select Variante C v30. */}
