@@ -7679,7 +7679,11 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
 // "immo". Pas de box-shadow qui assombrirait le ciel blanc.
 function OcreLogo({size = 36}) {
   return (
-    <div data-ocre-logo="1" style={{
+    <div data-ocre-logo="1"
+         role="button"
+         aria-label="Ouvrir le sélecteur d'espaces"
+         tabIndex={0}
+         style={{
       width: size, height: size, borderRadius: 8,
       border: '2px solid #8B5E3C',
       background: 'linear-gradient(to bottom, #FFFFFF 0%, #F5E8D1 40%, #8B5E3C 100%)',
@@ -7834,12 +7838,12 @@ function __fetchUserInfo() {
 // (même contenu : prénom/nom/email + Préférences + Profil public + Admin si admin
 // + Vue tableau + Déconnexion). Menu se ferme sur tap hors / autre tap wordmark.
 function OcreLogoButton() {
-  // V20 — wordmark "OCRE immo" centré (style page login). Tap = V20Switcher (data-ocre-logo).
-  // Plus de menu local : déconnexion via V20Switcher.
+  // V20 — wordmark "OCRE immo" décoratif (non interactif). V20Switcher déclenché par
+  // tap sur l'icône logo "Oi" (OcreLogo) en haut à gauche.
   return (
-    <div data-ocre-logo="1" style={{
+    <div style={{
       flex:1, display:'flex', alignItems:'baseline', justifyContent:'center',
-      gap:3, cursor:'pointer', userSelect:'none', minHeight:36,
+      gap:3, userSelect:'none', minHeight:36,
     }}>
       <span style={{fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:22, letterSpacing:1.5, color:'#8B5E3C', lineHeight:1}}>OCRE</span>
       <span style={{fontFamily:'Caveat,cursive', fontWeight:400, fontSize:24, color:'#2A1810', marginLeft:2, lineHeight:1}}>immo</span>
@@ -7847,38 +7851,17 @@ function OcreLogoButton() {
   );
 }
 
-function Header({left, center, right, userMenu, setUserMenu, currentUser, logout, openPrefs, openAdmin, openAgentProfile, openSheet}) {
-  // V18.9 — compact iPhone : padding 6px 12px (vs 10px 14px), hauteur ~44px.
-  // V18.20 — padding horizontal 16px pour respirer le logo et les icônes du bord.
+function Header({left, center, right}) {
+  // V20 — wordmark central décoratif (non-interactif). V20Switcher déclenché uniquement
+  // par tap sur l'icône logo "Oi" (OcreLogo) avec data-ocre-logo="1" via délégation
+  // document-level dans v20-bridge.js. L'ancien userMenu (Préférences sync / Mon profil
+  // public / Vue tableau / Déconnexion) est supprimé pour MVP v20.
   return (
     <div style={{background:'#fff', borderBottom:'1px solid var(--border-subtle)', padding:'6px 16px', position:'sticky', top:0, zIndex:10}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, position:'relative'}}>
         <div style={{flexShrink:0}}>{left}</div>
-        <div onClick={() => setUserMenu && setUserMenu(!userMenu)} style={{cursor:'pointer', textAlign:'center', flex:1, minWidth:0}}>{center}</div>
+        <div style={{textAlign:'center', flex:1, minWidth:0}}>{center}</div>
         <div style={{flexShrink:0}}>{right}</div>
-        {userMenu && currentUser && (
-          <div style={{position:'absolute', top:32, left:'50%', transform:'translateX(-50%)', background:'#fff', border:'1px solid #EDE6DC', borderRadius:10, padding:12, minWidth:210, boxShadow:'0 6px 20px rgba(139,94,60,0.12)', zIndex:20}}>
-            <div style={{fontSize:11, color:'#8B7F6E'}}>Connecté en tant que</div>
-            <div style={{fontWeight:700, fontSize:13}}>{(currentUser.prenom || '') + ' ' + (currentUser.nom || '')}</div>
-            <div style={{fontSize:11, color:'#8B7F6E', marginBottom:8}}>{currentUser.email}</div>
-            {(currentUser.is_admin || currentUser.role === 'admin') && openAdmin && (
-              <button onClick={() => { setUserMenu(false); openAdmin(); }}
-                style={{display:'block', width:'100%', background:'#FFF3EC', color:'#8B5E3C', padding:'7px 10px', borderRadius:7, fontWeight:700, fontSize:12, textAlign:'center', border:'none', cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>
-                ⚙ Dashboard Admin
-              </button>
-            )}
-            {openPrefs && (
-              <button onClick={openPrefs} style={{width:'100%', padding:'7px 10px', background:'#FFF3EC', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>⚙ Préférences sync</button>
-            )}
-            {openAgentProfile && (
-              <button onClick={openAgentProfile} style={{width:'100%', padding:'7px 10px', background:'#FFF3EC', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>🪪 Mon profil public</button>
-            )}
-            {openSheet && (
-              <button onClick={openSheet} style={{width:'100%', padding:'7px 10px', background:'#FFF3EC', color:'#8B5E3C', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>▦ Vue tableau</button>
-            )}
-            <button onClick={logout} style={{width:'100%', padding:'7px 10px', background:'#FDFAF7', color:'#C04B20', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Se déconnecter</button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -11552,6 +11535,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260427c" defer></script>
+<script src="/v20-bridge.js?v=20260427d" defer></script>
 </body>
 </html>
