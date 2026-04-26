@@ -445,14 +445,17 @@
     maybeRenderCustomFieldsPage();
     injectShareButtons();
 
-    // Tap logo → switcher
-    const logo = document.querySelector('[data-ocre-logo], .topbar-title, .logo');
-    if (logo && !logo.dataset.v20switcher) {
-      logo.dataset.v20switcher = '1';
-      logo.style.cursor = 'pointer';
-      logo.addEventListener('click', openSwitcher);
-    }
   }
+
+  // Délégation event document-level : robuste face au remount React.
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-ocre-logo], .topbar-title, .site-logo');
+    if (target && state.ctx) {
+      e.preventDefault();
+      e.stopPropagation();
+      openSwitcher();
+    }
+  }, true);
 
   window.OcreV20 = {
     refresh,
@@ -464,6 +467,8 @@
     openPactSign,
     state,
   };
+  // Alias debug : Philippe peut appeler openV20Switcher() depuis console Safari.
+  window.openV20Switcher = openSwitcher;
 
   // Heartbeat presence si on est sur un dossier
   setInterval(() => {
