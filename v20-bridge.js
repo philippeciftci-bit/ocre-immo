@@ -436,9 +436,9 @@
     const wsList = await apiFetch('/api/auth_v20.php?action=me');
     if (wsList.ok && wsList.workspaces) state.workspaces = wsList.workspaces;
 
-    // notifications
     const notif = await apiFetch('/api/auth_v20.php?action=notifications');
     if (notif.ok && notif.items) state.notifications = notif.items;
+    else state.notifications = [];
 
     renderBanners();
     renderNotifBell();

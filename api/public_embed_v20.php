@@ -1,5 +1,6 @@
 <?php
 // V20 phase 11 — endpoint public lecture seule pour widgets vitrine (api.ocre.immo).
+// Lit la table `clients` filtrée par is_published=1 (entité métier unique Ocre Immo).
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET');
@@ -30,40 +31,50 @@ function safe_query(PDO $pdo, string $sql, array $args = []): array {
         $st = $pdo->prepare($sql);
         $st->execute($args);
         return $st->fetchAll();
-    } catch (Throwable $e) {
-        return [];
-    }
+    } catch (Throwable $e) { return []; }
+}
+
+function map_item(array $r): array {
+    return [
+        'id' => (int)$r['id'],
+        'titre' => $r['public_title'] ?: trim(($r['prenom'] ?? '') . ' ' . ($r['nom'] ?? '')),
+        'description' => $r['public_description'] ?? '',
+        'vertical' => $r['vertical'] ?? '',
+        'public_slug' => $r['public_slug'] ?? '',
+    ];
 }
 
 switch ($widget) {
 case 'gallery': {
     $rows = safe_query($pdo,
-        "SELECT b.id, b.titre, b.prix, b.type_bien, b.ville, b.surface, b.photo_principale
-         FROM biens b
-         JOIN published_to_vitrine p ON p.bien_id = b.id
-         ORDER BY p.published_at DESC LIMIT 50");
-    jout(['ok' => true, 'widget' => 'gallery', 'tenant' => $slug, 'items' => $rows]);
+        "SELECT id, public_title, public_description, public_slug, vertical, prenom, nom
+         FROM clients
+         WHERE is_published = 1 AND public_visible = 1 AND deleted_at IS NULL
+         ORDER BY published_at DESC LIMIT 50");
+    jout(['ok' => true, 'widget' => 'gallery', 'tenant' => $slug, 'items' => array_map('map_item', $rows)]);
 }
 
 case 'search': {
     $q = trim((string)($_GET['q'] ?? ''));
     $like = '%' . $q . '%';
     $rows = safe_query($pdo,
-        "SELECT b.id, b.titre, b.prix, b.type_bien, b.ville, b.surface, b.photo_principale
-         FROM biens b
-         JOIN published_to_vitrine p ON p.bien_id = b.id
-         WHERE b.titre LIKE ? OR b.ville LIKE ? OR b.type_bien LIKE ?
-         ORDER BY p.published_at DESC LIMIT 50",
+        "SELECT id, public_title, public_description, public_slug, vertical, prenom, nom
+         FROM clients
+         WHERE is_published = 1 AND public_visible = 1 AND deleted_at IS NULL
+           AND (public_title LIKE ? OR public_description LIKE ? OR vertical LIKE ?)
+         ORDER BY published_at DESC LIMIT 50",
         [$like, $like, $like]);
-    jout(['ok' => true, 'widget' => 'search', 'tenant' => $slug, 'query' => $q, 'items' => $rows]);
+    jout(['ok' => true, 'widget' => 'search', 'tenant' => $slug, 'query' => $q, 'items' => array_map('map_item', $rows)]);
 }
 
 case 'detail': {
     $id = (int)($_GET['id'] ?? 0);
     $rows = safe_query($pdo,
-        "SELECT b.* FROM biens b JOIN published_to_vitrine p ON p.bien_id = b.id WHERE b.id = ? LIMIT 1",
+        "SELECT id, public_title, public_description, public_slug, vertical, payment_plan, public_views_count
+         FROM clients WHERE is_published = 1 AND public_visible = 1 AND deleted_at IS NULL AND id = ? LIMIT 1",
         [$id]);
     if (!$rows) jout(['ok' => false, 'error' => 'bien non publié ou introuvable'], 404);
+    safe_query($pdo, "UPDATE clients SET public_views_count = public_views_count + 1 WHERE id = ?", [$id]);
     jout(['ok' => true, 'widget' => 'detail', 'tenant' => $slug, 'bien' => $rows[0]]);
 }
 

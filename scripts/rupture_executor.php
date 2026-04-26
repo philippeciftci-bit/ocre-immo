@@ -36,9 +36,9 @@ foreach ($pending as $r) {
 
     $pdo_wsc = pdo_workspace('ocre_wsc_' . $wsc['slug']);
 
-    $apport = $pdo_wsc->prepare("SELECT * FROM dossiers WHERE _apporteur_user_id = ?");
+    $apport = $pdo_wsc->prepare("SELECT * FROM clients WHERE _apporteur_user_id = ?");
     $apport->execute([$partant_id]);
-    $dossiers = $apport->fetchAll();
+    $clients = $apport->fetchAll();
 
     $pdo_wsp = null;
     if ($partant_wsp_slug) {
@@ -46,16 +46,16 @@ foreach ($pending as $r) {
     }
 
     $n = 0;
-    foreach ($dossiers as $d) {
+    foreach ($clients as $d) {
         if ($pdo_wsp) {
             $cols = array_keys($d);
             $colnames = implode(',', $cols);
             $placeholders = implode(',', array_fill(0, count($cols), '?'));
-            $sql = "INSERT INTO dossiers ({$colnames}) VALUES ({$placeholders})";
+            $sql = "INSERT INTO clients ({$colnames}) VALUES ({$placeholders})";
             try { $pdo_wsp->prepare($sql)->execute(array_values($d)); $n++; } catch (Throwable $e) {}
         }
         try {
-            $pdo_wsc->prepare("UPDATE dossiers SET _frozen_readonly = 1, _frozen_label = ? WHERE id = ?")
+            $pdo_wsc->prepare("UPDATE clients SET _frozen_readonly = 1, _frozen_label = ? WHERE id = ?")
                 ->execute(["Récupéré par " . ($partant['display_name'] ?: $partant['email']) . " le " . gmdate('Y-m-d'), $d['id']]);
         } catch (Throwable $e) {}
     }
@@ -67,7 +67,7 @@ foreach ($pending as $r) {
         ->execute([$r['id']]);
 
     $meta->prepare("INSERT INTO audit_log (workspace_id, actor_user_id, action, payload_json, created_at) VALUES (?, ?, 'rupture_executed', ?, NOW())")
-        ->execute([$wsc_id, $partant_id, json_encode(['dossiers_recovered' => $n])]);
+        ->execute([$wsc_id, $partant_id, json_encode(['clients_recovered' => $n])]);
 
     $rest = $meta->prepare("SELECT u.id, u.email, u.display_name FROM workspace_members m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = ? AND m.left_at IS NULL");
     $rest->execute([$wsc_id]);
@@ -80,13 +80,13 @@ foreach ($pending as $r) {
     foreach ($remaining as $member) {
         $prenom = explode(' ', $member['display_name'] ?? $member['email'])[0];
         $meta->prepare("INSERT INTO notifications (user_id, type, title, body, payload_json, created_at) VALUES (?, 'rupture_done', ?, ?, ?, NOW())")
-            ->execute([$member['id'], "Le partenariat {$wsc['display_name']} est rompu", "Résumé : {$n} dossiers récupérés par {$prenom_partant}.",
-                       json_encode(['wsc_slug' => $wsc['slug'], 'dossiers_recovered' => $n])]);
+            ->execute([$member['id'], "Le partenariat {$wsc['display_name']} est rompu", "Résumé : {$n} clients récupérés par {$prenom_partant}.",
+                       json_encode(['wsc_slug' => $wsc['slug'], 'clients_recovered' => $n])]);
         email_rupture_done($member['email'], $prenom, $wsc['display_name'], $prenom_partant, $n, $is_solo, $url_wsc);
     }
     $meta->prepare("INSERT INTO notifications (user_id, type, title, body, payload_json, created_at) VALUES (?, 'rupture_done', ?, ?, ?, NOW())")
-        ->execute([$partant_id, "Le partenariat {$wsc['display_name']} est rompu", "Tu as récupéré {$n} dossiers dans ton WSp.",
-                   json_encode(['wsc_slug' => $wsc['slug'], 'dossiers_recovered' => $n])]);
+        ->execute([$partant_id, "Le partenariat {$wsc['display_name']} est rompu", "Tu as récupéré {$n} clients dans ton WSp.",
+                   json_encode(['wsc_slug' => $wsc['slug'], 'clients_recovered' => $n])]);
 
-    echo "[" . gmdate('c') . "] Rupture exécutée WSc={$wsc['slug']} user={$partant['email']} dossiers_recovered={$n}\n";
+    echo "[" . gmdate('c') . "] Rupture exécutée WSc={$wsc['slug']} user={$partant['email']} clients_recovered={$n}\n";
 }

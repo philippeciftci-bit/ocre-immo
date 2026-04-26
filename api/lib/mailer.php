@@ -8,6 +8,21 @@ const OCRE_BTN_BG = '#8B5E3C';
 const OCRE_BTN_HOVER = '#6B4429';
 
 function ocre_send_mail(string $to, string $subject, string $html_body, ?string $pdf_attachment = null): bool {
+    // Priorité Resend via _email.php si dispo (pas de pièces jointes côté Resend pour l'instant).
+    if ($pdf_attachment === null) {
+        $emailLib = __DIR__ . '/../_email.php';
+        if (file_exists($emailLib)) {
+            require_once $emailLib;
+            if (function_exists('sendEmail') && function_exists('emailEnabled') && emailEnabled()) {
+                $r = sendEmail($to, $subject, $html_body, 'v20', null, [], true);
+                if (!empty($r['ok'])) return true;
+                @mkdir('/var/log/ocre', 0775, true);
+                file_put_contents('/var/log/ocre/mail.log',
+                    "[" . gmdate('c') . "] RESEND-FAIL TO={$to} ERR=" . ($r['error'] ?? '') . "\n",
+                    FILE_APPEND);
+            }
+        }
+    }
     $boundary = bin2hex(random_bytes(16));
     $headers = [
         'From: ' . OCRE_MAIL_FROM,

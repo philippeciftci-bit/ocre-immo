@@ -121,10 +121,28 @@ case 'logout': {
     jout(['ok' => true]);
 }
 
+case 'notifications': {
+    $u = current_user_or_401();
+    $stmt = pdo_meta()->prepare(
+        "SELECT id, type, title, body, payload_json, read_at, created_at
+         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
+    );
+    $stmt->execute([$u['id']]);
+    jout(['ok' => true, 'items' => $stmt->fetchAll()]);
+}
+
+case 'mark_read': {
+    $u = current_user_or_401();
+    $id = (int)($input['id'] ?? 0);
+    pdo_meta()->prepare("UPDATE notifications SET read_at = NOW() WHERE id = ? AND user_id = ? AND read_at IS NULL")
+        ->execute([$id, $u['id']]);
+    jout(['ok' => true]);
+}
+
 case 'change_password': {
     $u = current_user_or_401();
-    $old = (string)($input['old_password'] ?? '');
-    $new = (string)($input['new_password'] ?? '');
+    $old = (string)($input['old_password'] ?? $input['current'] ?? '');
+    $new = (string)($input['new_password'] ?? $input['new'] ?? '');
     if (strlen($new) < 10) jout(['ok' => false, 'error' => 'mot de passe min 10 chars'], 400);
     if (!password_verify($old, $u['password_hash'])) jout(['ok' => false, 'error' => 'ancien mdp invalide'], 401);
     $hash = password_hash($new, PASSWORD_BCRYPT, ['cost' => 10]);
