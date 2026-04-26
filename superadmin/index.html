@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ocre Immo — Super-admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: #FAF8F2; color: #2A2018; padding: 24px; }
+  h1 { font-family: 'Cormorant Garamond', serif; color: #8B5E3C; margin-bottom: 6px; font-size: 28px; }
+  .banner { background: #FCD5D0; color: #8B0000; padding: 8px 14px; text-align: center; font-weight: 600; margin-bottom: 20px; border-radius: 6px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 20px 0; }
+  .stat { background: #fff; padding: 18px; border-radius: 10px; border: 1px solid #E5DDC8; text-align: center; }
+  .stat-v { font-family: 'Cormorant Garamond', serif; font-size: 32px; color: #8B5E3C; font-weight: 700; }
+  .stat-l { font-size: 11px; color: #8B7F6E; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+  table { width: 100%; background: #fff; border-radius: 10px; overflow: hidden; border-collapse: collapse; margin-top: 16px; border: 1px solid #E5DDC8; }
+  th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #F0E8D8; }
+  th { background: #F0E8D8; color: #6B4429; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  .login { max-width: 360px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; border: 1px solid #E5DDC8; }
+  .login input { width: 100%; padding: 10px 12px; border: 1px solid #B89968; border-radius: 6px; margin-bottom: 10px; font-family: inherit; }
+  .login button { width: 100%; padding: 12px; background: #8B5E3C; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab { padding: 8px 14px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; }
+  .tab.active { background: #8B5E3C; color: #fff; border-color: #8B5E3C; }
+</style>
+</head>
+<body>
+<div id="root"><div class="login" id="login">
+  <h1>Super-admin</h1>
+  <p style="color:#6B5E4A;margin-bottom:14px;font-size:13px">Connexion réservée aux super-administrateurs.</p>
+  <input id="email" type="email" placeholder="Email" autocomplete="username">
+  <input id="pwd" type="password" placeholder="Mot de passe" autocomplete="current-password">
+  <button onclick="doLogin()">Se connecter</button>
+  <p id="err" style="color:#8B0000;font-size:12px;margin-top:10px"></p>
+</div></div>
+
+<script>
+const TOKEN_KEY = 'ocre_sa_token';
+const api = (url, opts = {}) => {
+  opts.headers = Object.assign({}, opts.headers || {}, { 'X-Session-Token': localStorage.getItem(TOKEN_KEY) || '' });
+  if (opts.body && typeof opts.body !== 'string') { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(opts.body); }
+  return fetch(url, opts).then(r => r.json());
+};
+async function doLogin() {
+  const email = document.getElementById('email').value;
+  const pwd = document.getElementById('pwd').value;
+  const r = await api('/api/auth_v20.php?action=login', { method: 'POST', body: { email, password: pwd } });
+  if (r.ok && r.token) {
+    localStorage.setItem(TOKEN_KEY, r.token);
+    if ((r.user || {}).role === 'super_admin') { renderConsole(); }
+    else { document.getElementById('err').textContent = 'Compte non super-admin.'; localStorage.removeItem(TOKEN_KEY); }
+  } else { document.getElementById('err').textContent = r.error || 'Échec connexion'; }
+}
+async function renderConsole() {
+  const root = document.getElementById('root');
+  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule</div>'
+                 + '<h1>Console super-admin</h1>'
+                 + '<div class="tabs"><div class="tab active" data-t="overview">Vue d\'ensemble</div>'
+                 + '<div class="tab" data-t="workspaces">Workspaces</div>'
+                 + '<div class="tab" data-t="audit">Audit récent</div></div>'
+                 + '<div id="content"></div>';
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', e => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    e.target.classList.add('active');
+    loadTab(e.target.dataset.t);
+  }));
+  loadTab('overview');
+}
+async function loadTab(t) {
+  const c = document.getElementById('content');
+  c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
+  if (t === 'overview') {
+    const r = await api('/api/superadmin_v20.php?action=overview');
+    if (!r.ok) { c.textContent = r.error; return; }
+    const s = r.stats;
+    c.innerHTML = '<div class="stats">' + Object.entries(s).map(([k, v]) =>
+      `<div class="stat"><div class="stat-v">${v}</div><div class="stat-l">${k.replace(/_/g, ' ')}</div></div>`
+    ).join('') + '</div>';
+  } else if (t === 'workspaces') {
+    const r = await api('/api/superadmin_v20.php?action=workspaces');
+    c.innerHTML = '<table><thead><tr><th>Slug</th><th>Type</th><th>Nom</th><th>Pays</th><th>Membres</th><th>Créé</th><th>Archivé</th></tr></thead><tbody>'
+      + (r.workspaces || []).map(w =>
+        `<tr><td>${w.slug}</td><td>${w.type}</td><td>${w.display_name}</td><td>${w.country_code || ''}</td><td>${w.members_count}</td><td>${(w.created_at || '').slice(0, 10)}</td><td>${w.archived_at ? '✓' : ''}</td></tr>`
+      ).join('') + '</tbody></table>';
+  } else if (t === 'audit') {
+    const r = await api('/api/superadmin_v20.php?action=audit_recent');
+    c.innerHTML = '<table><thead><tr><th>Date</th><th>Workspace</th><th>Acteur</th><th>Action</th><th>Cible</th></tr></thead><tbody>'
+      + (r.events || []).map(e =>
+        `<tr><td>${(e.created_at || '').replace('T', ' ').slice(0, 19)}</td><td>${e.workspace_slug || ''}</td><td>${e.email || ''}</td><td>${e.action}</td><td>${e.target_type || ''} ${e.target_id || ''}</td></tr>`
+      ).join('') + '</tbody></table>';
+  }
+}
+if (localStorage.getItem(TOKEN_KEY)) {
+  api('/api/auth_v20.php?action=me').then(r => { if (r.ok && (r.user || {}).role === 'super_admin') renderConsole(); });
+}
+</script>
+</body>
+</html>
