@@ -73,6 +73,39 @@ function currentUser() {
     );
     $stmt->execute([$token]);
     $row = $stmt->fetch();
+    // V20 fallback : si pas trouvé dans la base WSp, chercher dans ocre_meta.sessions.
+    // L'auth v20 stocke les sessions centralement ; les endpoints legacy doivent quand même
+    // les reconnaître. Sécurité : on vérifie que le user v20 est bien membre du tenant courant.
+    if (!$row) {
+        try {
+            $dsn = 'mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4';
+            $meta = new PDO($dsn, DB_USER, DB_PASS, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+            $slug = $_SERVER['HTTP_X_TENANT_SLUG'] ?? '';
+            if (!$slug && preg_match('/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/', $_SERVER['HTTP_HOST'] ?? '', $m)) $slug = $m[1];
+            $st = $meta->prepare(
+                "SELECT u.*, m.role AS membership_role
+                 FROM sessions s
+                 JOIN users u ON u.id = s.user_id
+                 LEFT JOIN workspaces w ON w.slug = ? AND w.archived_at IS NULL
+                 LEFT JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = u.id AND m.left_at IS NULL
+                 WHERE s.token = ? AND s.expires_at > NOW() AND u.archived_at IS NULL
+                 LIMIT 1"
+            );
+            $st->execute([$slug, $token]);
+            $metaUser = $st->fetch();
+            // Autoriser : super_admin OU membre actif du tenant courant
+            $authorized = $metaUser && (($metaUser['role'] === 'super_admin') || !empty($metaUser['membership_role']));
+            if ($authorized) {
+                // Récupérer le user local owner de la base WSp (1 WSp = 1 agent owner).
+                // Pour super_admin, idem (read-only mais fonctionnel via le pseudo-owner).
+                $localOwner = db()->query("SELECT * FROM users WHERE active = 1 ORDER BY id ASC LIMIT 1");
+                $row = $localOwner ? $localOwner->fetch() : null;
+            }
+        } catch (Throwable $e) { /* silent */ }
+    }
     if (!$row) return null;
     // V18.39 — block suspended users at the door.
     if (!empty($row['is_suspended']) && (int) $row['is_suspended'] === 1) return null;

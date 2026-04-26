@@ -5578,6 +5578,10 @@ function App() {
       return (d && d.ok) ? d.client : null;
     } catch (e) { return null; }
   }
+  // V20 — anti-doublon : id de la création en cours + sérialisation des saves
+  // pour éviter race condition (2 blurs rapides → 2 INSERT au lieu de 1 INSERT+1 UPDATE).
+  const editingIdRef = useRef(null);
+  const savePromiseRef = useRef(Promise.resolve(null));
   async function apiDeleteClient(id) {
     const token = localStorage.getItem('ocre_token');
     try {
@@ -5590,6 +5594,9 @@ function App() {
 
   async function handleSaveLocal(data) {
     const incoming = {...(editing || {}), ...data, projet: activeProfil, is_investisseur: isInvestisseur};
+    // V20 anti-doublon : si pas d'id mais une création est déjà en cours/finie,
+    // injecter l'id pour transformer ce save en UPDATE (et non INSERT).
+    if (!incoming.id && editingIdRef.current) incoming.id = editingIdRef.current;
     // V52.4.1 — GUARD ROOT : bloque CRÉATION (pas update) d'un dossier vide depuis
     // n'importe quel chemin (commit, debounce 1.5s, pushNow, beaconSave, backToListFlushed,
     // pagehide). Si pas d'id existant ET aucune donnée significative → skip save.
@@ -5620,15 +5627,27 @@ function App() {
       });
     }
     setEditing(incoming);
-    const saved = await apiSaveClient(incoming);
-    if (saved) {
-      if (isStagedSave) {
-        setStaged(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
-      } else {
-        setClients(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
+    // V20 anti-doublon : sérialise les apiSaveClient pour éviter qu'un 2e blur
+    // rapide ne déclenche un nouveau INSERT pendant qu'un 1er INSERT est en vol.
+    const prevPromise = savePromiseRef.current;
+    const myPromise = (async () => {
+      try { await prevPromise; } catch (e) {}
+      // Refresh id depuis le ref si une promesse précédente vient de l'établir.
+      if (!incoming.id && editingIdRef.current) incoming.id = editingIdRef.current;
+      const saved = await apiSaveClient(incoming);
+      if (saved && saved.id) editingIdRef.current = saved.id;
+      if (saved) {
+        if (isStagedSave) {
+          setStaged(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
+        } else {
+          setClients(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
+        }
+        setEditing(saved);
       }
-      setEditing(saved);
-    }
+      return saved;
+    })();
+    savePromiseRef.current = myPromise;
+    await myPromise;
   }
   async function handleDelete(id) {
     if (!id) { setView('list'); setEditing(null); return; }
@@ -5645,6 +5664,7 @@ function App() {
   const [initialFocus, setInitialFocus] = useState(null);
   function openClient(c) {
     setEditing(c);
+    editingIdRef.current = (c && c.id && !String(c.id).startsWith('tmp-')) ? c.id : null;
     const profil = c.projet || 'Acheteur';
     setActiveProfil(profil);
     setIsInvestisseur(profil === 'Investisseur' || !!c.is_investisseur);
@@ -5665,6 +5685,7 @@ function App() {
   function openNew() {
     // V52.6 — restaure le sélecteur de profil v17 avant le formulaire.
     setEditing(null);
+    editingIdRef.current = null;
     setFormKey(k => k + 1);
     setView('profil_picker');
   }
@@ -5672,6 +5693,7 @@ function App() {
     setActiveProfil(profil);
     setIsInvestisseur(!!isInvest);
     setEditing(null);
+    editingIdRef.current = null;
     setFormKey(k => k + 1);
     setView('form');
   }
@@ -5824,7 +5846,7 @@ function App() {
     />
   ) : (
     <FormView
-      key={'f-' + formKey + '-' + (editing ? editing.id : 'new')}
+      key={'f-' + formKey}
       editing={editing} setEditing={setEditing}
       activeProfil={activeProfil} setActiveProfil={setActiveProfil}
       isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
@@ -6102,7 +6124,6 @@ function ImportImageView({onBack, onCreated, showToast, toast, fileAlreadySelect
       )}
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
-        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>📸 Importer un document</div>
         <OcreLogoButton/>
       </div>
 
@@ -6714,7 +6735,6 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
       <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
         <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
           <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
-          <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Dicter un contact</div>
           <OcreLogoButton/>
         </div>
         <div style={{flex:1, padding:20, display:'flex', flexDirection:'column', gap:10}}>
@@ -6735,7 +6755,6 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
-        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Dicter un contact</div>
         <OcreLogoButton/>
       </div>
       <div style={{flex:1, padding:20, display:'flex', flexDirection:'column', gap:14, overflowY:'auto'}}>
@@ -6981,9 +7000,8 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
-        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond, serif', fontSize:19, fontWeight:700, color:'#8B5E3C'}}>⚙ Dashboard admin</div>
-        <button onClick={fetchAll} style={{background:'none', border:'1px solid #C9B79A', padding:'5px 10px', borderRadius:8, fontSize:12, cursor:'pointer', fontFamily:'inherit', color:'#5C3B1E'}}>↻</button>
         <OcreLogoButton/>
+        <button onClick={fetchAll} style={{background:'none', border:'1px solid #C9B79A', padding:'5px 10px', borderRadius:8, fontSize:12, cursor:'pointer', fontFamily:'inherit', color:'#5C3B1E'}}>↻</button>
       </div>
 
       <div style={{flex:1, overflowY:'auto', padding:'12px 14px 30px'}}>
@@ -7269,9 +7287,8 @@ function AgentProfileView({currentUser, onBack, showToast}) {
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:19, fontWeight:700, color:'#8B5E3C'}}>Mon profil public</div>
-        <span style={{fontSize:11, fontWeight:700, color:'#fff', background:statutColor, padding:'2px 8px', borderRadius:10}}>{statutLabel}</span>
         <OcreLogoButton/>
+        <span style={{fontSize:11, fontWeight:700, color:'#fff', background:statutColor, padding:'2px 8px', borderRadius:10}}>{statutLabel}</span>
       </div>
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 40px'}}>
         <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:16, lineHeight:1.5}}>
@@ -7567,7 +7584,6 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
-        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#1A1208'}}>Préférences</div>
         <OcreLogoButton/>
       </div>
       <div style={{flex:1, overflowY:'auto', padding:14}}>
@@ -7818,59 +7834,15 @@ function __fetchUserInfo() {
 // (même contenu : prénom/nom/email + Préférences + Profil public + Admin si admin
 // + Vue tableau + Déconnexion). Menu se ferme sur tap hors / autre tap wordmark.
 function OcreLogoButton() {
-  const [open, setOpen] = React.useState(false);
-  const [user, setUser] = React.useState(__ocreUserCache);
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    if (open && !user) __fetchUserInfo().then(u => { if (u) setUser(u); });
-  }, [open]);
-  React.useEffect(() => {
-    if (!open) return;
-    function onDoc(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('touchstart', onDoc);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('touchstart', onDoc);
-    };
-  }, [open]);
-  const isAdmin = user && (user.is_admin || user.role === 'admin');
+  // V20 — wordmark "OCRE immo" centré (style page login). Tap = V20Switcher (data-ocre-logo).
+  // Plus de menu local : déconnexion via V20Switcher.
   return (
-    <div ref={ref} style={{position:'relative', flexShrink:0}}>
-      <button type="button" onClick={() => setOpen(o => !o)}
-        title="Menu" aria-label="Ouvrir le menu utilisateur"
-        style={{
-          minHeight:36, minWidth:44, padding:'4px 10px', background:'transparent', border:'none',
-          cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center',
-          gap:0, color:'#8B5E3C', lineHeight:1,
-        }}>
-        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, letterSpacing:.5}}>OCRE</span>
-        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:14, fontStyle:'italic', fontWeight:500, marginLeft:4, opacity:.85}}>immo</span>
-      </button>
-      {open && (
-        <div style={{position:'absolute', top:42, right:0, background:'#fff', border:'1px solid #EDE6DC', borderRadius:10, padding:12, minWidth:230, boxShadow:'0 6px 20px rgba(139,94,60,0.18)', zIndex:60}}>
-          {user ? (
-            <>
-              <div style={{fontSize:11, color:'#8B7F6E'}}>Connecté en tant que</div>
-              <div style={{fontWeight:700, fontSize:13, marginTop:1}}>{((user.prenom || '') + ' ' + (user.nom || '')).trim() || '—'}</div>
-              <div style={{fontSize:11, color:'#8B7F6E', marginBottom:8, wordBreak:'break-all'}}>{user.email}</div>
-              {isAdmin && (
-                <div style={{fontSize:10, color:'#8B7F6E', fontStyle:'italic', marginBottom:8, lineHeight:1.4}}>
-                  Admin — préférences/profil/admin accessibles depuis le titre central de la liste.
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{fontSize:12, color:'#8B7F6E', padding:'4px 0 8px'}}>Chargement…</div>
-          )}
-          <button onClick={globalLogout}
-            style={{width:'100%', padding:'8px 10px', background:'#FDFAF7', color:'#C04B20', border:'1px solid #E8DDD0', borderRadius:7, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
-            Se déconnecter
-          </button>
-        </div>
-      )}
+    <div data-ocre-logo="1" style={{
+      flex:1, display:'flex', alignItems:'baseline', justifyContent:'center',
+      gap:3, cursor:'pointer', userSelect:'none', minHeight:36,
+    }}>
+      <span style={{fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:22, letterSpacing:1.5, color:'#8B5E3C', lineHeight:1}}>OCRE</span>
+      <span style={{fontFamily:'Caveat,cursive', fontWeight:400, fontSize:24, color:'#2A1810', marginLeft:2, lineHeight:1}}>immo</span>
     </div>
   );
 }
@@ -9492,7 +9464,6 @@ function ProfilPickerView({onBack, onPick}) {
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#FBF7EF'}}>
       <div style={{background:'#fff', borderBottom:'1.5px solid #E8DDD0', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <button onClick={onBack} aria-label="Retour" style={{background:'none', border:'none', fontSize:22, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', padding:'4px 8px'}}>←</button>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#1A1208', textAlign:'center'}}>Nouveau dossier</div>
         <OcreLogoButton/>
       </div>
       <div style={{flex:1, overflowY:'auto', padding:'18px 16px 24px'}}>
@@ -11581,6 +11552,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260427a" defer></script>
+<script src="/v20-bridge.js?v=20260427c" defer></script>
 </body>
 </html>
