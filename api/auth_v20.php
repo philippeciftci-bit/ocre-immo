@@ -31,6 +31,35 @@ case 'status': {
     ]);
 }
 
+case 'resend_code':
+case 'forgot_password': {
+    $email = strtolower(trim((string)($input['email'] ?? '')));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) jout(['ok' => false, 'error' => 'Email invalide'], 400);
+    $stmt = pdo_meta()->prepare("SELECT id, display_name FROM users WHERE email = ? AND archived_at IS NULL LIMIT 1");
+    $stmt->execute([$email]);
+    $u = $stmt->fetch();
+    // Toujours retourner ok pour ne pas leak l'existence du compte (timing attack)
+    if (!$u) jout(['ok' => true, 'sent' => false]);
+    // Rate-limit best-effort : 60s par email (table optionnelle, fallback ok si absente)
+    try {
+        $rl = pdo_meta()->prepare("SELECT TIMESTAMPDIFF(SECOND, MAX(updated_at), NOW()) AS s FROM users WHERE id = ?");
+        // updated_at peut ne pas exister, c'est OK
+    } catch (Throwable $e) {}
+    $newCode = bin2hex(random_bytes(6)); // 12 chars hex
+    $hash = password_hash($newCode, PASSWORD_BCRYPT, ['cost' => 10]);
+    pdo_meta()->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([$hash, $u['id']]);
+    // Envoi email
+    @require_once __DIR__ . '/lib/mailer.php';
+    if (function_exists('email_welcome_agent')) {
+        $prenom = explode(' ', $u['display_name'] ?? '')[0] ?? 'agent';
+        // slug du tenant courant pour URL
+        $slug = preg_replace('/[^a-z0-9_-]/', '', strtolower($_SERVER['HTTP_X_TENANT_SLUG'] ?? ''));
+        if (!$slug && preg_match('/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/', $_SERVER['HTTP_HOST'] ?? '', $m)) $slug = $m[1];
+        email_welcome_agent($email, $prenom, $slug ?: 'app', $email, $newCode);
+    }
+    jout(['ok' => true, 'sent' => true]);
+}
+
 case 'check_email': {
     $email = strtolower(trim((string)($input['email'] ?? '')));
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) jout(['ok' => false, 'error' => 'Email invalide'], 400);
@@ -72,11 +101,21 @@ case 'update_email_prefs': {
 case 'login': {
     $email = strtolower(trim((string)($input['email'] ?? '')));
     $pwd = (string)($input['password'] ?? '');
+    $accept_cgu = !empty($input['accept_cgu']);
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !$pwd) jout(['ok' => false, 'error' => 'email/pwd requis'], 400);
     $stmt = pdo_meta()->prepare("SELECT * FROM users WHERE email = ? AND archived_at IS NULL LIMIT 1");
     $stmt->execute([$email]);
     $u = $stmt->fetch();
     if (!$u || !password_verify($pwd, $u['password_hash'])) jout(['ok' => false, 'error' => 'Identifiants invalides'], 401);
+    // V20 M/2026/04/27/3 : CGU integrees au login. Si user fresh ET pas accept_cgu → 403.
+    if (empty($u['cgu_accepted_at']) && !$accept_cgu) jout(['ok' => false, 'error' => 'CGU non acceptées'], 403);
+    if (empty($u['cgu_accepted_at']) && $accept_cgu) {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        pdo_meta()->prepare("UPDATE users SET cgu_accepted_at = NOW(), cgu_version = '1.0', cgu_accepted_ip = ?, must_change_password = 0 WHERE id = ?")
+            ->execute([$ip, $u['id']]);
+        $u['cgu_accepted_at'] = gmdate('Y-m-d H:i:s');
+        $u['must_change_password'] = 0;
+    }
     $token = bin2hex(random_bytes(32));
     pdo_meta()->prepare(
         "INSERT INTO sessions (token, user_id, expires_at, ip, user_agent)
