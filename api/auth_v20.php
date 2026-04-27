@@ -85,14 +85,22 @@ case 'register': {
     $provOut = []; $provRc = 0;
     @exec('sudo /opt/ocre-app/scripts/provision-tenant.sh ' . escapeshellarg($slug) . ' 2>&1', $provOut, $provRc);
 
-    @require_once __DIR__ . '/lib/mailer.php';
-    if (function_exists('email_welcome_agent')) {
-        email_welcome_agent($email, $prenom, $slug, $email, $code);
-    }
+    // M/2026/04/27/14 — envoi mail best-effort. Le user est DEJA cree en DB,
+    // le code est dans dev_codes. Si l'envoi mail echoue (port 25, SMTP indispo,
+    // domaine non verifie Resend), on renvoie ok=true avec mail_sent=false.
+    $mail_sent = false;
+    try {
+        @require_once __DIR__ . '/lib/mailer.php';
+        if (function_exists('email_welcome_agent')) {
+            $r = @email_welcome_agent($email, $prenom, $slug, $email, $code);
+            $mail_sent = (bool)$r;
+        }
+    } catch (Throwable $e) { $mail_sent = false; }
     @exec('/root/bin/notify --project ocre --priority info --title "Nouvel agent inscrit" --body ' . escapeshellarg($display_name . ' (' . $email . ') WSp ' . $slug) . ' >/dev/null 2>&1 &');
 
     jout([
         'ok' => true,
+        'mail_sent' => $mail_sent,
         'wsp_slug' => $slug,
         'message' => 'Compte créé, code envoyé par email',
         'provisioning' => ($provRc === 0 ? 'ok' : 'pending'),
