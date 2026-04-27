@@ -136,11 +136,17 @@ case 'me': {
     $prenom = $parts[0] ?? '';
     $nom = $parts[1] ?? '';
     $emailNotif = 1;
+    $cgu_accepted_at = null; $cgu_version = null; $tour_completed_at = null;
     try {
-        $st = pdo_meta()->prepare("SELECT email_notifications FROM users WHERE id = ?");
+        $st = pdo_meta()->prepare("SELECT email_notifications, cgu_accepted_at, cgu_version, tour_completed_at FROM users WHERE id = ?");
         $st->execute([$u['id']]);
         $r = $st->fetch();
-        if ($r && isset($r['email_notifications'])) $emailNotif = (int)$r['email_notifications'];
+        if ($r) {
+            if (isset($r['email_notifications'])) $emailNotif = (int)$r['email_notifications'];
+            $cgu_accepted_at = $r['cgu_accepted_at'] ?? null;
+            $cgu_version = $r['cgu_version'] ?? null;
+            $tour_completed_at = $r['tour_completed_at'] ?? null;
+        }
     } catch (Throwable $e) {}
     jout([
         'ok' => true,
@@ -154,6 +160,9 @@ case 'me': {
             'country_code' => $u['country_code'],
             'must_change_password' => (bool)$u['must_change_password'],
             'email_notifications' => (bool)$emailNotif,
+            'cgu_accepted_at' => $cgu_accepted_at,
+            'cgu_version' => $cgu_version,
+            'tour_completed_at' => $tour_completed_at,
         ],
         'workspaces' => $ws_stmt->fetchAll(),
     ]);

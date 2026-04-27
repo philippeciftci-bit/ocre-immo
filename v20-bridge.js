@@ -416,6 +416,131 @@
     });
   }
 
+  // === Phase 2 — CGU gate plein écran ===
+  async function maybeShowCguGate(user) {
+    if (!user || user.cgu_accepted_at) return false;
+    const cgu = await apiFetch('/api/cgu_v20.php?action=current');
+    if (!cgu.ok) return false;
+    return new Promise((resolve) => {
+      const overlay = el('div', { class: 'v20-overlay', style: 'align-items:stretch;padding:0' },
+        el('div', { class: 'v20-overlay-content', style: 'max-width:680px;width:100%;height:100%;max-height:none;border-radius:0;display:flex;flex-direction:column;padding:0' },
+          el('div', { style: 'padding:18px 22px;border-bottom:1px solid #E5DDC8;background:#FAF8F2' },
+            el('h2', { style: 'margin:0' }, 'Conditions générales d\'utilisation'),
+            el('div', { style: 'font-size:12px;color:#8B7F6E;margin-top:2px' }, 'Version ' + cgu.version)),
+          (function () {
+            const frame = el('iframe', { src: cgu.url, style: 'flex:1;border:none;width:100%;background:#fff', id: 'v20-cgu-frame' });
+            return frame;
+          })(),
+          el('div', { style: 'padding:14px 22px;border-top:1px solid #E5DDC8;background:#fff' },
+            (function () {
+              const cb = el('input', { type: 'checkbox', id: 'v20-cgu-cb', onchange: (e) => { btn.disabled = !e.target.checked; } });
+              const lbl = el('label', { style: 'display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer;margin-bottom:10px', for: 'v20-cgu-cb' },
+                cb, el('span', {}, 'J\'ai lu et j\'accepte les CGU v' + cgu.version));
+              const btn = el('button', { class: 'v20-cta', style: 'width:100%', onclick: async () => {
+                btn.disabled = true; btn.textContent = '…';
+                const r = await apiFetch('/api/cgu_v20.php?action=accept', { method: 'POST', body: { version: cgu.version } });
+                if (r.ok) { overlay.remove(); resolve(true); } else { alert(r.error || 'Erreur'); btn.disabled = false; btn.textContent = 'Continuer'; }
+              } }, 'Continuer');
+              btn.disabled = true;
+              return el('div', {}, lbl, btn);
+            })()
+          )
+        )
+      );
+      document.body.appendChild(overlay);
+    });
+  }
+
+  // === Phase 5 — Tour produit 3 slides ===
+  async function maybeShowProductTour(user) {
+    if (!user || user.tour_completed_at) return;
+    const slides = [
+      { h: 'Tes dossiers, tes contacts', p: 'Crée et suis tes clients, tes biens, tes mandats dans un espace strictement privé.' },
+      { h: 'Mode test pour t\'entraîner', p: 'Tape sur le logo en haut à gauche pour basculer entre Mode agent et Mode test (dossiers d\'exemple).' },
+      { h: 'Workspace partagé', p: 'Crée un partenariat avec un autre agent : pacte digital, dossiers partagés, rupture 48h.' },
+    ];
+    let i = 0;
+    const overlay = el('div', { class: 'v20-overlay' });
+    function render() {
+      overlay.innerHTML = '';
+      const slide = slides[i];
+      const skip = el('button', { style: 'position:absolute;top:14px;right:18px;background:none;border:none;color:#8B7F6E;cursor:pointer;font-size:13px;font-family:inherit', onclick: finish }, 'Passer');
+      const dots = el('div', { style: 'display:flex;gap:6px;justify-content:center;margin:14px 0' },
+        ...slides.map((_, j) => el('span', { style: 'width:8px;height:8px;border-radius:50%;background:' + (j === i ? '#8B5E3C' : '#E5DDC8') })));
+      const card = el('div', { class: 'v20-overlay-content', style: 'position:relative;text-align:center;max-width:380px' },
+        skip,
+        el('h2', { style: 'margin:14px 0 10px' }, slide.h),
+        el('p', { style: 'color:#6B5E4A;line-height:1.6;font-size:14.5px' }, slide.p),
+        dots,
+        el('div', { style: 'display:flex;gap:8px;justify-content:center;margin-top:14px' },
+          i > 0 ? el('button', { class: 'v20-cta-secondary', onclick: () => { i--; render(); } }, '← Précédent') : null,
+          i < slides.length - 1
+            ? el('button', { class: 'v20-cta', onclick: () => { i++; render(); } }, 'Suivant →')
+            : el('button', { class: 'v20-cta', onclick: finish }, 'Commencer')
+        )
+      );
+      overlay.appendChild(card);
+    }
+    async function finish() {
+      await apiFetch('/api/cgu_v20.php?action=tour_completed', { method: 'POST' });
+      overlay.remove();
+    }
+    document.body.appendChild(overlay);
+    render();
+  }
+
+  // === Phase 3 — Bannière permission notifs ===
+  function maybeShowNotifBanner(user) {
+    if (!user || !user.cgu_accepted_at) return;
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission !== 'default') return;
+    const dismissedAt = parseInt(localStorage.getItem('notif_dismissed_at') || '0', 10);
+    if (dismissedAt && (Date.now() - dismissedAt) < 7 * 86400 * 1000) return;
+    if (document.getElementById('v20-notif-cta')) return;
+
+    const banner = el('div', { id: 'v20-notif-cta', style: 'position:sticky;top:0;z-index:900;background:#FBF7EE;border-bottom:1px solid #E5DDC8;padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:13px;font-family:DM Sans,sans-serif' },
+      el('span', { style: 'flex:1;color:#6B5E4A' }, 'Reçois des notifications pour tes dossiers et messages.'),
+      el('button', { class: 'v20-cta', style: 'padding:6px 12px;font-size:12px', onclick: async () => {
+        const p = await Notification.requestPermission();
+        if (p !== 'default') banner.remove();
+      } }, 'Activer'),
+      el('button', { class: 'v20-cta-secondary', style: 'padding:6px 12px;font-size:12px', onclick: () => {
+        localStorage.setItem('notif_dismissed_at', String(Date.now()));
+        banner.remove();
+      } }, 'Plus tard')
+    );
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+
+  // === Phase 4 — Empty state mode agent enrichi ===
+  function maybeRenderEmptyState() {
+    if (!state.ctx || state.ctx.workspace.type !== 'wsp' || state.ctx.mode !== 'agent') return;
+    if (document.getElementById('v20-empty-state')) return;
+    setTimeout(() => {
+      const list = document.querySelector('[data-clients-list], .clients-list, main, #root');
+      if (!list) return;
+      const cards = document.querySelectorAll('[data-dossier-id], .client-row, .client-card');
+      if (cards.length > 0) return;
+      const wrap = el('div', { id: 'v20-empty-state', style: 'max-width:480px;margin:60px auto 40px;padding:40px 24px;text-align:center;font-family:DM Sans,sans-serif' },
+        el('div', { html: '<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin:0 auto 18px;display:block"><rect x="14" y="22" width="52" height="40" rx="6" stroke="#8B5E3C" stroke-width="2.5"/><line x1="14" y1="32" x2="66" y2="32" stroke="#8B5E3C" stroke-width="2.5"/><circle cx="40" cy="48" r="6" fill="#F0E8D8" stroke="#8B5E3C" stroke-width="2"/></svg>' }),
+        el('h2', { style: 'font-family:Cormorant Garamond,serif;color:#8B5E3C;font-size:26px;margin:0 0 10px' }, 'Bienvenue dans ton espace Ocre Immo'),
+        el('p', { style: 'color:#6B5E4A;line-height:1.6;font-size:14px;margin:0 0 22px' }, 'Tu n\'as pas encore de dossier. Crée le premier ou découvre l\'app avec des dossiers d\'exemple.'),
+        el('div', { style: 'display:flex;flex-direction:column;gap:12px;align-items:center' },
+          el('button', { class: 'v20-cta', onclick: () => {
+            const btn = document.querySelector('button[aria-label*="ouveau"], button[title*="ouveau"], [data-action="new-dossier"]');
+            if (btn) btn.click();
+          } }, 'Créer mon premier dossier'),
+          el('a', { href: '#', style: 'color:#8B5E3C;text-decoration:underline;font-size:13.5px', onclick: (e) => {
+            e.preventDefault();
+            document.cookie = 'OCRE_MODE_' + tenantSlug.toUpperCase() + '=test;path=/;max-age=31536000';
+            location.reload();
+          } }, 'Essayer en mode test (dossiers d\'exemple)')
+        )
+      );
+      list.appendChild(wrap);
+    }, 1500);
+  }
+
   // === Branding CSS variables ===
   function applyBranding(branding) {
     if (branding.primary_color) document.documentElement.style.setProperty('--ocre-primary', branding.primary_color);
@@ -440,9 +565,23 @@
     if (ctx.branding) applyBranding(ctx.branding);
     if (ctx.user && ctx.user.must_change_password) { showFirstLogin(); return; }
 
-    // workspaces accessibles (pour switcher)
     const wsList = await apiFetch('/api/auth_v20.php?action=me');
     if (wsList.ok && wsList.workspaces) state.workspaces = wsList.workspaces;
+    const fullUser = (wsList.ok && wsList.user) ? wsList.user : (ctx.user || {});
+
+    // Phase 2 CGU bloquant
+    if (!fullUser.cgu_accepted_at) {
+      await maybeShowCguGate(fullUser);
+      fullUser.cgu_accepted_at = new Date().toISOString();
+    }
+    // Phase 5 tour produit après CGU
+    if (!fullUser.tour_completed_at) {
+      maybeShowProductTour(fullUser);
+    }
+    // Phase 3 bannière notifs après CGU
+    maybeShowNotifBanner(fullUser);
+    // Phase 4 empty state si mode agent vide
+    maybeRenderEmptyState();
 
     const notif = await apiFetch('/api/auth_v20.php?action=notifications');
     if (notif.ok && notif.items) state.notifications = notif.items;
