@@ -35,7 +35,10 @@ body{font-family:'DM Sans',sans-serif;background:#F0E8D8;min-height:100vh;displa
 @keyframes spin{to{transform:rotate(360deg)}}
 .secondary{display:flex;flex-direction:column;gap:6px;margin-top:14px;text-align:center}
 .secondary a{color:#8B5E3C;font-size:12.5px;text-decoration:underline;cursor:pointer}
-.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:#C0392B;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 14px rgba(192,57,43,.3);z-index:200;animation:fadein .2s}
+.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.2);z-index:200;animation:fadein .2s}
+.toast.error{background:#C0392B}
+.toast.success{background:#5A8A3A}
+.toast.info{background:#8B5E3C}
 @keyframes fadein{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translateX(-50%)}}
 .modal-overlay{position:fixed;inset:0;background:rgba(20,12,4,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:#fff;border-radius:12px;max-width:600px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.18)}
@@ -77,6 +80,8 @@ body{font-family:'DM Sans',sans-serif;background:#F0E8D8;min-height:100vh;displa
   <div class="secondary">
     <a id="link-forgot">Mot de passe oublié ?</a>
     <a id="link-resend">Renvoyer le code</a>
+    <hr style="border:none;border-top:1px solid #E5DDC8;margin:8px 0">
+    <div style="font-size:13px;color:#7A7167">Pas encore de compte ? <a href="/inscription/">Créer un compte agent</a></div>
   </div>
 </div>
 
@@ -130,9 +135,10 @@ $('cgu-modal-close').addEventListener('click', () => $('cgu-modal').style.displa
 $('cgu-modal-footer-close').addEventListener('click', () => $('cgu-modal').style.display = 'none');
 $('cgu-modal').addEventListener('click', e => { if (e.target.id === 'cgu-modal') $('cgu-modal').style.display = 'none'; });
 
-function toast(msg) {
+function toast(msg, type) {
   const t = document.createElement('div');
-  t.className = 'toast'; t.textContent = msg;
+  t.className = 'toast ' + (type || 'error');
+  t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
@@ -156,7 +162,7 @@ $('form-login').addEventListener('submit', async ev => {
     });
     const d = await r.json();
     if (!d.ok) {
-      toast(d.error || 'Connexion refusée');
+      toast(d.error || 'Connexion refusée', 'error');
       $('f-email').classList.add('invalid'); $('f-code').classList.add('invalid');
       ['f-email', 'f-code', 'cgu-cb'].forEach(id => $(id).disabled = false);
       btn.disabled = false; btn.textContent = oldLabel;
@@ -167,7 +173,7 @@ $('form-login').addEventListener('submit', async ev => {
     document.cookie = 'cgu_seen=1;path=/;max-age=' + (86400 * 365);
     setTimeout(() => { window.location = '/'; }, 200);
   } catch (e) {
-    toast('Erreur réseau');
+    toast('Erreur réseau', 'error');
     ['f-email', 'f-code', 'cgu-cb'].forEach(id => $(id).disabled = false);
     btn.disabled = false; btn.textContent = oldLabel;
   }
@@ -175,16 +181,16 @@ $('form-login').addEventListener('submit', async ev => {
 
 async function resend(reason) {
   const email = ($('f-email').value || prompt('Ton email :') || '').trim();
-  if (!emailValid(email)) { toast('Email invalide'); return; }
+  if (!emailValid(email)) { toast('Email invalide', 'error'); return; }
   try {
     const r = await fetch(API + '/auth.php?action=resend_code', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, reason })
     });
     const d = await r.json();
-    if (d.ok) toast('Nouveau code envoyé par email');
-    else toast(d.error || 'Erreur envoi');
-  } catch (e) { toast('Erreur réseau'); }
+    if (d.ok) toast('Nouveau code envoyé par email', 'success');
+    else toast(d.error || 'Erreur envoi', 'error');
+  } catch (e) { toast('Erreur réseau', 'error'); }
 }
 $('link-forgot').addEventListener('click', e => { e.preventDefault(); resend('forgot'); });
 $('link-resend').addEventListener('click', e => { e.preventDefault(); resend('resend'); });

@@ -31,6 +31,72 @@ case 'status': {
     ]);
 }
 
+case 'register': {
+    // V20 M/2026/04/27/4 — Inscription nouvel agent + provisioning tenant.
+    $prenom = trim((string)($input['prenom'] ?? ''));
+    $nom = trim((string)($input['nom'] ?? ''));
+    $email = strtolower(trim((string)($input['email'] ?? '')));
+    $telephone = trim((string)($input['telephone'] ?? ''));
+    $ville = trim((string)($input['ville'] ?? ''));
+    $formation = trim((string)($input['formation'] ?? ''));
+    $accept_cgu = !empty($input['accept_cgu']);
+    if (!$prenom || !$nom) jout(['ok'=>false,'error'=>'Nom et prénom requis'], 400);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) jout(['ok'=>false,'error'=>'Email invalide'], 400);
+    if (!$telephone) jout(['ok'=>false,'error'=>'Téléphone requis'], 400);
+    if (!$ville) jout(['ok'=>false,'error'=>'Ville requise'], 400);
+    if (!$accept_cgu) jout(['ok'=>false,'error'=>'CGU requises'], 400);
+
+    $check = pdo_meta()->prepare("SELECT id FROM users WHERE email = ?");
+    $check->execute([$email]);
+    if ($check->fetch()) jout(['ok'=>false,'error'=>'Email déjà enregistré, connecte-toi'], 409);
+
+    // Slug WSp : prenom (3+ chars), collision-resolved
+    $slug_base = strtolower(preg_replace('/[^a-z0-9]/i', '', $prenom));
+    if (strlen($slug_base) < 3) $slug_base .= strtolower(substr(preg_replace('/[^a-z0-9]/i', '', $nom), 0, 1));
+    if (strlen($slug_base) < 3) $slug_base = 'agent';
+    $slug = $slug_base; $i = 0;
+    while ($i < 100) {
+        $cs = pdo_meta()->prepare("SELECT id FROM workspaces WHERE slug = ?");
+        $cs->execute([$slug]);
+        if (!$cs->fetch()) break;
+        $i++; $slug = $slug_base . $i;
+    }
+    if ($i >= 100) jout(['ok'=>false,'error'=>'Erreur génération slug'], 500);
+
+    $code = bin2hex(random_bytes(6));
+    $hash = password_hash($code, PASSWORD_BCRYPT, ['cost' => 10]);
+    $display_name = $prenom . ' ' . $nom;
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    pdo_meta()->prepare(
+        "INSERT INTO users (email, password_hash, display_name, role, must_change_password, cgu_accepted_at, cgu_version, cgu_accepted_ip, telephone, ville, formation)
+         VALUES (?, ?, ?, 'agent', 0, NOW(), '1.0', ?, ?, ?, ?)"
+    )->execute([$email, $hash, $display_name, $ip, $telephone, $ville, $formation]);
+    $user_id = (int)pdo_meta()->lastInsertId();
+
+    pdo_meta()->prepare("INSERT INTO workspaces (slug, type, display_name) VALUES (?, 'wsp', ?)")
+        ->execute([$slug, $display_name]);
+    $wsp_id = (int)pdo_meta()->lastInsertId();
+    pdo_meta()->prepare("INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')")
+        ->execute([$wsp_id, $user_id]);
+
+    // Provisioning DBs synchrone via sudo (sudoers /etc/sudoers.d/ocre-provision)
+    $provOut = []; $provRc = 0;
+    @exec('sudo /opt/ocre-app/scripts/provision-tenant.sh ' . escapeshellarg($slug) . ' 2>&1', $provOut, $provRc);
+
+    @require_once __DIR__ . '/lib/mailer.php';
+    if (function_exists('email_welcome_agent')) {
+        email_welcome_agent($email, $prenom, $slug, $email, $code);
+    }
+    @exec('/root/bin/notify --project ocre --priority info --title "Nouvel agent inscrit" --body ' . escapeshellarg($display_name . ' (' . $email . ') WSp ' . $slug) . ' >/dev/null 2>&1 &');
+
+    jout([
+        'ok' => true,
+        'wsp_slug' => $slug,
+        'message' => 'Compte créé, code envoyé par email',
+        'provisioning' => ($provRc === 0 ? 'ok' : 'pending'),
+    ]);
+}
+
 case 'resend_code':
 case 'forgot_password': {
     $email = strtolower(trim((string)($input['email'] ?? '')));
