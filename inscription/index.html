@@ -116,10 +116,13 @@ $('form-register').addEventListener('submit', async ev => {
     });
     const d = await r.json();
     if (!d.ok) { toast(d.error || 'Erreur', 'error'); btn.disabled=false; btn.textContent=old; return; }
-    toast('Compte créé. Vérifie tes emails pour ton code de connexion.', 'success');
+    const msg = d.mail_sent === false
+      ? 'Compte créé. Le code va t\'arriver par email dans quelques instants.'
+      : 'Compte créé. Vérifie tes emails pour ton code de connexion.';
+    toast(msg, 'success');
     setTimeout(() => {
       window.location = 'https://' + d.wsp_slug + '.ocre.immo/login/?email=' + encodeURIComponent(payload.email);
-    }, 2000);
+    }, 2500);
   } catch (e) { toast('Erreur réseau', 'error'); btn.disabled=false; btn.textContent=old; }
 });
 </script>
