@@ -48,11 +48,13 @@ case 'set_password': {
     $pwd = (string)($input['password'] ?? '');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) jout(['ok' => false, 'error' => 'Email invalide'], 400);
     if (strlen($pwd) < 6) jout(['ok' => false, 'error' => 'Mot de passe trop court (min 6)'], 400);
-    $stmt = pdo_meta()->prepare("SELECT id, password_hash, archived_at FROM users WHERE email = ? LIMIT 1");
+    $stmt = pdo_meta()->prepare("SELECT id, password_hash, archived_at, cgu_accepted_at FROM users WHERE email = ? LIMIT 1");
     $stmt->execute([$email]);
     $u = $stmt->fetch();
     if (!$u) jout(['ok' => false, 'error' => 'Utilisateur introuvable'], 404);
     if ($u['archived_at']) jout(['ok' => false, 'error' => 'Compte désactivé'], 403);
+    // V20 garde-fou : CGU obligatoires AVANT set-password (anti-bypass API)
+    if (empty($u['cgu_accepted_at'])) jout(['ok' => false, 'error' => 'CGU non acceptées'], 403);
     if (!empty($u['password_hash']) && $u['password_hash'] !== 'PLACEHOLDER') jout(['ok' => false, 'error' => 'Mot de passe déjà défini'], 409);
     $hash = password_hash($pwd, PASSWORD_BCRYPT, ['cost' => 10]);
     pdo_meta()->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([$hash, $u['id']]);
@@ -138,15 +140,20 @@ case 'me': {
     $emailNotif = 1;
     $cgu_accepted_at = null; $cgu_version = null; $tour_completed_at = null;
     try {
-        $st = pdo_meta()->prepare("SELECT email_notifications, cgu_accepted_at, cgu_version, tour_completed_at FROM users WHERE id = ?");
+        $st = pdo_meta()->prepare("SELECT cgu_accepted_at, cgu_version, tour_completed_at FROM users WHERE id = ?");
         $st->execute([$u['id']]);
         $r = $st->fetch();
         if ($r) {
-            if (isset($r['email_notifications'])) $emailNotif = (int)$r['email_notifications'];
             $cgu_accepted_at = $r['cgu_accepted_at'] ?? null;
             $cgu_version = $r['cgu_version'] ?? null;
             $tour_completed_at = $r['tour_completed_at'] ?? null;
         }
+    } catch (Throwable $e) {}
+    try {
+        $st2 = pdo_meta()->prepare("SELECT email_notifications FROM users WHERE id = ?");
+        $st2->execute([$u['id']]);
+        $r2 = $st2->fetch();
+        if ($r2 && isset($r2['email_notifications'])) $emailNotif = (int)$r2['email_notifications'];
     } catch (Throwable $e) {}
     jout([
         'ok' => true,
@@ -215,6 +222,13 @@ case 'mark_read': {
 
 case 'change_password': {
     $u = current_user_or_401();
+    // V20 garde-fou : refuser si CGU pas acceptées (empêche bypass via API directe).
+    try {
+        $st = pdo_meta()->prepare("SELECT cgu_accepted_at FROM users WHERE id = ?");
+        $st->execute([$u['id']]);
+        $r = $st->fetch();
+        if (!$r || empty($r['cgu_accepted_at'])) jout(['ok' => false, 'error' => 'CGU non acceptées'], 403);
+    } catch (Throwable $e) {}
     $old = (string)($input['old_password'] ?? $input['current'] ?? '');
     $new = (string)($input['new_password'] ?? $input['new'] ?? '');
     if (strlen($new) < 10) jout(['ok' => false, 'error' => 'mot de passe min 10 chars'], 400);

@@ -563,18 +563,19 @@
     }
     state.ctx = ctx;
     if (ctx.branding) applyBranding(ctx.branding);
-    if (ctx.user && ctx.user.must_change_password) { showFirstLogin(); return; }
-
+    // Charger user complet (master) avant tout gate.
     const wsList = await apiFetch('/api/auth_v20.php?action=me');
     if (wsList.ok && wsList.workspaces) state.workspaces = wsList.workspaces;
     const fullUser = (wsList.ok && wsList.user) ? wsList.user : (ctx.user || {});
 
-    // Phase 2 CGU bloquant
+    // Phase 2 CGU bloquant — TOUJOURS avant set-password (V20 patch ordre parcours).
     if (!fullUser.cgu_accepted_at) {
       await maybeShowCguGate(fullUser);
       fullUser.cgu_accepted_at = new Date().toISOString();
     }
-    // Phase 5 tour produit après CGU
+    // Set-password APRÈS CGU acceptées.
+    if (fullUser.must_change_password) { showFirstLogin(); return; }
+    // Phase 5 tour produit après CGU + set-password
     if (!fullUser.tour_completed_at) {
       maybeShowProductTour(fullUser);
     }
