@@ -9,7 +9,7 @@
 
   // === Helpers réseau ===
   const tenantSlug = (location.hostname.match(/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/) || [])[1] || '';
-  const SESSION_KEY = 'ocre_session_token';
+  const SESSION_KEY = 'ocre_token';
   const sess = () => localStorage.getItem(SESSION_KEY) || '';
   const apiFetch = async (url, opts = {}) => {
     opts.headers = Object.assign({}, opts.headers || {}, {
