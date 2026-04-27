@@ -48,7 +48,11 @@ body{font-family:'DM Sans',sans-serif;background:#F0E8D8;min-height:100vh;displa
   <form id="form-register" autocomplete="on">
     <div class="field"><label>Prénom</label><input class="input" type="text" id="f-prenom" autocomplete="given-name" required></div>
     <div class="field"><label>Nom</label><input class="input" type="text" id="f-nom" autocomplete="family-name" required></div>
-    <div class="field"><label>Email</label><input class="input" type="email" id="f-email" autocomplete="email" required></div>
+    <div class="field">
+      <label>Email</label>
+      <input class="input" type="email" id="f-email" autocomplete="email" placeholder="ton.email@gmail.com" required>
+      <div style="font-size:11px;color:#7A7167;margin-top:4px;line-height:1.4">Utilise ton email habituel — c'est là que tu recevras ton code de connexion et les notifications.</div>
+    </div>
     <div class="field"><label>Téléphone</label><input class="input" type="tel" id="f-tel" autocomplete="tel" required></div>
     <div class="field"><label>Ville d'exercice</label><input class="input" type="text" id="f-ville" placeholder="Marrakech, Casablanca…" required></div>
     <div class="field"><label>Diplôme ou formation (optionnel)</label><input class="input" type="text" id="f-formation" placeholder="ESI Paris, Master immo, autodidacte…"></div>

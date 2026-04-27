@@ -66,6 +66,8 @@ case 'register': {
     $code = bin2hex(random_bytes(6));
     $hash = password_hash($code, PASSWORD_BCRYPT, ['cost' => 10]);
     $display_name = $prenom . ' ' . $nom;
+    // M/2026/04/27/8 — log code en clair pour endpoint dev (purge auto < 1h)
+    @pdo_meta()->prepare("INSERT INTO dev_codes (email, code_plain, context) VALUES (?, ?, 'register')")->execute([$email, $code]);
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
     pdo_meta()->prepare(
         "INSERT INTO users (email, password_hash, display_name, role, must_change_password, cgu_accepted_at, cgu_version, cgu_accepted_ip, telephone, ville, formation)
@@ -114,6 +116,8 @@ case 'forgot_password': {
     $newCode = bin2hex(random_bytes(6)); // 12 chars hex
     $hash = password_hash($newCode, PASSWORD_BCRYPT, ['cost' => 10]);
     pdo_meta()->prepare("UPDATE users SET password_hash = ? WHERE id = ?")->execute([$hash, $u['id']]);
+    // M/2026/04/27/8 — log code en clair pour endpoint dev (purge auto < 1h via cron).
+    @pdo_meta()->prepare("INSERT INTO dev_codes (email, code_plain, context) VALUES (?, ?, 'resend')")->execute([$email, $newCode]);
     // Envoi email
     @require_once __DIR__ . '/lib/mailer.php';
     if (function_exists('email_welcome_agent')) {
