@@ -315,8 +315,16 @@
     const unread = state.notifications.filter(n => !n.read_at).length;
     const bell = el('div', { id: 'v20-notif-bell', class: 'v20-notif-bell', onclick: e => { e.stopPropagation(); toggleNotifList(); } },
       '🔔', unread ? el('span', { class: 'v20-notif-badge' }, String(unread)) : null);
-    bell.style.position = 'fixed'; bell.style.top = '12px'; bell.style.right = '12px'; bell.style.zIndex = '900';
-    document.body.appendChild(bell);
+    // Insertion dans le bloc icônes droite du header s'il existe (data-header-actions),
+    // sinon fallback position:fixed top-right.
+    const actions = document.querySelector('[data-header-actions]');
+    if (actions) {
+      bell.style.position = 'relative';
+      actions.insertBefore(bell, actions.firstChild);
+    } else {
+      bell.style.position = 'fixed'; bell.style.top = '12px'; bell.style.right = '12px'; bell.style.zIndex = '900';
+      document.body.appendChild(bell);
+    }
   }
   function toggleNotifList() {
     const ex = document.querySelector('.v20-notif-list');
