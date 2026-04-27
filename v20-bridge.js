@@ -400,20 +400,89 @@
     document.body.appendChild(wrap);
   }
 
-  // === ListView — bouton Partager ===
+  // === ListView — boutons Aperçu + Partager (M/2026/04/27/2) ===
   function injectShareButtons() {
-    if (!state.ctx || state.ctx.workspace.type !== 'wsp' || state.ctx.is_readonly) return;
-    if (state.ctx.mode !== 'agent') return;
+    if (!state.ctx || state.ctx.is_readonly) return;
     document.querySelectorAll('[data-dossier-id]:not([data-v20-share])').forEach(card => {
       card.setAttribute('data-v20-share', '1');
       const id = card.getAttribute('data-dossier-id');
-      const btn = el('button', { class: 'v20-share-btn', onclick: e => {
-        e.stopPropagation();
-        const dossier = { id, client_nom: card.dataset.clientNom || '', type_bien: card.dataset.typeBien || '', prix: card.dataset.prix || '' };
-        openShareDossier(dossier);
-      } }, '🤝 Partager');
-      card.appendChild(btn);
+      const wrap = el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px' },
+        el('button', { class: 'v20-share-btn', style: 'background:#8B5E3C;color:#fff;border-color:#8B5E3C', onclick: e => {
+          e.stopPropagation();
+          openDossierPdfView(parseInt(id, 10));
+        } }, '👁 Aperçu'),
+        el('button', { class: 'v20-share-btn', onclick: e => {
+          e.stopPropagation();
+          openSharePartnersSheet(parseInt(id, 10));
+        } }, '🤝 Partager')
+      );
+      card.appendChild(wrap);
     });
+  }
+
+  // === DossierPdfView — overlay plein écran avec rendu A4 du dossier ===
+  async function openDossierPdfView(dossierId) {
+    closeOverlay();
+    const ov = el('div', { class: 'v20-overlay', style: 'background:#E8E5E0;align-items:flex-start;padding:0' });
+    const close = el('button', { style: 'position:fixed;top:14px;left:14px;background:#fff;border:1px solid #E5DDC8;border-radius:20px;padding:8px 14px;font-family:inherit;font-size:13px;font-weight:600;color:#8B5E3C;cursor:pointer;z-index:10;box-shadow:0 2px 6px rgba(0,0,0,.12)', onclick: () => ov.remove() }, '← Retour');
+    const shareBtn = el('button', { class: 'v20-cta', style: 'position:fixed;bottom:20px;right:20px;z-index:10;box-shadow:0 4px 12px rgba(139,94,60,.3)', onclick: () => openSharePartnersSheet(dossierId) }, '🤝 Partager');
+    const a4 = el('div', { style: 'max-width:720px;margin:60px auto 80px;background:#fff;padding:36px 32px;box-shadow:0 4px 20px rgba(0,0,0,.08);border-radius:4px;font-family:DM Sans,sans-serif' });
+    a4.innerHTML = '<p style="text-align:center;color:#7A7167">Chargement…</p>';
+    ov.appendChild(close);
+    ov.appendChild(a4);
+    ov.appendChild(shareBtn);
+    document.body.appendChild(ov);
+    // Crée un lien temporaire pour bénéficier du rendu serveur identique au partage public.
+    const r = await apiFetch('/api/share_links_v20.php?action=create_link', { method: 'POST', body: { dossier_id: dossierId } });
+    if (!r.ok) { a4.innerHTML = '<p style="color:#C04B20">Erreur : ' + (r.error || 'inconnue') + '</p>'; return; }
+    try {
+      const html = await fetch('/share/' + r.token).then(x => x.text());
+      const m = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      const inner = m ? m[1] : html;
+      a4.innerHTML = inner;
+    } catch (e) { a4.innerHTML = '<p style="color:#C04B20">Erreur réseau</p>'; }
+  }
+
+  // === Bottom sheet Partager : 2 options client / agent ===
+  async function openSharePartnersSheet(dossierId) {
+    const partnersResp = await apiFetch('/api/share_links_v20.php?action=list_partners');
+    const partners = (partnersResp.ok && partnersResp.partners) || [];
+    const sheet = el('div', { class: 'v20-overlay', style: 'align-items:flex-end;padding:0' });
+    const card = el('div', { style: 'background:#fff;width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:20px 18px 28px;font-family:DM Sans,sans-serif', onclick: e => e.stopPropagation() },
+      el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:16px' },
+        el('h2', { style: 'font-family:Cormorant Garamond,serif;font-size:18px;color:#8B5E3C;margin:0' }, 'Partager le dossier'),
+        el('button', { style: 'background:none;border:none;font-size:22px;cursor:pointer;color:#8B7F6E', onclick: () => sheet.remove() }, '×')
+      ),
+      el('div', { class: 'v20-row', style: 'border:1px solid #E5DDC8;margin-bottom:10px;align-items:flex-start;padding:14px', onclick: async () => {
+        sheet.remove();
+        const r = await apiFetch('/api/share_links_v20.php?action=create_link', { method: 'POST', body: { dossier_id: dossierId } });
+        if (!r.ok) { alert(r.error); return; }
+        if (navigator.share) { try { await navigator.share({ url: r.url, title: 'Dossier Ocre Immo' }); return; } catch (e) {} }
+        try { await navigator.clipboard.writeText(r.url); alert('Lien copié — expire dans 7 jours'); } catch (e) { prompt('Copie le lien :', r.url); }
+      } },
+        el('div', { style: 'flex:1' },
+          el('strong', { style: 'display:block;font-size:14px;color:#2A2018' }, '👤 Partager avec un client'),
+          el('small', { style: 'color:#8B7F6E;font-size:12px' }, 'Lien public lecture seule, expire dans 7 jours'))
+      ),
+      partners.length === 0
+        ? el('div', { class: 'v20-row', style: 'border:1px solid #E5DDC8;opacity:.5;cursor:not-allowed;padding:14px;align-items:flex-start' },
+            el('div', { style: 'flex:1' },
+              el('strong', { style: 'display:block;font-size:14px;color:#2A2018' }, '👥 Partager avec un agent Ocre'),
+              el('small', { style: 'color:#8B7F6E;font-size:12px' }, 'Crée d\'abord un WSc avec un autre agent')))
+        : el('div', { style: 'border:1px solid #E5DDC8;border-radius:8px;padding:8px' },
+            el('div', { style: 'font-size:13px;color:#6B5E4A;margin-bottom:6px;padding:0 4px' }, '👥 Partager avec un agent'),
+            ...partners.map(p => el('div', { class: 'v20-row', style: 'padding:10px 12px', onclick: async () => {
+              sheet.remove();
+              const r = await apiFetch('/api/share_links_v20.php?action=create_internal', { method: 'POST', body: { dossier_id: dossierId, target_user_id: parseInt(p.id, 10) } });
+              alert(r.ok ? 'Partagé avec ' + (p.display_name || p.email).split(' ')[0] : (r.error || 'Erreur'));
+            } },
+              el('strong', {}, p.display_name || p.email),
+              el('small', { style: 'color:#8B7F6E' }, 'WSc ' + (p.wsc_name || p.wsc_slug))
+            )))
+    );
+    sheet.appendChild(card);
+    sheet.addEventListener('click', () => sheet.remove());
+    document.body.appendChild(sheet);
   }
 
   // === Phase 2 — CGU gate plein écran ===
@@ -613,6 +682,8 @@
     openRequestRupture,
     openCancelRupture,
     openPactSign,
+    openDossierPdfView,
+    openSharePartnersSheet,
     state,
   };
   // Alias debug : Philippe peut appeler openV20Switcher() depuis console Safari.
