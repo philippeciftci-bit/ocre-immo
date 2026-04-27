@@ -32,7 +32,8 @@ case 'status': {
 }
 
 case 'register': {
-    // V20 M/2026/04/27/4 — Inscription nouvel agent + provisioning tenant.
+    // V20 M/2026/04/27/15 — Inscription transactionnelle. Si l'envoi mail
+    // echoue → ROLLBACK total (user/workspace/membership/dev_code/DB tenant).
     $prenom = trim((string)($input['prenom'] ?? ''));
     $nom = trim((string)($input['nom'] ?? ''));
     $email = strtolower(trim((string)($input['email'] ?? '')));
@@ -46,11 +47,23 @@ case 'register': {
     if (!$ville) jout(['ok'=>false,'error'=>'Ville requise'], 400);
     if (!$accept_cgu) jout(['ok'=>false,'error'=>'CGU requises'], 400);
 
+    // Verrou prod : si > 50% des envois mail des dernières 24h sont failed → 503.
+    try {
+        $st = pdo_meta()->query("SELECT
+            SUM(CASE WHEN status='sent' THEN 1 ELSE 0 END) AS ok,
+            SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS ko,
+            COUNT(*) AS total
+            FROM mail_log WHERE created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+        $rate = $st->fetch();
+        if ($rate && (int)$rate['total'] >= 5 && (int)$rate['ko'] > (int)$rate['ok']) {
+            jout(['ok'=>false,'error'=>'Inscriptions temporairement indisponibles, retente dans quelques heures (envoi email en cours de configuration)'], 503);
+        }
+    } catch (Throwable $e) {}
+
     $check = pdo_meta()->prepare("SELECT id FROM users WHERE email = ?");
     $check->execute([$email]);
     if ($check->fetch()) jout(['ok'=>false,'error'=>'Email déjà enregistré, connecte-toi'], 409);
 
-    // Slug WSp : prenom (3+ chars), collision-resolved
     $slug_base = strtolower(preg_replace('/[^a-z0-9]/i', '', $prenom));
     if (strlen($slug_base) < 3) $slug_base .= strtolower(substr(preg_replace('/[^a-z0-9]/i', '', $nom), 0, 1));
     if (strlen($slug_base) < 3) $slug_base = 'agent';
@@ -66,45 +79,66 @@ case 'register': {
     $code = bin2hex(random_bytes(6));
     $hash = password_hash($code, PASSWORD_BCRYPT, ['cost' => 10]);
     $display_name = $prenom . ' ' . $nom;
-    // M/2026/04/27/8 — log code en clair pour endpoint dev (purge auto < 1h)
-    @pdo_meta()->prepare("INSERT INTO dev_codes (email, code_plain, context) VALUES (?, ?, 'register')")->execute([$email, $code]);
     $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    pdo_meta()->prepare(
-        "INSERT INTO users (email, password_hash, display_name, role, must_change_password, cgu_accepted_at, cgu_version, cgu_accepted_ip, telephone, ville, formation)
-         VALUES (?, ?, ?, 'agent', 0, NOW(), '1.0', ?, ?, ?, ?)"
-    )->execute([$email, $hash, $display_name, $ip, $telephone, $ville, $formation]);
-    $user_id = (int)pdo_meta()->lastInsertId();
 
-    pdo_meta()->prepare("INSERT INTO workspaces (slug, type, display_name) VALUES (?, 'wsp', ?)")
-        ->execute([$slug, $display_name]);
-    $wsp_id = (int)pdo_meta()->lastInsertId();
-    pdo_meta()->prepare("INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')")
-        ->execute([$wsp_id, $user_id]);
-
-    // Provisioning DBs synchrone via sudo (sudoers /etc/sudoers.d/ocre-provision)
-    $provOut = []; $provRc = 0;
-    @exec('sudo /opt/ocre-app/scripts/provision-tenant.sh ' . escapeshellarg($slug) . ' 2>&1', $provOut, $provRc);
-
-    // M/2026/04/27/14 — envoi mail best-effort. Le user est DEJA cree en DB,
-    // le code est dans dev_codes. Si l'envoi mail echoue (port 25, SMTP indispo,
-    // domaine non verifie Resend), on renvoie ok=true avec mail_sent=false.
-    $mail_sent = false;
-    try {
-        @require_once __DIR__ . '/lib/mailer.php';
-        if (function_exists('email_welcome_agent')) {
-            $r = @email_welcome_agent($email, $prenom, $slug, $email, $code);
-            $mail_sent = (bool)$r;
+    $pdo = pdo_meta();
+    $user_id = 0; $wsp_id = 0; $tenant_provisioned = false;
+    $rollback = function() use ($pdo, &$user_id, &$wsp_id, $email, $slug, &$tenant_provisioned) {
+        try { if ($wsp_id) $pdo->prepare("DELETE FROM workspace_members WHERE workspace_id=?")->execute([$wsp_id]); } catch (Throwable $e) {}
+        try { if ($wsp_id) $pdo->prepare("DELETE FROM workspaces WHERE id=?")->execute([$wsp_id]); } catch (Throwable $e) {}
+        try { if ($user_id) $pdo->prepare("DELETE FROM sessions WHERE user_id=?")->execute([$user_id]); } catch (Throwable $e) {}
+        try { $pdo->prepare("DELETE FROM dev_codes WHERE email=?")->execute([$email]); } catch (Throwable $e) {}
+        try { if ($user_id) $pdo->prepare("DELETE FROM users WHERE id=?")->execute([$user_id]); } catch (Throwable $e) {}
+        if ($tenant_provisioned) {
+            @exec('sudo /opt/ocre-app/scripts/drop-tenant.sh ' . escapeshellarg($slug) . ' 2>&1');
         }
-    } catch (Throwable $e) { $mail_sent = false; }
-    @exec('/root/bin/notify --project ocre --priority info --title "Nouvel agent inscrit" --body ' . escapeshellarg($display_name . ' (' . $email . ') WSp ' . $slug) . ' >/dev/null 2>&1 &');
+    };
 
-    jout([
-        'ok' => true,
-        'mail_sent' => $mail_sent,
-        'wsp_slug' => $slug,
-        'message' => 'Compte créé, code envoyé par email',
-        'provisioning' => ($provRc === 0 ? 'ok' : 'pending'),
-    ]);
+    try {
+        $pdo->prepare(
+            "INSERT INTO users (email, password_hash, display_name, role, must_change_password, cgu_accepted_at, cgu_version, cgu_accepted_ip, telephone, ville, formation)
+             VALUES (?, ?, ?, 'agent', 0, NOW(), '1.0', ?, ?, ?, ?)"
+        )->execute([$email, $hash, $display_name, $ip, $telephone, $ville, $formation]);
+        $user_id = (int)$pdo->lastInsertId();
+
+        $pdo->prepare("INSERT INTO workspaces (slug, type, display_name) VALUES (?, 'wsp', ?)")
+            ->execute([$slug, $display_name]);
+        $wsp_id = (int)$pdo->lastInsertId();
+        $pdo->prepare("INSERT INTO workspace_members (workspace_id, user_id, role) VALUES (?, ?, 'owner')")
+            ->execute([$wsp_id, $user_id]);
+        $pdo->prepare("INSERT INTO dev_codes (email, code_plain, context) VALUES (?, ?, 'register')")->execute([$email, $code]);
+
+        $provOut = []; $provRc = 0;
+        @exec('sudo /opt/ocre-app/scripts/provision-tenant.sh ' . escapeshellarg($slug) . ' 2>&1', $provOut, $provRc);
+        $tenant_provisioned = ($provRc === 0);
+
+        // Envoi mail OBLIGATOIRE pour valider la transaction.
+        $mail_sent = false;
+        try {
+            @require_once __DIR__ . '/lib/mailer.php';
+            if (function_exists('email_welcome_agent')) {
+                $mail_sent = (bool)@email_welcome_agent($email, $prenom, $slug, $email, $code);
+            }
+        } catch (Throwable $e) { $mail_sent = false; }
+
+        if (!$mail_sent) {
+            $rollback();
+            jout(['ok'=>false,'error'=>'Service mail indisponible, réessaie dans quelques minutes'], 503);
+        }
+
+        @exec('/root/bin/notify --project ocre --priority info --title "Nouvel agent inscrit" --body ' . escapeshellarg($display_name . ' (' . $email . ') WSp ' . $slug) . ' >/dev/null 2>&1 &');
+
+        jout([
+            'ok' => true,
+            'mail_sent' => true,
+            'wsp_slug' => $slug,
+            'message' => 'Compte créé, code envoyé par email',
+            'provisioning' => $tenant_provisioned ? 'ok' : 'pending',
+        ]);
+    } catch (Throwable $e) {
+        $rollback();
+        jout(['ok'=>false,'error'=>'Erreur interne, transaction annulée'], 500);
+    }
 }
 
 case 'resend_code':

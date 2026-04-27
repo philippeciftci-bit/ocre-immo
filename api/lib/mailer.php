@@ -8,18 +8,24 @@ const OCRE_BTN_BG = '#8B5E3C';
 const OCRE_BTN_HOVER = '#6B4429';
 
 function ocre_send_mail(string $to, string $subject, string $html_body, ?string $pdf_attachment = null): bool {
-    // Priorité Resend via _email.php si dispo (pas de pièces jointes côté Resend pour l'instant).
+    // M/2026/04/27/15 — Priorité mailer-shared self-hosted (Postfix DKIM).
+    // _email.php (Resend) DÉSACTIVÉ car require db.php qui crash si DB tenant absente.
     if ($pdf_attachment === null) {
-        $emailLib = __DIR__ . '/../_email.php';
-        if (file_exists($emailLib)) {
-            require_once $emailLib;
-            if (function_exists('sendEmail') && function_exists('emailEnabled') && emailEnabled()) {
-                $r = sendEmail($to, $subject, $html_body, 'v20', null, [], true);
-                if (!empty($r['ok'])) return true;
+        $sharedLib = '/opt/atelier/lib/mailer-shared.php';
+        if (file_exists($sharedLib)) {
+            require_once $sharedLib;
+            if (function_exists('atelier_send_mail')) {
+                $r = atelier_send_mail($to, $subject, $html_body, 'noreply@ocre.immo', null, ['project' => 'ocre']);
+                if (!empty($r['ok'])) {
+                    @mkdir('/var/log/ocre', 0775, true);
+                    file_put_contents('/var/log/ocre/mail.log',
+                        "[" . gmdate('c') . "] SHARED-OK TO={$to} log_id=" . ($r['log_id'] ?? '?') . "\n", FILE_APPEND);
+                    return true;
+                }
                 @mkdir('/var/log/ocre', 0775, true);
                 file_put_contents('/var/log/ocre/mail.log',
-                    "[" . gmdate('c') . "] RESEND-FAIL TO={$to} ERR=" . ($r['error'] ?? '') . "\n",
-                    FILE_APPEND);
+                    "[" . gmdate('c') . "] SHARED-FAIL TO={$to} ERR=" . ($r['error'] ?? '') . "\n", FILE_APPEND);
+                return false;
             }
         }
     }
