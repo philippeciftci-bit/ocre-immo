@@ -1,0 +1,10 @@
+[Unit]
+Description=Ocre Immo - Monitoring uptime toutes les 2 minutes
+
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=120s
+Unit=ocre-uptime.service
+
+[Install]
+WantedBy=timers.target
