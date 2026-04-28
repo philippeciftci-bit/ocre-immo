@@ -124,7 +124,8 @@ switch ($action) {
         $staged = isset($_GET['staged']) ? (int)$_GET['staged'] : 0;
         // V50 — soft-delete filter : masquer les deleted_at NOT NULL.
         $stmt = db()->prepare(
-            "SELECT id, data, is_draft, archived, projet, is_investisseur, is_staged, promoted_at, updated_at
+            "SELECT id, data, is_draft, archived, projet, is_investisseur, is_staged, promoted_at, updated_at,
+                    prenom, nom, societe_nom, tel, email, vertical, seed_id
              FROM clients WHERE user_id = ? AND is_staged = ? AND deleted_at IS NULL ORDER BY updated_at DESC"
         );
         $stmt->execute([$user['id'], $staged ? 1 : 0]);
@@ -214,6 +215,15 @@ switch ($action) {
             $d['projet'] = $r['projet'] ?? ($d['projet'] ?? 'Acheteur');
             $d['is_investisseur'] = (bool)(int)($r['is_investisseur'] ?? 0);
             $d['updated_at'] = $r['updated_at'];
+            // M/2026/04/28/24 — fusionne colonnes top-level (frontend lit
+            // c.prenom, c.nom, c.societe_nom directement, sinon « Sans nom »).
+            $d['prenom'] = $r['prenom'];
+            $d['nom'] = $r['nom'];
+            $d['societe_nom'] = $r['societe_nom'];
+            $d['tel'] = $r['tel'];
+            $d['email'] = $r['email'];
+            $d['vertical'] = $r['vertical'];
+            $d['seed_id'] = $r['seed_id'];
             $cid = (int)$r['id'];
             $d['suivi'] = [
                 'next_event' => $next_events[$cid] ?? null,
@@ -239,6 +249,15 @@ switch ($action) {
         $d['is_draft'] = (bool)(int)$r['is_draft'];
         $d['projet'] = $r['projet'] ?? ($d['projet'] ?? 'Acheteur');
         $d['is_investisseur'] = (bool)(int)($r['is_investisseur'] ?? 0);
+        // M/2026/04/28/24 — fusionne colonnes top-level (sinon perte des
+        // champs identité dans le formulaire d'édition).
+        $d['prenom'] = $r['prenom'];
+        $d['nom'] = $r['nom'];
+        $d['societe_nom'] = $r['societe_nom'];
+        $d['tel'] = $r['tel'];
+        $d['email'] = $r['email'];
+        $d['vertical'] = $r['vertical'];
+        $d['seed_id'] = $r['seed_id'] ?? null;
         signClientPhotos($d);
         jsonOk(['client' => $d]);
     }
