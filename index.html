@@ -7671,6 +7671,112 @@ function HelpPage({onBack}) {
   );
 }
 
+// M/2026/04/28/66 — AuditLogView : table audit_log avec filtres + drawer + export CSV.
+function AuditLogView({showToast}) {
+  const [logs, setLogs] = React.useState([]);
+  const [total, setTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(true);
+  const [filters, setFilters] = React.useState({user_id: '', action_pattern: '', target_type: '', from: '', to: '', search_payload: ''});
+  const [offset, setOffset] = React.useState(0);
+  const [drawer, setDrawer] = React.useState(null);
+  const limit = 50;
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  async function load() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+      params.set('limit', limit);
+      params.set('offset', offset);
+      const r = await fetch('/api/admin/audit_log.php?action=list&' + params, {headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (r.ok) { setLogs(r.logs || []); setTotal(r.total || 0); }
+    } catch (e) {}
+    setLoading(false);
+  }
+  React.useEffect(() => { load(); }, [offset]);
+
+  function exportCsv() {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v) params.set(k, v); });
+    params.set('token', token());
+    window.open('/api/admin/audit_log.php?action=export_csv&' + params, '_blank');
+  }
+
+  function relTime(s) {
+    if (!s) return '';
+    const d = new Date(s.replace(' ', 'T') + 'Z');
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return 'à l\'instant';
+    if (diff < 3600) return Math.round(diff/60) + ' min';
+    if (diff < 86400) return Math.round(diff/3600) + ' h';
+    return d.toLocaleString('fr-FR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+  }
+
+  return (
+    <div>
+      <div style={{background:'#fff', borderRadius:10, border:'1px solid #EDE6DC', padding:12, marginBottom:10}}>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginBottom:8}}>
+          <input placeholder="user_id" value={filters.user_id} onChange={e => setFilters({...filters, user_id: e.target.value})}
+            style={{padding:6, border:'1px solid #D8CCB4', borderRadius:5, fontSize:12}}/>
+          <input placeholder="action (ex: client.*)" value={filters.action_pattern} onChange={e => setFilters({...filters, action_pattern: e.target.value})}
+            style={{padding:6, border:'1px solid #D8CCB4', borderRadius:5, fontSize:12}}/>
+          <input type="date" placeholder="from" value={filters.from} onChange={e => setFilters({...filters, from: e.target.value})}
+            style={{padding:6, border:'1px solid #D8CCB4', borderRadius:5, fontSize:12}}/>
+          <input type="date" placeholder="to" value={filters.to} onChange={e => setFilters({...filters, to: e.target.value})}
+            style={{padding:6, border:'1px solid #D8CCB4', borderRadius:5, fontSize:12}}/>
+          <input placeholder="search payload" value={filters.search_payload} onChange={e => setFilters({...filters, search_payload: e.target.value})}
+            style={{padding:6, border:'1px solid #D8CCB4', borderRadius:5, fontSize:12, gridColumn: '1 / span 2'}}/>
+        </div>
+        <div style={{display:'flex', gap:6}}>
+          <button onClick={() => { setOffset(0); load(); }} style={{flex:1, padding:'6px 10px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:5, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Filtrer</button>
+          <button onClick={exportCsv} style={{padding:'6px 10px', background:'transparent', border:'1px solid #B89968', borderRadius:5, fontFamily:'inherit', fontSize:12, color:'#8B5E3C', cursor:'pointer'}}>Export CSV</button>
+        </div>
+      </div>
+      <div style={{fontSize:11, color:'#8B7F6E', marginBottom:6}}>{total} entrées · page {Math.floor(offset/limit) + 1}/{Math.ceil(total/limit) || 1}</div>
+      {loading && <div style={{textAlign:'center', padding:14, color:'#8B7F6E'}}>Chargement…</div>}
+      <div style={{background:'#fff', borderRadius:10, border:'1px solid #EDE6DC', overflow:'hidden'}}>
+        {logs.length === 0 && !loading && <div style={{padding:20, textAlign:'center', color:'#8B7F6E'}}>Aucune entrée</div>}
+        {logs.map(l => (
+          <div key={l.id} onClick={() => setDrawer(l)} style={{padding:'8px 12px', borderBottom:'1px solid #F4EFE6', cursor:'pointer', display:'grid', gridTemplateColumns:'90px 60px 1fr 100px', gap:8, fontSize:12, alignItems:'center'}}>
+            <div style={{color:'#8B7F6E'}}>{relTime(l.created_at)}</div>
+            <div style={{color:'#8B5E3C', fontWeight:600}}>uid={l.user_id || '—'}</div>
+            <div style={{color:'#2A2018', fontFamily:'monospace', overflow:'hidden', textOverflow:'ellipsis'}}>{l.action}</div>
+            <div style={{color:'#8B7F6E', textAlign:'right', fontSize:10.5}}>{l.target_type || ''}{l.target_id ? '#' + l.target_id : ''}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:'flex', gap:6, justifyContent:'center', marginTop:10}}>
+        <button onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0} style={{padding:'6px 10px', background:'transparent', border:'1px solid #B89968', borderRadius:5, fontFamily:'inherit', fontSize:11.5, color:'#8B5E3C', cursor:'pointer'}}>← Préc.</button>
+        <button onClick={() => setOffset(offset + limit)} disabled={offset + limit >= total} style={{padding:'6px 10px', background:'transparent', border:'1px solid #B89968', borderRadius:5, fontFamily:'inherit', fontSize:11.5, color:'#8B5E3C', cursor:'pointer'}}>Suiv. →</button>
+      </div>
+      {drawer && (
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:10}}>
+          <div style={{background:'#fff', borderRadius:12, padding:18, maxWidth:520, width:'100%', maxHeight:'80vh', overflow:'auto'}}>
+            <div style={{display:'flex', alignItems:'center', marginBottom:10}}>
+              <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C'}}>{drawer.action}</div>
+              <button onClick={() => setDrawer(null)} style={{background:'none', border:'none', fontSize:18, cursor:'pointer'}}>×</button>
+            </div>
+            <div style={{fontSize:12, color:'#5A4E3D'}}>
+              <div><b>Date :</b> {drawer.created_at}</div>
+              <div><b>User :</b> uid={drawer.user_id}</div>
+              <div><b>Target :</b> {drawer.target_type}{drawer.target_id ? ' #' + drawer.target_id : ''}</div>
+              <div><b>IP :</b> {drawer.ip || '—'}</div>
+              <div><b>UA :</b> {drawer.user_agent || '—'}</div>
+              {drawer.payload && (
+                <div style={{marginTop:8}}>
+                  <b>Payload :</b>
+                  <pre style={{background:'#FAF7F0', padding:8, borderRadius:6, fontSize:10.5, overflow:'auto', maxHeight:300}}>{(() => { try { return JSON.stringify(JSON.parse(drawer.payload), null, 2); } catch (e) { return drawer.payload; } })()}</pre>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // M/2026/04/28/63 — Feature flags admin : table + toggle default + slider rollout + overrides drawer.
 function FeatureFlagsAdmin({showToast}) {
   const [flags, setFlags] = React.useState([]);
@@ -7864,6 +7970,7 @@ function SuperAdminDashboard({onBack, showToast, currentUser}) {
     {k:'users', l:'Agents'},
     {k:'clients', l:'Dossiers'},
     {k:'recycle', l:'Corbeille'},
+    {k:'audit', l:'Audit'},
     {k:'settings', l:'Système'},
   ];
 
@@ -7992,6 +8099,8 @@ function SuperAdminDashboard({onBack, showToast, currentUser}) {
             </div>
           </div>
         )}
+
+        {tab === 'audit' && <AuditLogView showToast={showToast}/>}
 
         {tab === 'settings' && (
           <div>
