@@ -7491,6 +7491,118 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
 
 // V18.40 — Dashboard admin : métriques + users + actions (unlock / reset_password / suspend /
 // impersonate / logs) + admin_logs. Nécessite user.is_admin=true (requireAdmin côté backend).
+// M/2026/04/28/63 — Feature flags admin : table + toggle default + slider rollout + overrides drawer.
+function FeatureFlagsAdmin({showToast}) {
+  const [flags, setFlags] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [overridesFor, setOverridesFor] = React.useState(null);
+  const [overrides, setOverrides] = React.useState([]);
+  const [newOverride, setNewOverride] = React.useState({user_id: '', enabled: 1});
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  async function load() {
+    setLoading(true);
+    try { const r = await fetch('/api/feature_flags.php?action=list', {headers:{'X-Session-Token': token()}}).then(r => r.json()); if (r.ok) setFlags(r.flags || []); }
+    catch (e) {}
+    setLoading(false);
+  }
+  React.useEffect(() => { load(); }, []);
+
+  async function updateDefault(key, value) {
+    await fetch('/api/feature_flags.php?action=update_default', {
+      method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+      body: JSON.stringify({flag_key: key, value}),
+    });
+    load();
+  }
+  async function updateRollout(key, pct) {
+    await fetch('/api/feature_flags.php?action=update_rollout', {
+      method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+      body: JSON.stringify({flag_key: key, pct}),
+    });
+    load();
+  }
+  async function loadOverrides(key) {
+    setOverridesFor(key);
+    try { const r = await fetch('/api/feature_flags.php?action=list_overrides&flag_key=' + key, {headers:{'X-Session-Token': token()}}).then(r => r.json()); if (r.ok) setOverrides(r.overrides || []); }
+    catch (e) {}
+  }
+  async function addOverride() {
+    if (!newOverride.user_id) return;
+    await fetch('/api/feature_flags.php?action=add_override', {
+      method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+      body: JSON.stringify({flag_key: overridesFor, user_id: Number(newOverride.user_id), enabled: Number(newOverride.enabled)}),
+    });
+    setNewOverride({user_id: '', enabled: 1});
+    loadOverrides(overridesFor);
+  }
+  async function deleteOverride(id) {
+    await fetch('/api/feature_flags.php?action=delete_override', {
+      method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+      body: JSON.stringify({override_id: id}),
+    });
+    loadOverrides(overridesFor);
+  }
+
+  return (
+    <div style={{background:'#fff', borderRadius:10, border:'1px solid #EDE6DC', padding:14}}>
+      <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', marginBottom:10}}>Feature flags</div>
+      {loading && <div style={{color:'#8B7F6E'}}>Chargement…</div>}
+      {flags.map(f => (
+        <div key={f.flag_key} style={{padding:'10px 0', borderBottom:'1px solid #F4EFE6'}}>
+          <div style={{display:'flex', alignItems:'center', gap:10}}>
+            <div style={{flex:1, minWidth:0}}>
+              <div style={{fontSize:13.5, fontWeight:600, color:'#2A2018', fontFamily:'monospace'}}>{f.flag_key}</div>
+              <div style={{fontSize:11.5, color:'#8B7F6E'}}>{f.description}</div>
+            </div>
+            <button onClick={() => updateDefault(f.flag_key, f.default_value ? 0 : 1)}
+              style={{padding:'4px 10px', background: f.default_value ? '#059669' : '#8B7F6E', color:'#fff', border:'none', borderRadius:6, fontSize:11.5, cursor:'pointer'}}>
+              {f.default_value ? 'ON' : 'OFF'}
+            </button>
+            <button onClick={() => loadOverrides(f.flag_key)} style={{padding:'4px 10px', background:'transparent', border:'1px solid #B89968', borderRadius:6, fontSize:11.5, color:'#8B5E3C', cursor:'pointer'}}>Overrides ({f.overrides_count || 0})</button>
+          </div>
+          <div style={{display:'flex', alignItems:'center', gap:8, marginTop:6, fontSize:11.5, color:'#5A4E3D'}}>
+            <span>Rollout : <b>{f.rollout_pct}%</b></span>
+            <input type="range" min={0} max={100} step={5} value={f.rollout_pct}
+              onChange={e => updateRollout(f.flag_key, Number(e.target.value))}
+              style={{flex:1}}/>
+          </div>
+        </div>
+      ))}
+      {overridesFor && (
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:10}}>
+          <div style={{background:'#fff', borderRadius:12, padding:18, maxWidth:500, width:'100%', maxHeight:'90vh', overflow:'auto'}}>
+            <div style={{display:'flex', alignItems:'center', marginBottom:10}}>
+              <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C'}}>Overrides {overridesFor}</div>
+              <button onClick={() => setOverridesFor(null)} style={{background:'none', border:'none', fontSize:18, cursor:'pointer'}}>×</button>
+            </div>
+            {overrides.length === 0 && <div style={{color:'#8B7F6E', fontSize:12.5, marginBottom:10}}>Aucun override</div>}
+            {overrides.map(o => (
+              <div key={o.id} style={{display:'flex', alignItems:'center', gap:8, padding:'6px 0', borderBottom:'1px solid #F4EFE6', fontSize:12.5}}>
+                <div style={{flex:1}}>uid={o.user_id || '—'} ws={o.workspace_id || '—'} : <b style={{color: o.enabled ? '#059669' : '#DC2626'}}>{o.enabled ? 'ON' : 'OFF'}</b></div>
+                <button onClick={() => deleteOverride(o.id)} style={{padding:'2px 8px', background:'#DC2626', color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer'}}>Supprimer</button>
+              </div>
+            ))}
+            <div style={{marginTop:12, padding:8, background:'#FAF7F0', borderRadius:6}}>
+              <div style={{fontSize:11, color:'#8B7F6E', marginBottom:4}}>Ajouter override user</div>
+              <div style={{display:'flex', gap:6}}>
+                <input type="number" placeholder="user_id" value={newOverride.user_id} onChange={e => setNewOverride({...newOverride, user_id: e.target.value})}
+                  style={{flex:1, padding:6, border:'1px solid #D8CCB4', borderRadius:5, fontSize:12}}/>
+                <select value={newOverride.enabled} onChange={e => setNewOverride({...newOverride, enabled: e.target.value})}
+                  style={{padding:6, border:'1px solid #D8CCB4', borderRadius:5, fontSize:12}}>
+                  <option value={1}>ON</option>
+                  <option value={0}>OFF</option>
+                </select>
+                <button onClick={addOverride} style={{padding:'6px 10px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:5, fontSize:12, cursor:'pointer'}}>Ajouter</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // M/2026/04/28/52 — SuperAdminDashboard : 5 onglets supervision plateforme.
 // Accessible si users.role = 'super_admin'. Endpoints /api/admin/overview, users, clients_xt.
 function SuperAdminDashboard({onBack, showToast, currentUser}) {
@@ -7702,9 +7814,11 @@ function SuperAdminDashboard({onBack, showToast, currentUser}) {
         )}
 
         {tab === 'settings' && (
-          <div style={{background:'#fff', borderRadius:10, border:'1px solid #EDE6DC', padding:14}}>
-            <div style={{fontSize:13, color:'#5A4E3D', marginBottom:10}}>UI complète des paramètres système (photos, documents, matching, notifications, backup) à brancher sur <code>/api/system_settings.php</code> existant.</div>
-            <div style={{fontSize:12, color:'#8B7F6E'}}>Paramètres modifiables via l'API. Édition graphique → mission dédiée.</div>
+          <div>
+            <div style={{background:'#fff', borderRadius:10, border:'1px solid #EDE6DC', padding:14, marginBottom:12}}>
+              <div style={{fontSize:13, color:'#5A4E3D', marginBottom:6}}>Paramètres système (photos, matching, etc.) sur <code>/api/system_settings.php</code>.</div>
+            </div>
+            <FeatureFlagsAdmin showToast={showToast}/>
           </div>
         )}
       </div>
