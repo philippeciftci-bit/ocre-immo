@@ -1682,9 +1682,12 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
   const paysSel = PAYS_BIEN.find(p => p.c === bien.pays);
   return (
     <>
-      {/* M/2026/04/28/28 — suppression franche du ruban d'ancres V64 (4 sous-onglets
-          Identité/Caractéristiques/Photos/Localisation). Section II est désormais
-          un flux vertical unique : les blocs s'enchaînent par scroll. */}
+      {/* M/2026/04/28/28 — Section II flux vertical unique. */}
+      {/* M/2026/04/28/33 — 3 blocs hiérarchiques labellisés (LOCALISATION /
+          DESCRIPTIF DU BIEN / EXTÉRIEUR & ÉQUIPEMENTS) + toggle Statut bien
+          Existant/VEFA. Termes pros validés (FNAIM, SeLoger, lexique notaires :
+          "VEFA", "Date de livraison prévisionnelle", "Année de construction"). */}
+      <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:4, marginBottom:8}}>Localisation</div>
       {/* V66 — Pays + Type de bien sur 1 ligne 50/50, modales dédiées (cohérence v58 panel recherche). */}
       <div style={{display:'flex', gap:8, marginBottom:10}}>
         <button type="button" onClick={() => setV66PaysModal(true)}
@@ -1767,6 +1770,25 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           {types.includes('Ferme') && <FermeFields bien={bien} setB={setB} askingMode={askingMode}/>}
           {types.includes('Bureau / plateau') && <BureauFields bien={bien} setB={setB} askingMode={askingMode}/>}
 
+          {/* M/2026/04/28/33 — Bloc DESCRIPTIF DU BIEN avec toggle Statut Existant/VEFA. */}
+          <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:14, marginBottom:8}}>Descriptif du bien</div>
+          <div style={{display:'flex', gap:6, marginBottom:10}}>
+            {[['existant','Existant'],['vefa','VEFA / En construction']].map(([k, l]) => {
+              const active = (bien.statut || 'existant') === k;
+              return (
+                <button key={k} type="button" onClick={() => setB('statut', k)}
+                  style={{flex:1, padding:'7px 10px', borderRadius:8, border:'1.5px solid ' + (active ? '#8B5E3C' : '#E8DDD0'),
+                          background: active ? '#FFF3EC' : '#FDFAF7', color: active ? '#8B5E3C' : '#8B7F6E',
+                          fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{l}</button>
+              );
+            })}
+          </div>
+          {(bien.statut === 'vefa') && (
+            <div className="row-pair" style={{marginBottom:8}}>
+              <Field label="Date de livraison prévisionnelle" type="date" value={bien.date_livraison} onChange={v => setB('date_livraison', v)} style={{flex:1}}/>
+              <Field label="Promoteur" value={bien.promoteur} onChange={v => setB('promoteur', v)} style={{flex:1}}/>
+            </div>
+          )}
           {/* 5. Tronc commun (chambres / sdb / parking / extérieur / énergie) — si au moins un type habitable */}
           {hasHabitable && <>
           <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:12, marginBottom:6, letterSpacing:.4}}>Caractéristiques communes</div>
@@ -1793,6 +1815,8 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               <PriorityBoolField label="Terrasse" value={bien.terrasse_prio} onChange={v => setB('terrasse_prio', v)}/>
               <PriorityBoolField label="Balcon" value={bien.balcon_prio} onChange={v => setB('balcon_prio', v)}/>
               <PriorityBoolField label="Jardin" value={bien.jardin_prio} onChange={v => setB('jardin_prio', v)}/>
+              {/* M/2026/04/28/33 — Bloc EXTÉRIEUR & ÉQUIPEMENTS. */}
+              <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:8, marginBottom:6, gridColumn:'1 / -1', flexBasis:'100%'}}>Extérieur & équipements</div>
               <PriorityBoolField label="Piscine" value={bien.piscine_prio} onChange={v => setB('piscine_prio', v)}/>
               <PriorityBoolField label="Parking / garage" value={bien.parking_prio} onChange={v => setB('parking_prio', v)}/>
             </>
@@ -1801,6 +1825,8 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               <BoolChip label="Terrasse" value={bien.terrasse} onChange={v => setB('terrasse', v)}/>
               <BoolChip label="Balcon" value={bien.balcon} onChange={v => setB('balcon', v)}/>
               <BoolChip label="Jardin" value={bien.jardin} onChange={v => setB('jardin', v)}/>
+              {/* M/2026/04/28/33 — Bloc EXTÉRIEUR & ÉQUIPEMENTS. */}
+              <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:8, marginBottom:6, flexBasis:'100%', width:'100%'}}>Extérieur & équipements</div>
               <BoolChip label="Piscine" value={bien.piscine} onChange={v => setB('piscine', v)}/>
               <BoolChip label="Parking / garage" value={bien.parking_bool} onChange={v => setB('parking_bool', v)}/>
               <BoolChip label="Cave" value={bien.cave_bool} onChange={v => setB('cave_bool', v)}/>
@@ -12253,6 +12279,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428m" defer></script>
+<script src="/v20-bridge.js?v=20260428n" defer></script>
 </body>
 </html>
