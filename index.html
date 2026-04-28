@@ -5483,6 +5483,7 @@ function App() {
   // V17.11 : carte des matches par client_id → {count, max_score}
   const [matchesById, setMatchesById] = useState({});
   const [matchFor, setMatchFor] = useState(null);  // client_id pour modal ouvert
+  const [selectedMatchId, setSelectedMatchId] = useState(null); // match_id pour MatchDetailView
 
   useEffect(() => {
     // V52.5 DIAG — beacon TRES TOT pour confirmer que cette version du SPA tourne
@@ -5837,7 +5838,13 @@ function App() {
     return <ProfilPickerView onBack={() => setView('list')} onPick={pickProfilAndOpenForm}/>;
   }
   if (view === 'matches') {
-    return <MatchesView onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
+    return <MatchesView onBack={() => setView('list')}
+      openMatchDetail={(id) => { setSelectedMatchId(id); setView('match-detail'); }}
+      showToast={showToast} toast={toast}/>;
+  }
+  if (view === 'match-detail') {
+    return <MatchDetailView matchId={selectedMatchId} onBack={() => setView('matches')}
+      showToast={showToast} toast={toast}/>;
   }
   if (view === 'downloads') {
     return <DownloadsView onBack={() => setView('list')}
@@ -7547,12 +7554,11 @@ function AgentPreviewModal({profile: p, onClose}) {
 // 4 onglets (Non vus / Pertinents / À surveiller / Écartés), liste de cards
 // avec score à gauche, 2 dossiers côte à côte, critères matchés/divergents,
 // actions Pertinent / À surveiller / Écarter. Tap card = mark_seen.
-function MatchesView({onBack, showToast, toast}) {
-  const [tab, setTab] = React.useState('non_vu');
+function MatchesView({onBack, openMatchDetail, showToast, toast}) {
+  const [tab, setTab] = React.useState('a_traiter');
   const [items, setItems] = React.useState([]);
   const [counts, setCounts] = React.useState({non_vu:0, vu:0, pertinent:0, surveiller:0, ecarte:0});
   const [loading, setLoading] = React.useState(true);
-  const [busy, setBusy] = React.useState(false);
   const token = () => localStorage.getItem('ocre_token') || '';
 
   async function refresh() {
@@ -7569,26 +7575,12 @@ function MatchesView({onBack, showToast, toast}) {
   }
   React.useEffect(() => { refresh(); }, [tab]);
 
-  async function callAction(matchId, action, payload) {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const r = await fetch('/api/matches.php?action=' + action, {
-        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
-        body: JSON.stringify(payload),
-      });
-      const d = await r.json();
-      if (d && d.ok) await refresh();
-      else showToast && showToast((d && d.error) || 'Échec');
-    } catch (e) { showToast && showToast('Erreur réseau'); }
-    setBusy(false);
-  }
-
-  function classify(matchId, status) { callAction(matchId, 'classify', {match_id: matchId, status}); }
-  function markSeen(matchId)        { callAction(matchId, 'mark_seen', {match_id: matchId}); }
-
+  // M/2026/04/28/19 — onglet « À traiter » combine non_vu + vu (matchs non
+  // encore classés Pertinent/À surveiller/Écarté). La pastille rouge garde
+  // la sémantique counts.non_vu (Philippe : « la cloche diminue dès qu'un
+  // match a été visualisé »).
   const TABS = [
-    {k:'non_vu',     l:'Non vus',     n: counts.non_vu},
+    {k:'a_traiter',  l:'À traiter',   n: counts.non_vu, badgeRed:true},
     {k:'pertinent',  l:'Pertinents',  n: counts.pertinent},
     {k:'surveiller', l:'À surveiller', n: counts.surveiller},
     {k:'ecarte',     l:'Écartés',     n: counts.ecarte},
@@ -7665,8 +7657,8 @@ function MatchesView({onBack, showToast, toast}) {
               <span>{t.l}</span>
               {t.n > 0 && (
                 <span style={{minWidth:18, height:18, padding:'0 5px',
-                              background: t.k === 'non_vu' ? '#DC2626' : (active ? 'rgba(255,255,255,.25)' : '#F0E8D8'),
-                              color: t.k === 'non_vu' ? '#fff' : (active ? '#fff' : '#8B5E3C'),
+                              background: t.badgeRed ? '#DC2626' : (active ? 'rgba(255,255,255,.25)' : '#F0E8D8'),
+                              color: t.badgeRed ? '#fff' : (active ? '#fff' : '#8B5E3C'),
                               borderRadius:9, fontSize:11, fontWeight:700, lineHeight:'18px', textAlign:'center'}}>{t.n}</span>
               )}
             </button>
@@ -7685,10 +7677,15 @@ function MatchesView({onBack, showToast, toast}) {
           const cm = m.criteres_matched || {};
           const matched = Array.isArray(cm.matched) ? cm.matched : [];
           const divergent = Array.isArray(cm.divergent) ? cm.divergent : [];
+          const dimmed = (tab === 'a_traiter' && m.status === 'vu');
           return (
-            <div key={m.id} className="ocre-card" style={{marginBottom:12, padding:0, background:'#fff', borderRadius:10, border:'1px solid #E5DDC8', overflow:'hidden'}}>
-              <div onClick={() => markSeen(m.id)}
-                style={{cursor:'pointer', display:'grid', gridTemplateColumns:'56px 1fr 1fr', borderBottom:'1px solid #F0E8D8'}}>
+            <div key={m.id} onClick={() => openMatchDetail && openMatchDetail(m.id)}
+              className="ocre-card"
+              style={{marginBottom:12, padding:0, background:'#fff', borderRadius:10, border:'1px solid #E5DDC8', overflow:'hidden', cursor:'pointer', opacity: dimmed ? 0.85 : 1, position:'relative'}}>
+              {dimmed && (
+                <span style={{position:'absolute', top:6, right:8, padding:'1px 6px', background:'#E5DDC8', color:'#8B7F6E', fontSize:10, fontWeight:700, borderRadius:8, textTransform:'uppercase', letterSpacing:.4}}>Vu</span>
+              )}
+              <div style={{display:'grid', gridTemplateColumns:'56px 1fr 1fr', borderBottom:(matched.length + divergent.length > 0) ? '1px solid #F0E8D8' : 'none'}}>
                 <div style={{background: m.score_pct >= 80 ? '#FBE9E7' : m.score_pct >= 60 ? '#FFF4E0' : '#F0E8D8',
                              color: m.score_pct >= 80 ? '#C0392B' : m.score_pct >= 60 ? '#B26D3A' : '#8B7F6E',
                              display:'flex', alignItems:'center', justifyContent:'center',
@@ -7699,7 +7696,7 @@ function MatchesView({onBack, showToast, toast}) {
                 <div>{dossierCard(m.dossier_b)}</div>
               </div>
               {(matched.length + divergent.length > 0) && (
-                <div style={{padding:'8px 10px', background:'#FAF8F2', borderBottom:'1px solid #F0E8D8', fontSize:11, color:'#5A4E3D', display:'flex', flexWrap:'wrap', gap:4}}>
+                <div style={{padding:'8px 10px', background:'#FAF8F2', fontSize:11, color:'#5A4E3D', display:'flex', flexWrap:'wrap', gap:4}}>
                   {matched.map((c,i) => (
                     <span key={'m'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'2px 7px', background:'#E6F3E1', color:'#2F7D32', borderRadius:10, fontSize:11, fontWeight:600}}>{ICONS.check}{c}</span>
                   ))}
@@ -7708,24 +7705,162 @@ function MatchesView({onBack, showToast, toast}) {
                   ))}
                 </div>
               )}
-              <div style={{display:'flex', gap:0}}>
-                <button onClick={() => classify(m.id, 'pertinent')} disabled={busy}
-                  style={{flex:1, padding:'10px 6px', background:'transparent', border:'none', borderRight:'1px solid #F0E8D8', color:'#2F7D32', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5}}>
-                  {ICONS.check}<span>Pertinent</span>
-                </button>
-                <button onClick={() => classify(m.id, 'surveiller')} disabled={busy}
-                  style={{flex:1, padding:'10px 6px', background:'transparent', border:'none', borderRight:'1px solid #F0E8D8', color:'#B26D3A', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5}}>
-                  {ICONS.eye}<span>À surveiller</span>
-                </button>
-                <button onClick={() => classify(m.id, 'ecarte')} disabled={busy}
-                  style={{flex:1, padding:'10px 6px', background:'transparent', border:'none', color:'#8B7F6E', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5}}>
-                  {ICONS.cross}<span>Écarter</span>
-                </button>
-              </div>
             </div>
           );
         })}
       </div>
+      {toast && <Toast msg={toast}/>}
+    </div>
+  );
+}
+
+// MatchDetailView — page détail d'un match. Mark_seen automatique au montage.
+// 3 boutons d'action en bas : Pertinent / À surveiller / Écarter, qui appellent
+// classify et reviennent à la liste.
+function MatchDetailView({matchId, onBack, showToast, toast}) {
+  const [match, setMatch] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [busy, setBusy] = React.useState(false);
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        // Mark_seen idempotent en parallèle de la fetch détail.
+        fetch('/api/matches.php?action=mark_seen', {
+          method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+          body: JSON.stringify({match_id: matchId}),
+        }).catch(() => {});
+        const r = await fetch('/api/matches.php?action=get&match_id=' + matchId, {headers:{'X-Session-Token': token()}});
+        const d = await r.json();
+        if (!cancelled && d && d.ok) setMatch(d.match);
+        else if (!cancelled) showToast && showToast((d && d.error) || 'Match introuvable');
+      } catch (e) { if (!cancelled) showToast && showToast('Erreur réseau'); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [matchId]);
+
+  async function classify(status) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await fetch('/api/matches.php?action=classify', {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+        body: JSON.stringify({match_id: matchId, status}),
+      });
+      const d = await r.json();
+      if (d && d.ok) onBack();
+      else showToast && showToast((d && d.error) || 'Échec');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setBusy(false);
+  }
+
+  const ICONS = {
+    check: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    cross: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+    eye:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  };
+
+  function dossierBlock(d, label) {
+    if (!d) return <div style={{padding:14, color:'#8B7F6E', fontSize:13}}>{label} — dossier introuvable</div>;
+    const data = (() => { try { return typeof d.data === 'string' ? JSON.parse(d.data) : (d.data || {}); } catch (e) { return {}; } })();
+    const bien = data.bien || {};
+    const nom = d.societe_nom || ((d.prenom || '') + ' ' + (d.nom || '')).trim() || '—';
+    const titreType = bien.type || (Array.isArray(bien.types) ? bien.types[0] : '') || d.projet || '';
+    const ville = bien.ville || '';
+    const quartier = bien.quartier || '';
+    const surface = bien.surface ? bien.surface + ' m²' : '';
+    const terrain = bien.terrain ? bien.terrain + ' m² terrain' : '';
+    const chambres = bien.chambres ? bien.chambres + ' ch.' : '';
+    const prix = data.prix_affiche ? (data.prix_affiche/1000000).toFixed(2) + ' M MAD'
+               : data.budget_max   ? (data.budget_max/1000000).toFixed(2) + ' M MAD max'
+               : data.loyer_demande ? data.loyer_demande + ' MAD/mois'
+               : data.loyer_max ? data.loyer_max + ' MAD/mois max'
+               : '';
+    const profil = data.profil_type || '';
+    return (
+      <div style={{padding:14, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10}}>
+        <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:4, fontWeight:700}}>{label}</div>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C', lineHeight:1.1}}>{nom}</div>
+        <div style={{fontSize:12, color:'#8B7F6E', marginTop:2, marginBottom:8}}>{d.projet}{profil ? ' · ' + profil : ''}</div>
+        <div style={{fontSize:13, color:'#2A2018', lineHeight:1.6}}>
+          <div><b>{titreType}</b>{chambres ? ' · ' + chambres : ''}</div>
+          <div>{ville}{quartier ? ' — ' + quartier : ''}</div>
+          {surface && <div>{surface}{terrain ? ' · ' + terrain : ''}</div>}
+          {prix && <div style={{marginTop:6, fontWeight:700, color:'#8B5E3C', fontSize:14}}>{prix}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  const cm = (match && match.criteres_matched) || {};
+  const matched = Array.isArray(cm.matched) ? cm.matched : [];
+  const divergent = Array.isArray(cm.divergent) ? cm.divergent : [];
+  const score = match ? match.score_pct : 0;
+  const scoreBg = score >= 80 ? '#FBE9E7' : score >= 60 ? '#FFF4E0' : '#F0E8D8';
+  const scoreColor = score >= 80 ? '#C0392B' : score >= 60 ? '#B26D3A' : '#8B7F6E';
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C'}}>Détail du match</div>
+        {match && (
+          <div style={{padding:'4px 10px', background: scoreBg, color: scoreColor, borderRadius:14, fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:18}}>
+            {score}<span style={{fontSize:11}}>%</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{flex:1, overflowY:'auto', padding:'14px 14px 14px'}}>
+        {loading && <div style={{textAlign:'center', color:'#8B7F6E', padding:30}}>Chargement…</div>}
+        {!loading && !match && <div style={{textAlign:'center', color:'#8B7F6E', padding:30, fontSize:13}}>Match introuvable.</div>}
+        {!loading && match && (
+          <>
+            <div style={{textAlign:'center', marginBottom:14}}>
+              <div style={{display:'inline-block', padding:'14px 24px', background: scoreBg, color: scoreColor, borderRadius:18, fontFamily:'Cormorant Garamond,serif', fontWeight:700}}>
+                <div style={{fontSize:48, lineHeight:1}}>{score}<span style={{fontSize:22}}>%</span></div>
+                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:2, fontWeight:700}}>Score</div>
+              </div>
+            </div>
+            {dossierBlock(match.dossier_a, 'Dossier A')}
+            {dossierBlock(match.dossier_b, 'Dossier B')}
+            {(matched.length + divergent.length > 0) && (
+              <div style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10}}>
+                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8, fontWeight:700}}>Critères</div>
+                <div style={{display:'flex', flexWrap:'wrap', gap:5}}>
+                  {matched.map((c,i) => (
+                    <span key={'m'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', background:'#E6F3E1', color:'#2F7D32', borderRadius:11, fontSize:12, fontWeight:600}}>{ICONS.check}{c}</span>
+                  ))}
+                  {divergent.map((c,i) => (
+                    <span key={'d'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', background:'#FBE9E7', color:'#C0392B', borderRadius:11, fontSize:12, fontWeight:600}}>{ICONS.cross}{c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {!loading && match && (
+        <div style={{borderTop:'1px solid #E5DDC8', background:'#fff', padding:'10px 12px', display:'flex', gap:8}}>
+          <button onClick={() => classify('pertinent')} disabled={busy}
+            style={{flex:1, padding:'12px 6px', background:'#2F7D32', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6}}>
+            {ICONS.check}<span>Pertinent</span>
+          </button>
+          <button onClick={() => classify('surveiller')} disabled={busy}
+            style={{flex:1, padding:'12px 6px', background:'#B26D3A', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6}}>
+            {ICONS.eye}<span>À surveiller</span>
+          </button>
+          <button onClick={() => classify('ecarte')} disabled={busy}
+            style={{flex:1, padding:'12px 6px', background:'#8B7F6E', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6}}>
+            {ICONS.cross}<span>Écarter</span>
+          </button>
+        </div>
+      )}
       {toast && <Toast msg={toast}/>}
     </div>
   );
@@ -11787,6 +11922,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428d" defer></script>
+<script src="/v20-bridge.js?v=20260428e" defer></script>
 </body>
 </html>

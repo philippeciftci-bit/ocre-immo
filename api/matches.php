@@ -71,14 +71,18 @@ function decodeMatch(array $row): array {
 switch ($action) {
 
 case 'list': {
+    // M/2026/04/28/19 — alias 'a_traiter' = non_vu + vu (matchs non encore
+    // classés Pertinent/À surveiller/Écarté). Onglet « À traiter » côté UI.
     $statusFilter = $_GET['status'] ?? 'all';
-    $allowed = ['non_vu','vu','pertinent','surveiller','ecarte','all'];
+    $allowed = ['non_vu','vu','pertinent','surveiller','ecarte','a_traiter','all'];
     if (!in_array($statusFilter, $allowed, true)) jsonError('status invalide', 400);
     $limit = max(1, min(200, (int) ($_GET['limit'] ?? 50)));
 
     $sql = "SELECT * FROM matches WHERE " . ownerFilterClause();
     $params = [json_encode($uid)];
-    if ($statusFilter !== 'all') {
+    if ($statusFilter === 'a_traiter') {
+        $sql .= " AND status IN ('non_vu', 'vu')";
+    } elseif ($statusFilter !== 'all') {
         $sql .= " AND status = ?";
         $params[] = $statusFilter;
     }
