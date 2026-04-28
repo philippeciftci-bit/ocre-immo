@@ -849,6 +849,80 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
   );
 }
 
+// M/2026/04/28/35 — CurrencyPicker + NOTAIRE_RATES + currencyForCountry helper.
+// Monnaies cibles (7) : MAD, EUR, USD, GBP, TRY, AED, SAR. Présélection auto
+// selon pays du dossier — modifiable manuellement.
+const CURRENCIES = [
+  {code:'MAD', symbol:'DH', label:'Dirham marocain'},
+  {code:'EUR', symbol:'€',  label:'Euro'},
+  {code:'USD', symbol:'$',  label:'Dollar américain'},
+  {code:'GBP', symbol:'£',  label:'Livre sterling'},
+  {code:'TRY', symbol:'₺',  label:'Lira turque'},
+  {code:'AED', symbol:'د.إ', label:'Dirham émirati'},
+  {code:'SAR', symbol:'ر.س', label:'Riyal saoudien'},
+];
+function currencyForCountry(cc) {
+  if (!cc) return 'MAD';
+  const map = {
+    MA:'MAD', FR:'EUR', ES:'EUR', BE:'EUR', NL:'EUR', DE:'EUR', IT:'EUR',
+    PT:'EUR', AT:'EUR', IE:'EUR', LU:'EUR', FI:'EUR', GR:'EUR',
+    US:'USD', CA:'USD', GB:'GBP', TR:'TRY', AE:'AED', SA:'SAR',
+  };
+  return map[cc] || 'EUR';
+}
+function CurrencyPicker({value, onChange, style={}}) {
+  const [open, setOpen] = React.useState(false);
+  const cur = CURRENCIES.find(c => c.code === value) || CURRENCIES[0];
+  return (
+    <div style={{position:'relative', display:'inline-block', ...style}}>
+      <button type="button" onClick={() => setOpen(!open)}
+        style={{padding:'7px 10px', background:'#FFF3EC', border:'1.5px solid #C9A87A', color:'#8B5E3C',
+                borderRadius:8, fontSize:13, fontWeight:700, fontFamily:'inherit', cursor:'pointer',
+                display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap'}}>
+        {cur.code}
+        <span style={{fontSize:9, opacity:.6}}>▾</span>
+      </button>
+      {open && (
+        <div style={{position:'absolute', top:'100%', right:0, marginTop:4, background:'#fff', border:'1px solid #C9B79A',
+                     borderRadius:8, boxShadow:'0 4px 12px rgba(0,0,0,.08)', zIndex:30, minWidth:160}}>
+          {CURRENCIES.map(c => (
+            <div key={c.code} onClick={() => { onChange(c.code); setOpen(false); }}
+              style={{padding:'8px 12px', cursor:'pointer', fontSize:13, fontFamily:'inherit',
+                      background: c.code === value ? '#FFF3EC' : '#fff', color:'#2A2018',
+                      borderBottom:'1px solid #F0E8D8', display:'flex', alignItems:'center', gap:8}}>
+              <span style={{fontWeight:700, color:'#8B5E3C', minWidth:36}}>{c.code}</span>
+              <span style={{flex:1, fontSize:12, color:'#5A4E3D'}}>{c.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// Frais de notaire par pays (% prix du bien, défaut). Override manuel possible
+// via clients.notaire_taux. Pour FR : 7.5% ancien / 2.5% VEFA selon statut bien.
+const NOTAIRE_RATES = {
+  FR: {ancien: 7.5, neuf: 2.5, defaultPct: 7.5, label: 'France'},
+  MA: {defaultPct: 5.0, label: 'Maroc'},
+  US: {defaultPct: 1.0, label: 'USA'},
+  GB: {defaultPct: 2.0, label: 'Royaume-Uni'},
+  TR: {defaultPct: 4.0, label: 'Turquie'},
+  AE: {defaultPct: 4.0, label: 'UAE'},
+  ES: {defaultPct: 8.0, label: 'Espagne'},
+  BE: {defaultPct: 12.0, label: 'Belgique'},
+  CH: {defaultPct: 5.0, label: 'Suisse'},
+  IT: {defaultPct: 9.0, label: 'Italie'},
+  PT: {defaultPct: 6.0, label: 'Portugal'},
+  DE: {defaultPct: 7.0, label: 'Allemagne'},
+};
+function notaireRateForCountry(cc, statut) {
+  const r = NOTAIRE_RATES[cc];
+  if (!r) return 5.0; // fallback générique
+  if (cc === 'FR' && statut === 'vefa') return r.neuf;
+  if (cc === 'FR' && statut === 'existant') return r.ancien;
+  return r.defaultPct;
+}
+
 // M/2026/04/28/34 — MultiSelectPicker responsive : popup bottom-sheet mobile,
 // chips inline desktop. Réutilisable pour toutes les rubriques multi-select
 // (vue, exposition, sécurité, équipements luxe, authenticité Riad, etc.).
