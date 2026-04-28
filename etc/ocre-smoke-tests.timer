@@ -1,0 +1,10 @@
+[Unit]
+Description=Ocre Immo - Smoke tests quotidiens 6h UTC
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+Unit=ocre-smoke-tests.service
+
+[Install]
+WantedBy=timers.target

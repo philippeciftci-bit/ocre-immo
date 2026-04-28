@@ -18,6 +18,13 @@ $meta = new PDO($dsn, DB_USER, DB_PASS, [
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ]);
 
+// M/2026/04/29/4 — ALTER idempotent (smoke tests caught missing columns).
+try {
+    $cols = $meta->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('is_suspended', $cols, true)) $meta->exec("ALTER TABLE users ADD COLUMN is_suspended TINYINT(1) NOT NULL DEFAULT 0");
+    if (!in_array('last_login_at', $cols, true)) $meta->exec("ALTER TABLE users ADD COLUMN last_login_at DATETIME NULL");
+} catch (Throwable $e) {}
+
 switch ($action) {
 
 case 'list': {

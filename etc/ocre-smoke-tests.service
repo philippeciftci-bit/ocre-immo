@@ -1,0 +1,10 @@
+[Unit]
+Description=Ocre Immo - Smoke tests automatises (8 domaines)
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/root/workspace/ocre-immo/tests/run_all.sh
+StandardOutput=append:/var/log/ocre-smoke-tests.log
+StandardError=append:/var/log/ocre-smoke-tests.log

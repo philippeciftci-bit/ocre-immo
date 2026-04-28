@@ -13,6 +13,14 @@ $meta = new PDO($dsn, DB_USER, DB_PASS, [
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ]);
 
+// M/2026/04/29/4 — ALTER idempotent is_suspended (smoke test caught missing column).
+try {
+    $cols = $meta->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('is_suspended', $cols, true)) {
+        $meta->exec("ALTER TABLE users ADD COLUMN is_suspended TINYINT(1) NOT NULL DEFAULT 0");
+    }
+} catch (Throwable $e) {}
+
 $stats = [];
 $stats['users_total'] = (int) $meta->query("SELECT COUNT(*) FROM users WHERE archived_at IS NULL")->fetchColumn();
 $stats['users_suspended'] = (int) $meta->query("SELECT COUNT(*) FROM users WHERE COALESCE(is_suspended, 0) = 1")->fetchColumn();
