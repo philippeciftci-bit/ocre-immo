@@ -129,6 +129,28 @@ switch ($action) {
         );
         $stmt->execute([$user['id'], $staged ? 1 : 0]);
         $rows = $stmt->fetchAll();
+        // V52.4.3 DIAG TEMPORAIRE : log file dédié dans /api/_diag.log lisible via endpoint.
+        try {
+            $tokenHdr = $_SERVER['HTTP_X_SESSION_TOKEN'] ?? ($_SERVER['HTTP_X_SESSIONTOKEN'] ?? '');
+            $isDemoCount = 0;
+            foreach ($rows as $rr) {
+                $dd = json_decode($rr['data'] ?? '{}', true) ?: [];
+                if (!empty($dd['is_demo'])) $isDemoCount++;
+            }
+            $line = sprintf(
+                "[DIAG-%s] list ip=%s ua=%s token=%s... user_id=%s email=%s rows=%d is_demo=%d staged=%d\n",
+                date('c'),
+                $_SERVER['REMOTE_ADDR'] ?? '',
+                substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 60),
+                substr($tokenHdr, 0, 12),
+                $user['id'] ?? 'NONE',
+                $user['email'] ?? 'NONE',
+                count($rows),
+                $isDemoCount,
+                $staged
+            );
+            @file_put_contents(__DIR__ . '/_diag.log', $line, FILE_APPEND | LOCK_EX);
+        } catch (Throwable $e) {}
         // V18.17 — count staged séparé pour badge header 📥 N.
         $stagedCount = 0;
         try {

@@ -1,6 +1,8 @@
 RewriteEngine On
 RewriteCond %{HTTPS} off
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# V52.5 — sw.js servi via PHP wrapper pour forcer Cache-Control no-store strict.
+RewriteRule ^sw\.js$ /app/sw.php [L]
 <FilesMatch "\.(sql|env|log|example)$">
 Require all denied
 </FilesMatch>
@@ -10,15 +12,32 @@ Header set Referrer-Policy "strict-origin-when-cross-origin"
 Options -Indexes
 DirectoryIndex index.html
 
-# V52.3 — Cache-Control agressif sur HTML / SW pour Safari iPad / iOS PWA.
+# V52.3/v52.5 — Cache-Control STRICT (unset les conflits Apache default puis set).
 <IfModule mod_headers.c>
 <Files "index.html">
+  Header unset Cache-Control
+  Header unset Expires
+  Header unset Pragma
   Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
   Header always set Pragma "no-cache"
   Header always set Expires "0"
 </Files>
 <Files "sw.js">
-  Header always set Cache-Control "no-store"
+  Header unset Cache-Control
+  Header unset Expires
+  Header unset Pragma
+  Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  Header always set Pragma "no-cache"
+  Header always set Expires "0"
+</Files>
+</IfModule>
+# V52.5 — désactiver mod_expires sur HTML / JS pour ces fichiers.
+<IfModule mod_expires.c>
+<Files "index.html">
+  ExpiresActive Off
+</Files>
+<Files "sw.js">
+  ExpiresActive Off
 </Files>
 </IfModule>
 

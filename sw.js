@@ -1,60 +1,33 @@
-// V18.44 — SW auto-update. Ne plus skipWaiting() automatiquement : le nouveau SW
-// attend dans l'état "waiting" jusqu'à réception du message {type:'SKIP_WAITING'}
-// envoyé par le client après tap "Actualiser" ou auto-reload idle.
-const SW_VERSION = 'ocre-sw-v52.4.2';
+// V52.5 KILL SWITCH — remplace l'ancien SW. Quand l'iPad récupère ce sw.js,
+// il purge tous les caches, désinscrit le SW, et force navigate des fenêtres
+// pour reload propre. Tous les fetchs passent par le réseau (pas de cache).
+const SW_VERSION = 'ocre-sw-v52.6-killswitch';
 
-self.addEventListener('install', e => {
-  // V52.3 — purge tous caches existants à l'install pour forcer fresh fetch.
-  e.waitUntil(
-    (async () => {
-      try {
-        const names = await caches.keys();
-        await Promise.all(names.map(n => caches.delete(n)));
-      } catch (e) {}
-      try { self.skipWaiting(); } catch (e) {}
-    })()
-  );
-});
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
-self.addEventListener('push', event => {
-  let data = {};
-  try {
-    if (event.data) data = event.data.json();
-  } catch (e) {
-    data = {title: 'Ocre Immo', body: event.data ? event.data.text() : ''};
-  }
-  const title = data.title || 'Ocre Immo';
-  const opts = {
-    body: data.body || '',
-    icon: data.icon || '/icon-192.png',
-    badge: data.badge || '/icon-192.png',
-    data: {url: data.url || '/'},
-    requireInteraction: false,
-    tag: data.tag || 'ocre-rdv',
-  };
-  event.waitUntil(self.registration.showNotification(title, opts));
-});
-
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
+self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    const allClients = await clients.matchAll({type: 'window', includeUncontrolled: true});
-    for (const c of allClients) {
-      if (c.url.includes(self.location.origin)) {
-        await c.focus();
-        try { c.postMessage({type: 'notif-click', url}); } catch (e) {}
-        try { await c.navigate(url); } catch (e) {}
-        return;
-      }
-    }
-    await clients.openWindow(url);
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    } catch (e) {}
+    self.skipWaiting();
   })());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    } catch (e) {}
+    try { await self.registration.unregister(); } catch (e) {}
+    try {
+      const cls = await self.clients.matchAll({type: 'window'});
+      cls.forEach(c => { try { c.navigate(c.url); } catch (e) {} });
+    } catch (e) {}
+  })());
+});
+
+self.addEventListener('fetch', (event) => {
+  // Bypass cache total : toujours réseau pur.
+  event.respondWith(fetch(event.request).catch(() => new Response('', {status: 504})));
 });
