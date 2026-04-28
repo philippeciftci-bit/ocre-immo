@@ -6136,6 +6136,9 @@ function App() {
   if (view === 'profil_picker') {
     return <ProfilPickerView onBack={() => setView('list')} onPick={pickProfilAndOpenForm}/>;
   }
+  if (view === 'calendrier') {
+    return <CalendarView onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
+  }
   if (view === 'matches') {
     return <MatchesView onBack={() => setView('list')}
       openMatchDetail={(id) => { setSelectedMatchId(id); setView('match-detail'); }}
@@ -6181,6 +6184,7 @@ function App() {
       promotedId={promotedId}
       openSharePlaceholder={() => setSharePlaceholderOpen(true)}
       openMatches={() => setView('matches')}
+      openCalendrier={() => setView('calendrier')}
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
       openAgentProfile={() => { setUserMenu(false); setView('agent_profile'); }}
@@ -7849,6 +7853,115 @@ function AgentPreviewModal({profile: p, onClose}) {
   );
 }
 
+// M/2026/04/28/37 — CalendarView : vue calendrier global Phase 1 (Liste seule).
+// Vue Mois reportée à Phase 2. Liste les events de tous les dossiers de l'agent
+// groupés par jour (Aujourd'hui / Demain / Cette semaine / Plus tard / Passé).
+function CalendarView({onBack, showToast, toast}) {
+  const [events, setEvents] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const token = () => localStorage.getItem('ocre_token') || '';
+  const TYPE_ICONS = {
+    appel:    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+    rdv:      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+    document: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+    note:     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+  };
+  const STATUT_BADGES = {
+    prevu:{bg:'#E0EBFA',color:'#2E5BBA',label:'Prévu'},
+    en_attente:{bg:'#F4ECE3',color:'#8B5E3C',label:'En attente'},
+    reporte:{bg:'#FFF4E0',color:'#B26D3A',label:'Reporté'},
+    fait:{bg:'#E6F3E1',color:'#2F7D32',label:'Fait'},
+    annule:{bg:'#EFE8DD',color:'#8B7F6E',label:'Annulé'},
+  };
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/events.php?action=list_all', {headers:{'X-Session-Token': token()}});
+        const d = await r.json();
+        if (d && d.ok) setEvents(d.events || []);
+      } catch (e) { showToast && showToast('Erreur réseau'); }
+      setLoading(false);
+    })();
+  }, []);
+
+  function bucket(e) {
+    if (!e.scheduled_at) return 'sans_date';
+    const t = new Date(e.scheduled_at.replace(' ', 'T'));
+    if (isNaN(t)) return 'sans_date';
+    const now = new Date();
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startThat = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    const diff = Math.round((startThat - startToday) / 86400000);
+    if (e.status === 'fait' || e.status === 'annule' || diff < 0) return 'passe';
+    if (diff === 0) return 'aujourdhui';
+    if (diff === 1) return 'demain';
+    if (diff < 7) return 'semaine';
+    return 'plus_tard';
+  }
+
+  const buckets = {aujourdhui:[], demain:[], semaine:[], plus_tard:[], sans_date:[], passe:[]};
+  events.forEach(e => buckets[bucket(e)].push(e));
+
+  function fmtTime(iso) {
+    if (!iso) return 'Toute la journée';
+    const t = new Date(iso.replace(' ', 'T'));
+    if (isNaN(t)) return '';
+    return String(t.getHours()).padStart(2,'0') + 'h' + (t.getMinutes() ? String(t.getMinutes()).padStart(2,'0') : '');
+  }
+  function clientName(e) {
+    return e.societe_nom || ((e.prenom || '') + ' ' + (e.nom || '')).trim() || 'Dossier #' + e.client_id;
+  }
+
+  function renderBucket(key, label, list) {
+    if (!list.length) return null;
+    return (
+      <div key={key} style={{marginBottom:14}}>
+        <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, padding:'8px 14px 4px'}}>
+          {label} <span style={{color:'#B5A78F', fontWeight:600}}>· {list.length}</span>
+        </div>
+        {list.map(e => {
+          const badge = STATUT_BADGES[e.status] || STATUT_BADGES.prevu;
+          return (
+            <div key={e.id} style={{display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'#fff', borderBottom:'1px solid #F0E8D8'}}>
+              <span style={{color:'#8B5E3C', flexShrink:0}}>{TYPE_ICONS[e.type] || TYPE_ICONS.note}</span>
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:15, fontWeight:600, color:'#2A2018'}}>{e.title}</div>
+                <div style={{fontSize:11, color:'#8B7F6E', marginTop:1}}>
+                  {fmtTime(e.scheduled_at)} · {clientName(e)} {e.projet && '· ' + e.projet}
+                </div>
+              </div>
+              <span style={{flexShrink:0, padding:'2px 7px', borderRadius:9, fontSize:10, fontWeight:700, letterSpacing:.3, background:badge.bg, color:badge.color}}>{badge.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C'}}>Calendrier</div>
+        <span style={{fontSize:11, color:'#8B7F6E'}}>Vue Liste · {events.length} év.</span>
+      </div>
+      <div style={{flex:1, overflowY:'auto', padding:'4px 0 calc(env(safe-area-inset-bottom, 0px) + 80px)'}}>
+        {loading && <div style={{textAlign:'center', color:'#8B7F6E', padding:30}}>Chargement…</div>}
+        {!loading && events.length === 0 && (
+          <div style={{textAlign:'center', color:'#8B7F6E', padding:30, fontSize:13}}>Aucun événement programmé.</div>
+        )}
+        {renderBucket('aujourdhui', "Aujourd'hui", buckets.aujourdhui)}
+        {renderBucket('demain', 'Demain', buckets.demain)}
+        {renderBucket('semaine', 'Cette semaine', buckets.semaine)}
+        {renderBucket('plus_tard', 'Plus tard', buckets.plus_tard)}
+        {renderBucket('sans_date', 'Sans date', buckets.sans_date)}
+        {renderBucket('passe', 'Passé', buckets.passe)}
+      </div>
+      {toast && <Toast msg={toast}/>}
+    </div>
+  );
+}
+
 // M/2026/04/28/31 — ActiviteDocuments : Section IV refondue Phase 1.
 // Liste antéchronologique d'événements + bibliothèque docs. Modal création
 // minimale (4 boutons type → prompt titre + datetime). Upload multipart fichier.
@@ -9273,8 +9386,10 @@ function ListView(props) {
         center={<OcreTitle/>}
         right={
           <div data-header-actions="1" style={{display:'flex', alignItems:'center', gap:8}}>
-            {/* Header droite : cible matchs + Share (placeholder modal) + Search (toggle SearchBar) + Archive toggle. */}
+            {/* Header droite : cible matchs + Calendrier + Share + Search + Archive. */}
             <TargetWithBadge title="Matchs détectés" onClick={() => props.openMatches && props.openMatches()}/>
+            <PillIconButton title="Calendrier" onClick={() => props.openCalendrier && props.openCalendrier()}
+              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}/>
             <PillIconButton icon={<ShareIcon size={18}/>} title="Partager mes dossiers"
               onClick={() => props.openSharePlaceholder && props.openSharePlaceholder()}/>
             <PillIconButton icon={

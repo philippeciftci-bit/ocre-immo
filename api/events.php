@@ -48,6 +48,20 @@ ensureEventsSchema();
 
 switch ($action) {
 
+case 'list_all': {
+    // M/2026/04/28/37 — vue calendrier globale : tous les events du tenant
+    // pour le user authentifié (pas filtré par client_id). Joint nom client.
+    $stmt = db()->prepare(
+        "SELECT e.*, c.prenom, c.nom, c.societe_nom, c.projet
+         FROM events e LEFT JOIN clients c ON c.id = e.client_id
+         WHERE e.owner_user_id = ?
+         ORDER BY e.scheduled_at IS NULL, e.scheduled_at ASC, e.created_at DESC
+         LIMIT 500"
+    );
+    $stmt->execute([$uid]);
+    jsonOk(['events' => $stmt->fetchAll()]);
+}
+
 case 'list': {
     $clientId = (int) ($_GET['client_id'] ?? $input['client_id'] ?? 0);
     if (!$clientId || !checkClientOwnership($clientId, $uid)) jsonError('client_id requis ou non autorisé', 403);
