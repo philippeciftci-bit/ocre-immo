@@ -1,7 +1,9 @@
 <?php
 // V17.2 Phase 2a — upload photos d'un bien. Stockage ../uploads/<dossier_id>/.
 // MIME image only, 30 photos max par dossier, 8 Mo max par fichier.
+// M/2026/04/29/3 — pipeline compression WebP auto + thumb 400x400 + table photo_compression_stats.
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib/photo_pipeline.php';
 setCorsHeaders();
 
 define('UPLOAD_MAX_BYTES', 8 * 1024 * 1024);
@@ -119,12 +121,21 @@ switch ($action) {
         }
         @chmod($dest, 0644);
 
+        // M/2026/04/29/3 — compression WebP + thumb (best-effort, n'écrase pas si fail).
+        $compResult = ['compressed' => false];
+        if (in_array($mime, ['image/jpeg', 'image/png'], true)) {
+            $compResult = photo_pipeline_compress($dest, dossierDir($dossier_id) . '/' . pathinfo($name, PATHINFO_FILENAME), (int) $f['size']);
+        }
+
         jsonOk([
             'photo' => [
                 'name' => $name,
                 'url' => publicBase() . '/' . $dossier_id . '/' . $name,
                 'size' => filesize($dest),
                 'mtime' => filemtime($dest),
+                'webp_url' => $compResult['webp_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['webp_name'] : null,
+                'thumb_url' => $compResult['thumb_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['thumb_name'] : null,
+                'compression_ratio' => $compResult['ratio'] ?? null,
             ],
         ]);
     }
