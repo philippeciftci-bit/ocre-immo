@@ -9512,6 +9512,210 @@ function ExportPage({onBack, showToast}) {
   );
 }
 
+// M/2026/04/29/11 — AI assistant UI : bouton étoile + 3 modals + section préférences.
+function AIStarButton({title, onClick, disabled, label}) {
+  return (
+    <button onClick={onClick} disabled={disabled} title={title}
+      style={{
+        background:'transparent', border:'1px solid #B89968', borderRadius:5,
+        padding:'4px 10px', fontFamily:'inherit', fontSize:12, color:'#8B5E3C',
+        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? .5 : 1,
+        display:'inline-flex', alignItems:'center', gap:5,
+      }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 5.5h5.5l-4.5 3.5 1.5 5.5-4-3.5-4 3.5 1.5-5.5-4.5-3.5h5.5z"/></svg>
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function AIDraftNoteModal({clientId, onClose, onUse, showToast}) {
+  const [brief, setBrief] = React.useState('');
+  const [tone, setTone] = React.useState('Professionnel');
+  const [generating, setGenerating] = React.useState(false);
+  const [result, setResult] = React.useState('');
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  async function generate() {
+    if (!brief.trim()) return;
+    setGenerating(true);
+    try {
+      const r = await fetch('/api/ai_assistant.php?action=draft_note', {
+        method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+        body: JSON.stringify({brief, tone, client_id: clientId}),
+      }).then(r => r.json());
+      if (r.ok) setResult(r.text || '');
+      else if (r.error && r.error.includes('Quota')) showToast && showToast('Quota IA atteint ce mois');
+      else showToast && showToast(r.error || 'Erreur IA');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setGenerating(false);
+  }
+
+  return (
+    <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:400, display:'flex', alignItems:'center', justifyContent:'center', padding:14}}>
+      <div style={{background:'#fff', borderRadius:12, padding:18, maxWidth:520, width:'100%', maxHeight:'90vh', overflow:'auto'}}>
+        <div style={{display:'flex', alignItems:'center', marginBottom:12}}>
+          <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C'}}>Rédiger avec l'IA</div>
+          <button onClick={onClose} style={{background:'none', border:'none', fontSize:18, cursor:'pointer', color:'#8B7F6E'}}>×</button>
+        </div>
+        <textarea value={brief} onChange={e => setBrief(e.target.value)}
+          placeholder="Ex: Visite avec M. El Fassi, villa Palmeraie 320m², prix 8.2M, accepterait 7.8M, plutôt motivé"
+          style={{width:'100%', minHeight:80, padding:10, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:10, boxSizing:'border-box', resize:'vertical'}}/>
+        <div style={{display:'flex', gap:6, marginBottom:12}}>
+          {['Professionnel', 'Décontracté', 'Détaillé'].map(t => (
+            <button key={t} onClick={() => setTone(t)} style={{
+              flex:1, padding:'6px 8px', fontSize:11.5, fontFamily:'inherit',
+              background: tone===t ? '#8B5E3C' : '#fff', color: tone===t ? '#fff' : '#5A4E3D',
+              border:'1px solid ' + (tone===t ? '#8B5E3C' : '#D8CCB4'),
+              borderRadius:5, cursor:'pointer',
+            }}>{t}</button>
+          ))}
+        </div>
+        {!result && (
+          <button onClick={generate} disabled={generating || !brief.trim()}
+            style={{width:'100%', padding:'10px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:generating?'wait':'pointer'}}>
+            {generating ? 'Génération…' : 'Générer'}
+          </button>
+        )}
+        {result && (
+          <>
+            <textarea value={result} onChange={e => setResult(e.target.value)}
+              style={{width:'100%', minHeight:120, padding:10, border:'1px solid #B89968', background:'#FAF7F0', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:10, boxSizing:'border-box', resize:'vertical'}}/>
+            <div style={{display:'flex', gap:6}}>
+              <button onClick={() => generate()} disabled={generating} style={{flex:1, padding:'10px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'#8B5E3C', fontFamily:'inherit', fontSize:13, cursor:'pointer'}}>Régénérer</button>
+              <button onClick={() => { onUse && onUse(result); onClose(); }} style={{flex:2, padding:'10px', background:'#059669', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer'}}>Utiliser</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AIDraftMessageModal({clientId, clientPhone, onClose, showToast}) {
+  const [channel, setChannel] = React.useState('whatsapp');
+  const [intent, setIntent] = React.useState('confirmer_rdv');
+  const [custom, setCustom] = React.useState('');
+  const [generating, setGenerating] = React.useState(false);
+  const [result, setResult] = React.useState('');
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  const INTENTS = [
+    {k:'confirmer_rdv', l:'Confirmer un RDV'},
+    {k:'relancer_visite', l:'Relancer après visite'},
+    {k:'demander_document', l:'Demander un document'},
+    {k:'nouveau_bien_matchant', l:'Annoncer un nouveau bien'},
+    {k:'confirmer_compromis', l:'Confirmer envoi compromis'},
+    {k:'autre', l:'Autre'},
+  ];
+
+  async function generate() {
+    setGenerating(true);
+    try {
+      const r = await fetch('/api/ai_assistant.php?action=draft_message', {
+        method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+        body: JSON.stringify({channel, intent, custom, client_id: clientId}),
+      }).then(r => r.json());
+      if (r.ok) setResult(r.text || '');
+      else showToast && showToast(r.error || 'Erreur IA');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setGenerating(false);
+  }
+
+  function copyToClipboard() {
+    if (navigator.clipboard) navigator.clipboard.writeText(result).then(() => showToast && showToast('Copié'));
+  }
+  function openChannel() {
+    if (!result) return;
+    const tel = (clientPhone || '').replace(/[^\d+]/g, '');
+    if (channel === 'whatsapp') window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(result), '_blank');
+    else if (channel === 'sms') window.open('sms:' + tel + '?body=' + encodeURIComponent(result), '_blank');
+    else window.open('mailto:?body=' + encodeURIComponent(result), '_blank');
+  }
+
+  return (
+    <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:400, display:'flex', alignItems:'center', justifyContent:'center', padding:14}}>
+      <div style={{background:'#fff', borderRadius:12, padding:18, maxWidth:520, width:'100%', maxHeight:'90vh', overflow:'auto'}}>
+        <div style={{display:'flex', alignItems:'center', marginBottom:12}}>
+          <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C'}}>Rédiger un message</div>
+          <button onClick={onClose} style={{background:'none', border:'none', fontSize:18, cursor:'pointer'}}>×</button>
+        </div>
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:11, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase'}}>Canal</div>
+          <div style={{display:'flex', gap:6}}>
+            {[{k:'whatsapp',l:'WhatsApp'},{k:'sms',l:'SMS'},{k:'email',l:'Email'}].map(c => (
+              <button key={c.k} onClick={() => setChannel(c.k)} style={{
+                flex:1, padding:'6px 10px', fontSize:12,
+                background: channel===c.k ? '#8B5E3C' : '#fff', color: channel===c.k ? '#fff' : '#5A4E3D',
+                border:'1px solid ' + (channel===c.k ? '#8B5E3C' : '#D8CCB4'), borderRadius:5, cursor:'pointer', fontFamily:'inherit',
+              }}>{c.l}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:11, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase'}}>Intent</div>
+          <select value={intent} onChange={e => setIntent(e.target.value)}
+            style={{width:'100%', padding:8, border:'1px solid #D8CCB4', borderRadius:5, fontSize:13, fontFamily:'inherit', boxSizing:'border-box'}}>
+            {INTENTS.map(i => <option key={i.k} value={i.k}>{i.l}</option>)}
+          </select>
+        </div>
+        <textarea value={custom} onChange={e => setCustom(e.target.value)}
+          placeholder="Précisions optionnelles (ex: visite samedi 14h, prévoir 1h)"
+          style={{width:'100%', minHeight:50, padding:8, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:10, boxSizing:'border-box', resize:'vertical'}}/>
+        {!result && (
+          <button onClick={generate} disabled={generating} style={{width:'100%', padding:'10px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:generating?'wait':'pointer'}}>
+            {generating ? 'Génération…' : 'Générer'}
+          </button>
+        )}
+        {result && (
+          <>
+            <textarea value={result} onChange={e => setResult(e.target.value)}
+              style={{width:'100%', minHeight:140, padding:10, border:'1px solid #B89968', background:'#FAF7F0', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:10, boxSizing:'border-box', resize:'vertical'}}/>
+            <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+              <button onClick={generate} style={{flex:1, padding:'8px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'#8B5E3C', fontSize:12, cursor:'pointer'}}>Régénérer</button>
+              <button onClick={copyToClipboard} style={{flex:1, padding:'8px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'#8B5E3C', fontSize:12, cursor:'pointer'}}>Copier</button>
+              <button onClick={openChannel} style={{flex:2, padding:'8px', background:'#059669', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer'}}>Ouvrir {channel}</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AIQuotaSection({showToast}) {
+  const [quota, setQuota] = React.useState(null);
+  const token = () => localStorage.getItem('ocre_token') || '';
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/ai_assistant.php?action=quota_status', {headers:{'X-Session-Token': token()}}).then(r => r.json());
+        if (r.ok || r.plan) setQuota(r);
+      } catch (e) {}
+    })();
+  }, []);
+  if (!quota) return <div style={{color:'#8B7F6E', fontSize:12}}>Chargement…</div>;
+  if (!quota.monthly) {
+    return (
+      <div style={{fontSize:13, color:'#5A4E3D'}}>
+        Cette fonctionnalité requiert le plan <b>Pro</b> ou <b>Équipe</b>.
+        <div style={{marginTop:8}}>
+          <a href="https://ocre.immo#tarifs" target="_blank" style={{padding:'6px 12px', background:'#8B5E3C', color:'#fff', borderRadius:5, fontSize:12, textDecoration:'none', display:'inline-block'}}>Voir les plans</a>
+        </div>
+      </div>
+    );
+  }
+  const pct = quota.monthly > 0 ? Math.min(100, Math.round(100 * quota.used / quota.monthly)) : 0;
+  return (
+    <div>
+      <div style={{fontSize:13, color:'#2A2018', marginBottom:6}}>Plan {quota.plan} : <b>{quota.used} / {quota.monthly}</b> générations ce mois</div>
+      <div style={{height:8, background:'#F4EFE6', borderRadius:4, overflow:'hidden'}}>
+        <div style={{height:'100%', width: pct + '%', background: pct >= 90 ? '#DC2626' : (pct >= 70 ? '#D97706' : '#8B5E3C'), transition:'width .3s'}}/>
+      </div>
+      <div style={{fontSize:11, color:'#8B7F6E', marginTop:4}}>{quota.remaining} restantes. Reset le 1er du mois.</div>
+    </div>
+  );
+}
+
 // M/2026/04/29/2 — BillingSection : statut plan + boutons Stripe Customer Portal + checkout.
 function BillingSection({showToast}) {
   const [billing, setBilling] = React.useState(null);
@@ -9817,6 +10021,10 @@ function PreferencesPage({onBack, showToast, currentUser}) {
 
         <Section title="Abonnement & facturation">
           <BillingSection showToast={showToast}/>
+        </Section>
+
+        <Section title="AI Assistant (beta)">
+          <AIQuotaSection showToast={showToast}/>
         </Section>
 
         <Section title="Aide">
@@ -13550,6 +13758,8 @@ function FormView(props) {
   function set(k, v) {
     setD(prev => ({...prev, [k]: v}));
   }
+  // M/2026/04/29/11 — AI message modal state.
+  const [aiMessageOpen, setAiMessageOpen] = useState(false);
   // M/2026/04/28/51 — banner edit pending : si edit_consent.list_pending retourne
   // un edit pour ce dossier, afficher banner avec lien vers /edit/<id>.
   const [pendingEdit, setPendingEdit] = useState(null);
@@ -14153,6 +14363,25 @@ function FormView(props) {
             active={formSearchOpen || !!formSearchQuery}
             onClick={toggleFormSearch}/>
           <PillIconButton icon={<ShareIcon size={18}/>} title="Partager" onClick={openShare}/>
+          {/* M/2026/04/29/11 — boutons AI assistant (résumé + message) si flag activé. */}
+          {props.currentUser && (
+            <>
+              <AIStarButton title="Résumer ce dossier" label="Résumé" onClick={async () => {
+                const id = editing && editing.id; if (!id || String(id).startsWith('tmp-')) return;
+                const tk = localStorage.getItem('ocre_token') || '';
+                const r = await fetch('/api/ai_assistant.php?action=summarize_dossier', {
+                  method:'POST', headers:{'X-Session-Token': tk, 'Content-Type':'application/json'},
+                  body: JSON.stringify({client_id: id}),
+                }).then(r => r.json());
+                if (r.ok) {
+                  window.alert('Résumé du dossier :\n\n' + r.text);
+                } else {
+                  showToast && showToast(r.error || 'IA indisponible');
+                }
+              }}/>
+              <AIStarButton title="Rédiger un message client" label="Message" onClick={() => setAiMessageOpen(true)}/>
+            </>
+          )}
           {/* M/2026/04/28/65 — bouton Export PDF avec choix template. */}
           <PillIconButton title="Exporter en PDF" onClick={() => {
             const tk = localStorage.getItem('ocre_token') || '';
@@ -14166,6 +14395,13 @@ function FormView(props) {
         </div>
       </div>
       {_peBanner}
+      {aiMessageOpen && (
+        <AIDraftMessageModal
+          clientId={editing && editing.id}
+          clientPhone={d && d.tel}
+          onClose={() => setAiMessageOpen(false)}
+          showToast={showToast}/>
+      )}
       {/* V18.27 — Barre de recherche dossier avec compteur. */}
       <div className={'search-bar-wrap ' + (formSearchOpen ? 'open' : 'closed')}>
         <div className="search-bar-input-wrap">
