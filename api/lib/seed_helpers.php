@@ -47,6 +47,7 @@ function seedDossiersV1(): array {
             'chambres' => 4, 'sdb' => 3, 'surface' => 320, 'surface_terrain' => 1700, 'surface_annexes' => 60,
             'annee_construction' => 2018, 'etat' => 'récent', 'exposition' => 'sud-ouest',
             'equipements' => ['piscine' => '50 m² chauffée', 'parking' => 2, 'jardin' => 1500, 'terrasse' => 80, 'climatisation' => true, 'cheminee' => true, 'cuisine_equipee' => true],
+            'photos' => ['https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&auto=format', 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=600&auto=format', 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=600&auto=format', 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&auto=format', 'https://images.unsplash.com/photo-1571055107559-3e67626fa8be?w=600&auto=format']
           ],
           'notes' => 'Vente villa Palmeraie suite départ Émirats Arabes Unis. Bien entretenu, jardin paysagé palmiers et oliviers, piscine chauffée. Sécurité 24/7 résidence privée. Disponibilité immédiate.',
         ],
@@ -92,6 +93,7 @@ function seedDossiersV1(): array {
             'chambres' => 3, 'sdb' => 2, 'surface' => 165, 'etage' => '5e/8',
             'annee_construction' => 2010, 'etat' => 'bon état général',
             'equipements' => ['balcon' => 12, 'parking' => '1 sous-sol sécurisé', 'cave' => true, 'ascenseur' => true, 'climatisation' => true],
+            'photos' => ['https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&auto=format', 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format', 'https://images.unsplash.com/photo-1565183997392-2f6f122e5912?w=600&auto=format', 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d?w=600&auto=format', 'https://images.unsplash.com/photo-1600210492493-0946911123c4?w=600&auto=format']
           ],
           'notes' => 'Vente succession parents. Appartement spacieux Bourgogne, balcon 12 m² agréable, parking sous-sol. Vente sans urgence, négociable.',
         ],
@@ -114,6 +116,7 @@ function seedDossiersV1(): array {
             'ville' => 'Essaouira', 'quartier' => 'Centre', 'rayon_km' => 2,
             'chambres' => 3, 'surface' => 130,
             'etat' => 'rénové ou récent',
+            'photos' => ['https://images.unsplash.com/photo-1545159449-cc7afd62cd29?w=600&auto=format']
           ],
           'notes' => 'Investisseur expérimenté, déjà 2 biens locatifs Lyon. Vise rendement net 6 % par an, location courte durée Airbnb. Ouvert riad ou appartement bien placé centre Essaouira.',
         ],
@@ -137,6 +140,7 @@ function seedDossiersV1(): array {
             'chambres' => 4, 'sdb' => 4, 'surface' => 220,
             'annee_construction' => 1920, 'etat' => 'rénové 2022',
             'equipements' => ['patio' => 30, 'terrasse' => '80 m² panoramique', 'climatisation' => true, 'cheminee' => 2, 'vue' => 'océan + médina', 'plomberie' => 'neuve', 'electricite' => 'neuve', 'toiture' => 'refaite'],
+            'photos' => ['https://images.unsplash.com/photo-1606047773143-6e7906ee4ff8?w=600&auto=format', 'https://images.unsplash.com/photo-1597212618440-806262de4f6b?w=600&auto=format', 'https://images.unsplash.com/photo-1591375275621-ec3e7d9c66f8?w=600&auto=format', 'https://images.unsplash.com/photo-1554995207-c18c203602cb?w=600&auto=format', 'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?w=600&auto=format']
           ],
           'notes' => 'Riad médina rénové 2022 (chaux + tadelakt). Toiture refaite, plomberie/électricité neuves. Idéal maison d\'hôtes ou résidence secondaire luxe. Licence touristique transférable.',
         ],
@@ -161,6 +165,7 @@ function seedDossiersV1(): array {
             'chambres' => 2, 'sdb' => 2, 'surface' => 95, 'etage' => '3e/5',
             'annee_construction' => 2015, 'etat' => 'meublé moderne',
             'equipements' => ['balcon' => 8, 'parking' => 1, 'climatisation' => true, 'ascenseur' => true, 'meuble' => true, 'cuisine_equipee' => true, 'sdb_refaite' => 2023],
+            'photos' => ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&auto=format', 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=600&auto=format', 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&auto=format', 'https://images.unsplash.com/photo-1567016526105-22da7c13161a?w=600&auto=format', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&auto=format']
           ],
           'notes' => 'Appartement meublé Guéliz proche Carré Eden, restaurants et commerces. Cuisine équipée, salle de bain refaite 2023. Préférence locataire CDI ou expat avec garants.',
         ],
@@ -226,6 +231,7 @@ function seedDossiersV1(): array {
             'chambres' => 6, 'sdb' => 6, 'surface' => 280, 'surface_terrain' => 350,
             'annee_construction' => 1900, 'etat' => 'rénové 2023',
             'equipements' => ['patio' => 25, 'plunge_pool' => true, 'roof_terrasse' => 90, 'climatisation' => true, 'meuble' => true, 'vue' => 'Atlas + médina', 'licence_touristique' => 'en cours de transfert'],
+            'photos' => ['https://images.unsplash.com/photo-1542315192-1f61a1792f33?w=600&auto=format', 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600&auto=format', 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=600&auto=format', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&auto=format', 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format']
           ],
           'notes' => 'Riad médina rénové 2023, projet vente complet meublé prêt à exploitation maison d\'hôtes. 6 suites, plunge pool patio, roof terrasse 90 m² vue Atlas. Licence touristique en cours de transfert. Idéal investisseur pro.',
         ],
