@@ -28,6 +28,10 @@ function ensureSignupSchema(): PDO {
         'activation_token' => "ALTER TABLE users ADD COLUMN activation_token VARCHAR(64) NULL",
         'activation_token_expires_at' => "ALTER TABLE users ADD COLUMN activation_token_expires_at DATETIME NULL",
         'slug' => "ALTER TABLE users ADD COLUMN slug VARCHAR(50) NULL",
+        'cgu_accepted_at' => "ALTER TABLE users ADD COLUMN cgu_accepted_at DATETIME NULL",
+        'cgu_version_accepted' => "ALTER TABLE users ADD COLUMN cgu_version_accepted VARCHAR(10) NULL",
+        'deletion_requested_at' => "ALTER TABLE users ADD COLUMN deletion_requested_at DATETIME NULL",
+        'anonymized_at' => "ALTER TABLE users ADD COLUMN anonymized_at DATETIME NULL",
     ];
     foreach ($alters as $col => $sql) {
         if (!in_array($col, $cols, true)) {
@@ -89,8 +93,8 @@ $pwHash = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
 
 try {
     $ins = $meta->prepare(
-        "INSERT INTO users (email, display_name, slug, telephone, societe, billing_plan, status, activation_token, activation_token_expires_at, password_hash, role, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending_activation', ?, DATE_ADD(NOW(), INTERVAL 7 DAY), ?, 'agent', NOW())"
+        "INSERT INTO users (email, display_name, slug, telephone, societe, billing_plan, status, activation_token, activation_token_expires_at, password_hash, role, cgu_accepted_at, cgu_version_accepted, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending_activation', ?, DATE_ADD(NOW(), INTERVAL 7 DAY), ?, 'agent', NOW(), '1.0', NOW())"
     );
     $ins->execute([$email, $displayName, $slug, $telephone, $societe ?: null, $plan, $activationToken, $pwHash]);
     $newUid = (int) $meta->lastInsertId();
