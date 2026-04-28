@@ -87,6 +87,9 @@ input, select, textarea, button { font-size:13px }
 
 /* V17.1 fix-ux-5 : paires 50/50 stackent en mobile portrait < 500px. */
 .row-pair{display:flex;gap:6px}
+.row-trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+@media(max-width:480px){.row-trio{grid-template-columns:1fr;gap:0}}
+.row-trio > *{min-width:0}
 @media (max-width: 499px){
   .row-pair{flex-direction:column;gap:0}
   .row-pair > *{flex:1 1 auto !important;width:100%}
@@ -11668,9 +11671,15 @@ function FormView(props) {
                 <Field label="Prénom" value={d.prenom} onChange={v => set('prenom', v)} style={{flex:1}}/>
                 <Field label="Nom" value={d.nom} onChange={v => set('nom', v)} style={{flex:1}}/>
               </div>
-              {/* L2 Tel / Email multi */}
-              <TelephoneMulti value={d.tels} onChange={v => set('tels', v)} residenceCountry={d.pays_residence || d.nationalite || ''} showToast={showToast}/>
-              <EmailMulti value={d.emails} onChange={v => set('emails', v)} showToast={showToast}/>
+              {/* M/2026/04/28/27 — L2 Tel | Email côte à côte (row-pair). */}
+              <div className="row-pair">
+                <div style={{flex:1, minWidth:0}}>
+                  <TelephoneMulti value={d.tels} onChange={v => set('tels', v)} residenceCountry={d.pays_residence || d.nationalite || ''} showToast={showToast}/>
+                </div>
+                <div style={{flex:1, minWidth:0}}>
+                  <EmailMulti value={d.emails} onChange={v => set('emails', v)} showToast={showToast}/>
+                </div>
+              </div>
               {/* L3 Adresse full width */}
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
               {/* L4 Ville / Pays résidence */}
@@ -11686,22 +11695,32 @@ function FormView(props) {
             </>
           ) : (
             <>
-              {/* Société : L1 Raison sociale / Forme juridique */}
+              {/* M/2026/04/28/27 — L1 Forme juridique | Raison sociale (FJ d'abord à gauche). */}
               <div className="row-pair">
-                <Field label="Raison sociale" value={d.societe_nom} onChange={v => set('societe_nom', v)} style={{flex:2}}/>
                 <Select label="Forme juridique" value={d.forme_juridique} onChange={v => set('forme_juridique', v)} options={FORMES_JURIDIQUES} style={{flex:1}}/>
+                <Field label="Raison sociale" value={d.societe_nom} onChange={v => set('societe_nom', v)} style={{flex:2}}/>
               </div>
-              {/* L2 SIRET/ICE / Représentant */}
+              {/* L2 SIRET / ICE pleine largeur */}
+              <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)}/>
+              {/* L3 REPRÉSENTANT (sous-section, 3 champs Prénom/Nom/Fonction). */}
+              <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:8, marginBottom:4, fontWeight:700, fontFamily:'inherit'}}>Représentant</div>
+              <div className="row-trio">
+                <Field label="Prénom" value={d.representant_prenom} onChange={v => set('representant_prenom', v)}/>
+                <Field label="Nom" value={d.representant_nom} onChange={v => set('representant_nom', v)}/>
+                <Field label="Fonction" value={d.representant_fonction} onChange={v => set('representant_fonction', v)}/>
+              </div>
+              {/* L4 Tel | Email côte à côte. */}
               <div className="row-pair">
-                <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)} style={{flex:1}}/>
-                <Field label="Représentant" value={d.representant} onChange={v => set('representant', v)} style={{flex:1}}/>
+                <div style={{flex:1, minWidth:0}}>
+                  <TelephoneMulti value={d.tels} onChange={v => set('tels', v)} residenceCountry={d.pays_residence || d.nationalite || ''} showToast={showToast}/>
+                </div>
+                <div style={{flex:1, minWidth:0}}>
+                  <EmailMulti value={d.emails} onChange={v => set('emails', v)} showToast={showToast}/>
+                </div>
               </div>
-              {/* L3 Tel / Email multi */}
-              <TelephoneMulti value={d.tels} onChange={v => set('tels', v)} residenceCountry={d.pays_residence || d.nationalite || ''} showToast={showToast}/>
-              <EmailMulti value={d.emails} onChange={v => set('emails', v)} showToast={showToast}/>
-              {/* L4 Adresse full */}
+              {/* L5 Adresse full */}
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
-              {/* L5 Ville / Pays résidence */}
+              {/* L6 Ville / Pays résidence */}
               <div className="row-pair">
                 <CitySuggestField label="Ville" value={d.ville} onChange={v => set('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
                 <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
@@ -11928,6 +11947,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428g" defer></script>
+<script src="/v20-bridge.js?v=20260428h" defer></script>
 </body>
 </html>
