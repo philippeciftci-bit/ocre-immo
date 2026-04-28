@@ -8,9 +8,20 @@
 # diagnostiqué pour zefkicin@gmail.com).
 set -euo pipefail
 
-SLUG="${1:?usage: $0 <slug>}"
+SLUG="${1:?usage: $0 <slug> [<owner_meta_uid>]}"
 SLUG=$(echo "$SLUG" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
 [[ -z "$SLUG" ]] && { echo "Slug invalide" >&2; exit 1; }
+OWNER_UID="${2:-}"
+if [[ -z "$OWNER_UID" ]]; then
+  # Fallback : lookup ocre_meta (workspace_members owner du slug). Sinon 1.
+  ROOT_PWD_TMP=$(cat /root/.secrets/mysql-root.pwd)
+  OWNER_UID=$(mysql -uroot -p"$ROOT_PWD_TMP" -BNe "
+    SELECT m.user_id FROM ocre_meta.workspace_members m
+    JOIN ocre_meta.workspaces w ON w.id = m.workspace_id
+    WHERE w.slug = '${SLUG}' AND m.role = 'owner' AND m.left_at IS NULL LIMIT 1;
+  " 2>/dev/null)
+  [[ -z "$OWNER_UID" ]] && OWNER_UID=1
+fi
 
 ROOT_PWD=$(cat /root/.secrets/mysql-root.pwd)
 DB_AGENT="ocre_wsp_${SLUG}"
@@ -41,7 +52,7 @@ mysql -uroot -p"$ROOT_PWD" "${DB_TEST}"  < "$SCHEMA"
 for DB in "${DB_AGENT}" "${DB_TEST}"; do
   mysql -uroot -p"$ROOT_PWD" "${DB}" -e "
     INSERT IGNORE INTO users (id, email, active)
-    VALUES (1, 'local@${SLUG}', 1);
+    VALUES (${OWNER_UID}, 'local@${SLUG}', 1);
   "
 done
 

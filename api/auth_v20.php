@@ -108,8 +108,11 @@ case 'register': {
             ->execute([$wsp_id, $user_id]);
         $pdo->prepare("INSERT INTO dev_codes (email, code_plain, context) VALUES (?, ?, 'register')")->execute([$email, $code]);
 
+        // M/2026/04/28/18 — provision-tenant.sh prend 2e arg = owner_meta_uid
+        // pour aligner tenant.users.id sur ocre_meta.users.id (sinon mismatch
+        // entre $user['id'] retourné par currentUser et clients.user_id).
         $provOut = []; $provRc = 0;
-        @exec('sudo /opt/ocre-app/scripts/provision-tenant.sh ' . escapeshellarg($slug) . ' 2>&1', $provOut, $provRc);
+        @exec('sudo /opt/ocre-app/scripts/provision-tenant.sh ' . escapeshellarg($slug) . ' ' . escapeshellarg((string) $user_id) . ' 2>&1', $provOut, $provRc);
         $tenant_provisioned = ($provRc === 0);
 
         // M/2026/04/28/16 — Hook seeder mode test : injecte les 10 dossiers
@@ -119,11 +122,7 @@ case 'register': {
             try {
                 require_once __DIR__ . '/lib/seed_helpers.php';
                 $testPdo = pdo_workspace('ocre_wsp_' . $slug . '_test');
-                // Le user_id local du WSp (table users, pas ocre_meta.users) est
-                // créé par provision-tenant.sh comme owner unique avec id=1.
-                $localOwnerStmt = $testPdo->query("SELECT id FROM users WHERE active = 1 ORDER BY id ASC LIMIT 1");
-                $localOwner = $localOwnerStmt ? $localOwnerStmt->fetch() : null;
-                if ($localOwner) applySeedToTenant($testPdo, (int) $localOwner['id']);
+                applySeedToTenant($testPdo, (int) $user_id);
             } catch (Throwable $e) { /* seed best-effort, ne bloque pas l'inscription */ }
         }
 

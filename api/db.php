@@ -62,87 +62,67 @@ function getInput() {
     return is_array($data) ? $data : [];
 }
 
+// M/2026/04/28/18 — currentUser() meta-first.
+// Sessions vivent en ocre_meta (architecture V20). L'ancienne version interrogeait
+// d'abord tenant.sessions, qui n'existe pas → PDOException non catchée → 500 sur
+// tous les endpoints legacy (matches.php, clients.php, seed.php). Réécrit en
+// query unique meta avec vérification de membership/super_admin.
+//
+// Retour : ligne ocre_meta.users (id = uid meta). Pour super_admin sur un tenant
+// dont il n'est pas membre, on substitue le user owner du tenant pour préserver
+// le comportement « admin agit comme le owner » (lecture des dossiers, etc.).
 function currentUser() {
     $token = $_SERVER['HTTP_X_SESSION_TOKEN'] ?? ($_GET['token'] ?? '');
     if (!$token) return null;
-    $stmt = db()->prepare(
-        "SELECT u.* FROM sessions s
+
+    $dsn = 'mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4';
+    $meta = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+
+    $slug = $_SERVER['HTTP_X_TENANT_SLUG'] ?? '';
+    if (!$slug && preg_match('/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/', $_SERVER['HTTP_HOST'] ?? '', $m)) {
+        $slug = $m[1];
+    }
+
+    $st = $meta->prepare(
+        "SELECT u.*, m.role AS membership_role
+         FROM sessions s
          JOIN users u ON u.id = s.user_id
-         WHERE s.token = ? AND s.expires_at > NOW() AND u.active = 1
+         LEFT JOIN workspaces w ON w.slug = ? AND w.archived_at IS NULL
+         LEFT JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = u.id AND m.left_at IS NULL
+         WHERE s.token = ? AND s.expires_at > NOW() AND u.archived_at IS NULL
          LIMIT 1"
     );
-    $stmt->execute([$token]);
-    $row = $stmt->fetch();
-    // V20 fallback : si pas trouvé dans la base WSp, chercher dans ocre_meta.sessions.
-    // L'auth v20 stocke les sessions centralement ; les endpoints legacy doivent quand même
-    // les reconnaître. Sécurité : on vérifie que le user v20 est bien membre du tenant courant.
-    if (!$row) {
-        try {
-            $dsn = 'mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4';
-            $meta = new PDO($dsn, DB_USER, DB_PASS, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]);
-            $slug = $_SERVER['HTTP_X_TENANT_SLUG'] ?? '';
-            if (!$slug && preg_match('/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/', $_SERVER['HTTP_HOST'] ?? '', $m)) $slug = $m[1];
-            $st = $meta->prepare(
-                "SELECT u.*, m.role AS membership_role
-                 FROM sessions s
-                 JOIN users u ON u.id = s.user_id
-                 LEFT JOIN workspaces w ON w.slug = ? AND w.archived_at IS NULL
-                 LEFT JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = u.id AND m.left_at IS NULL
-                 WHERE s.token = ? AND s.expires_at > NOW() AND u.archived_at IS NULL
-                 LIMIT 1"
-            );
-            $st->execute([$slug, $token]);
-            $metaUser = $st->fetch();
-            // Autoriser : super_admin OU membre actif du tenant courant
-            $authorized = $metaUser && (($metaUser['role'] === 'super_admin') || !empty($metaUser['membership_role']));
-            if ($authorized) {
-                // Récupérer le user local owner de la base WSp (1 WSp = 1 agent owner).
-                // Pour super_admin, idem (read-only mais fonctionnel via le pseudo-owner).
-                $localOwner = db()->query("SELECT * FROM users WHERE active = 1 ORDER BY id ASC LIMIT 1");
-                $row = $localOwner ? $localOwner->fetch() : null;
-            }
-        } catch (Throwable $e) { /* silent */ }
-    }
+    $st->execute([$slug, $token]);
+    $row = $st->fetch();
     if (!$row) return null;
-    // V18.39 — block suspended users at the door.
     if (!empty($row['is_suspended']) && (int) $row['is_suspended'] === 1) return null;
 
-    // V18.40 — impersonation : si X-Impersonation-Token valide + cette session appartient à un
-    // admin, retourner l'user cible avec flags is_impersonating/impersonated_by. Chaque requête
-    // auth'ée sous impersonation logge une action 'impersonate_action' dans admin_actions.
-    $impToken = $_SERVER['HTTP_X_IMPERSONATION_TOKEN'] ?? '';
-    if ($impToken && !empty($row['is_admin']) && (int) $row['is_admin'] === 1) {
-        $st = db()->prepare(
-            "SELECT s.admin_user_id, s.target_user_id, u.* FROM impersonation_sessions s
-             JOIN users u ON u.id = s.target_user_id
-             WHERE s.token = ? AND s.expires_at > NOW() AND s.stopped_at IS NULL
-                   AND s.admin_user_id = ? AND u.active = 1 AND (u.is_suspended IS NULL OR u.is_suspended = 0)
+    $isMember = !empty($row['membership_role']);
+    $isSuperAdmin = ($row['role'] === 'super_admin');
+
+    if ($isMember) return $row;
+
+    if ($isSuperAdmin) {
+        // Super admin sur un tenant dont il n'est pas membre : agit comme le
+        // owner du tenant. Tous les endpoints legacy filtrent par user_id =
+        // currentUser['id'] ; il faut donc qu'il s'identifie au owner pour
+        // voir/modifier ses dossiers.
+        $own = $meta->prepare(
+            "SELECT u.* FROM workspaces w
+             JOIN workspace_members m ON m.workspace_id = w.id AND m.role = 'owner' AND m.left_at IS NULL
+             JOIN users u ON u.id = m.user_id
+             WHERE w.slug = ? AND w.archived_at IS NULL
              LIMIT 1"
         );
-        $st->execute([$impToken, $row['id']]);
-        $imp = $st->fetch();
-        if ($imp) {
-            $imp['is_impersonating'] = true;
-            $imp['impersonated_by'] = (int) $imp['admin_user_id'];
-            // Log de l'action imitée (best-effort). Ne bloque pas.
-            try {
-                $logStmt = db()->prepare(
-                    "INSERT INTO admin_actions (admin_user_id, action, target_user_id, meta, ip)
-                     VALUES (?, 'impersonate_action', ?, ?, ?)"
-                );
-                $meta = json_encode([
-                    'endpoint' => substr((string) ($_SERVER['REQUEST_URI'] ?? ''), 0, 120),
-                    'method' => $_SERVER['REQUEST_METHOD'] ?? '',
-                ], JSON_UNESCAPED_UNICODE);
-                $logStmt->execute([(int) $imp['admin_user_id'], (int) $imp['target_user_id'], $meta, $_SERVER['REMOTE_ADDR'] ?? '']);
-            } catch (Exception $e) { /* silent */ }
-            return $imp;
-        }
+        $own->execute([$slug]);
+        $owner = $own->fetch();
+        return $owner ?: $row;
     }
-    return $row;
+
+    return null;
 }
 
 function requireAuth() {
