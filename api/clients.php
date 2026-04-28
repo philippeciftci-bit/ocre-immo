@@ -372,6 +372,27 @@ switch ($action) {
         audit_log((int)$user['id'], 'clients', $id, $audit_before ? 'UPDATE' : 'INSERT', $audit_before, $audit_after);
         // V17.5 Phase 2c : enqueue sync Google Sheet si user sync_enabled. V18.17 : skip si staged.
         if (!$wasStaged) enqueueSync((int)$user['id'], $id, 'upsert');
+        // M/2026/04/28/59 — enqueue scan matching auto (worker depile toutes 30s).
+        if (!$wasStaged) {
+            try {
+                db()->exec("CREATE TABLE IF NOT EXISTS match_queue (
+                    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+                    client_id BIGINT UNSIGNED NOT NULL,
+                    requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    processed_at DATETIME NULL,
+                    status ENUM('pending','processing','done','failed') NOT NULL DEFAULT 'pending',
+                    error_message TEXT NULL,
+                    INDEX idx_status_requested (status, requested_at),
+                    INDEX idx_client (client_id)
+                ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                // Dedup : skip si déjà pending sur ce client_id depuis < 60s.
+                $dup = db()->prepare("SELECT id FROM match_queue WHERE client_id = ? AND status = 'pending' AND requested_at > NOW() - INTERVAL 60 SECOND LIMIT 1");
+                $dup->execute([$id]);
+                if (!$dup->fetch()) {
+                    db()->prepare("INSERT INTO match_queue (client_id, status) VALUES (?, 'pending')")->execute([$id]);
+                }
+            } catch (Throwable $e) {}
+        }
         jsonOk(['client' => $c]);
     }
 

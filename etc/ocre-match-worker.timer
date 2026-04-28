@@ -1,0 +1,10 @@
+[Unit]
+Description=Ocre Immo - Worker match_queue toutes les 30 secondes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=30s
+Unit=ocre-match-worker.service
+
+[Install]
+WantedBy=timers.target

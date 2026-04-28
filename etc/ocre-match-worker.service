@@ -1,0 +1,10 @@
+[Unit]
+Description=Ocre Immo - Worker match_queue (depile pending toutes 30s)
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/root/bin/ocre-match-worker.sh
+StandardOutput=append:/var/log/ocre-match-worker.log
+StandardError=append:/var/log/ocre-match-worker.log

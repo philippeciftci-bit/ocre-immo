@@ -1,0 +1,10 @@
+[Unit]
+Description=Ocre Immo - Rejouer matching complet (toutes les 6h)
+
+[Timer]
+OnCalendar=*-*-* 02,08,14,20:00:00
+Persistent=true
+Unit=ocre-matching-rejouer.service
+
+[Install]
+WantedBy=timers.target

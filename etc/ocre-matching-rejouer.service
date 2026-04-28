@@ -1,0 +1,10 @@
+[Unit]
+Description=Ocre Immo - Rejouer matching complet par tenant
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/root/bin/ocre-matching-rejouer.sh
+StandardOutput=append:/var/log/ocre-matching.log
+StandardError=append:/var/log/ocre-matching.log
