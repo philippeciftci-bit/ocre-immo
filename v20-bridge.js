@@ -51,13 +51,6 @@
     .v20-cta-secondary{padding:12px 20px;background:transparent;color:#8B5E3C;border:1px solid #B89968;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;margin-right:8px}
     .v20-cta-destructive{padding:12px 20px;background:#8B0000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600}
     .v20-actions{display:flex;justify-content:flex-end;margin-top:16px;gap:8px}
-    .v20-notif-bell{position:relative;display:inline-block;cursor:pointer;font-size:18px;padding:6px}
-    .v20-notif-badge{position:absolute;top:-2px;right:-2px;background:#8B0000;color:#fff;border-radius:9px;font-size:10px;padding:1px 5px;font-weight:700;font-family:'DM Sans',sans-serif}
-    .v20-notif-list{position:absolute;top:36px;right:0;width:340px;max-height:480px;overflow-y:auto;background:#fff;border:1px solid #E5DDC8;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.12);z-index:1500}
-    .v20-notif-item{padding:12px 14px;border-bottom:1px solid #F0E8D8;font-size:13px;cursor:pointer}
-    .v20-notif-item:hover{background:#FAF8F2}
-    .v20-notif-item strong{display:block;color:#2A2018;margin-bottom:2px;font-size:13px}
-    .v20-notif-item small{color:#8B7F6E;font-size:11px}
     .v20-pact-frame{max-height:62vh;overflow-y:auto;border:1px solid #E5DDC8;border-radius:6px;padding:14px;background:#fff;font-size:13px;line-height:1.6}
     .v20-share-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;background:#F0E8D8;color:#8B5E3C;border:1px solid #B89968;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
     .v20-share-btn:hover{background:#E5DDC8}
@@ -70,7 +63,6 @@
   // === État global ===
   const state = {
     ctx: null,
-    notifications: [],
     workspaces: [],
   };
 
@@ -306,37 +298,6 @@
           cb, el('span', {}, "J'ai lu et j'accepte le pacte de partenariat dans son intégralité"))),
       el('div', { class: 'v20-actions' },
         el('button', { class: 'v20-cta-secondary', onclick: closeOverlay }, 'Plus tard'), btn));
-  }
-
-  // === Notifications header ===
-  // M/2026/04/28/9 — cloche désactivée (remplacée par TargetWithBadge React, mission 5/7).
-  // Purge défensive de toute instance résiduelle dans le DOM (cache navigateur).
-  function renderNotifBell() {
-    const old = document.getElementById('v20-notif-bell');
-    if (old) old.remove();
-    const stray = document.querySelectorAll('.v20-notif-bell, .v20-notif-list');
-    stray.forEach(n => n.remove());
-  }
-  function toggleNotifList() {
-    const ex = document.querySelector('.v20-notif-list');
-    if (ex) { ex.remove(); return; }
-    const list = el('div', { class: 'v20-notif-list', onclick: e => e.stopPropagation() },
-      ...state.notifications.slice(0, 30).map(n => {
-        return el('div', { class: 'v20-notif-item', onclick: () => handleNotifClick(n) },
-          el('strong', {}, n.title || ''),
-          el('div', { style: 'color:#6B5E4A;font-size:12px;margin-top:2px' }, n.body || ''),
-          el('small', {}, new Date(n.created_at).toLocaleString('fr-FR')));
-      })
-    );
-    if (!state.notifications.length) {
-      list.appendChild(el('div', { class: 'v20-notif-item', style: 'text-align:center;color:#8B7F6E' }, 'Aucune notification'));
-    }
-    document.body.appendChild(list);
-    setTimeout(() => document.addEventListener('click', () => list.remove(), { once: true }), 50);
-  }
-  function handleNotifClick(n) {
-    const p = (n.payload_json && typeof n.payload_json === 'string') ? JSON.parse(n.payload_json) : (n.payload_json || {});
-    if (p.wsc_slug) location.href = `https://${p.wsc_slug}.ocre.immo/`;
   }
 
   // === Page première connexion ===
@@ -640,12 +601,7 @@
     // Phase 4 empty state si mode agent vide
     maybeRenderEmptyState();
 
-    const notif = await apiFetch('/api/auth_v20.php?action=notifications');
-    if (notif.ok && notif.items) state.notifications = notif.items;
-    else state.notifications = [];
-
     renderBanners();
-    renderNotifBell();
     maybeRenderCustomFieldsPage();
     injectShareButtons();
 

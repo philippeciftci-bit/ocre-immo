@@ -353,24 +353,6 @@ case 'logout': {
     jout(['ok' => true]);
 }
 
-case 'notifications': {
-    $u = current_user_or_401();
-    $stmt = pdo_meta()->prepare(
-        "SELECT id, type, title, body, payload_json, read_at, created_at
-         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50"
-    );
-    $stmt->execute([$u['id']]);
-    jout(['ok' => true, 'items' => $stmt->fetchAll()]);
-}
-
-case 'mark_read': {
-    $u = current_user_or_401();
-    $id = (int)($input['id'] ?? 0);
-    pdo_meta()->prepare("UPDATE notifications SET read_at = NOW() WHERE id = ? AND user_id = ? AND read_at IS NULL")
-        ->execute([$id, $u['id']]);
-    jout(['ok' => true]);
-}
-
 case 'change_password': {
     $u = current_user_or_401();
     // V20 garde-fou : refuser si CGU pas acceptées (empêche bypass via API directe).
