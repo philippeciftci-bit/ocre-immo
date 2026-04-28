@@ -15,6 +15,13 @@ $uid = (int) $user['id'];
 function ensureEditConsentSchema() {
     static $done = false;
     if ($done) return;
+    // M/2026/04/28/61 — ajout tenant_slug idempotent.
+    try {
+        $cols = db()->query("SHOW COLUMNS FROM dossier_edits")->fetchAll(PDO::FETCH_COLUMN);
+        if ($cols && !in_array('tenant_slug', $cols, true)) {
+            db()->exec("ALTER TABLE dossier_edits ADD COLUMN tenant_slug VARCHAR(50) NOT NULL DEFAULT ''");
+        }
+    } catch (Throwable $e) {}
     try {
         db()->exec("CREATE TABLE IF NOT EXISTS dossier_edits (
             id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,

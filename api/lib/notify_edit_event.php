@@ -157,7 +157,18 @@ function notify_edit_event(string $type, int $editId, int $clientId, int $actorU
                     . htmlspecialchars($body, ENT_QUOTES, 'UTF-8')
                     . htmlspecialchars($changesText, ENT_QUOTES, 'UTF-8');
             $kb = null;
-            if ($type === 'edit_pending') {
+            // M/2026/04/28/61 — callback_data multi-tenant : edit_<action>:<slug>:<edit_id>.
+            $tenantSlug = '';
+            if (preg_match('/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/', $_SERVER['HTTP_HOST'] ?? '', $hostMatch)) {
+                $tenantSlug = $hostMatch[1];
+            }
+            if ($type === 'edit_pending' && $tenantSlug) {
+                $kb = [[
+                    ['text' => '✓ Valider', 'callback_data' => "edit_approve:{$tenantSlug}:{$editId}"],
+                    ['text' => '✗ Refuser', 'callback_data' => "edit_reject:{$tenantSlug}:{$editId}"],
+                ]];
+            } elseif ($type === 'edit_pending') {
+                // Fallback ancien format (sans slug) si host non reconnu.
                 $kb = [[
                     ['text' => '✓ Valider', 'callback_data' => "edit_approve:{$editId}"],
                     ['text' => '✗ Refuser', 'callback_data' => "edit_reject:{$editId}"],
