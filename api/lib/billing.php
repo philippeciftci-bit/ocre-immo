@@ -50,10 +50,26 @@ function billing_get_user_plan_limits(int $userId): array {
     $plan = ($sub['status'] === 'active' || $sub['status'] === 'trialing' || $sub['status'] === 'grace_period')
         ? ($sub['plan_key'] ?? 'decouverte')
         : 'decouverte';
+    // M/2026/04/29/7 — Quotas détaillés selon mission #fix-40.
     $limits = [
-        'decouverte' => ['max_dossiers' => 10, 'max_photos_per_dossier' => 5, 'wsc_allowed' => false, 'scan_web' => false, 'export_pdf' => false],
-        'pro' => ['max_dossiers' => 100, 'max_photos_per_dossier' => 20, 'wsc_allowed' => true, 'scan_web' => true, 'export_pdf' => true],
-        'equipe' => ['max_dossiers' => 9999, 'max_photos_per_dossier' => 30, 'wsc_allowed' => true, 'scan_web' => true, 'export_pdf' => true],
+        'decouverte' => [
+            'max_dossiers' => 10, 'max_photos_per_dossier' => 5, 'max_docs_per_dossier' => 5,
+            'max_storage_mb' => 500, 'wsc_allowed' => false, 'wsc_max_partners' => 0,
+            'scan_web' => false, 'scan_web_per_day' => 0, 'export_pdf' => false,
+            'calendar_subscription' => false, 'support_sla_h' => 48, 'custom_domain' => false,
+        ],
+        'pro' => [
+            'max_dossiers' => 100, 'max_photos_per_dossier' => 20, 'max_docs_per_dossier' => 50,
+            'max_storage_mb' => 5120, 'wsc_allowed' => true, 'wsc_max_partners' => 1,
+            'scan_web' => true, 'scan_web_per_day' => 10, 'export_pdf' => true,
+            'calendar_subscription' => true, 'support_sla_h' => 24, 'custom_domain' => false,
+        ],
+        'equipe' => [
+            'max_dossiers' => 999999, 'max_photos_per_dossier' => 30, 'max_docs_per_dossier' => 999999,
+            'max_storage_mb' => 51200, 'wsc_allowed' => true, 'wsc_max_partners' => 99,
+            'scan_web' => true, 'scan_web_per_day' => 100, 'export_pdf' => true,
+            'calendar_subscription' => true, 'support_sla_h' => 4, 'custom_domain' => true,
+        ],
     ];
     $base = $limits[$plan] ?? $limits['decouverte'];
     $base['plan'] = $plan;

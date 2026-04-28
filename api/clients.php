@@ -372,6 +372,16 @@ switch ($action) {
         audit_log((int)$user['id'], 'clients', $id, $audit_before ? 'UPDATE' : 'INSERT', $audit_before, $audit_after);
         // V17.5 Phase 2c : enqueue sync Google Sheet si user sync_enabled. V18.17 : skip si staged.
         if (!$wasStaged) enqueueSync((int)$user['id'], $id, 'upsert');
+        // M/2026/04/29/7 — quota check pour création (audit_before === null) sur dossiers actifs.
+        if (!$audit_before && !$is_draft) {
+            require_once __DIR__ . '/lib/quota_alerts.php';
+            $q = quota_check((int) $user['id'], 'dossiers', quota_count_user_dossiers((int) $user['id']));
+            if (!$q['ok']) {
+                // Bloque mais on a déjà inséré ; on peut soft-delete pour respecter limite.
+                db()->prepare("UPDATE clients SET deleted_at = NOW() WHERE id = ?")->execute([$id]);
+                jsonError(quota_alert_message('dossiers', $q), 403);
+            }
+        }
         // M/2026/04/28/59 — enqueue scan matching auto (worker depile toutes 30s).
         if (!$wasStaged) {
             try {
