@@ -90,6 +90,25 @@ case 'list': {
     $stmt = db()->prepare($sql);
     $stmt->execute($params);
     $rows = array_map('decodeMatch', $stmt->fetchAll());
+
+    // M/2026/04/28/22 — Joint les dossiers a/b en batch (1 SELECT IN, pas N+1)
+    // pour que la liste affiche le nom de chaque dossier (régression « Dossier
+    // introuvable »).
+    if (count($rows) > 0) {
+        $ids = [];
+        foreach ($rows as $r) { $ids[] = $r['dossier_a_id']; $ids[] = $r['dossier_b_id']; }
+        $ids = array_values(array_unique($ids));
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmtCli = db()->prepare("SELECT * FROM clients WHERE id IN ($placeholders)");
+        $stmtCli->execute($ids);
+        $clients = [];
+        foreach ($stmtCli->fetchAll() as $c) $clients[(int) $c['id']] = $c;
+        foreach ($rows as &$r) {
+            $r['dossier_a'] = $clients[$r['dossier_a_id']] ?? null;
+            $r['dossier_b'] = $clients[$r['dossier_b_id']] ?? null;
+        }
+        unset($r);
+    }
     jsonOk(['matches' => $rows, 'count' => count($rows)]);
 }
 

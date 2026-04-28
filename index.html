@@ -7635,12 +7635,12 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
       </div>
 
       <div style={{padding:'12px 14px 6px', display:'flex', gap:8}}>
-        <button onClick={() => showToast && showToast('Algo de matching en cours de mise en place — mission 16 à venir')}
-          style={{flex:1, padding:'10px 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'pointer'}}>
+        <button disabled title="Disponible bientôt"
+          style={{flex:1, padding:'10px 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'not-allowed', opacity:0.5}}>
           {ICONS.refresh}<span>Scan WSp + WSc</span>
         </button>
-        <button onClick={() => showToast && showToast('Algo de matching en cours de mise en place — mission 16 à venir')}
-          style={{flex:1, padding:'10px 12px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'pointer'}}>
+        <button disabled title="Disponible bientôt"
+          style={{flex:1, padding:'10px 12px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'not-allowed', opacity:0.5}}>
           {ICONS.globe}<span>Scan agences & web</span>
         </button>
       </div>
@@ -7666,7 +7666,7 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
         })}
       </div>
 
-      <div style={{flex:1, overflowY:'auto', padding:'4px 14px 14px'}}>
+      <div style={{flex:1, overflowY:'auto', padding:'4px 14px calc(env(safe-area-inset-bottom, 0px) + 100px)'}}>
         {loading && <div style={{textAlign:'center', color:'#8B7F6E', padding:30}}>Chargement…</div>}
         {!loading && items.length === 0 && (
           <div style={{textAlign:'center', color:'#8B7F6E', padding:30, fontSize:13}}>
@@ -7677,13 +7677,19 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
           const cm = m.criteres_matched || {};
           const matched = Array.isArray(cm.matched) ? cm.matched : [];
           const divergent = Array.isArray(cm.divergent) ? cm.divergent : [];
-          const dimmed = (tab === 'a_traiter' && m.status === 'vu');
+          const inATraiter = (tab === 'a_traiter');
+          const isVu = (m.status === 'vu');
+          const isNonVu = (m.status === 'non_vu');
           return (
             <div key={m.id} onClick={() => openMatchDetail && openMatchDetail(m.id)}
               className="ocre-card"
-              style={{marginBottom:12, padding:0, background:'#fff', borderRadius:10, border:'1px solid #E5DDC8', overflow:'hidden', cursor:'pointer', opacity: dimmed ? 0.85 : 1, position:'relative'}}>
-              {dimmed && (
-                <span style={{position:'absolute', top:6, right:8, padding:'1px 6px', background:'#E5DDC8', color:'#8B7F6E', fontSize:10, fontWeight:700, borderRadius:8, textTransform:'uppercase', letterSpacing:.4}}>Vu</span>
+              style={{marginBottom:12, padding:0, background:'#fff', borderRadius:10, border:'1px solid #E5DDC8', overflow:'hidden', cursor:'pointer', opacity: (inATraiter && isVu) ? 0.85 : 1, position:'relative'}}>
+              {inATraiter && isVu && (
+                <span style={{position:'absolute', top:8, right:10, padding:'4px 10px', background:'#E8DFCD', color:'#8B6F47', fontSize:11, fontWeight:700, borderRadius:12, textTransform:'uppercase', letterSpacing:.5, border:'1.5px solid #C9A87A', boxShadow:'0 1px 2px rgba(60,40,20,.08)', zIndex:2}}>VU</span>
+              )}
+              {inATraiter && isNonVu && (
+                <span aria-label="non vu"
+                  style={{position:'absolute', top:10, right:12, width:8, height:8, borderRadius:4, background:'#DC2626', boxShadow:'0 0 0 2px #fff', zIndex:2}}/>
               )}
               <div style={{display:'grid', gridTemplateColumns:'56px 1fr 1fr', borderBottom:(matched.length + divergent.length > 0) ? '1px solid #F0E8D8' : 'none'}}>
                 <div style={{background: m.score_pct >= 80 ? '#FBE9E7' : m.score_pct >= 60 ? '#FFF4E0' : '#F0E8D8',
@@ -7815,7 +7821,7 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
         )}
       </div>
 
-      <div style={{flex:1, overflowY:'auto', padding:'14px 14px 14px'}}>
+      <div style={{flex:1, overflowY:'auto', padding:'14px 14px calc(env(safe-area-inset-bottom, 0px) + 100px)'}}>
         {loading && <div style={{textAlign:'center', color:'#8B7F6E', padding:30}}>Chargement…</div>}
         {!loading && !match && <div style={{textAlign:'center', color:'#8B7F6E', padding:30, fontSize:13}}>Match introuvable.</div>}
         {!loading && match && (
@@ -11922,6 +11928,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428e" defer></script>
+<script src="/v20-bridge.js?v=20260428f" defer></script>
 </body>
 </html>
