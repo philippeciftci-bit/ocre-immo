@@ -1492,61 +1492,8 @@ function MultiPicker({label, values, options, onChange, placeholder='Choisir…'
 const HABITABLE_TYPES = ['Villa','Appartement','Riad','Maison'];
 
 // V17.2 Phase 2a — BienForm : Section II "Le bien", country-first × type-driven (multi depuis v17.9).
-// V64 — Ruban d'ancres Section II : 4 chips qui scrollent vers les sous-blocs id=sec2-*.
-// IntersectionObserver met en avant le chip de la sous-section actuellement visible.
-function SectionAnchorRibbon() {
-  const anchors = [
-    {id: 'sec2-identite',         label: 'Identité'},
-    {id: 'sec2-caracteristiques', label: 'Caractéristiques'},
-    {id: 'sec2-photos',           label: 'Photos'},
-    {id: 'sec2-localisation',     label: 'Localisation'},
-  ];
-  const [active, setActive] = React.useState('sec2-identite');
-  React.useEffect(() => {
-    const els = anchors.map(a => document.getElementById(a.id)).filter(Boolean);
-    if (els.length === 0) return;
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
-    }, {rootMargin: '-30% 0px -50% 0px', threshold: 0});
-    els.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
-  }, []);
-  function scrollTo(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const toolbar = document.querySelector('[data-formview-header]');
-    const tbH = toolbar ? toolbar.getBoundingClientRect().height : 0;
-    const ribbonH = 44;
-    const rect = el.getBoundingClientRect();
-    const targetY = rect.top + window.scrollY - tbH - ribbonH - 6;
-    window.scrollTo({top: Math.max(0, targetY), behavior: 'smooth'});
-  }
-  return (
-    <div style={{
-      position:'sticky', top:46, zIndex:8,
-      background:'rgba(255,255,255,.92)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
-      borderBottom:'1px solid rgba(139,94,60,.08)',
-      margin:'0 -16px 10px', padding:'8px 14px',
-      display:'flex', gap:6, overflowX:'auto', flexWrap:'nowrap',
-      scrollbarWidth:'none', msOverflowStyle:'none',
-    }} className="profils-row">
-      {anchors.map(a => {
-        const on = active === a.id;
-        return (
-          <button key={a.id} type="button" onClick={() => scrollTo(a.id)}
-            style={{padding:'5px 11px', fontSize:12, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
-                    border:'1px solid ' + (on ? '#8B5E3C' : '#C9B79A'),
-                    background: on ? '#8B5E3C' : '#FBF1E4',
-                    color: on ? '#fff' : '#5C3B1E',
-                    borderRadius:14, cursor:'pointer'}}>
-            {a.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
+// M/2026/04/28/28 — V64 ruban d'ancres supprimé franchement (4 sous-onglets perçus
+// comme imbrication inutile). Section II = flux vertical unique scrollable.
 function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) {
   const bien = d.bien || {};
   function setB(k, v) { set('bien', {...bien, [k]: v}); }
@@ -1583,9 +1530,9 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
   const paysSel = PAYS_BIEN.find(p => p.c === bien.pays);
   return (
     <>
-      {/* V64 — Ruban d'ancres horizontales en haut de Section II */}
-      <SectionAnchorRibbon/>
-      <div id="sec2-identite"/>
+      {/* M/2026/04/28/28 — suppression franche du ruban d'ancres V64 (4 sous-onglets
+          Identité/Caractéristiques/Photos/Localisation). Section II est désormais
+          un flux vertical unique : les blocs s'enchaînent par scroll. */}
       {/* V66 — Pays + Type de bien sur 1 ligne 50/50, modales dédiées (cohérence v58 panel recherche). */}
       <div style={{display:'flex', gap:8, marginBottom:10}}>
         <button type="button" onClick={() => setV66PaysModal(true)}
@@ -1657,7 +1604,6 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           <MapPickerToggle bien={bien} setB={setB} showToast={showToast}/>
 
           {/* 4. Champs spécifiques par type (V17.9 : itère sur types[], une section par type) */}
-          <div id="sec2-caracteristiques"/>
           {types.includes('Villa') && <VillaFields bien={bien} setB={setB} askingMode={askingMode}/>}
           {types.includes('Appartement') && <AppartFields bien={bien} setB={setB} askingMode={askingMode}/>}
           {types.includes('Riad') && <RiadFields bien={bien} setB={setB} askingMode={askingMode}/>}
@@ -1769,7 +1715,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           )}
 
           {/* 7. Photos — V24 : source unique bien.photos[], lu/écrit via parent setB. */}
-          <div id="sec2-photos" style={{marginTop:14}}>
+          <div style={{marginTop:14}}>
             <PhotoUpload dossierId={dossierId} showToast={showToast}
               photos={Array.isArray(bien.photos) ? bien.photos : []}
               onPhotosChange={v => setB('photos', v)}/>
@@ -2407,7 +2353,7 @@ function MapPickerToggle({bien, setB, showToast}) {
     });
   }
   return (
-    <div id="sec2-localisation" style={{marginTop:8, marginBottom:8}}>
+    <div style={{marginTop:8, marginBottom:8}}>
       <button type="button" onClick={toggle}
         style={{width:'100%', padding:'10px 12px', borderRadius:10, fontFamily:'inherit',
                 background: visible ? '#FFF3EC' : '#FBF1E4',
@@ -11947,6 +11893,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428h" defer></script>
+<script src="/v20-bridge.js?v=20260428i" defer></script>
 </body>
 </html>
