@@ -1,0 +1,10 @@
+[Unit]
+Description=Ocre Immo - Scan reminders et envoi notifs
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/root/bin/ocre-scan-reminders.sh
+StandardOutput=append:/var/log/ocre-reminders.log
+StandardError=append:/var/log/ocre-reminders.log
