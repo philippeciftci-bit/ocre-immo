@@ -9373,6 +9373,96 @@ function ExportPage({onBack, showToast}) {
   );
 }
 
+// M/2026/04/29/2 — BillingSection : statut plan + boutons Stripe Customer Portal + checkout.
+function BillingSection({showToast}) {
+  const [billing, setBilling] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [busy, setBusy] = React.useState(false);
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/billing.php?action=status', {headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (r.ok) setBilling(r);
+    } catch (e) {}
+    setLoading(false);
+  }
+  React.useEffect(() => { load(); }, []);
+
+  async function checkout(plan) {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/billing.php?action=create_checkout_session', {
+        method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+        body: JSON.stringify({plan}),
+      }).then(r => r.json());
+      if (r.ok && r.url) {
+        window.location.href = r.url;
+      } else if (r.ok && r._stub) {
+        showToast && showToast('Mode stub : abonnement créé localement (Stripe non configuré)');
+        load();
+      } else {
+        showToast && showToast((r && r.error) || 'Échec checkout');
+      }
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setBusy(false);
+  }
+  async function portal() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/billing.php?action=create_portal_session', {
+        method:'POST', headers:{'X-Session-Token': token()},
+      }).then(r => r.json());
+      if (r.ok && r.url) window.location.href = r.url;
+      else showToast && showToast(r.message || r.error || 'Échec portal');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setBusy(false);
+  }
+  async function cancel() {
+    if (!window.confirm('Annuler votre abonnement à la fin de la période en cours ?')) return;
+    setBusy(true);
+    try {
+      const r = await fetch('/api/billing.php?action=cancel', {
+        method:'POST', headers:{'X-Session-Token': token()},
+      }).then(r => r.json());
+      if (r.ok) { showToast && showToast('Annulation programmée'); load(); }
+      else showToast && showToast(r.error || 'Échec');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setBusy(false);
+  }
+
+  if (loading) return <div style={{color:'#8B7F6E', padding:8}}>Chargement…</div>;
+  if (!billing) return null;
+  const limits = billing.limits || {};
+  const planLabel = ({decouverte: 'Découverte', pro: 'Pro', equipe: 'Équipe'})[limits.plan] || limits.plan;
+  const statusBadge = limits.status === 'grace_period' ? 'Paiement en retard' : (limits.status === 'canceled' ? 'Annulé' : 'Actif');
+
+  return (
+    <div>
+      <div style={{padding:'8px 0', display:'flex', alignItems:'center', gap:10}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:14, fontWeight:600, color:'#2A2018'}}>Plan actuel : <span style={{color:'#8B5E3C'}}>{planLabel}</span></div>
+          <div style={{fontSize:11.5, color:'#8B7F6E'}}>Statut : {statusBadge} · Limites : {limits.max_dossiers} dossiers, {limits.max_photos_per_dossier} photos/dossier{limits.wsc_allowed ? ' · WSc inclus' : ''}{limits.scan_web ? ' · Scan Web' : ''}</div>
+          {limits.current_period_end && <div style={{fontSize:11, color:'#8B7F6E'}}>Renouvellement : {limits.current_period_end}</div>}
+        </div>
+      </div>
+      {limits.plan === 'decouverte' && (
+        <div style={{display:'flex', gap:6, marginTop:8}}>
+          <button onClick={() => checkout('pro')} disabled={busy} style={{flex:1, padding:'8px 10px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Passer en Pro 29€</button>
+          <button onClick={() => checkout('equipe')} disabled={busy} style={{flex:1, padding:'8px 10px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Passer en Équipe 79€</button>
+        </div>
+      )}
+      {limits.plan !== 'decouverte' && (
+        <div style={{display:'flex', gap:6, marginTop:8, flexWrap:'wrap'}}>
+          <button onClick={portal} disabled={busy} style={{padding:'8px 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Gérer (Stripe Portal)</button>
+          <button onClick={cancel} disabled={busy} style={{padding:'8px 12px', background:'transparent', color:'#DC2626', border:'1px solid #DC2626', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Annuler</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // M/2026/04/28/57 — Champ URL subscription calendrier .ics dans page Préférences.
 function CalendarSubscriptionField() {
   const [url, setUrl] = React.useState('');
@@ -9584,6 +9674,10 @@ function PreferencesPage({onBack, showToast, currentUser}) {
               style={{width:'100%'}}/>
           </div>
           <div style={{fontSize:11, color:'#8B7F6E', marginTop:8}}>Drag-and-drop critères + cross-profile-pairs : édition avancée à venir.</div>
+        </Section>
+
+        <Section title="Abonnement & facturation">
+          <BillingSection showToast={showToast}/>
         </Section>
 
         <Section title="Aide">
