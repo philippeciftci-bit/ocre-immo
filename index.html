@@ -9084,6 +9084,96 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
   const scoreBg = score >= 80 ? '#FBE9E7' : score >= 60 ? '#FFF4E0' : '#F0E8D8';
   const scoreColor = score >= 80 ? '#C0392B' : score >= 60 ? '#B26D3A' : '#8B7F6E';
 
+  // M/2026/04/28/53 — extraction tous champs A/B + Haversine + 10 critères canoniques.
+  function _data(d) { try { return typeof d.data === 'string' ? JSON.parse(d.data) : (d.data || {}); } catch (e) { return {}; } }
+  const dA = match && match.dossier_a;
+  const dB = match && match.dossier_b;
+  const daA = dA ? _data(dA) : {};
+  const daB = dB ? _data(dB) : {};
+  const bA = daA.bien || {};
+  const bB = daB.bien || {};
+
+  const CRITERIA = [
+    {k:'pays', l:'Pays', max:5, fA: bA.pays || daA.pays_residence, fB: bB.pays || daB.pays_residence},
+    {k:'ville', l:'Ville', max:15, fA: bA.ville, fB: bB.ville},
+    {k:'quartier', l:'Quartier', max:10, fA: bA.quartier, fB: bB.quartier},
+    {k:'type_bien', l:'Type bien', max:25, fA: bA.type || (Array.isArray(bA.types) ? bA.types[0] : null) || (Array.isArray(daA.types_recherches) ? daA.types_recherches[0] : null), fB: bB.type || (Array.isArray(bB.types) ? bB.types[0] : null) || (Array.isArray(daB.types_recherches) ? daB.types_recherches[0] : null)},
+    {k:'surface_hab', l:'Surface hab.', max:10, fA: bA.surface || bA.surface_hab, fB: bB.surface || bB.surface_hab, num:true, suf:' m²'},
+    {k:'surface_terrain', l:'Surface terrain', max:5, fA: bA.terrain || bA.surface_terrain, fB: bB.terrain || bB.surface_terrain, num:true, suf:' m²'},
+    {k:'chambres', l:'Chambres', max:8, fA: bA.chambres || bA.chambres_v2, fB: bB.chambres || bB.chambres_v2},
+    {k:'budget', l:'Budget/Prix', max:15, fA: daA.prix_affiche || daA.budget_max || daA.loyer_demande || daA.loyer_max, fB: daB.prix_affiche || daB.budget_max || daB.loyer_demande || daB.loyer_max, num:true, suf:''},
+    {k:'equipements', l:'Équipements', max:5, fA: Array.isArray(bA.equipements_luxe) ? bA.equipements_luxe.length + ' éq.' : (Array.isArray(bA.equipements) ? bA.equipements.length + ' éq.' : null), fB: Array.isArray(bB.equipements_luxe) ? bB.equipements_luxe.length + ' éq.' : (Array.isArray(bB.equipements) ? bB.equipements.length + ' éq.' : null)},
+    {k:'etat', l:'État', max:2, fA: bA.etat_general || bA.etat, fB: bB.etat_general || bB.etat},
+  ];
+
+  function critereIcon(crit) {
+    if (!crit.fA || !crit.fB) return <span style={{color:'#8B7F6E'}}>—</span>;
+    if (crit.num) {
+      const a = Number(crit.fA), b = Number(crit.fB);
+      if (!a || !b) return <span style={{color:'#8B7F6E'}}>—</span>;
+      const ratio = Math.min(a,b) / Math.max(a,b);
+      if (ratio >= 0.95) return <span style={{color:'#059669'}}>✓</span>;
+      if (ratio >= 0.75) return <span style={{color:'#D97706'}}>≈</span>;
+      return <span style={{color:'#DC2626'}}>✗</span>;
+    }
+    const a = String(crit.fA).toLowerCase(), b = String(crit.fB).toLowerCase();
+    if (a === b) return <span style={{color:'#059669'}}>✓</span>;
+    if (a.includes(b) || b.includes(a)) return <span style={{color:'#D97706'}}>≈</span>;
+    return <span style={{color:'#DC2626'}}>✗</span>;
+  }
+
+  function fmtVal(v, suf) {
+    if (v === null || v === undefined || v === '') return <span style={{color:'#8B7F6E'}}>—</span>;
+    if (typeof v === 'number') return v.toLocaleString('fr-FR') + (suf || '');
+    return String(v) + (suf || '');
+  }
+
+  function haversineKm(latA, lngA, latB, lngB) {
+    if (!latA || !lngA || !latB || !lngB) return null;
+    const R = 6371;
+    const toRad = x => x * Math.PI / 180;
+    const dLat = toRad(latB - latA);
+    const dLng = toRad(lngB - lngA);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(latA)) * Math.cos(toRad(latB)) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+  const distKm = haversineKm(bA.lat || daA.residence_lat, bA.lng || daA.residence_lng, bB.lat || daB.residence_lat, bB.lng || daB.residence_lng);
+
+  // Rendu côte-à-côte tous champs identité + bien + budget.
+  const sections = [
+    {title:'Identité', rows: [
+      {l:'Nom', vA: dA && (dA.societe_nom || ((dA.prenom||'')+' '+(dA.nom||'')).trim()), vB: dB && (dB.societe_nom || ((dB.prenom||'')+' '+(dB.nom||'')).trim())},
+      {l:'Email', vA: dA && dA.email, vB: dB && dB.email},
+      {l:'Téléphone', vA: dA && dA.tel, vB: dB && dB.tel},
+      {l:'Profil', vA: daA.profil_type, vB: daB.profil_type},
+      {l:'Pays résidence', vA: daA.pays_residence, vB: daB.pays_residence},
+    ]},
+    {title:'Bien (Section II)', rows: [
+      {l:'Type', vA: bA.type, vB: bB.type},
+      {l:'Statut', vA: bA.statut, vB: bB.statut},
+      {l:'Année construction', vA: bA.annee_construction, vB: bB.annee_construction},
+      {l:'État', vA: bA.etat_general, vB: bB.etat_general},
+      {l:'Surface hab.', vA: bA.surface_hab || bA.surface, vB: bB.surface_hab || bB.surface, suf:' m²'},
+      {l:'Terrain', vA: bA.surface_terrain_v2 || bA.terrain, vB: bB.surface_terrain_v2 || bB.terrain, suf:' m²'},
+      {l:'Chambres', vA: bA.chambres_v2 || bA.chambres, vB: bB.chambres_v2 || bB.chambres},
+      {l:'SDB', vA: bA.sdb_v2 || bA.sdb, vB: bB.sdb_v2 || bB.sdb},
+      {l:'Vue', vA: Array.isArray(bA.vue) ? bA.vue.join(', ') : bA.vue, vB: Array.isArray(bB.vue) ? bB.vue.join(', ') : bB.vue},
+      {l:'Exposition', vA: bA.exposition, vB: bB.exposition},
+      {l:'DPE', vA: bA.dpe, vB: bB.dpe},
+      {l:'Extérieurs', vA: Array.isArray(bA.espaces_exterieurs) ? bA.espaces_exterieurs.join(', ') : null, vB: Array.isArray(bB.espaces_exterieurs) ? bB.espaces_exterieurs.join(', ') : null},
+      {l:'Pays / Ville', vA: (bA.pays || '—') + ' / ' + (bA.ville || '—'), vB: (bB.pays || '—') + ' / ' + (bB.ville || '—')},
+      {l:'Quartier', vA: bA.quartier, vB: bB.quartier},
+    ]},
+    {title:'Budget / Prix (Section III)', rows: [
+      {l:'Prix affiché', vA: daA.prix_affiche, vB: daB.prix_affiche, num:true},
+      {l:'Budget max', vA: daA.budget_max, vB: daB.budget_max, num:true},
+      {l:'Loyer demandé', vA: daA.loyer_demande, vB: daB.loyer_demande, num:true},
+      {l:'Loyer max', vA: daA.loyer_max, vB: daB.loyer_max, num:true},
+      {l:'Devise', vA: daA.devise, vB: daB.devise},
+      {l:'Commission %', vA: daA.commission_pct, vB: daB.commission_pct},
+    ]},
+  ];
+
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
@@ -9111,7 +9201,7 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
             {dossierBlock(match.dossier_b, 'Dossier B')}
             {(matched.length + divergent.length > 0) && (
               <div style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10}}>
-                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8, fontWeight:700}}>Critères</div>
+                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8, fontWeight:700}}>Synthèse critères</div>
                 <div style={{display:'flex', flexWrap:'wrap', gap:5}}>
                   {matched.map((c,i) => (
                     <span key={'m'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', background:'#E6F3E1', color:'#2F7D32', borderRadius:11, fontSize:12, fontWeight:600}}>{ICONS.check}{c}</span>
@@ -9122,6 +9212,49 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
                 </div>
               </div>
             )}
+
+            {/* M/2026/04/28/53 — table 10 critères canoniques A vs B avec icône compatibilité. */}
+            <div style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10}}>
+              <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8, fontWeight:700}}>Critères détaillés</div>
+              <div style={{fontSize:12.5}}>
+                {CRITERIA.map(c => (
+                  <div key={c.k} style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 28px', padding:'6px 0', borderBottom:'1px solid #F4EFE6', alignItems:'center'}}>
+                    <div style={{color:'#8B7F6E', textTransform:'uppercase', fontSize:10.5, letterSpacing:.4}}>{c.l}</div>
+                    <div style={{color:'#2A2018'}}>{fmtVal(c.fA, c.suf)}</div>
+                    <div style={{color:'#2A2018'}}>{fmtVal(c.fB, c.suf)}</div>
+                    <div style={{textAlign:'right', fontWeight:700}}>{critereIcon(c)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Comparaison côte-à-côte tous champs (sections I/II/III). */}
+            {sections.map(sec => (
+              <div key={sec.title} style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10}}>
+                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8, fontWeight:700}}>{sec.title}</div>
+                <div style={{fontSize:12.5}}>
+                  {sec.rows.map((r, i) => (
+                    <div key={i} style={{display:'grid', gridTemplateColumns:'130px 1fr 1fr', gap:8, padding:'5px 0', borderBottom: i === sec.rows.length - 1 ? 'none' : '1px solid #F4EFE6'}}>
+                      <div style={{color:'#8B7F6E'}}>{r.l}</div>
+                      <div style={{color:'#2A2018'}}>{fmtVal(r.vA, r.suf)}</div>
+                      <div style={{color:'#2A2018'}}>{fmtVal(r.vB, r.suf)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {distKm !== null && (
+              <div style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10, textAlign:'center'}}>
+                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:6, fontWeight:700}}>Distance</div>
+                <div style={{fontSize:24, fontFamily:'Cormorant Garamond,serif', fontWeight:700, color:'#8B5E3C'}}>{distKm.toFixed(1)} km</div>
+                <div style={{fontSize:11, color:'#8B7F6E'}}>à vol d'oiseau (Haversine)</div>
+              </div>
+            )}
+
+            <button disabled style={{width:'100%', padding:'10px', background:'transparent', color:'#8B5E3C', border:'1.5px dashed #B89968', borderRadius:8, fontFamily:'inherit', fontSize:12, cursor:'not-allowed', opacity:.7, marginBottom:6}}>
+              Contacter les 2 parties (à venir)
+            </button>
           </>
         )}
       </div>
