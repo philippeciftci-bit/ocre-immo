@@ -1,201 +1,286 @@
 <?php
-// V17.11 — moteur matching interne : Acheteur↔Vendeur, Locataire↔Bailleur, Investisseur→Vendeurs.
-// Scoring 0-100. Auth user (owner).
+// M/2026/04/28/30 — Algo de matching réel + endpoint /api/matching.php.
+// Calcule un score 0..100 par paire de dossiers du tenant courant selon les
+// règles globales (ocre_meta.match_rules_v1) + préférences agent (match_preferences).
+// Remplace l'ancien moteur V17.11 (suppression franche).
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib/router.php';
 setCorsHeaders();
 
 $user = requireAuth();
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
+$input = getInput();
+$uid = (int) $user['id'];
 
-const OPP_PROFIL = [
-    'Acheteur'     => ['Vendeur'],
-    'Investisseur' => ['Vendeur'],
-    'Vendeur'      => ['Acheteur', 'Investisseur'],
-    'Locataire'    => ['Bailleur'],
-    'Bailleur'     => ['Locataire'],
-];
-
-function numOr0($x) { $n = (float)$x; return is_finite($n) ? $n : 0; }
-
-function extractSurface($bien) {
-    if (!empty($bien['surface'])) return (float)$bien['surface'];
-    $mn = (float)($bien['surface_min'] ?? 0);
-    $mx = (float)($bien['surface_max'] ?? 0);
-    if ($mn && $mx) return ($mn + $mx) / 2;
-    if ($mn) return $mn;
-    if ($mx) return $mx;
-    if (!empty($bien['habitable_totale'])) return (float)$bien['habitable_totale'];
-    return 0;
-}
-function extractBudgetMax($data) {
-    $f = $data['financement'] ?? [];
-    if (is_array($f) && !empty($f['budget_total'])) return (float)$f['budget_total'];
-    if (!empty($data['budget_max'])) return (float)$data['budget_max'];
-    if (!empty($data['budget_min'])) return (float)$data['budget_min'];
-    return 0;
-}
-function extractPrix($profil, $data) {
-    if ($profil === 'Vendeur') return (float)($data['prix_affiche'] ?? 0);
-    if ($profil === 'Bailleur') return (float)($data['loyer_demande'] ?? 0);
-    return 0;
-}
-
-function scoreMatch($srcRow, $candidateRow) {
-    $src_data = json_decode($srcRow['data'] ?? '{}', true) ?: [];
-    $c_data = json_decode($candidateRow['data'] ?? '{}', true) ?: [];
-    $sb = $src_data['bien'] ?? [];
-    $cb = $c_data['bien'] ?? [];
-    // Pré-requis : même pays
-    $src_pays = $sb['pays'] ?? '';
-    $c_pays = $cb['pays'] ?? '';
-    if (!$src_pays || $src_pays !== $c_pays) return null;
-    // Types intersection non vide
-    $src_types = (isset($sb['types']) && is_array($sb['types'])) ? $sb['types'] : (!empty($sb['type']) ? [$sb['type']] : []);
-    $c_types = (isset($cb['types']) && is_array($cb['types'])) ? $cb['types'] : (!empty($cb['type']) ? [$cb['type']] : []);
-    $inter = array_values(array_intersect($src_types, $c_types));
-    if (!$inter) return null;
-    // Ville (match exact requis, case-insensitive)
-    $src_ville = mb_strtolower(trim($sb['ville'] ?? ''));
-    $c_ville = mb_strtolower(trim($cb['ville'] ?? ''));
-    if ($src_ville && $c_ville && $src_ville !== $c_ville) return null;
-    // Base 50 : pays + ville + type OK
-    $score = 50;
-    $reasons = ['Même pays', 'Type ' . implode('/', $inter)];
-    if ($src_ville && $c_ville) $reasons[] = 'Même ville';
-    // +15 si tous les types demandés matchent (côté src)
-    if (count($src_types) && count($inter) === count($src_types)) {
-        $score += 15;
-        $reasons[] = 'Tous types recherchés matchent';
+function ensureMatchRulesV1(): array {
+    static $cached = null;
+    if ($cached !== null) return $cached;
+    pdo_meta()->exec("CREATE TABLE IF NOT EXISTS match_rules_v1 (
+        id INT NOT NULL PRIMARY KEY,
+        weights LONGTEXT NOT NULL,
+        hard_requirements LONGTEXT NOT NULL,
+        geo_mode ENUM('strict','souple','tres_souple') NOT NULL DEFAULT 'tres_souple',
+        tolerances_default LONGTEXT NOT NULL,
+        cross_profile_pairs LONGTEXT NOT NULL,
+        seuil_min_pct_default INT NOT NULL DEFAULT 70,
+        version VARCHAR(16) NOT NULL DEFAULT 'v1',
+        updated_by_user_id INT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $defaults = [
+        'weights' => ['pays' => 5, 'ville' => 15, 'quartier' => 10, 'type_bien' => 25,
+                      'surface_hab' => 10, 'surface_terrain' => 5, 'chambres' => 8,
+                      'budget' => 15, 'equipements' => 5, 'etat' => 2],
+        'hard_requirements' => ['pays' => true, 'type_bien' => true],
+        'tolerances_default' => ['budget_pct' => 10, 'surface_hab_pct' => 25,
+                                  'surface_terrain_pct' => 50, 'chambres' => 1],
+        'cross_profile_pairs' => [['Acheteur', 'Vendeur'], ['Locataire', 'Bailleur'],
+                                    ['Investisseur', 'Vendeur'], ['Investisseur', 'Bailleur']],
+    ];
+    $stmt = pdo_meta()->prepare(
+        "INSERT IGNORE INTO match_rules_v1 (id, weights, hard_requirements, geo_mode,
+            tolerances_default, cross_profile_pairs, seuil_min_pct_default, version)
+         VALUES (1, ?, ?, 'tres_souple', ?, ?, 70, 'v1')"
+    );
+    $stmt->execute([
+        json_encode($defaults['weights'], JSON_UNESCAPED_UNICODE),
+        json_encode($defaults['hard_requirements'], JSON_UNESCAPED_UNICODE),
+        json_encode($defaults['tolerances_default'], JSON_UNESCAPED_UNICODE),
+        json_encode($defaults['cross_profile_pairs'], JSON_UNESCAPED_UNICODE),
+    ]);
+    $row = pdo_meta()->query("SELECT * FROM match_rules_v1 WHERE id = 1")->fetch();
+    foreach (['weights', 'hard_requirements', 'tolerances_default', 'cross_profile_pairs'] as $k) {
+        $row[$k] = json_decode($row[$k], true) ?: [];
     }
-    // Budget / prix (acheteur/investisseur vs vendeur ; locataire vs bailleur)
-    $src_p = $srcRow['projet'] ?? '';
-    $c_p = $candidateRow['projet'] ?? '';
-    $is_src_buyer = in_array($src_p, ['Acheteur','Investisseur'], true);
-    $is_c_seller = $c_p === 'Vendeur';
-    $is_src_seller = $src_p === 'Vendeur';
-    $is_c_buyer = in_array($c_p, ['Acheteur','Investisseur'], true);
-    $budget = 0; $prix = 0;
-    if ($is_src_buyer && $is_c_seller) { $budget = extractBudgetMax($src_data); $prix = extractPrix('Vendeur', $c_data); }
-    if ($is_src_seller && $is_c_buyer) { $budget = extractBudgetMax($c_data); $prix = extractPrix('Vendeur', $src_data); }
-    if ($budget && $prix) {
-        $min_ok = $prix * 0.90;
-        $max_ok = $budget * 1.05;
-        if ($budget >= $min_ok && $prix <= $max_ok) {
-            $score += 20;
-            $reasons[] = 'Budget compatible';
+    $cached = $row;
+    return $row;
+}
+
+function profilCompat(string $a, string $b, array $pairs): bool {
+    foreach ($pairs as $p) {
+        if (count($p) !== 2) continue;
+        if (($p[0] === $a && $p[1] === $b) || ($p[0] === $b && $p[1] === $a)) return true;
+    }
+    return false;
+}
+
+function clientBien(array $c): array {
+    $d = is_string($c['data'] ?? null) ? (json_decode($c['data'], true) ?: []) : ($c['data'] ?? []);
+    return [
+        'projet' => $c['projet'] ?? ($d['projet'] ?? null),
+        'pays' => $d['bien']['pays'] ?? null,
+        'ville' => $d['bien']['ville'] ?? null,
+        'quartier' => $d['bien']['quartier'] ?? null,
+        'type_bien' => $d['bien']['type'] ?? (isset($d['bien']['types'][0]) ? $d['bien']['types'][0] : null),
+        'types' => $d['bien']['types'] ?? null,
+        'surface' => $d['bien']['surface'] ?? null,
+        'surface_terrain' => $d['bien']['surface_terrain'] ?? null,
+        'chambres' => $d['bien']['chambres'] ?? null,
+        'budget_max' => $d['budget_max'] ?? null,
+        'prix_affiche' => $d['prix_affiche'] ?? null,
+        'loyer_max' => $d['loyer_max'] ?? null,
+        'loyer_demande' => $d['loyer_demande'] ?? null,
+        'equipements' => $d['bien']['equipements'] ?? [],
+        'etat' => $d['bien']['etat'] ?? null,
+    ];
+}
+
+function _budget_buyer(array $b): ?float { return $b['budget_max'] ?? $b['loyer_max'] ?? null; }
+function _budget_seller(array $b): ?float { return $b['prix_affiche'] ?? $b['loyer_demande'] ?? null; }
+
+function _fmt_money(float $n): string {
+    if ($n >= 1000000) return number_format($n / 1000000, 1, ',', ' ') . ' M';
+    return number_format($n, 0, ',', ' ');
+}
+
+function scoreCritere(string $cri, array $a, array $b, array $rules): ?array {
+    $tol = $rules['tolerances_default'];
+    switch ($cri) {
+      case 'pays':
+        if (!$a['pays'] || !$b['pays']) return null;
+        return [$a['pays'] === $b['pays'] ? 1.0 : 0.0,
+                $a['pays'] === $b['pays'] ? "Pays {$a['pays']}" : "Pays {$a['pays']} ≠ {$b['pays']}"];
+      case 'ville':
+        if (!$a['ville'] || !$b['ville']) return null;
+        if ($a['ville'] === $b['ville']) return [1.0, "Ville {$a['ville']}"];
+        return [0.0, "Ville {$a['ville']} ≠ {$b['ville']}"];
+      case 'quartier':
+        if (!$a['quartier'] || !$b['quartier']) return null;
+        if ($a['quartier'] === $b['quartier']) return [1.0, "Quartier {$a['quartier']}"];
+        if ($a['ville'] && $a['ville'] === $b['ville']) return [0.5, "Quartier voisin ({$a['quartier']} ≈ {$b['quartier']})"];
+        return [0.0, "Quartier {$a['quartier']} ≠ {$b['quartier']}"];
+      case 'type_bien':
+        if (!$a['type_bien'] || !$b['type_bien']) return null;
+        $atypes = is_array($a['types']) && $a['types'] ? $a['types'] : [$a['type_bien']];
+        $btypes = is_array($b['types']) && $b['types'] ? $b['types'] : [$b['type_bien']];
+        $shared = array_intersect($atypes, $btypes);
+        if ($shared) return [1.0, "Type " . reset($shared)];
+        return [0.0, "Type {$a['type_bien']} ≠ {$b['type_bien']}"];
+      case 'surface_hab':
+        if (!$a['surface'] || !$b['surface']) return null;
+        $diffPct = abs($a['surface'] - $b['surface']) / max($a['surface'], $b['surface']) * 100;
+        $score = max(0.0, 1.0 - $diffPct / max(1, (float) $tol['surface_hab_pct']));
+        $score = min(1.0, $score);
+        $lab = "Surface {$b['surface']} m² " . ($score >= 0.85 ? '≈' : '≠') . " {$a['surface']} m²";
+        return [$score, $lab];
+      case 'surface_terrain':
+        if (!$a['surface_terrain'] || !$b['surface_terrain']) return null;
+        $diffPct = abs($a['surface_terrain'] - $b['surface_terrain']) / max($a['surface_terrain'], $b['surface_terrain']) * 100;
+        $score = max(0.0, 1.0 - $diffPct / max(1, (float) $tol['surface_terrain_pct']));
+        $score = min(1.0, $score);
+        $lab = "Terrain " . number_format($b['surface_terrain'], 0, ',', ' ') . " m² " . ($score >= 0.85 ? '≈' : '≠') . " " . number_format($a['surface_terrain'], 0, ',', ' ') . " m²";
+        return [$score, $lab];
+      case 'chambres':
+        if ($a['chambres'] === null || $b['chambres'] === null) return null;
+        $diff = abs((int) $a['chambres'] - (int) $b['chambres']);
+        $tolCh = max(1, (int) $tol['chambres']);
+        if ($diff === 0) return [1.0, "{$a['chambres']} chambres"];
+        if ($diff <= $tolCh) return [max(0.0, 1.0 - $diff / ($tolCh + 1)), "{$b['chambres']} ch ≈ {$a['chambres']} ch"];
+        return [0.0, "{$b['chambres']} ch ≠ {$a['chambres']} ch"];
+      case 'budget':
+        $buyerBud = _budget_buyer($a) ?: _budget_buyer($b);
+        $sellerPr = _budget_seller($a) ?: _budget_seller($b);
+        if (!$buyerBud || !$sellerPr) return null;
+        $diffPct = abs($buyerBud - $sellerPr) / max($buyerBud, $sellerPr) * 100;
+        $score = max(0.0, 1.0 - $diffPct / max(1, (float) $tol['budget_pct'] * 2));
+        $score = min(1.0, $score);
+        $lab = $score >= 0.85
+            ? "Budget " . _fmt_money($sellerPr) . " ≈ " . _fmt_money($buyerBud) . " MAD"
+            : "Budget " . _fmt_money($sellerPr) . " ≠ " . _fmt_money($buyerBud) . " MAD (" . round($diffPct) . " %)";
+        return [$score, $lab];
+      case 'equipements':
+        $ea = is_array($a['equipements']) ? array_keys($a['equipements']) : [];
+        $eb = is_array($b['equipements']) ? array_keys($b['equipements']) : [];
+        if (!$ea && !$eb) return null;
+        $shared = count(array_intersect($ea, $eb));
+        $total = max(count($ea), count($eb));
+        if ($total === 0) return null;
+        return [$shared / $total, $shared . ' équipement(s) en commun'];
+      case 'etat':
+        if (!$a['etat'] || !$b['etat']) return null;
+        $aa = mb_strtolower($a['etat']); $bb = mb_strtolower($b['etat']);
+        $compat = (strpos($aa, 'récent') !== false || strpos($aa, 'neuf') !== false)
+                  && (strpos($bb, 'récent') !== false || strpos($bb, 'neuf') !== false);
+        return [$compat ? 1.0 : 0.0, $compat ? "État compatible (récent/neuf)" : "État divergent"];
+    }
+    return null;
+}
+
+function scorePair(array $clientA, array $clientB, array $rules): array {
+    $a = clientBien($clientA); $b = clientBien($clientB);
+
+    // Hard filter cross_profile_pairs.
+    if (!profilCompat($a['projet'] ?? '', $b['projet'] ?? '', $rules['cross_profile_pairs'])) {
+        return ['score_pct' => 0, 'skip' => true, 'reason' => 'profils incompatibles'];
+    }
+    // Hard filter pays.
+    if (!empty($rules['hard_requirements']['pays']) && $a['pays'] && $b['pays'] && $a['pays'] !== $b['pays']) {
+        return ['score_pct' => 0, 'skip' => true, 'reason' => 'pays différent (hard)'];
+    }
+    // Hard filter type_bien (intersection des types).
+    if (!empty($rules['hard_requirements']['type_bien']) && $a['type_bien'] && $b['type_bien']) {
+        $atypes = is_array($a['types']) && $a['types'] ? $a['types'] : [$a['type_bien']];
+        $btypes = is_array($b['types']) && $b['types'] ? $b['types'] : [$b['type_bien']];
+        if (!array_intersect($atypes, $btypes)) {
+            return ['score_pct' => 0, 'skip' => true, 'reason' => 'type_bien différent (hard)'];
         }
     }
-    // Loyer (Locataire ↔ Bailleur)
-    if ($src_p === 'Locataire' && $c_p === 'Bailleur') {
-        $loyer_max = (float)($src_data['loyer_max'] ?? 0);
-        $loyer_dem = (float)($c_data['loyer_demande'] ?? 0);
-        if ($loyer_max && $loyer_dem && $loyer_dem <= $loyer_max) { $score += 20; $reasons[] = 'Loyer dans budget'; }
-    }
-    if ($src_p === 'Bailleur' && $c_p === 'Locataire') {
-        $loyer_dem = (float)($src_data['loyer_demande'] ?? 0);
-        $loyer_max = (float)($c_data['loyer_max'] ?? 0);
-        if ($loyer_max && $loyer_dem && $loyer_dem <= $loyer_max) { $score += 20; $reasons[] = 'Loyer dans budget'; }
-    }
-    // Quartier
-    $src_q = mb_strtolower(trim($sb['quartier'] ?? ''));
-    $c_q = mb_strtolower(trim($cb['quartier'] ?? ''));
-    if ($src_q && $c_q && $src_q === $c_q) { $score += 10; $reasons[] = 'Même quartier'; }
-    // Surface ±20%
-    $ss = extractSurface($sb); $cs = extractSurface($cb);
-    if ($ss > 0 && $cs > 0) {
-        $diff = abs($ss - $cs) / max($ss, $cs);
-        if ($diff <= 0.20) { $score += 5; $reasons[] = 'Surface compatible'; }
-    }
-    return ['score' => min(100, $score), 'reasons' => $reasons];
-}
 
-function candidatesForProfil($user_id, $profil) {
-    $opp_list = OPP_PROFIL[$profil] ?? [];
-    if (!$opp_list) return [];
-    $placeholders = implode(',', array_fill(0, count($opp_list), '?'));
-    // V18.17 — exclure les téléchargements staged (non validés) du matching.
-    $stmt = db()->prepare(
-        "SELECT id, projet, data, prenom, nom, societe_nom, updated_at
-         FROM clients
-         WHERE user_id = ? AND archived = 0 AND (is_staged IS NULL OR is_staged = 0)
-               AND projet IN ($placeholders)
-         ORDER BY updated_at DESC
-         LIMIT 500"
-    );
-    $stmt->execute(array_merge([$user_id], $opp_list));
-    return $stmt->fetchAll();
+    $matched = []; $divergent = [];
+    $sumWeighted = 0.0; $sumWeights = 0;
+    foreach ($rules['weights'] as $cri => $poids) {
+        $r = scoreCritere($cri, $a, $b, $rules);
+        if ($r === null) continue;
+        [$score, $lab] = $r;
+        $sumWeighted += $score * (int) $poids;
+        $sumWeights += (int) $poids;
+        if ($score >= 0.4) $matched[] = $lab;
+        else $divergent[] = $lab;
+    }
+    if ($sumWeights === 0) return ['score_pct' => 0, 'skip' => true, 'reason' => 'aucun critère applicable'];
+    $score_pct = (int) round($sumWeighted * 100 / $sumWeights);
+    return [
+        'score_pct' => $score_pct, 'skip' => false,
+        'criteres_matched' => ['matched' => $matched, 'divergent' => $divergent],
+        'sum_weighted' => round($sumWeighted, 2), 'sum_weights' => $sumWeights,
+    ];
 }
 
 switch ($action) {
-    case 'find_matches': {
-        $client_id = (int)($_GET['client_id'] ?? 0);
-        if (!$client_id) jsonError('client_id requis');
-        $stmt = db()->prepare("SELECT * FROM clients WHERE id = ? AND user_id = ? LIMIT 1");
-        $stmt->execute([$client_id, $user['id']]);
-        $src = $stmt->fetch();
-        if (!$src) jsonError('Introuvable', 404);
-        $candidates = candidatesForProfil((int)$user['id'], $src['projet'] ?? '');
-        $out = [];
-        foreach ($candidates as $c) {
-            if ((int)$c['id'] === $client_id) continue;
-            $r = scoreMatch($src, $c);
-            if ($r !== null && $r['score'] >= 50) {
-                $c_data = json_decode($c['data'] ?? '{}', true) ?: [];
-                $types = (isset($c_data['bien']['types']) && is_array($c_data['bien']['types']))
-                    ? $c_data['bien']['types']
-                    : (!empty($c_data['bien']['type']) ? [$c_data['bien']['type']] : []);
-                $out[] = [
-                    'client_id' => (int)$c['id'],
-                    'score' => $r['score'],
-                    'reasons' => $r['reasons'],
-                    'summary' => [
-                        'prenom' => $c['prenom'],
-                        'nom' => $c['nom'],
-                        'societe_nom' => $c['societe_nom'],
-                        'profil' => $c['projet'],
-                        'type' => implode(' · ', $types),
-                        'ville' => $c_data['bien']['ville'] ?? '',
-                        'quartier' => $c_data['bien']['quartier'] ?? '',
-                        'pays' => $c_data['bien']['pays'] ?? '',
-                        'prix' => extractPrix($c['projet'] ?? '', $c_data),
-                    ],
-                ];
-            }
-        }
-        usort($out, fn($a, $b) => $b['score'] - $a['score']);
-        jsonOk(['matches' => array_slice($out, 0, 10)]);
-    }
 
-    case 'find_all_matches': {
-        // Map client_id → {count, max_score}. Calcul one-shot sur tous les dossiers du user.
-        // V18.17 — exclure staged du matching all.
-        $stmt = db()->prepare(
-            "SELECT id, projet, data, prenom, nom, societe_nom FROM clients
-             WHERE user_id = ? AND archived = 0 AND (is_staged IS NULL OR is_staged = 0)
-             LIMIT 500"
-        );
-        $stmt->execute([$user['id']]);
-        $all = $stmt->fetchAll();
-        // Indexer par profil pour éviter de re-scanner
-        $by_profil = [];
-        foreach ($all as $row) $by_profil[$row['projet'] ?? ''][] = $row;
-        $out = [];
-        foreach ($all as $src) {
-            $opp_list = OPP_PROFIL[$src['projet'] ?? ''] ?? [];
-            if (!$opp_list) { $out[(int)$src['id']] = ['count' => 0, 'max_score' => 0]; continue; }
-            $count = 0; $max_score = 0;
-            foreach ($opp_list as $opp_p) {
-                foreach ($by_profil[$opp_p] ?? [] as $c) {
-                    if ((int)$c['id'] === (int)$src['id']) continue;
-                    $r = scoreMatch($src, $c);
-                    if ($r !== null && $r['score'] >= 50) { $count++; if ($r['score'] > $max_score) $max_score = $r['score']; }
-                }
-            }
-            if ($count > 0) $out[(int)$src['id']] = ['count' => $count, 'max_score' => $max_score];
+case 'rejouer_complet': {
+    $isSuper = ($user['role'] ?? '') === 'super_admin' || ($user['_origin_role'] ?? '') === 'super_admin';
+    if (!$isSuper) jsonError('Accès refusé (super_admin requis)', 403);
+    $rules = ensureMatchRulesV1();
+    $t0 = microtime(true);
+    $stmt = db()->prepare("SELECT * FROM clients WHERE deleted_at IS NULL AND archived = 0 AND user_id = ?");
+    $stmt->execute([$uid]);
+    $clients = $stmt->fetchAll();
+    db()->prepare("DELETE FROM matches WHERE JSON_VALID(owner_user_ids) = 1 AND JSON_CONTAINS(owner_user_ids, ?)")
+        ->execute([json_encode($uid)]);
+    $insert = db()->prepare(
+        "INSERT INTO matches (dossier_a_id, dossier_b_id, score_pct, source, status, owner_user_ids, criteres_matched, created_at)
+         VALUES (?, ?, ?, 'interne', 'non_vu', ?, ?, NOW())"
+    );
+    $owner = json_encode([$uid]);
+    $seuil = (int) $rules['seuil_min_pct_default'];
+    $calcules = 0; $inseres = 0; $en_dessous = 0;
+    $n = count($clients);
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = $i + 1; $j < $n; $j++) {
+            $calcules++;
+            $r = scorePair($clients[$i], $clients[$j], $rules);
+            if ($r['skip']) continue;
+            if ($r['score_pct'] < $seuil) { $en_dessous++; continue; }
+            $aId = (int) $clients[$i]['id']; $bId = (int) $clients[$j]['id'];
+            if ($aId > $bId) { $tmp = $aId; $aId = $bId; $bId = $tmp; }
+            try {
+                $insert->execute([$aId, $bId, $r['score_pct'], $owner,
+                    json_encode($r['criteres_matched'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+                $inseres++;
+            } catch (PDOException $e) { /* doublon UNIQUE silencieux */ }
         }
-        jsonOk(['matches_by_id' => $out]);
     }
+    $duree_ms = (int) round((microtime(true) - $t0) * 1000);
+    jsonOk(['calcules' => $calcules, 'inseres' => $inseres, 'en_dessous_seuil' => $en_dessous,
+            'seuil_pct' => $seuil, 'duree_ms' => $duree_ms]);
+}
 
-    default:
-        jsonError('Action inconnue', 404);
+case 'score_paire': {
+    $aId = (int) ($input['dossier_a_id'] ?? 0);
+    $bId = (int) ($input['dossier_b_id'] ?? 0);
+    if (!$aId || !$bId) jsonError('dossier_a_id et dossier_b_id requis', 400);
+    $rules = ensureMatchRulesV1();
+    $stmt = db()->prepare("SELECT * FROM clients WHERE id IN (?, ?) AND user_id = ?");
+    $stmt->execute([$aId, $bId, $uid]);
+    $rows = $stmt->fetchAll();
+    if (count($rows) !== 2) jsonError('Dossiers introuvables ou non possédés', 404);
+    $byId = [];
+    foreach ($rows as $r) $byId[(int) $r['id']] = $r;
+    $r = scorePair($byId[$aId], $byId[$bId], $rules);
+    jsonOk(['result' => $r, 'rules' => ['weights' => $rules['weights'], 'tolerances' => $rules['tolerances_default'], 'geo_mode' => $rules['geo_mode']]]);
+}
+
+case 'stats': {
+    $rules = ensureMatchRulesV1();
+    $cn = (int) db()->query("SELECT COUNT(*) FROM clients WHERE user_id = " . $uid . " AND deleted_at IS NULL AND archived = 0")->fetchColumn();
+    $paires = $cn * ($cn - 1) / 2;
+    $stmt = db()->prepare("SELECT COUNT(*) AS n, AVG(score_pct) AS avg_pct, MAX(score_pct) AS max_pct, MIN(score_pct) AS min_pct
+                           FROM matches WHERE JSON_VALID(owner_user_ids) = 1 AND JSON_CONTAINS(owner_user_ids, ?)");
+    $stmt->execute([json_encode($uid)]);
+    $st = $stmt->fetch();
+    jsonOk([
+        'clients' => $cn,
+        'paires_possibles' => (int) $paires,
+        'matches_inseres' => (int) $st['n'],
+        'score_moyen' => $st['avg_pct'] !== null ? (float) round($st['avg_pct'], 1) : null,
+        'score_max' => $st['max_pct'] !== null ? (int) $st['max_pct'] : null,
+        'score_min' => $st['min_pct'] !== null ? (int) $st['min_pct'] : null,
+        'seuil_min_pct' => (int) $rules['seuil_min_pct_default'],
+        'geo_mode' => $rules['geo_mode'],
+    ]);
+}
+
+default:
+    jsonError('Action inconnue (rejouer_complet | score_paire | stats)', 400);
 }

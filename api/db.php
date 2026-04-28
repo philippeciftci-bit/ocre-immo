@@ -109,7 +109,10 @@ function currentUser() {
         // Super admin sur un tenant dont il n'est pas membre : agit comme le
         // owner du tenant. Tous les endpoints legacy filtrent par user_id =
         // currentUser['id'] ; il faut donc qu'il s'identifie au owner pour
-        // voir/modifier ses dossiers.
+        // voir/modifier ses dossiers. On marque la substitution via
+        // _origin_role pour permettre aux endpoints qui ont besoin du rôle
+        // originel (ex: matching.php?action=rejouer_complet super_admin only)
+        // de le retrouver.
         $own = $meta->prepare(
             "SELECT u.* FROM workspaces w
              JOIN workspace_members m ON m.workspace_id = w.id AND m.role = 'owner' AND m.left_at IS NULL
@@ -119,7 +122,12 @@ function currentUser() {
         );
         $own->execute([$slug]);
         $owner = $own->fetch();
-        return $owner ?: $row;
+        if ($owner) {
+            $owner['_origin_role'] = 'super_admin';
+            $owner['_origin_user_id'] = (int) $row['id'];
+            return $owner;
+        }
+        return $row;
     }
 
     return null;

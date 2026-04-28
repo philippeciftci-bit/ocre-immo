@@ -116,8 +116,9 @@ case 'register': {
         $tenant_provisioned = ($provRc === 0);
 
         // M/2026/04/28/16 — Hook seeder mode test : injecte les 10 dossiers
-        // canoniques (3 paires matchantes + 4 libres) dans ocre_wsp_<slug>_test
-        // dès la création du WSp, pour que le mode test soit pré-peuplé.
+        // canoniques dans ocre_wsp_<slug>_test dès la création du WSp.
+        // M/2026/04/28/30 — applyCanonicalMatches retiré : c'est l'algo
+        // /api/matching.php?action=rejouer_complet qui calcule désormais.
         if ($tenant_provisioned) {
             try {
                 require_once __DIR__ . '/lib/seed_helpers.php';

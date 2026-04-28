@@ -242,54 +242,9 @@ function seedDossiersV1(): array {
     ];
 }
 
-// Critères matchés (libellés parlants pour l'UI). Générés à l'insertion des
-// matches pour refléter les valeurs réelles de chaque dossier (Ville Marrakech ✓,
-// Quartier Palmeraie ✓, Surface 320 m² ≈ 300 m² ✓, etc.).
-function buildMatchCriteres(int $score, string $pairKey): array {
-    if ($pairKey === 'pair1') {
-        return [
-            'matched' => [
-                'Ville Marrakech',
-                'Quartier Palmeraie',
-                'Type Villa',
-                '4 chambres',
-                'Surface 320 m² ≈ 300 m²',
-                'Terrain 1 700 m² ≈ 1 500 m²',
-                'Budget 8,2 M ≈ 8 M MAD',
-                'Piscine + jardin',
-            ],
-            'divergent' => [],
-        ];
-    }
-    if ($pairKey === 'pair2') {
-        return [
-            'matched' => [
-                'Ville Casablanca',
-                'Type Appartement',
-                '3 chambres',
-                'Surface 165 m² ≈ 150 m²',
-                'Standing élevé',
-            ],
-            'divergent' => [
-                'Quartier Bourgogne ≠ Anfa',
-                'Prix 3,8 M ≈ 4 M (-5 %)',
-                'Acheteur société (logement de fonction)',
-            ],
-        ];
-    }
-    return [
-        'matched' => [
-            'Ville Essaouira',
-            'Type Riad compatible',
-        ],
-        'divergent' => [
-            'Quartier Médina ≠ Centre',
-            'Prix 2,4 M > Budget 2 M (+20 %)',
-            'Projet Investissement vs Riad résidentiel',
-            'Rendement 6 % vs vente meublée',
-        ],
-    ];
-}
+// M/2026/04/28/30 — buildMatchCriteres / applyCanonicalMatches supprimés
+// franchement. C'est /api/matching.php?action=rejouer_complet qui calcule
+// désormais les matches dynamiquement à partir des règles ocre_meta.match_rules_v1.
 
 function ensureSeedMetaSchema(): void {
     static $done = false;
@@ -362,36 +317,3 @@ function applySeedToTenant(PDO $tenantPdo, int $userId): array {
     return ['inserted' => $inserted, 'skipped' => $skipped, 'total' => count($seeds)];
 }
 
-// M/2026/04/28/23 — Insère les 3 matches canoniques (95/75/50%) après seed.
-// Owner = user_id du tenant (= meta uid). Idempotent : INSERT IGNORE sur la
-// clé UNIQUE (dossier_a_id, dossier_b_id).
-function applyCanonicalMatches(PDO $tenantPdo, int $userId): int {
-    $get = $tenantPdo->prepare("SELECT id FROM clients WHERE user_id = ? AND seed_id = ?");
-    $resolve = function (string $seedId) use ($get, $userId) {
-        $get->execute([$userId, $seedId]);
-        $r = $get->fetch();
-        return $r ? (int) $r['id'] : null;
-    };
-    $pairs = [
-        ['pair1', 95, 'seed-2026-04-28-v2-pair1-bouzid-acheteur-villa-palmeraie', 'seed-2026-04-28-v2-pair1-elfassi-vendeur-villa-palmeraie'],
-        ['pair2', 75, 'seed-2026-04-28-v2-pair2-atlasinvest-acheteur-appt-anfa', 'seed-2026-04-28-v2-pair2-tahiri-vendeur-appt-bourgogne'],
-        ['pair3', 50, 'seed-2026-04-28-v2-pair3-dubois-investisseur-essaouira', 'seed-2026-04-28-v2-pair3-medinaheritage-vendeur-riad-essaouira'],
-    ];
-    $insertM = $tenantPdo->prepare(
-        "INSERT IGNORE INTO matches
-            (dossier_a_id, dossier_b_id, score_pct, source, status, owner_user_ids, criteres_matched, created_at)
-         VALUES (?, ?, ?, 'interne', 'non_vu', ?, ?, NOW())"
-    );
-    $owner = json_encode([$userId]);
-    $count = 0;
-    foreach ($pairs as $p) {
-        [$key, $score, $sa, $sb] = $p;
-        $aId = $resolve($sa);
-        $bId = $resolve($sb);
-        if (!$aId || !$bId) continue;
-        $criteres = json_encode(buildMatchCriteres($score, $key), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $insertM->execute([$aId, $bId, $score, $owner, $criteres]);
-        $count++;
-    }
-    return $count;
-}
