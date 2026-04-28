@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inscription — Ocre Immo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', -apple-system, sans-serif; color: #2A2018; background: linear-gradient(135deg, #F0E8D8, #FAF3E0); min-height: 100vh; padding: 20px; }
+.container { max-width: 520px; margin: 0 auto; background: #fff; padding: 32px; border-radius: 14px; box-shadow: 0 8px 32px rgba(139,94,60,.12); margin-top: 30px; }
+h1 { font-family: 'Cormorant Garamond', serif; color: #8B5E3C; font-size: 32px; margin-bottom: 6px; }
+.lede { color: #8B7F6E; margin-bottom: 24px; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 12px; color: #5A4E3D; margin-bottom: 4px; font-weight: 600; }
+.field input, .field select { width: 100%; padding: 10px; border: 1px solid #D8CCB4; border-radius: 6px; font-family: inherit; font-size: 14px; }
+.field input:focus, .field select:focus { outline: none; border-color: #8B5E3C; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.plan-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.plan-row label { flex: 1; padding: 10px; border: 1.5px solid #D8CCB4; border-radius: 8px; cursor: pointer; text-align: center; font-size: 13px; }
+.plan-row input { display: none; }
+.plan-row input:checked + span { font-weight: 700; color: #8B5E3C; }
+.plan-row label:has(input:checked) { border-color: #8B5E3C; background: #FAF3E0; }
+.checkbox { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: #5A4E3D; margin-bottom: 10px; }
+.checkbox input { margin-top: 2px; }
+.btn { width: 100%; padding: 14px; background: #8B5E3C; color: #fff; border: none; border-radius: 8px; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.btn:hover { background: #6E482C; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.error { background: #FEE2E2; color: #7F1D1D; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+.success { background: #D1FAE5; color: #065F46; padding: 14px; border-radius: 6px; font-size: 14px; line-height: 1.5; }
+small { font-size: 11px; color: #8B7F6E; }
+.back-link { display: inline-block; color: #8B5E3C; text-decoration: none; margin-top: 16px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Créer mon compte</h1>
+  <p class="lede">Démarre en 2 minutes. Pas de carte bancaire pour le plan Découverte.</p>
+
+  <div id="error" style="display:none;"></div>
+
+  <form id="signup-form">
+    <div class="row2">
+      <div class="field">
+        <label>Prénom *</label>
+        <input type="text" name="prenom" required>
+      </div>
+      <div class="field">
+        <label>Nom *</label>
+        <input type="text" name="nom" required>
+      </div>
+    </div>
+    <div class="field">
+      <label>Email *</label>
+      <input type="email" name="email" required>
+    </div>
+    <div class="field">
+      <label>Téléphone *</label>
+      <input type="tel" name="telephone" placeholder="+33 6 12 34 56 78" required>
+    </div>
+    <div class="field">
+      <label>Société (optionnel)</label>
+      <input type="text" name="societe">
+    </div>
+    <div class="field">
+      <label>Slug de votre espace (3-30 caractères, a-z 0-9 tirets) *</label>
+      <input type="text" name="slug" pattern="[a-z0-9\-]{3,30}" required>
+      <small>Sera votre URL : https://&lt;slug&gt;.ocre.immo</small>
+    </div>
+
+    <label style="display:block;font-size:12px;color:#5A4E3D;margin-bottom:6px;font-weight:600;">Plan</label>
+    <div class="plan-row">
+      <label><input type="radio" name="plan" value="decouverte" checked><span>Découverte<br><small>Gratuit</small></span></label>
+      <label><input type="radio" name="plan" value="pro"><span>Pro<br><small>29 €/mois</small></span></label>
+      <label><input type="radio" name="plan" value="equipe"><span>Équipe<br><small>79 €/mois</small></span></label>
+    </div>
+
+    <div class="checkbox">
+      <input type="checkbox" name="cgu" required id="cgu">
+      <label for="cgu">J'accepte les <a href="https://ocre.immo/cgu" target="_blank">CGU</a></label>
+    </div>
+    <div class="checkbox">
+      <input type="checkbox" name="rgpd" required id="rgpd">
+      <label for="rgpd">J'accepte la <a href="https://ocre.immo/politique-confidentialite" target="_blank">politique de confidentialité (RGPD)</a></label>
+    </div>
+
+    <button type="submit" class="btn" id="submit-btn">Créer mon compte</button>
+  </form>
+
+  <a href="https://ocre.immo" class="back-link">← Retour à l'accueil</a>
+</div>
+
+<script>
+const form = document.getElementById('signup-form');
+const errorDiv = document.getElementById('error');
+const btn = document.getElementById('submit-btn');
+
+// Auto-suggest slug depuis prenom + nom.
+form.prenom.addEventListener('input', autoSlug);
+form.nom.addEventListener('input', autoSlug);
+function autoSlug() {
+  if (form.slug.dataset.touched) return;
+  const v = (form.prenom.value + form.nom.value).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 30);
+  if (v) form.slug.value = v;
+}
+form.slug.addEventListener('input', () => { form.slug.dataset.touched = '1'; });
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorDiv.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Création…';
+
+  const payload = {
+    prenom: form.prenom.value.trim(),
+    nom: form.nom.value.trim(),
+    email: form.email.value.trim(),
+    telephone: form.telephone.value.trim(),
+    societe: form.societe.value.trim(),
+    slug: form.slug.value.trim().toLowerCase(),
+    plan: form.plan.value,
+    cgu: form.cgu.checked,
+    rgpd: form.rgpd.checked,
+  };
+
+  try {
+    const r = await fetch('/api/signup.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (r.ok && d.ok) {
+      document.querySelector('.container').innerHTML =
+        '<h1>Bienvenue !</h1>' +
+        '<div class="success">' +
+        '<b>Compte créé.</b> Un email d\'activation a été envoyé à ' + payload.email + '.<br><br>' +
+        'Cliquez sur le lien dans l\'email pour définir votre mot de passe et accéder à votre espace ' +
+        '<code>https://' + d.slug + '.ocre.immo</code>.' +
+        (d.email_sent ? '' : '<br><br><b>Note</b> : SMTP en mode log, l\'admin va vous transmettre le lien manuellement.') +
+        '</div>' +
+        '<a href="https://ocre.immo" class="back-link">← Retour à l\'accueil</a>';
+    } else {
+      errorDiv.textContent = (d && d.error) || 'Erreur inconnue';
+      errorDiv.className = 'error';
+      errorDiv.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Créer mon compte';
+    }
+  } catch (err) {
+    errorDiv.textContent = 'Erreur réseau : ' + err.message;
+    errorDiv.className = 'error';
+    errorDiv.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Créer mon compte';
+  }
+});
+</script>
+</body>
+</html>
