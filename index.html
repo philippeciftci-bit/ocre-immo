@@ -2118,11 +2118,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               options={[{value:'zellige',label:'Zellige'},{value:'tadelakt',label:'Tadelakt'},{value:'bejmat',label:'Bejmat'},{value:'fontaine',label:'Fontaine'},{value:'douiria',label:'Douiria'},{value:'zouak',label:'Zouak'},{value:'moucharabieh',label:'Moucharabieh'},{value:'stuc',label:'Stuc sculpté'}]}/>
           )}
 
-          {/* M/2026/04/29/15 — bloc legacy (Caractéristiques communes + Raccordements + Énergie/Climat + Documents FR/ES) supprimé franchement.
-              Statut foncier + Documents Maroc + Architecture marocaine + Équipements MA migrés ici dans BLOC 4 DOCUMENTS & CONFORMITÉ.
-              DPE/GES déjà en flux vertical strict dans BLOC 2 DESCRIPTIF (lines 2066-2067 ci-dessus). */}
-
-          {/* M/2026/04/29/15 — BLOC 4 DOCUMENTS & CONFORMITÉ (flux vertical strict). */}
+          {/* BLOC 4 DOCUMENTS & CONFORMITÉ */}
           {bien.pays === 'MA' && (
             <>
               <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:18, marginBottom:8}}>Documents &amp; conformité</div>
@@ -2792,9 +2788,6 @@ async function reverseGeocodeNominatim(lat, lng) {
     };
   } catch (e) { return null; }
 }
-
-// M/2026/04/29/15 — MapPickerToggle supprimé franchement (suppression toggle "Afficher la carte").
-// La carte est désormais TOUJOURS visible sous l'adresse via <MapPicker> direct.
 
 // V17.3 Phase 2b — MapPicker Leaflet + OpenStreetMap. Mode précis (marker) ou zone (cercle).
 // V18.0 — Auto-centrage carte sur ville+quartier du bien via Nominatim, cache localStorage,
