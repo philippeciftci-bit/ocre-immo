@@ -1,9 +1,10 @@
 <?php
 // M/2026/04/28/47 — EditConsent : workflow validation collaborative dossiers WSc.
 // Phase 1 backend : tables dossier_edits + dossier_versions + endpoint
-// create_edit / list_pending / decide. UI front + notifications multi-canal
-// reportées en mission ultérieure.
+// create_edit / list_pending / decide.
+// M/2026/04/28/51 — notify_edit_event multi-canal (in-app + Telegram inline + email log).
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib/notify_edit_event.php';
 setCorsHeaders();
 
 $user = requireAuth();
@@ -70,7 +71,13 @@ case 'create_edit': {
         db()->prepare("UPDATE dossier_edits SET status = 'superseded' WHERE id = ?")
             ->execute([(int) $input['parent_edit_id']]);
     }
-    jsonOk(['edit_id' => (int) db()->lastInsertId()]);
+    $newEditId = (int) db()->lastInsertId();
+    notify_edit_event('edit_pending', $newEditId, $clientId, $uid, [
+        'author' => $user,
+        'changes' => $changes,
+        'recipient_user_ids' => [(int) $cli['user_id']],
+    ]);
+    jsonOk(['edit_id' => $newEditId]);
 }
 
 case 'list_pending': {
@@ -141,6 +148,13 @@ case 'decide': {
             "INSERT INTO dossier_versions (client_id, version_num, snapshot, approved_by_edit_id) VALUES (?, ?, ?, ?)"
         )->execute([$client_id, $maxV + 1, json_encode($finalClient, JSON_UNESCAPED_UNICODE), $id]);
     }
+    $eventType = $decision === 'approve' ? 'edit_approved' : 'edit_rejected';
+    notify_edit_event($eventType, $id, (int) $edit['client_id'], $uid, [
+        'decider' => $user,
+        'decision' => $decision,
+        'comment' => $comment,
+        'recipient_user_ids' => [(int) $edit['author_user_id']],
+    ]);
     jsonOk(['edit_id' => $id, 'status' => $newStatus]);
 }
 

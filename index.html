@@ -4483,6 +4483,53 @@ function TargetWithBadge({onClick, title}) {
     </div>
   );
 }
+
+// M/2026/04/28/51 — NotifBellWithBadge : cloche header avec poll count_unread (60s).
+function NotifBellWithBadge({onClick, title}) {
+  const [count, setCount] = React.useState(0);
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchCount() {
+      try {
+        const tk = localStorage.getItem('ocre_token') || '';
+        if (!tk) return;
+        const r = await fetch('/api/notifications.php?action=count_unread', {headers:{'X-Session-Token': tk}});
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!cancelled && j && j.ok) setCount(Number(j.count) || 0);
+      } catch (e) {}
+    }
+    fetchCount();
+    const id = setInterval(fetchCount, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+  const label = count > 9 ? '9+' : String(count);
+  const bell = (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+  );
+  return (
+    <div style={{position:'relative', display:'inline-flex', flexShrink:0}}>
+      <PillIconButton icon={bell}
+        title={title || (count > 0 ? count + ' notification(s) non lue(s)' : 'Notifications')}
+        onClick={onClick}/>
+      {count > 0 && (
+        <span style={{
+          position:'absolute', top:-4, right:-4,
+          minWidth:16, height:16, padding:'0 4px',
+          background:'#DC2626', color:'#fff',
+          borderRadius:8, fontSize:10, fontWeight:700,
+          fontFamily:'inherit', lineHeight:'16px',
+          textAlign:'center', boxShadow:'0 0 0 2px #fff',
+          pointerEvents:'none', boxSizing:'border-box',
+        }}>{label}</span>
+      )}
+    </div>
+  );
+}
+
 // Alias nomenclature Philippe v18.28.
 const IconShare = ShareIcon;
 const IconDownload = DownloadIcon;
@@ -5943,6 +5990,7 @@ function App() {
   const [matchesById, setMatchesById] = useState({});
   const [matchFor, setMatchFor] = useState(null);  // client_id pour modal ouvert
   const [selectedMatchId, setSelectedMatchId] = useState(null); // match_id pour MatchDetailView
+  const [selectedEditId, setSelectedEditId] = useState(null); // edit_id pour EditReviewView
 
   useEffect(() => {
     // V52.5 DIAG — beacon TRES TOT pour confirmer que cette version du SPA tourne
@@ -6304,6 +6352,14 @@ function App() {
       openMatchDetail={(id) => { setSelectedMatchId(id); setView('match-detail'); }}
       showToast={showToast} toast={toast}/>;
   }
+  if (view === 'notifications') {
+    return <NotificationsView onBack={() => setView('list')}
+      openEditReview={(id) => { setSelectedEditId(id); setView('edit_review'); }}
+      showToast={showToast}/>;
+  }
+  if (view === 'edit_review') {
+    return <EditReviewView editId={selectedEditId} onBack={() => setView('notifications')} showToast={showToast}/>;
+  }
   if (view === 'match-detail') {
     return <MatchDetailView matchId={selectedMatchId} onBack={() => setView('matches')}
       showToast={showToast} toast={toast}/>;
@@ -6344,6 +6400,7 @@ function App() {
       promotedId={promotedId}
       openSharePlaceholder={() => setSharePlaceholderOpen(true)}
       openMatches={() => setView('matches')}
+      openNotifs={() => setView('notifications')}
       openCalendrier={() => setView('calendrier')}
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
@@ -6370,6 +6427,8 @@ function App() {
       clients={clients} openExistingDossier={openClient}
       initialExpandedSection={initialExpandedSection}
       initialFocus={initialFocus}
+      openEditReview={(id) => { setSelectedEditId(id); setView('edit_review'); }}
+      currentUser={currentUser}
       promoteStaged={promoteStaged} deleteStaged={deleteStaged}
     />
   )}
@@ -8343,6 +8402,204 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
   );
 }
 
+// M/2026/04/28/51 — NotificationsView : liste des notifs in-app de l'agent.
+function NotificationsView({onBack, openEditReview, showToast}) {
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  async function refresh() {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/notifications.php?action=list&limit=50', {headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (r && r.ok) setItems(r.notifications || []);
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setLoading(false);
+  }
+  React.useEffect(() => { refresh(); }, []);
+
+  async function markRead(id) {
+    try {
+      await fetch('/api/notifications.php?action=mark_read', {
+        method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+        body: JSON.stringify({notif_id: id}),
+      });
+    } catch (e) {}
+  }
+  async function markAllRead() {
+    try {
+      await fetch('/api/notifications.php?action=mark_all_read', {
+        method:'POST', headers:{'X-Session-Token': token()},
+      });
+      refresh();
+    } catch (e) {}
+  }
+
+  function iconFor(type) {
+    const stroke = {edit_pending:'#D97706', edit_approved:'#059669', edit_rejected:'#DC2626', edit_modified:'#2563EB'}[type] || '#8B7F6E';
+    if (type === 'edit_approved') return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>;
+    if (type === 'edit_rejected') return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>;
+    if (type === 'edit_modified') return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/></svg>;
+    return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+  }
+
+  function relTime(s) {
+    if (!s) return '';
+    const d = new Date(s.replace(' ', 'T') + 'Z');
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return 'à l\'instant';
+    if (diff < 3600) return Math.round(diff/60) + ' min';
+    if (diff < 86400) return Math.round(diff/3600) + ' h';
+    if (diff < 604800) return Math.round(diff/86400) + ' j';
+    return d.toLocaleDateString('fr-FR');
+  }
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C'}}>Notifications</div>
+        {items.some(n => !n.is_read) && (
+          <button onClick={markAllRead} style={{background:'none', border:'none', color:'#8B5E3C', fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Tout marquer lu</button>
+        )}
+      </div>
+      <div style={{flex:1, overflowY:'auto', padding:'10px 14px'}}>
+        {loading && <div style={{padding:20, textAlign:'center', color:'#8B7F6E'}}>Chargement…</div>}
+        {!loading && items.length === 0 && <div style={{padding:30, textAlign:'center', color:'#8B7F6E'}}>Aucune notification</div>}
+        {items.map(n => (
+          <div key={n.id} onClick={async () => {
+            if (!n.is_read) await markRead(n.id);
+            if (n.link_path && n.link_path.startsWith('/edit/')) {
+              const editId = parseInt(n.link_path.replace('/edit/', ''), 10);
+              openEditReview && openEditReview(editId);
+            }
+          }} style={{
+            background: n.is_read ? '#fff' : '#FAF3E0', border:'1px solid #EDE6DC', borderRadius:10,
+            padding:'10px 12px', marginBottom:8, cursor:'pointer', display:'flex', gap:10, alignItems:'flex-start'
+          }}>
+            <div style={{flexShrink:0, marginTop:2}}>{iconFor(n.type)}</div>
+            <div style={{flex:1, minWidth:0}}>
+              <div style={{fontSize:13.5, fontWeight: n.is_read ? 500 : 700, color:'#2A2018', marginBottom:2}}>{n.title}</div>
+              {n.body && <div style={{fontSize:12, color:'#5A4E3D', marginBottom:4}}>{n.body}</div>}
+              <div style={{fontSize:11, color:'#8B7F6E'}}>{relTime(n.created_at)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// M/2026/04/28/51 — EditReviewView : page review d'un edit pending avec 3 boutons.
+function EditReviewView({editId, onBack, showToast}) {
+  const [edit, setEdit] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [posting, setPosting] = React.useState(false);
+  const [rejectModal, setRejectModal] = React.useState(false);
+  const [rejectComment, setRejectComment] = React.useState('');
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  React.useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const r = await fetch('/api/edit_consent.php?action=get_edit&edit_id=' + editId, {headers:{'X-Session-Token': token()}}).then(r => r.json());
+        if (r && r.ok) setEdit(r.edit);
+      } catch (e) {}
+      setLoading(false);
+    })();
+  }, [editId]);
+
+  async function decide(decision, comment) {
+    setPosting(true);
+    try {
+      const r = await fetch('/api/edit_consent.php?action=decide', {
+        method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+        body: JSON.stringify({edit_id: editId, decision, comment: comment || null}),
+      }).then(r => r.json());
+      if (r && r.ok) {
+        showToast && showToast(decision === 'approve' ? 'Modifications validées' : 'Modifications refusées');
+        onBack && onBack();
+      } else {
+        showToast && showToast((r && r.error) || 'Erreur');
+      }
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setPosting(false);
+  }
+
+  function renderValue(v) {
+    if (v === null || v === undefined || v === '') return <span style={{color:'#8B7F6E', fontStyle:'italic'}}>vide</span>;
+    if (Array.isArray(v)) {
+      return <span style={{display:'inline-flex', flexWrap:'wrap', gap:4}}>
+        {v.map((x, i) => <span key={i} style={{background:'#F0E8D8', padding:'2px 8px', borderRadius:10, fontSize:12}}>{String(x)}</span>)}
+      </span>;
+    }
+    if (typeof v === 'object') return <code style={{fontSize:11}}>{JSON.stringify(v)}</code>;
+    return String(v);
+  }
+
+  if (loading) return <div style={{padding:30, textAlign:'center', color:'#8B7F6E'}}>Chargement…</div>;
+  if (!edit) return (
+    <div style={{padding:30, textAlign:'center'}}>
+      <div style={{color:'#DC2626', marginBottom:10}}>Edit introuvable</div>
+      <button onClick={onBack} style={{padding:'8px 14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit'}}>Retour</button>
+    </div>
+  );
+
+  const changes = Array.isArray(edit.changes) ? edit.changes : [];
+  const isPending = edit.status === 'pending';
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C'}}>Modifications proposées</div>
+          <div style={{fontSize:11, color:'#8B7F6E'}}>Edit #{edit.id} · statut : <b>{edit.status}</b></div>
+        </div>
+      </div>
+      <div style={{flex:1, overflowY:'auto', padding:'12px 14px'}}>
+        <div style={{background:'#fff', borderRadius:10, padding:14, border:'1px solid #EDE6DC'}}>
+          {changes.length === 0 && <div style={{color:'#8B7F6E'}}>Aucun changement</div>}
+          {changes.map((c, i) => (
+            <div key={i} style={{paddingBottom:14, marginBottom:14, borderBottom: i === changes.length - 1 ? 'none' : '1px solid #EDE6DC'}}>
+              <div style={{fontSize:11, textTransform:'uppercase', letterSpacing:.6, color:'#8B7F6E', marginBottom:4}}>{c.field}</div>
+              <div style={{fontSize:13, color:'#8B7F6E', textDecoration:'line-through'}}>{renderValue(c.before)}</div>
+              <div style={{fontSize:11, color:'#8B5E3C', margin:'2px 0'}}>↓</div>
+              <div style={{fontSize:13.5, color:'#8B5E3C', fontWeight:700}}>{renderValue(c.after)}</div>
+            </div>
+          ))}
+        </div>
+        {edit.decision_comment && (
+          <div style={{marginTop:10, padding:10, background:'#FEF2F2', border:'1px solid #FCA5A5', borderRadius:8, fontSize:12.5, color:'#7F1D1D'}}>
+            <b>Commentaire :</b> {edit.decision_comment}
+          </div>
+        )}
+      </div>
+      {isPending && (
+        <div style={{padding:'10px 14px', borderTop:'1px solid #EDE6DC', background:'#fff', display:'flex', gap:8}}>
+          <button disabled={posting} onClick={() => decide('approve')} style={{flex:1, padding:'12px', background:'#059669', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Valider</button>
+          <button disabled={posting} onClick={() => setRejectModal(true)} style={{flex:1, padding:'12px', background:'#DC2626', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Refuser</button>
+        </div>
+      )}
+      {rejectModal && (
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+          <div style={{background:'#fff', borderRadius:12, padding:18, maxWidth:400, width:'100%'}}>
+            <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:10}}>Refuser les modifications</div>
+            <textarea value={rejectComment} onChange={(e) => setRejectComment(e.target.value)}
+              placeholder="Commentaire (optionnel)…"
+              style={{width:'100%', minHeight:80, padding:8, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:13, boxSizing:'border-box', resize:'vertical'}}/>
+            <div style={{display:'flex', gap:8, marginTop:12}}>
+              <button onClick={() => setRejectModal(false)} style={{flex:1, padding:'10px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer'}}>Annuler</button>
+              <button onClick={() => { setRejectModal(false); decide('reject', rejectComment); }} style={{flex:1, padding:'10px', background:'#DC2626', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor:'pointer'}}>Confirmer le refus</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // MatchesView — page cible variante A (lecture seule, classify/mark_seen).
 // 4 onglets (Non vus / Pertinents / À surveiller / Écartés), liste de cards
 // avec score à gauche, 2 dossiers côte à côte, critères matchés/divergents,
@@ -9546,8 +9803,9 @@ function ListView(props) {
         center={<OcreTitle/>}
         right={
           <div data-header-actions="1" style={{display:'flex', alignItems:'center', gap:8}}>
-            {/* Header droite : cible matchs + Calendrier + Share + Search + Archive. */}
+            {/* Header droite : cible matchs + cloche notifs + Calendrier + Share + Search + Archive. */}
             <TargetWithBadge title="Matchs détectés" onClick={() => props.openMatches && props.openMatches()}/>
+            <NotifBellWithBadge onClick={() => props.openNotifs && props.openNotifs()}/>
             <PillIconButton title="Calendrier" onClick={() => props.openCalendrier && props.openCalendrier()}
               icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}/>
             <PillIconButton icon={<ShareIcon size={18}/>} title="Partager mes dossiers"
@@ -11782,6 +12040,25 @@ function FormView(props) {
   function set(k, v) {
     setD(prev => ({...prev, [k]: v}));
   }
+  // M/2026/04/28/51 — banner edit pending : si edit_consent.list_pending retourne
+  // un edit pour ce dossier, afficher banner avec lien vers /edit/<id>.
+  const [pendingEdit, setPendingEdit] = useState(null);
+  useEffect(() => {
+    const cid = editing && editing.id;
+    if (!cid || String(cid).startsWith('tmp-')) { setPendingEdit(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const tk = localStorage.getItem('ocre_token') || '';
+        if (!tk) return;
+        const r = await fetch('/api/edit_consent.php?action=list_pending&client_id=' + cid, {headers:{'X-Session-Token': tk}}).then(r => r.json());
+        if (!cancelled && r && r.ok && r.edits && r.edits.length > 0) {
+          setPendingEdit(r.edits[0]);
+        }
+      } catch (e) {}
+    })();
+    return () => { cancelled = true; };
+  }, [editing && editing.id]);
   // V17.4 UX v3 : Investisseur est désormais un profil à part entière — on sync le bool legacy.
   useEffect(() => {
     const wantInvest = activeProfil === 'Investisseur';
@@ -12323,6 +12600,35 @@ function FormView(props) {
     : '';
   const headSubSociety = (profilType === 'Société' && d.societe_nom && (d.prenom || d.nom)) ? d.societe_nom : '';
 
+  // M/2026/04/28/51 — banner edit pending. Auteur = gris, destinataire = ocre clair.
+  const _myUid = props.currentUser && props.currentUser.id;
+  const _peIsAuthor = pendingEdit && Number(pendingEdit.author_user_id) === Number(_myUid);
+  const _peBanner = pendingEdit ? (
+    <div onClick={() => !_peIsAuthor && props.openEditReview && props.openEditReview(Number(pendingEdit.id))}
+      style={{
+        background: _peIsAuthor ? '#EDE6DC' : '#FAF3E0',
+        borderBottom: '1px solid ' + (_peIsAuthor ? '#D8CCB4' : '#D6B287'),
+        padding: '8px 14px',
+        fontSize: 12.5,
+        color: _peIsAuthor ? '#5A4E3D' : '#8B5E3C',
+        cursor: _peIsAuthor ? 'default' : 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+      }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span style={{flex:1, minWidth:0}}>
+        {_peIsAuthor
+          ? <>Tes modifications sont en attente de validation</>
+          : <>Modifications en attente · <b>cliquer pour review</b></>
+        }
+      </span>
+      {!_peIsAuthor && <span style={{flexShrink:0, fontSize:14}}>→</span>}
+    </div>
+  ) : null;
+
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
       <div data-formview-header style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:8}}>
@@ -12339,6 +12645,7 @@ function FormView(props) {
           <PillIconButton icon={<ShareIcon size={18}/>} title="Partager" onClick={openShare}/>
         </div>
       </div>
+      {_peBanner}
       {/* V18.27 — Barre de recherche dossier avec compteur. */}
       <div className={'search-bar-wrap ' + (formSearchOpen ? 'open' : 'closed')}>
         <div className="search-bar-input-wrap">
