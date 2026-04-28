@@ -158,6 +158,46 @@ case 'decide': {
     jsonOk(['edit_id' => $id, 'status' => $newStatus]);
 }
 
+case 'modify': {
+    // M/2026/04/28/60 — contre-proposition. Marque parent superseded, crée nouvel edit avec parent_edit_id.
+    $id = (int) ($input['edit_id'] ?? 0);
+    $changes = $input['changes'] ?? null;
+    if (!$id || !is_array($changes)) jsonError('edit_id et changes (array) requis', 400);
+    $cur = db()->prepare("SELECT * FROM dossier_edits WHERE id = ? AND status = 'pending'");
+    $cur->execute([$id]);
+    $edit = $cur->fetch();
+    if (!$edit) jsonError('Edit non trouvable ou déjà décidé', 404);
+    if ((int) $edit['author_user_id'] === $uid) jsonError("L'auteur ne peut pas contre-proposer sur son propre edit", 403);
+    db()->prepare("UPDATE dossier_edits SET status = 'superseded', decided_at = NOW(), decided_by_user_id = ?, decision_type = 'modify' WHERE id = ?")
+        ->execute([$uid, $id]);
+    db()->prepare(
+        "INSERT INTO dossier_edits (client_id, author_user_id, status, changes, parent_edit_id) VALUES (?, ?, 'pending', ?, ?)"
+    )->execute([
+        (int) $edit['client_id'], $uid,
+        json_encode($changes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        $id,
+    ]);
+    $newEditId = (int) db()->lastInsertId();
+    notify_edit_event('edit_modified', $newEditId, (int) $edit['client_id'], $uid, [
+        'author' => $user,
+        'changes' => $changes,
+        'recipient_user_ids' => [(int) $edit['author_user_id']],
+    ]);
+    jsonOk(['edit_id' => $newEditId, 'parent_edit_id' => $id]);
+}
+
+case 'history': {
+    // M/2026/04/28/60 — historique des edits d'un dossier.
+    $clientId = (int) ($_GET['client_id'] ?? 0);
+    if (!$clientId) jsonError('client_id requis', 400);
+    $st = db()->prepare(
+        "SELECT id, status, author_user_id, decided_by_user_id, decision_type, parent_edit_id, created_at, decided_at
+         FROM dossier_edits WHERE client_id = ? ORDER BY created_at ASC LIMIT 200"
+    );
+    $st->execute([$clientId]);
+    jsonOk(['history' => $st->fetchAll()]);
+}
+
 default:
-    jsonError('Action inconnue (create_edit | list_pending | get_edit | decide)', 400);
+    jsonError('Action inconnue (create_edit | list_pending | get_edit | decide | modify | history)', 400);
 }

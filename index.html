@@ -8736,7 +8736,44 @@ function EditReviewView({editId, onBack, showToast}) {
   const [posting, setPosting] = React.useState(false);
   const [rejectModal, setRejectModal] = React.useState(false);
   const [rejectComment, setRejectComment] = React.useState('');
+  // M/2026/04/28/60 — mode édition contre-proposition.
+  const [editMode, setEditMode] = React.useState(false);
+  const [draftAfter, setDraftAfter] = React.useState({});
   const token = () => localStorage.getItem('ocre_token') || '';
+
+  function startModify() {
+    if (!edit || !Array.isArray(edit.changes)) return;
+    const draft = {};
+    edit.changes.forEach((c, i) => { draft[i] = (typeof c.after === 'object' && c.after !== null) ? JSON.stringify(c.after) : (c.after ?? ''); });
+    setDraftAfter(draft);
+    setEditMode(true);
+  }
+
+  async function submitModify() {
+    if (!edit) return;
+    const newChanges = (edit.changes || []).map((c, i) => {
+      let after = draftAfter[i];
+      // tenter parser JSON pour arrays
+      if (typeof after === 'string' && (after.startsWith('[') || after.startsWith('{'))) {
+        try { after = JSON.parse(after); } catch (e) {}
+      }
+      return {field: c.field, before: c.before, after};
+    });
+    setPosting(true);
+    try {
+      const r = await fetch('/api/edit_consent.php?action=modify', {
+        method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+        body: JSON.stringify({edit_id: editId, changes: newChanges}),
+      }).then(r => r.json());
+      if (r && r.ok) {
+        showToast && showToast('Contre-proposition envoyée');
+        onBack && onBack();
+      } else {
+        showToast && showToast((r && r.error) || 'Erreur');
+      }
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setPosting(false);
+  }
 
   React.useEffect(() => {
     (async () => {
@@ -8798,6 +8835,11 @@ function EditReviewView({editId, onBack, showToast}) {
         </div>
       </div>
       <div style={{flex:1, overflowY:'auto', padding:'12px 14px'}}>
+        {editMode && (
+          <div style={{background:'#FAF3E0', border:'1px solid #D6B287', padding:10, borderRadius:8, marginBottom:10, fontSize:12.5, color:'#8B5E3C'}}>
+            Mode contre-proposition. Modifiez les valeurs proposées puis soumettez. L'edit original sera marqué <i>superseded</i>.
+          </div>
+        )}
         <div style={{background:'#fff', borderRadius:10, padding:14, border:'1px solid #EDE6DC'}}>
           {changes.length === 0 && <div style={{color:'#8B7F6E'}}>Aucun changement</div>}
           {changes.map((c, i) => (
@@ -8805,7 +8847,12 @@ function EditReviewView({editId, onBack, showToast}) {
               <div style={{fontSize:11, textTransform:'uppercase', letterSpacing:.6, color:'#8B7F6E', marginBottom:4}}>{c.field}</div>
               <div style={{fontSize:13, color:'#8B7F6E', textDecoration:'line-through'}}>{renderValue(c.before)}</div>
               <div style={{fontSize:11, color:'#8B5E3C', margin:'2px 0'}}>↓</div>
-              <div style={{fontSize:13.5, color:'#8B5E3C', fontWeight:700}}>{renderValue(c.after)}</div>
+              {editMode ? (
+                <input value={draftAfter[i] ?? ''} onChange={e => setDraftAfter(prev => ({...prev, [i]: e.target.value}))}
+                  style={{width:'100%', padding:8, border:'1px solid #B89968', borderRadius:6, fontFamily:'inherit', fontSize:13, boxSizing:'border-box', background:'#fff'}}/>
+              ) : (
+                <div style={{fontSize:13.5, color:'#8B5E3C', fontWeight:700}}>{renderValue(c.after)}</div>
+              )}
             </div>
           ))}
         </div>
@@ -8815,10 +8862,17 @@ function EditReviewView({editId, onBack, showToast}) {
           </div>
         )}
       </div>
-      {isPending && (
-        <div style={{padding:'10px 14px', borderTop:'1px solid #EDE6DC', background:'#fff', display:'flex', gap:8}}>
+      {isPending && !editMode && (
+        <div style={{padding:'10px 14px', borderTop:'1px solid #EDE6DC', background:'#fff', display:'flex', gap:6}}>
           <button disabled={posting} onClick={() => decide('approve')} style={{flex:1, padding:'12px', background:'#059669', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Valider</button>
+          <button disabled={posting} onClick={startModify} style={{flex:1, padding:'12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Modifier</button>
           <button disabled={posting} onClick={() => setRejectModal(true)} style={{flex:1, padding:'12px', background:'#DC2626', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Refuser</button>
+        </div>
+      )}
+      {isPending && editMode && (
+        <div style={{padding:'10px 14px', borderTop:'1px solid #EDE6DC', background:'#fff', display:'flex', gap:6}}>
+          <button disabled={posting} onClick={() => setEditMode(false)} style={{flex:1, padding:'12px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Annuler</button>
+          <button disabled={posting} onClick={submitModify} style={{flex:2, padding:'12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Soumettre contre-proposition</button>
         </div>
       )}
       {rejectModal && (
