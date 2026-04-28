@@ -6,6 +6,8 @@ require_once __DIR__ . '/db.php';
 
 $action = $_GET['action'] ?? '';
 if ($action !== 'pdf') { http_response_code(404); echo 'Action inconnue'; exit; }
+// M/2026/04/28/65 — template choice : fiche (Vendeur/Bailleur) | profil (Acheteur/Locataire) | mandat (simplifié)
+$template = $_GET['template'] ?? 'auto';
 
 $user = requireAuth();
 $dossier_id = (int)($_GET['dossier_id'] ?? 0);
@@ -59,6 +61,65 @@ $name = (($d['profil_type'] ?? '') === 'Société' && !empty($d['societe_nom']))
     : (trim(($d['prenom'] ?? '') . ' ' . ($d['nom'] ?? '')) ?: 'Dossier');
 $now = date('d/m/Y');
 header('Content-Type: text/html; charset=utf-8');
+
+// M/2026/04/28/65 — mandat simplifié : layout juridique brouillon.
+if ($template === 'mandat') {
+?><!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><title>Mandat · <?= h($name) ?></title>
+<style>
+@page { size: A4; margin: 24mm 18mm; }
+body { font-family: Georgia, serif; color: #2A2018; font-size: 11pt; line-height: 1.5; padding: 16px; }
+h1 { text-align: center; font-size: 16pt; margin: 0 0 8px; letter-spacing: 1px; text-transform: uppercase; }
+h2 { font-size: 12pt; margin: 16px 0 6px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+.label { font-weight: 700; }
+.fill { display: inline-block; min-width: 220px; border-bottom: 1px dotted #888; padding: 0 6px; }
+.signature { margin-top: 30px; display: flex; justify-content: space-between; }
+.signature div { width: 45%; }
+.signature .line { border-bottom: 1px solid #2A2018; height: 50px; margin-top: 14px; }
+.print-btn { position: fixed; top: 12px; right: 12px; padding: 10px 16px; background: #8B5E3C; color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+@media print { .print-btn { display: none; } body { padding: 0; } }
+</style></head><body>
+<button class="print-btn" onclick="window.print()">Imprimer / PDF</button>
+<h1>Mandat de <?= h(in_array($d['projet'] ?? '', ['Vendeur','Bailleur']) ? 'recherche acquéreur' : 'recherche bien') ?></h1>
+<p style="text-align:center; font-size:10pt; color:#666;">Document brouillon généré le <?= $now ?> · à valider juridiquement avant signature</p>
+
+<h2>Entre les soussignés</h2>
+<p><span class="label">Le mandant :</span> <span class="fill"><?= h($name) ?></span></p>
+<p><span class="label">Demeurant :</span> <span class="fill"><?= h(($d['adresse'] ?? '') . ' ' . ($d['ville'] ?? '')) ?></span></p>
+<p><span class="label">Téléphone :</span> <span class="fill"><?= h($d['tel'] ?? '') ?></span></p>
+<p><span class="label">Email :</span> <span class="fill"><?= h($d['email'] ?? '') ?></span></p>
+
+<h2>Et</h2>
+<p>Le mandataire : <span class="fill">Ocre Immo · agent <?= h($user['display_name'] ?? $user['email'] ?? '') ?></span></p>
+
+<h2>Objet du mandat</h2>
+<p>Le mandant confie au mandataire la mission de <?= h(in_array($d['projet'] ?? '', ['Vendeur','Bailleur']) ? 'rechercher un acquéreur ou locataire pour le bien suivant' : 'rechercher un bien correspondant aux critères suivants') ?> :</p>
+<ul>
+  <?php if (!empty($b['type'])): ?><li>Type : <?= h($b['type']) ?></li><?php endif; ?>
+  <?php if (!empty($b['ville'])): ?><li>Localisation : <?= h(($b['quartier'] ?? '') . ' ' . ($b['ville'] ?? '') . ' ' . ($b['pays'] ?? '')) ?></li><?php endif; ?>
+  <?php if (!empty($b['surface_hab']) || !empty($b['surface'])): ?><li>Surface : <?= h(($b['surface_hab'] ?? $b['surface'] ?? '') . ' m²') ?></li><?php endif; ?>
+  <?php if (!empty($d['prix_affiche'])): ?><li>Prix demandé : <?= h(number_format((float)$d['prix_affiche'], 0, ',', ' ') . ' ' . ($d['devise'] ?? 'MAD')) ?></li><?php endif; ?>
+  <?php if (!empty($d['budget_max'])): ?><li>Budget max : <?= h(number_format((float)$d['budget_max'], 0, ',', ' ') . ' ' . ($d['devise'] ?? 'MAD')) ?></li><?php endif; ?>
+</ul>
+
+<h2>Commission</h2>
+<p>Commission : <span class="fill"><?= h(($d['commission_pct'] ?? '') . ' %') ?> du prix de vente / location, à la charge du <span class="fill">mandant / acquéreur</span> (à préciser).</p>
+
+<h2>Durée et exclusivité</h2>
+<p>Durée du mandat : <span class="fill">3 mois</span> renouvelable. Type : <span class="fill">non exclusif / exclusif</span> (à préciser).</p>
+
+<h2>Signatures</h2>
+<div class="signature">
+  <div><b>Le mandant</b><div class="line"></div><p style="font-size:9pt;color:#666;">Lu et approuvé, signature</p></div>
+  <div><b>Le mandataire</b><div class="line"></div><p style="font-size:9pt;color:#666;">Lu et approuvé, signature</p></div>
+</div>
+
+<p style="text-align:center; font-size:8pt; color:#888; margin-top:24px;">Document brouillon Ocre Immo. À valider par un professionnel du droit avant signature.</p>
+<script>window.addEventListener('load', () => setTimeout(() => window.print(), 600));</script>
+</body></html>
+<?php
+exit;
+}
 ?><!DOCTYPE html>
 <html lang="fr">
 <head>
