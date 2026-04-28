@@ -26,7 +26,7 @@
 <link rel="manifest" href="/manifest.json?v=19">
 <meta name="apple-mobile-web-app-title" content="OCRE immo">
 <meta name="description" content="CRM immobilier professionnel Ocre Immo : gestion clients, biens, dossiers offres/demandes, planning RDV">
-<!-- V18.48 — OpenGraph + Twitter Card complets -->
+<!-- V18.49 — OpenGraph + Twitter Card complets -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://app.ocre.immo/">
 <meta property="og:site_name" content="OCRE immo">
@@ -38,7 +38,7 @@
 <meta name="twitter:title" content="OCRE immo — Gestion immobilière">
 <meta name="twitter:description" content="CRM immobilier professionnel pour agents, concierges et gestionnaires">
 <meta name="twitter:image" content="https://app.ocre.immo/icons/icon-512.png?v=18.40.1">
-<!-- V18.48 — apple-touch-startup-image (10 résolutions portraits iPhone + iPad) -->
+<!-- V18.49 — apple-touch-startup-image (10 résolutions portraits iPhone + iPad) -->
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/icons/splash/splash-iphone-15-pro-max-1290x2796.png?v=18.41">
 <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/icons/splash/splash-iphone-15-pro-1179x2556.png?v=18.41">
 <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/icons/splash/splash-iphone-14-1170x2532.png?v=18.41">
@@ -3984,10 +3984,26 @@ function PillIconButton({icon, onClick, title, active, style}) {
     </button>
   );
 }
-// TargetWithBadge — icône 🎯 Header + pastille rouge matchs non vus (count figé à 0,
-// compteur câblé plus tard). Emoji aligné sur le niveau dossier (~9002) pour cohérence.
+// TargetWithBadge — icône 🎯 Header + pastille rouge matchs non vus.
+// Compteur câblé : GET /api/matches.php?action=count au montage + polling 60s.
 function TargetWithBadge({onClick, title}) {
-  const [count] = React.useState(0);
+  const [count, setCount] = React.useState(0);
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchCount() {
+      try {
+        const tk = localStorage.getItem('ocre_token') || '';
+        if (!tk) return;
+        const r = await fetch('/api/matches.php?action=count', {headers:{'X-Session-Token': tk}});
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!cancelled && j && j.ok && j.counts) setCount(Number(j.counts.non_vu) || 0);
+      } catch (e) {}
+    }
+    fetchCount();
+    const id = setInterval(fetchCount, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
   const label = count > 9 ? '9+' : String(count);
   return (
     <div style={{position:'relative', display:'inline-flex', flexShrink:0}}>
@@ -4993,7 +5009,7 @@ function PWAInstallOverlay({onClose}) {
   );
 }
 
-// V18.48 — Workflow Publier sur ocre.immo. Bouton affiché en bas des dossiers Vendeur/Bailleur.
+// V18.49 — Workflow Publier sur ocre.immo. Bouton affiché en bas des dossiers Vendeur/Bailleur.
 // PublishButton déclenche PublishPreviewModal qui affiche une preview WYSIWYG + champs
 // éditables (titre, description, vertical). Post-publi : PublishSuccessModal "site en cours
 // de création". Gestion post-publi : bouton devient "Gérer la publication" + toggle visibility.
@@ -5273,7 +5289,7 @@ function PublishSuccessModal({result, onClose}) {
   );
 }
 
-// V18.48 — SW auto-update : détection updatefound + bannière non-bloquante + auto-reload idle.
+// V18.49 — SW auto-update : détection updatefound + bannière non-bloquante + auto-reload idle.
 // Un seul enregistrement SW au chargement. Le nouveau SW reste "waiting" jusqu'à SKIP_WAITING
 // envoyé depuis la bannière (ou auto-reload si user idle > 5min sans form ouvert).
 (function setupServiceWorkerUpdate() {
@@ -5820,6 +5836,9 @@ function App() {
   if (view === 'profil_picker') {
     return <ProfilPickerView onBack={() => setView('list')} onPick={pickProfilAndOpenForm}/>;
   }
+  if (view === 'matches') {
+    return <MatchesView onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
+  }
   if (view === 'downloads') {
     return <DownloadsView onBack={() => setView('list')}
       showToast={showToast} toast={toast}
@@ -5855,6 +5874,7 @@ function App() {
       stagedCount={stagedCount} openDownloads={() => setView('downloads')}
       promotedId={promotedId}
       openSharePlaceholder={() => setSharePlaceholderOpen(true)}
+      openMatches={() => setView('matches')}
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
       openPrefs={() => { setUserMenu(false); setView('prefs'); }}
       openAgentProfile={() => { setUserMenu(false); setView('agent_profile'); }}
@@ -7523,6 +7543,194 @@ function AgentPreviewModal({profile: p, onClose}) {
   );
 }
 
+// MatchesView — page cible variante A (lecture seule, classify/mark_seen).
+// 4 onglets (Non vus / Pertinents / À surveiller / Écartés), liste de cards
+// avec score à gauche, 2 dossiers côte à côte, critères matchés/divergents,
+// actions Pertinent / À surveiller / Écarter. Tap card = mark_seen.
+function MatchesView({onBack, showToast, toast}) {
+  const [tab, setTab] = React.useState('non_vu');
+  const [items, setItems] = React.useState([]);
+  const [counts, setCounts] = React.useState({non_vu:0, vu:0, pertinent:0, surveiller:0, ecarte:0});
+  const [loading, setLoading] = React.useState(true);
+  const [busy, setBusy] = React.useState(false);
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  async function refresh() {
+    setLoading(true);
+    try {
+      const [listR, countR] = await Promise.all([
+        fetch('/api/matches.php?action=list&status=' + tab + '&limit=50', {headers:{'X-Session-Token': token()}}).then(r => r.json()),
+        fetch('/api/matches.php?action=count', {headers:{'X-Session-Token': token()}}).then(r => r.json()),
+      ]);
+      if (listR && listR.ok) setItems(listR.matches || []);
+      if (countR && countR.ok && countR.counts) setCounts(countR.counts);
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setLoading(false);
+  }
+  React.useEffect(() => { refresh(); }, [tab]);
+
+  async function callAction(matchId, action, payload) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await fetch('/api/matches.php?action=' + action, {
+        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+        body: JSON.stringify(payload),
+      });
+      const d = await r.json();
+      if (d && d.ok) await refresh();
+      else showToast && showToast((d && d.error) || 'Échec');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setBusy(false);
+  }
+
+  function classify(matchId, status) { callAction(matchId, 'classify', {match_id: matchId, status}); }
+  function markSeen(matchId)        { callAction(matchId, 'mark_seen', {match_id: matchId}); }
+
+  const TABS = [
+    {k:'non_vu',     l:'Non vus',     n: counts.non_vu},
+    {k:'pertinent',  l:'Pertinents',  n: counts.pertinent},
+    {k:'surveiller', l:'À surveiller', n: counts.surveiller},
+    {k:'ecarte',     l:'Écartés',     n: counts.ecarte},
+  ];
+
+  const ICONS = {
+    refresh: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15A9 9 0 0 1 5.64 18.36L1 14"/></svg>,
+    globe:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+    check:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+    cross:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+    eye:     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  };
+
+  function dossierCard(d) {
+    if (!d) return <div style={{padding:10, color:'#8B7F6E', fontSize:12}}>Dossier introuvable</div>;
+    const data = (() => { try { return typeof d.data === 'string' ? JSON.parse(d.data) : (d.data || {}); } catch (e) { return {}; } })();
+    const bien = data.bien || {};
+    const nom = d.societe_nom || ((d.prenom || '') + ' ' + (d.nom || '')).trim() || '—';
+    const titreType = bien.type || (Array.isArray(bien.types) ? bien.types[0] : '') || d.projet || '';
+    const ville = bien.ville || '';
+    const quartier = bien.quartier || '';
+    const surface = bien.surface ? bien.surface + ' m²' : '';
+    const chambres = bien.chambres ? bien.chambres + ' ch.' : '';
+    const prix = data.prix_affiche ? (data.prix_affiche/1000000).toFixed(2) + ' M MAD'
+               : data.budget_max   ? (data.budget_max/1000000).toFixed(2) + ' M MAD max'
+               : data.loyer_demande ? data.loyer_demande + ' MAD/mois'
+               : data.loyer_max ? data.loyer_max + ' MAD/mois max'
+               : '';
+    return (
+      <div style={{padding:10, fontSize:12, lineHeight:1.45, color:'#2A2018'}}>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'#8B5E3C', marginBottom:2}}>{nom}</div>
+        <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:6}}>{d.projet}</div>
+        <div><b>{titreType}</b> {chambres}</div>
+        <div>{ville}{quartier ? ' — ' + quartier : ''}</div>
+        {surface && <div>{surface}</div>}
+        {prix && <div style={{marginTop:4, fontWeight:700, color:'#8B5E3C'}}>{prix}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
+      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
+        <button onClick={onBack} style={{background:'none', border:'none', fontSize:20, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit'}}>←</button>
+        <div style={{flex:1, minWidth:0}}>
+          <div style={{display:'flex', alignItems:'center', gap:8}}>
+            <span style={{fontSize:18, lineHeight:1}}>🎯</span>
+            <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C'}}>Page cible</span>
+          </div>
+          <div style={{fontSize:12, color:'#8B7F6E', marginTop:1}}>{counts.non_vu} match(s) non vu(s)</div>
+        </div>
+      </div>
+
+      <div style={{padding:'12px 14px 6px', display:'flex', gap:8}}>
+        <button onClick={() => showToast && showToast('Algo de matching en cours de mise en place — mission 16 à venir')}
+          style={{flex:1, padding:'10px 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'pointer'}}>
+          {ICONS.refresh}<span>Scan WSp + WSc</span>
+        </button>
+        <button onClick={() => showToast && showToast('Algo de matching en cours de mise en place — mission 16 à venir')}
+          style={{flex:1, padding:'10px 12px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'pointer'}}>
+          {ICONS.globe}<span>Scan agences & web</span>
+        </button>
+      </div>
+
+      <div style={{padding:'4px 14px 8px', display:'flex', gap:6, overflowX:'auto'}}>
+        {TABS.map(t => {
+          const active = tab === t.k;
+          return (
+            <button key={t.k} onClick={() => setTab(t.k)}
+              style={{padding:'7px 12px', borderRadius:16, border:'1px solid ' + (active ? '#8B5E3C' : '#D8CCB4'),
+                      background: active ? '#8B5E3C' : '#fff', color: active ? '#fff' : '#5A4E3D',
+                      fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
+                      display:'flex', alignItems:'center', gap:6}}>
+              <span>{t.l}</span>
+              {t.n > 0 && (
+                <span style={{minWidth:18, height:18, padding:'0 5px',
+                              background: t.k === 'non_vu' ? '#DC2626' : (active ? 'rgba(255,255,255,.25)' : '#F0E8D8'),
+                              color: t.k === 'non_vu' ? '#fff' : (active ? '#fff' : '#8B5E3C'),
+                              borderRadius:9, fontSize:11, fontWeight:700, lineHeight:'18px', textAlign:'center'}}>{t.n}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{flex:1, overflowY:'auto', padding:'4px 14px 14px'}}>
+        {loading && <div style={{textAlign:'center', color:'#8B7F6E', padding:30}}>Chargement…</div>}
+        {!loading && items.length === 0 && (
+          <div style={{textAlign:'center', color:'#8B7F6E', padding:30, fontSize:13}}>
+            Aucun match dans cet onglet.
+          </div>
+        )}
+        {!loading && items.map(m => {
+          const cm = m.criteres_matched || {};
+          const matched = Array.isArray(cm.matched) ? cm.matched : [];
+          const divergent = Array.isArray(cm.divergent) ? cm.divergent : [];
+          return (
+            <div key={m.id} className="ocre-card" style={{marginBottom:12, padding:0, background:'#fff', borderRadius:10, border:'1px solid #E5DDC8', overflow:'hidden'}}>
+              <div onClick={() => markSeen(m.id)}
+                style={{cursor:'pointer', display:'grid', gridTemplateColumns:'56px 1fr 1fr', borderBottom:'1px solid #F0E8D8'}}>
+                <div style={{background: m.score_pct >= 80 ? '#FBE9E7' : m.score_pct >= 60 ? '#FFF4E0' : '#F0E8D8',
+                             color: m.score_pct >= 80 ? '#C0392B' : m.score_pct >= 60 ? '#B26D3A' : '#8B7F6E',
+                             display:'flex', alignItems:'center', justifyContent:'center',
+                             fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700}}>
+                  {m.score_pct}<span style={{fontSize:13}}>%</span>
+                </div>
+                <div style={{borderRight:'1px solid #F0E8D8'}}>{dossierCard(m.dossier_a)}</div>
+                <div>{dossierCard(m.dossier_b)}</div>
+              </div>
+              {(matched.length + divergent.length > 0) && (
+                <div style={{padding:'8px 10px', background:'#FAF8F2', borderBottom:'1px solid #F0E8D8', fontSize:11, color:'#5A4E3D', display:'flex', flexWrap:'wrap', gap:4}}>
+                  {matched.map((c,i) => (
+                    <span key={'m'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'2px 7px', background:'#E6F3E1', color:'#2F7D32', borderRadius:10, fontSize:11, fontWeight:600}}>{ICONS.check}{c}</span>
+                  ))}
+                  {divergent.map((c,i) => (
+                    <span key={'d'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'2px 7px', background:'#FBE9E7', color:'#C0392B', borderRadius:10, fontSize:11, fontWeight:600}}>{ICONS.cross}{c}</span>
+                  ))}
+                </div>
+              )}
+              <div style={{display:'flex', gap:0}}>
+                <button onClick={() => classify(m.id, 'pertinent')} disabled={busy}
+                  style={{flex:1, padding:'10px 6px', background:'transparent', border:'none', borderRight:'1px solid #F0E8D8', color:'#2F7D32', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5}}>
+                  {ICONS.check}<span>Pertinent</span>
+                </button>
+                <button onClick={() => classify(m.id, 'surveiller')} disabled={busy}
+                  style={{flex:1, padding:'10px 6px', background:'transparent', border:'none', borderRight:'1px solid #F0E8D8', color:'#B26D3A', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5}}>
+                  {ICONS.eye}<span>À surveiller</span>
+                </button>
+                <button onClick={() => classify(m.id, 'ecarte')} disabled={busy}
+                  style={{flex:1, padding:'10px 6px', background:'transparent', border:'none', color:'#8B7F6E', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5}}>
+                  {ICONS.cross}<span>Écarter</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {toast && <Toast msg={toast}/>}
+    </div>
+  );
+}
+
 function PrefsView({currentUser, onBack, showToast, toast}) {
   const [prefs, setPrefs] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -8405,7 +8613,7 @@ function ListView(props) {
         right={
           <div data-header-actions="1" style={{display:'flex', alignItems:'center', gap:8}}>
             {/* Header droite : cible matchs + Share (placeholder modal) + Search (toggle SearchBar) + Archive toggle. */}
-            <TargetWithBadge title="Matchs détectés"/>
+            <TargetWithBadge title="Matchs détectés" onClick={() => props.openMatches && props.openMatches()}/>
             <PillIconButton icon={<ShareIcon size={18}/>} title="Partager mes dossiers"
               onClick={() => props.openSharePlaceholder && props.openSharePlaceholder()}/>
             <PillIconButton icon={
@@ -10581,7 +10789,7 @@ function FormView(props) {
   const [imageOverlay, setImageOverlay] = useState(false);
   // V18.37 — modal "+ Ajouter une casquette" (créer nouveau dossier avec mêmes coordonnées).
   const [addCasquetteOpen, setAddCasquetteOpen] = useState(false);
-  // V18.48 — modal publication vitrine ocre.immo.
+  // V18.49 — modal publication vitrine ocre.immo.
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishSuccess, setPublishSuccess] = useState(null);
   // V18.25 — responsive : <420px les boutons footer Archiver/Supprimer affichent l'icône seule.
@@ -11579,6 +11787,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428c" defer></script>
+<script src="/v20-bridge.js?v=20260428d" defer></script>
 </body>
 </html>
