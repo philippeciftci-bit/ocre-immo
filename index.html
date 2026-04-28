@@ -9226,11 +9226,108 @@ function PreferencesPage({onBack, showToast, currentUser}) {
 // 4 onglets (Non vus / Pertinents / À surveiller / Écartés), liste de cards
 // avec score à gauche, 2 dossiers côte à côte, critères matchés/divergents,
 // actions Pertinent / À surveiller / Écarter. Tap card = mark_seen.
+// M/2026/04/28/62 — ScanWebModal : popup multi-checkbox sources + résultats unifiés.
+function ScanWebModal({onClose, showToast, clientId}) {
+  const [sources, setSources] = React.useState({seloger: true, bienici: true, fb_marketplace: false, instagram: false});
+  const [scanning, setScanning] = React.useState(false);
+  const [results, setResults] = React.useState(null);
+  const [ville, setVille] = React.useState('');
+  const [budgetMax, setBudgetMax] = React.useState('');
+  const [surfaceMin, setSurfaceMin] = React.useState('');
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  async function launch() {
+    setScanning(true);
+    try {
+      const params = new URLSearchParams({
+        sources: Object.entries(sources).filter(([k,v]) => v).map(([k]) => k).join(','),
+        ville, budget_max: budgetMax || '0', surface_min: surfaceMin || '0',
+      });
+      if (clientId) params.set('client_id', clientId);
+      const r = await fetch('/api/scan_web.php?action=launch&' + params, {headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (r && r.ok) setResults(r.results);
+      else showToast && showToast((r && r.error) || 'Erreur');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setScanning(false);
+  }
+
+  async function importListing(listing) {
+    try {
+      const r = await fetch('/api/scan_web.php?action=import', {
+        method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+        body: JSON.stringify({listing}),
+      }).then(r => r.json());
+      if (r && r.ok) showToast && showToast('Importé en dossier (brouillon)');
+      else showToast && showToast((r && r.error) || 'Échec');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+  }
+
+  return (
+    <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:10}}>
+      <div style={{background:'#fff', borderRadius:12, padding:18, maxWidth:500, width:'100%', maxHeight:'90vh', overflow:'auto'}}>
+        <div style={{display:'flex', alignItems:'center', marginBottom:14}}>
+          <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C'}}>Scan Web</div>
+          <button onClick={onClose} style={{background:'none', border:'none', fontSize:18, cursor:'pointer', color:'#8B7F6E'}}>×</button>
+        </div>
+        {!results && (
+          <>
+            <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:10}}>Recherchez des biens sur des sources externes (cache 6h, rate limit respecté).</div>
+            <input value={ville} onChange={e => setVille(e.target.value)} placeholder="Ville (Marrakech, Paris…)"
+              style={{width:'100%', padding:8, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:8, boxSizing:'border-box'}}/>
+            <div style={{display:'flex', gap:8, marginBottom:10}}>
+              <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" placeholder="Budget max (EUR)"
+                style={{flex:1, padding:8, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:13, boxSizing:'border-box'}}/>
+              <input value={surfaceMin} onChange={e => setSurfaceMin(e.target.value)} type="number" placeholder="Surface min (m²)"
+                style={{flex:1, padding:8, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:13, boxSizing:'border-box'}}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              {[{k:'seloger', l:'SeLoger'}, {k:'bienici', l:'Bien\'ici'}, {k:'fb_marketplace', l:'FB Marketplace (cookie requis)'}, {k:'instagram', l:'Instagram (bientôt)'}].map(s => (
+                <label key={s.k} style={{display:'flex', alignItems:'center', gap:8, padding:'4px 0', fontSize:13}}>
+                  <input type="checkbox" checked={!!sources[s.k]} disabled={s.k === 'instagram'}
+                    onChange={e => setSources({...sources, [s.k]: e.target.checked})}/>
+                  <span>{s.l}</span>
+                </label>
+              ))}
+            </div>
+            <button onClick={launch} disabled={scanning || !ville} style={{width:'100%', padding:'10px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor: scanning ? 'wait' : 'pointer'}}>
+              {scanning ? 'Scan en cours…' : 'Lancer le scan'}
+            </button>
+          </>
+        )}
+        {results && (
+          <>
+            <button onClick={() => setResults(null)} style={{padding:'4px 10px', background:'transparent', border:'1px solid #B89968', borderRadius:6, fontFamily:'inherit', fontSize:11.5, color:'#8B5E3C', cursor:'pointer', marginBottom:10}}>← Nouveau scan</button>
+            {Object.entries(results).map(([src, data]) => (
+              <div key={src} style={{marginBottom:14}}>
+                <div style={{fontSize:11, textTransform:'uppercase', letterSpacing:.5, color:'#8B7F6E', fontWeight:700, marginBottom:6}}>
+                  {src} {data.cached ? '(cache)' : ''} · {(data.results || []).length} résultats {data.error && <span style={{color:'#DC2626'}}>· {data.error}</span>}
+                </div>
+                {(data.results || []).slice(0, 10).map((l, i) => (
+                  <div key={i} style={{padding:8, border:'1px solid #EDE6DC', borderRadius:6, marginBottom:6, background:'#FAF7F0'}}>
+                    <div style={{fontSize:12.5, fontWeight:600, color:'#2A2018'}}>{l.title}</div>
+                    <div style={{fontSize:11, color:'#8B7F6E'}}>{l.location_text} · {l.surface ? l.surface + ' m²' : ''} {l.rooms ? '· ' + l.rooms + ' p' : ''}</div>
+                    {l.price && <div style={{fontSize:12, color:'#8B5E3C', fontWeight:700, marginTop:2}}>{Number(l.price).toLocaleString('fr-FR')} {l.currency || 'EUR'}</div>}
+                    <div style={{display:'flex', gap:6, marginTop:6}}>
+                      {l.url && <a href={l.url} target="_blank" rel="noopener" style={{padding:'4px 10px', background:'transparent', border:'1px solid #B89968', borderRadius:5, fontSize:11, color:'#8B5E3C', textDecoration:'none'}}>Voir source</a>}
+                      <button onClick={() => importListing(l)} style={{padding:'4px 10px', background:'#059669', color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer'}}>Importer dossier</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MatchesView({onBack, openMatchDetail, showToast, toast}) {
   const [tab, setTab] = React.useState('a_traiter');
   const [items, setItems] = React.useState([]);
   const [counts, setCounts] = React.useState({non_vu:0, vu:0, pertinent:0, surveiller:0, ecarte:0});
   const [loading, setLoading] = React.useState(true);
+  const [scanWebOpen, setScanWebOpen] = React.useState(false);
   const token = () => localStorage.getItem('ocre_token') || '';
 
   async function refresh() {
@@ -9311,11 +9408,12 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
           style={{flex:1, padding:'10px 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'not-allowed', opacity:0.5}}>
           {ICONS.refresh}<span>Scan Ocre</span>
         </button>
-        <button disabled title="Disponible bientôt"
-          style={{flex:1, padding:'10px 12px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'not-allowed', opacity:0.5}}>
+        <button onClick={() => setScanWebOpen(true)} title="Lancer un scan des sources externes"
+          style={{flex:1, padding:'10px 12px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'pointer'}}>
           {ICONS.globe}<span>Scan Web</span>
         </button>
       </div>
+      {scanWebOpen && <ScanWebModal onClose={() => setScanWebOpen(false)} showToast={showToast}/>}
 
       <div style={{padding:'4px 14px 8px', display:'flex', gap:6, overflowX:'auto'}}>
         {TABS.map(t => {
