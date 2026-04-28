@@ -1,150 +1,284 @@
 <?php
 // M/2026/04/28/16 — Helpers seeder dossiers démo mode test.
-// Découplés de api/seed.php (qui les require_once + dispatch HTTP) pour qu'ils
-// soient appelables depuis le hook signup (auth_v20.php) sans déclencher
-// requireAuth() de l'endpoint.
+// M/2026/04/28/23 — Refonte panier v2 : 10 dossiers ultra-réalistes Marrakech
+// (Bouzid, El Fassi, Atlas Invest, Tahiri, Dubois, Médina Heritage, Benhima,
+// Lemoine, Oufkir, Atlas Riads). 80%+ champs remplis, prix et quartiers réalistes
+// 2025. 3 paires matchantes 95/75/50 %. Suppression franche des seed_ids v1
+// (préfixe seed-2026-04-28-pair*/libre*) — remplacés par préfixe seed-2026-04-28-v2-*.
 require_once __DIR__ . '/router.php';
 
-// Données canoniques (10 dossiers, 3 paires matchantes 95%/75%/50% + 4 libres).
 function seedDossiersV1(): array {
     return [
-      [ 'seed_id' => 'seed-2026-04-28-pair1-acheteur-villa-palmeraie',
+      // === Paire 1 (~95 %) — Bouzid acheteur ↔ El Fassi vendeur, villa Palmeraie ===
+      [ 'seed_id' => 'seed-2026-04-28-v2-pair1-bouzid-acheteur-villa-palmeraie',
         'projet' => 'Acheteur', 'is_investisseur' => 0,
-        'prenom' => 'Karim', 'nom' => 'Benjelloun', 'societe_nom' => null,
-        'tel' => '+212 6 61 11 22 01', 'email' => 'karim.benjelloun@example.com',
+        'prenom' => 'Karim et Yasmina', 'nom' => 'Bouzid', 'societe_nom' => null,
+        'tel' => '+33 6 21 47 89 02', 'email' => 'karim.bouzid@example.com',
         'vertical' => 'vente',
         'data' => [
           'profil_type' => 'Particulier', 'projet' => 'Acheteur',
-          'nationalite' => 'MA', 'pays_residence' => 'MA',
-          'budget_max' => 8000000,
-          'bien' => [ 'pays' => 'MA', 'types' => ['Villa'], 'type' => 'Villa',
-            'ville' => 'Marrakech', 'quartier' => 'Palmeraie',
-            'chambres' => 4, 'surface' => 300, 'terrain' => 1500 ],
-          'notes' => '[DEMO-SEED-V1] Acheteur villa Palmeraie 4ch — paire matchante 1 (~95%).' ]
+          'nationalite' => 'FR', 'pays_residence' => 'FR', 'langue' => 'FR',
+          'canal_prefere' => 'WhatsApp', 'origine' => 'recommandation amie',
+          'budget_min' => 7000000, 'budget_max' => 8000000, 'mode_financement' => 'cash',
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Villa'], 'type' => 'Villa',
+            'ville' => 'Marrakech', 'quartier' => 'Palmeraie', 'rayon_km' => 5,
+            'chambres' => 4, 'sdb' => 3, 'surface' => 300, 'surface_terrain' => 1500,
+            'etat' => 'récent', 'exposition' => 'sud',
+            'equipements' => ['piscine' => true, 'parking' => 2, 'jardin' => 1500, 'terrasse' => 60, 'climatisation' => true],
+          ],
+          'notes' => 'Couple FR pour résidence secondaire familiale, séjours réguliers Marrakech. Cherche villa Palmeraie avec piscine chauffée et grand jardin paysager. Visite en mai prévue.',
+        ],
       ],
-      [ 'seed_id' => 'seed-2026-04-28-pair1-vendeur-villa-palmeraie',
+      [ 'seed_id' => 'seed-2026-04-28-v2-pair1-elfassi-vendeur-villa-palmeraie',
         'projet' => 'Vendeur', 'is_investisseur' => 0,
-        'prenom' => 'Amine', 'nom' => 'Tazi', 'societe_nom' => null,
-        'tel' => '+212 6 61 11 22 02', 'email' => 'amine.tazi@example.com',
+        'prenom' => 'Hassan et Naima', 'nom' => 'El Fassi', 'societe_nom' => null,
+        'tel' => '+212 6 61 78 23 45', 'email' => 'hassan.elfassi@example.com',
         'vertical' => 'vente',
         'data' => [
           'profil_type' => 'Particulier', 'projet' => 'Vendeur',
-          'nationalite' => 'MA', 'pays_residence' => 'MA',
-          'prix_affiche' => 8200000,
-          'bien' => [ 'pays' => 'MA', 'types' => ['Villa'], 'type' => 'Villa',
+          'nationalite' => 'MA', 'pays_residence' => 'MA', 'langue' => 'FR',
+          'canal_prefere' => 'Tel', 'origine' => 'contact direct',
+          'prix_affiche' => 8200000, 'prix_plancher' => 7900000, 'devise' => 'MAD',
+          'charges' => '1500 MAD/mois (gardien + entretien jardin)',
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Villa'], 'type' => 'Villa',
             'ville' => 'Marrakech', 'quartier' => 'Palmeraie',
-            'chambres' => 4, 'surface' => 320, 'terrain' => 1700 ],
-          'notes' => '[DEMO-SEED-V1] Vendeur villa Palmeraie 4ch — paire matchante 1 (~95%).' ]
+            'chambres' => 4, 'sdb' => 3, 'surface' => 320, 'surface_terrain' => 1700, 'surface_annexes' => 60,
+            'annee_construction' => 2018, 'etat' => 'récent', 'exposition' => 'sud-ouest',
+            'equipements' => ['piscine' => '50 m² chauffée', 'parking' => 2, 'jardin' => 1500, 'terrasse' => 80, 'climatisation' => true, 'cheminee' => true, 'cuisine_equipee' => true],
+          ],
+          'notes' => 'Vente villa Palmeraie suite départ Émirats Arabes Unis. Bien entretenu, jardin paysagé palmiers et oliviers, piscine chauffée. Sécurité 24/7 résidence privée. Disponibilité immédiate.',
+        ],
       ],
-      [ 'seed_id' => 'seed-2026-04-28-pair2-acheteur-appt-anfa',
+
+      // === Paire 2 (~75 %) — Atlas Invest acheteur ↔ Tahiri vendeur, appt Casa ===
+      [ 'seed_id' => 'seed-2026-04-28-v2-pair2-atlasinvest-acheteur-appt-anfa',
         'projet' => 'Acheteur', 'is_investisseur' => 0,
-        'prenom' => null, 'nom' => null, 'societe_nom' => 'Anfa Invest SARL',
-        'tel' => '+212 5 22 33 44 55', 'email' => 'contact@anfa-invest.example.com',
+        'prenom' => null, 'nom' => null, 'societe_nom' => 'Atlas Invest SARL',
+        'tel' => '+212 5 22 49 71 33', 'email' => 'contact@atlas-invest.example.com',
         'vertical' => 'vente',
         'data' => [
           'profil_type' => 'Société', 'projet' => 'Acheteur',
-          'nationalite' => 'MA', 'pays_residence' => 'MA',
-          'budget_max' => 4000000,
-          'bien' => [ 'pays' => 'MA', 'types' => ['Appartement'], 'type' => 'Appartement',
-            'ville' => 'Casablanca', 'quartier' => 'Anfa',
-            'chambres' => 3, 'surface' => 150 ],
-          'notes' => '[DEMO-SEED-V1] Société acheteur appt Anfa 3ch — paire matchante 2 (~75%).' ]
+          'forme_juridique' => 'SARL', 'rc' => 'RC Casablanca 458921',
+          'representant_legal' => 'M. Younes Berrada (DG)',
+          'nationalite' => 'MA', 'pays_residence' => 'MA', 'langue' => 'FR',
+          'canal_prefere' => 'Email', 'origine' => 'salon immobilier Casablanca',
+          'budget_min' => 3500000, 'budget_max' => 4000000, 'mode_financement' => 'cash société',
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Appartement'], 'type' => 'Appartement',
+            'ville' => 'Casablanca', 'quartier' => 'Anfa', 'rayon_km' => 3,
+            'chambres' => 3, 'sdb' => 2, 'surface' => 150, 'etage' => 'élevé',
+            'etat' => 'neuf ou récent',
+            'equipements' => ['parking' => 1, 'cave' => true, 'ascenseur' => true, 'climatisation' => true, 'balcon' => 10, 'vue' => 'mer'],
+          ],
+          'notes' => 'Logement de fonction directeur général. Standing élevé exigé, immeuble sécurisé proche Twin Center. Acquisition par la société (avantage fiscal).',
+        ],
       ],
-      [ 'seed_id' => 'seed-2026-04-28-pair2-vendeur-appt-bourgogne',
+      [ 'seed_id' => 'seed-2026-04-28-v2-pair2-tahiri-vendeur-appt-bourgogne',
         'projet' => 'Vendeur', 'is_investisseur' => 0,
-        'prenom' => 'Leila', 'nom' => 'El Amrani', 'societe_nom' => null,
-        'tel' => '+212 6 61 22 33 03', 'email' => 'leila.elamrani@example.com',
+        'prenom' => 'Mohammed', 'nom' => 'Tahiri', 'societe_nom' => null,
+        'tel' => '+212 6 61 12 47 88', 'email' => 'mohammed.tahiri@example.com',
         'vertical' => 'vente',
         'data' => [
           'profil_type' => 'Particulier', 'projet' => 'Vendeur',
-          'nationalite' => 'MA', 'pays_residence' => 'MA',
-          'prix_affiche' => 3800000,
-          'bien' => [ 'pays' => 'MA', 'types' => ['Appartement'], 'type' => 'Appartement',
+          'nationalite' => 'MA', 'pays_residence' => 'MA', 'langue' => 'AR/FR',
+          'canal_prefere' => 'WhatsApp', 'origine' => 'notaire',
+          'prix_affiche' => 3800000, 'prix_plancher' => 3600000, 'devise' => 'MAD',
+          'charges' => '800 MAD/mois (syndic)',
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Appartement'], 'type' => 'Appartement',
             'ville' => 'Casablanca', 'quartier' => 'Bourgogne',
-            'chambres' => 3, 'surface' => 165 ],
-          'notes' => '[DEMO-SEED-V1] Vendeur appt Bourgogne 3ch — paire matchante 2 (~75%).' ]
+            'chambres' => 3, 'sdb' => 2, 'surface' => 165, 'etage' => '5e/8',
+            'annee_construction' => 2010, 'etat' => 'bon état général',
+            'equipements' => ['balcon' => 12, 'parking' => '1 sous-sol sécurisé', 'cave' => true, 'ascenseur' => true, 'climatisation' => true],
+          ],
+          'notes' => 'Vente succession parents. Appartement spacieux Bourgogne, balcon 12 m² agréable, parking sous-sol. Vente sans urgence, négociable.',
+        ],
       ],
-      [ 'seed_id' => 'seed-2026-04-28-pair3-investisseur-essaouira',
+
+      // === Paire 3 (~50 %) — Dubois investisseur ↔ Médina Heritage vendeur, Essaouira ===
+      [ 'seed_id' => 'seed-2026-04-28-v2-pair3-dubois-investisseur-essaouira',
         'projet' => 'Investisseur', 'is_investisseur' => 1,
-        'prenom' => 'Yassine', 'nom' => 'Oufkir', 'societe_nom' => null,
-        'tel' => '+212 6 61 33 44 04', 'email' => 'yassine.oufkir@example.com',
+        'prenom' => 'Olivier', 'nom' => 'Dubois', 'societe_nom' => null,
+        'tel' => '+33 6 78 14 22 91', 'email' => 'olivier.dubois@example.com',
         'vertical' => 'vente',
         'data' => [
           'profil_type' => 'Particulier', 'projet' => 'Investisseur',
-          'nationalite' => 'MA', 'pays_residence' => 'FR',
-          'budget_max' => 2000000,
-          'bien' => [ 'pays' => 'MA', 'types' => ['Riad','Maison'], 'type' => 'Riad',
-            'ville' => 'Essaouira', 'quartier' => 'Centre',
-            'chambres' => 3 ],
-          'notes' => '[DEMO-SEED-V1] Investisseur Essaouira centre — paire matchante 3 (~50%).' ]
+          'nationalite' => 'FR', 'pays_residence' => 'FR', 'langue' => 'FR',
+          'canal_prefere' => 'Email', 'origine' => 'web',
+          'budget_min' => 1500000, 'budget_max' => 2000000, 'mode_financement' => 'cash + crédit FR',
+          'rendement_cible_pct' => 6, 'horizon_ans' => 10,
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Riad', 'Appartement'], 'type' => 'Riad',
+            'ville' => 'Essaouira', 'quartier' => 'Centre', 'rayon_km' => 2,
+            'chambres' => 3, 'surface' => 130,
+            'etat' => 'rénové ou récent',
+          ],
+          'notes' => 'Investisseur expérimenté, déjà 2 biens locatifs Lyon. Vise rendement net 6 % par an, location courte durée Airbnb. Ouvert riad ou appartement bien placé centre Essaouira.',
+        ],
       ],
-      [ 'seed_id' => 'seed-2026-04-28-pair3-vendeur-riad-medina',
+      [ 'seed_id' => 'seed-2026-04-28-v2-pair3-medinaheritage-vendeur-riad-essaouira',
         'projet' => 'Vendeur', 'is_investisseur' => 0,
         'prenom' => null, 'nom' => null, 'societe_nom' => 'Médina Heritage SAS',
         'tel' => '+212 5 24 47 12 34', 'email' => 'contact@medina-heritage.example.com',
         'vertical' => 'vente',
         'data' => [
           'profil_type' => 'Société', 'projet' => 'Vendeur',
-          'nationalite' => 'MA', 'pays_residence' => 'MA',
-          'prix_affiche' => 2400000,
-          'bien' => [ 'pays' => 'MA', 'types' => ['Riad'], 'type' => 'Riad',
+          'forme_juridique' => 'SAS', 'rc' => 'RC Essaouira 12483',
+          'representant_legal' => 'Mme Caroline Vasseur (Présidente)',
+          'nationalite' => 'FR/MA', 'pays_residence' => 'MA', 'langue' => 'FR/EN',
+          'canal_prefere' => 'Email', 'origine' => 'contact direct',
+          'prix_affiche' => 2400000, 'prix_plancher' => 2250000, 'devise' => 'MAD',
+          'charges' => '1200 MAD/mois (entretien + taxe médina)',
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Riad'], 'type' => 'Riad',
             'ville' => 'Essaouira', 'quartier' => 'Médina',
-            'chambres' => 4, 'surface' => 220 ],
-          'notes' => '[DEMO-SEED-V1] Société vendeur riad Médina Essaouira — paire matchante 3 (~50%).' ]
+            'chambres' => 4, 'sdb' => 4, 'surface' => 220,
+            'annee_construction' => 1920, 'etat' => 'rénové 2022',
+            'equipements' => ['patio' => 30, 'terrasse' => '80 m² panoramique', 'climatisation' => true, 'cheminee' => 2, 'vue' => 'océan + médina', 'plomberie' => 'neuve', 'electricite' => 'neuve', 'toiture' => 'refaite'],
+          ],
+          'notes' => 'Riad médina rénové 2022 (chaux + tadelakt). Toiture refaite, plomberie/électricité neuves. Idéal maison d\'hôtes ou résidence secondaire luxe. Licence touristique transférable.',
+        ],
       ],
-      [ 'seed_id' => 'seed-2026-04-28-libre-acheteur-gueliz',
-        'projet' => 'Acheteur', 'is_investisseur' => 0,
-        'prenom' => 'Rachida', 'nom' => 'Bennani', 'societe_nom' => null,
-        'tel' => '+212 6 61 44 55 05', 'email' => 'rachida.bennani@example.com',
-        'vertical' => 'vente',
-        'data' => [
-          'profil_type' => 'Particulier', 'projet' => 'Acheteur',
-          'nationalite' => 'MA', 'pays_residence' => 'MA',
-          'budget_max' => 1800000,
-          'bien' => [ 'pays' => 'MA', 'types' => ['Appartement'], 'type' => 'Appartement',
-            'ville' => 'Marrakech', 'quartier' => 'Guéliz',
-            'chambres' => 2, 'surface' => 90 ],
-          'notes' => '[DEMO-SEED-V1] Acheteur appt Guéliz 2ch — dossier libre.' ]
-      ],
-      [ 'seed_id' => 'seed-2026-04-28-libre-locataire-maarif',
-        'projet' => 'Locataire', 'is_investisseur' => 0,
-        'prenom' => 'Sofia', 'nom' => 'Chraibi', 'societe_nom' => null,
-        'tel' => '+212 6 61 55 66 06', 'email' => 'sofia.chraibi@example.com',
-        'vertical' => 'location_longue',
-        'data' => [
-          'profil_type' => 'Particulier', 'projet' => 'Locataire',
-          'nationalite' => 'MA', 'pays_residence' => 'MA',
-          'loyer_max' => 8000,
-          'bien' => [ 'pays' => 'MA', 'types' => ['Appartement'], 'type' => 'Appartement',
-            'ville' => 'Casablanca', 'quartier' => 'Maarif',
-            'chambres' => 1, 'surface' => 60 ],
-          'notes' => '[DEMO-SEED-V1] Locataire studio Maarif — dossier libre.' ]
-      ],
-      [ 'seed_id' => 'seed-2026-04-28-libre-bailleur-hivernage',
+
+      // === Dossiers libres (4) ===
+      [ 'seed_id' => 'seed-2026-04-28-v2-libre-benhima-bailleur-gueliz',
         'projet' => 'Bailleur', 'is_investisseur' => 0,
-        'prenom' => 'Nabil', 'nom' => 'Idrissi', 'societe_nom' => null,
-        'tel' => '+212 6 61 66 77 07', 'email' => 'nabil.idrissi@example.com',
+        'prenom' => 'Fatima', 'nom' => 'Benhima', 'societe_nom' => null,
+        'tel' => '+212 6 61 33 78 41', 'email' => 'fatima.benhima@example.com',
         'vertical' => 'location_longue',
         'data' => [
           'profil_type' => 'Particulier', 'projet' => 'Bailleur',
-          'nationalite' => 'MA', 'pays_residence' => 'MA',
-          'loyer_demande' => 12000,
-          'bien' => [ 'pays' => 'MA', 'types' => ['Appartement'], 'type' => 'Appartement',
-            'ville' => 'Marrakech', 'quartier' => 'Hivernage',
-            'chambres' => 2, 'surface' => 110 ],
-          'notes' => '[DEMO-SEED-V1] Bailleur appt Hivernage 2ch — dossier libre.' ]
+          'nationalite' => 'MA', 'pays_residence' => 'MA', 'langue' => 'FR/AR',
+          'canal_prefere' => 'WhatsApp', 'origine' => 'bouche-à-oreille',
+          'loyer_demande' => 12000, 'devise' => 'MAD',
+          'charges' => 'incluses (eau + syndic)',
+          'depot' => '24000 MAD (2 mois)', 'duree_min_mois' => 12, 'mode_paiement' => 'virement mensuel',
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Appartement'], 'type' => 'Appartement',
+            'ville' => 'Marrakech', 'quartier' => 'Guéliz',
+            'chambres' => 2, 'sdb' => 2, 'surface' => 95, 'etage' => '3e/5',
+            'annee_construction' => 2015, 'etat' => 'meublé moderne',
+            'equipements' => ['balcon' => 8, 'parking' => 1, 'climatisation' => true, 'ascenseur' => true, 'meuble' => true, 'cuisine_equipee' => true, 'sdb_refaite' => 2023],
+          ],
+          'notes' => 'Appartement meublé Guéliz proche Carré Eden, restaurants et commerces. Cuisine équipée, salle de bain refaite 2023. Préférence locataire CDI ou expat avec garants.',
+        ],
       ],
-      [ 'seed_id' => 'seed-2026-04-28-libre-curieux-medina',
-        'projet' => 'Curieux', 'is_investisseur' => 0,
-        'prenom' => null, 'nom' => null, 'societe_nom' => 'Atlas Études Patrimoine SARL',
-        'tel' => '+212 5 24 38 90 12', 'email' => 'etudes@atlas-patrimoine.example.com',
-        'vertical' => null,
+      [ 'seed_id' => 'seed-2026-04-28-v2-libre-lemoine-locataire-gueliz',
+        'projet' => 'Locataire', 'is_investisseur' => 0,
+        'prenom' => 'Sébastien', 'nom' => 'Lemoine', 'societe_nom' => null,
+        'tel' => '+33 6 84 22 17 56', 'email' => 'sebastien.lemoine@example.com',
+        'vertical' => 'location_longue',
         'data' => [
-          'profil_type' => 'Société', 'projet' => 'Curieux',
-          'nationalite' => 'MA', 'pays_residence' => 'MA',
-          'bien' => [ 'pays' => 'MA', 'ville' => 'Marrakech', 'quartier' => 'Médina' ],
-          'notes' => '[DEMO-SEED-V1] Société curieuse étude marché Médina — dossier libre.' ]
+          'profil_type' => 'Particulier', 'projet' => 'Locataire',
+          'nationalite' => 'FR', 'pays_residence' => 'MA (en cours)', 'langue' => 'FR/EN',
+          'canal_prefere' => 'WhatsApp', 'origine' => 'web (groupe expats)',
+          'loyer_max' => 14000, 'devise' => 'MAD', 'charges_max' => 'incluses si possible',
+          'duree_souhaitee' => 'longue durée 2-3 ans', 'non_fumeur' => true, 'animaux' => false,
+          'profession' => 'Lead Developer SaaS (full remote)', 'employeur' => 'Berlin tech scale-up',
+          'revenus_mensuels_eq_mad' => 65000, 'garants' => 'employeur + caution bancaire',
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Appartement'], 'type' => 'Appartement',
+            'ville' => 'Marrakech', 'quartier' => 'Guéliz',
+            'chambres' => 2, 'surface' => 80,
+            'equipements_souhaites' => ['meuble' => true, 'climatisation' => true, 'parking' => true, 'fibre' => true],
+          ],
+          'notes' => 'Expat IT français, contrat full remote SaaS Berlin. Cherche appartement Guéliz longue durée pour s\'installer Marrakech. Discret, non-fumeur, sans animaux. Caution bancaire + garantie employeur disponibles.',
+        ],
       ],
+      [ 'seed_id' => 'seed-2026-04-28-v2-libre-oufkir-acheteur-villa-hivernage',
+        'projet' => 'Acheteur', 'is_investisseur' => 0,
+        'prenom' => 'Yassine', 'nom' => 'Oufkir', 'societe_nom' => null,
+        'tel' => '+212 6 61 92 14 78', 'email' => 'yassine.oufkir@example.com',
+        'vertical' => 'vente',
+        'data' => [
+          'profil_type' => 'Particulier', 'projet' => 'Acheteur',
+          'nationalite' => 'MA', 'pays_residence' => 'MA', 'langue' => 'FR/AR',
+          'canal_prefere' => 'Tel', 'origine' => 'agence partenaire',
+          'budget_min' => 6000000, 'budget_max' => 6500000, 'mode_financement' => 'crédit + cash 50/50',
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Villa'], 'type' => 'Villa',
+            'ville' => 'Marrakech', 'quartier' => 'Hivernage',
+            'chambres' => 5, 'sdb' => 4, 'surface' => 400, 'surface_terrain' => 800,
+            'etat' => 'récent ou bon état',
+            'equipements' => ['piscine' => true, 'parking' => 3, 'jardin' => 600, 'terrasse' => 100, 'climatisation' => true],
+          ],
+          'notes' => 'Famille marocaine 5 personnes (3 enfants en école internationale). Cherche villa Hivernage proche écoles. Piscine non-négociable, jardin sécurisé pour enfants. Acquisition résidence principale.',
+        ],
+      ],
+      [ 'seed_id' => 'seed-2026-04-28-v2-libre-atlasriads-vendeur-riad-medina',
+        'projet' => 'Vendeur', 'is_investisseur' => 0,
+        'prenom' => null, 'nom' => null, 'societe_nom' => 'Atlas Riads SARL',
+        'tel' => '+212 5 24 38 90 12', 'email' => 'contact@atlas-riads.example.com',
+        'vertical' => 'vente',
+        'data' => [
+          'profil_type' => 'Société', 'projet' => 'Vendeur',
+          'forme_juridique' => 'SARL', 'rc' => 'RC Marrakech 89472',
+          'representant_legal' => 'M. Karim Bensouda (Gérant)',
+          'nationalite' => 'MA', 'pays_residence' => 'MA', 'langue' => 'FR/EN',
+          'canal_prefere' => 'Email', 'origine' => 'web',
+          'prix_affiche' => 5800000, 'prix_plancher' => 5500000, 'devise' => 'MAD',
+          'vente_meublee' => true, 'charges' => '1500 MAD/mois',
+          'bien' => [
+            'pays' => 'MA', 'types' => ['Riad'], 'type' => 'Riad',
+            'ville' => 'Marrakech', 'quartier' => 'Médina',
+            'chambres' => 6, 'sdb' => 6, 'surface' => 280, 'surface_terrain' => 350,
+            'annee_construction' => 1900, 'etat' => 'rénové 2023',
+            'equipements' => ['patio' => 25, 'plunge_pool' => true, 'roof_terrasse' => 90, 'climatisation' => true, 'meuble' => true, 'vue' => 'Atlas + médina', 'licence_touristique' => 'en cours de transfert'],
+          ],
+          'notes' => 'Riad médina rénové 2023, projet vente complet meublé prêt à exploitation maison d\'hôtes. 6 suites, plunge pool patio, roof terrasse 90 m² vue Atlas. Licence touristique en cours de transfert. Idéal investisseur pro.',
+        ],
+      ],
+    ];
+}
+
+// Critères matchés (libellés parlants pour l'UI). Générés à l'insertion des
+// matches pour refléter les valeurs réelles de chaque dossier (Ville Marrakech ✓,
+// Quartier Palmeraie ✓, Surface 320 m² ≈ 300 m² ✓, etc.).
+function buildMatchCriteres(int $score, string $pairKey): array {
+    if ($pairKey === 'pair1') {
+        return [
+            'matched' => [
+                'Ville Marrakech',
+                'Quartier Palmeraie',
+                'Type Villa',
+                '4 chambres',
+                'Surface 320 m² ≈ 300 m²',
+                'Terrain 1 700 m² ≈ 1 500 m²',
+                'Budget 8,2 M ≈ 8 M MAD',
+                'Piscine + jardin',
+            ],
+            'divergent' => [],
+        ];
+    }
+    if ($pairKey === 'pair2') {
+        return [
+            'matched' => [
+                'Ville Casablanca',
+                'Type Appartement',
+                '3 chambres',
+                'Surface 165 m² ≈ 150 m²',
+                'Standing élevé',
+            ],
+            'divergent' => [
+                'Quartier Bourgogne ≠ Anfa',
+                'Prix 3,8 M ≈ 4 M (-5 %)',
+                'Acheteur société (logement de fonction)',
+            ],
+        ];
+    }
+    return [
+        'matched' => [
+            'Ville Essaouira',
+            'Type Riad compatible',
+        ],
+        'divergent' => [
+            'Quartier Médina ≠ Centre',
+            'Prix 2,4 M > Budget 2 M (+20 %)',
+            'Projet Investissement vs Riad résidentiel',
+            'Rendement 6 % vs vente meublée',
+        ],
     ];
 }
 
@@ -164,10 +298,16 @@ function ensureSeedMetaSchema(): void {
             vertical ENUM('vente','location_longue','sejour_court') NULL,
             data LONGTEXT NOT NULL
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        // M/2026/04/28/23 — UPSERT pour propager les évolutions du panier.
         $stmt = pdo_meta()->prepare(
-            "INSERT IGNORE INTO seed_clients_v1
+            "INSERT INTO seed_clients_v1
                 (seed_id, projet, is_investisseur, prenom, nom, societe_nom, tel, email, vertical, data)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                projet=VALUES(projet), is_investisseur=VALUES(is_investisseur),
+                prenom=VALUES(prenom), nom=VALUES(nom), societe_nom=VALUES(societe_nom),
+                tel=VALUES(tel), email=VALUES(email), vertical=VALUES(vertical),
+                data=VALUES(data)"
         );
         foreach (seedDossiersV1() as $d) {
             $stmt->execute([
@@ -211,4 +351,38 @@ function applySeedToTenant(PDO $tenantPdo, int $userId): array {
         $inserted++;
     }
     return ['inserted' => $inserted, 'skipped' => $skipped, 'total' => count($seeds)];
+}
+
+// M/2026/04/28/23 — Insère les 3 matches canoniques (95/75/50%) après seed.
+// Owner = user_id du tenant (= meta uid). Idempotent : INSERT IGNORE sur la
+// clé UNIQUE (dossier_a_id, dossier_b_id).
+function applyCanonicalMatches(PDO $tenantPdo, int $userId): int {
+    $get = $tenantPdo->prepare("SELECT id FROM clients WHERE user_id = ? AND seed_id = ?");
+    $resolve = function (string $seedId) use ($get, $userId) {
+        $get->execute([$userId, $seedId]);
+        $r = $get->fetch();
+        return $r ? (int) $r['id'] : null;
+    };
+    $pairs = [
+        ['pair1', 95, 'seed-2026-04-28-v2-pair1-bouzid-acheteur-villa-palmeraie', 'seed-2026-04-28-v2-pair1-elfassi-vendeur-villa-palmeraie'],
+        ['pair2', 75, 'seed-2026-04-28-v2-pair2-atlasinvest-acheteur-appt-anfa', 'seed-2026-04-28-v2-pair2-tahiri-vendeur-appt-bourgogne'],
+        ['pair3', 50, 'seed-2026-04-28-v2-pair3-dubois-investisseur-essaouira', 'seed-2026-04-28-v2-pair3-medinaheritage-vendeur-riad-essaouira'],
+    ];
+    $insertM = $tenantPdo->prepare(
+        "INSERT IGNORE INTO matches
+            (dossier_a_id, dossier_b_id, score_pct, source, status, owner_user_ids, criteres_matched, created_at)
+         VALUES (?, ?, ?, 'interne', 'non_vu', ?, ?, NOW())"
+    );
+    $owner = json_encode([$userId]);
+    $count = 0;
+    foreach ($pairs as $p) {
+        [$key, $score, $sa, $sb] = $p;
+        $aId = $resolve($sa);
+        $bId = $resolve($sb);
+        if (!$aId || !$bId) continue;
+        $criteres = json_encode(buildMatchCriteres($score, $key), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $insertM->execute([$aId, $bId, $score, $owner, $criteres]);
+        $count++;
+    }
+    return $count;
 }
