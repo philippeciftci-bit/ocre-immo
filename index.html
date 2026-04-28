@@ -3933,7 +3933,10 @@ function PillIconButton({icon, onClick, title, active, style}) {
     </button>
   );
 }
-// TargetWithBadge — icône 🎯 Header + pastille rouge matchs non vus.
+// TargetWithBadge — composant cible canonique.
+// Header (slot droit Liste, taille md, pastille rouge count) : <TargetWithBadge/>.
+// Card dossier ligne 2 ClientRow : rendu inline "🎯 N★" (même emoji 🎯, count =
+// matches pour ce dossier, ★ = match qualité élevée si max_score > 80 %).
 // Compteur câblé : GET /api/matches.php?action=count au montage + polling 60s.
 function TargetWithBadge({onClick, title}) {
   const [count, setCount] = React.useState(0);
@@ -9308,7 +9311,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             {matchInfo && matchInfo.count > 0 && (
               <button onClick={e => { e.stopPropagation(); onOpenMatches && onOpenMatches(); }}
                 style={{marginLeft:'auto', background:'none', border:'none', cursor:'pointer', padding:'2px 4px', fontSize:11.5, color: matchInfo.max_score > 80 ? '#C0392B' : '#B26D3A', fontWeight:700, flexShrink:0, fontFamily:'inherit', whiteSpace:'nowrap'}}
-                title="Voir les matches">🎯 {matchInfo.count}{matchInfo.max_score > 80 ? '★' : ''}</button>
+                title={'Voir les matches' + (matchInfo.max_score > 80 ? ' (★ = match qualité élevée, score > 80 %)' : '')}>🎯 {matchInfo.count}{matchInfo.max_score > 80 ? '★' : ''}</button>
             )}
           </div>
         </div>
@@ -11893,6 +11896,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428i" defer></script>
+<script src="/v20-bridge.js?v=20260428j" defer></script>
 </body>
 </html>
