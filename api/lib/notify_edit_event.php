@@ -4,6 +4,8 @@
 //   - Telegram : sendMessage avec inline_keyboard (chat_id = users.telegram_chat_id ou fallback)
 //   - email : log /var/log/ocre-edit-notifs.log (stub tant que SMTP non câblé)
 
+require_once __DIR__ . '/email_sender.php';
+
 if (!function_exists('notify_edit_event')) {
 
 function notify_edit_event_ensure_user_columns(): void {
@@ -164,12 +166,18 @@ function notify_edit_event(string $type, int $editId, int $clientId, int $actorU
             notify_edit_event_telegram((string) $u['telegram_chat_id'], $tgText, $kb);
         }
 
-        // 4. Email (stub log uniquement — SMTP non câblé)
+        // 4. Email via msmtp Gmail (fallback log stub si pas de secret)
         if (!empty($u['email_notifs_enabled']) && !empty($u['email'])) {
-            notify_edit_event_log_stub(sprintf(
-                "email_stub to=%s type=%s edit=%d title=%s",
-                $u['email'], $type, $editId, $title
-            ));
+            $linkUrl = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'zefk.ocre.immo') . '/edit/' . $editId;
+            $tpl = ocre_email_template($type, [
+                'title' => $title,
+                'subject' => "[Ocre] " . $title,
+                'body' => htmlspecialchars($body, ENT_QUOTES, 'UTF-8'),
+                'link_url' => $linkUrl,
+                'link_label' => $type === 'edit_pending' ? 'Voir et décider' : 'Ouvrir le dossier',
+            ]);
+            $sent = ocre_send_email($u['email'], $tpl['subject'], $tpl['html']);
+            notify_edit_event_log_stub("email " . ($sent ? 'sent' : 'fallback') . " to={$u['email']} type={$type} edit={$editId}");
         }
     }
 }
