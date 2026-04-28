@@ -252,9 +252,42 @@ const BASCULES = {
 };
 // V17.10 : PAYS / PAYS_BIEN / DIAL_CODES désormais chargés dynamiquement depuis /api/countries.php.
 // Les valeurs initiales ci-dessous sont un fallback si le fetch échoue au démarrage.
+// M/2026/04/28/32 — Liste pays étendue alphabétique (~50 pays couvrant les
+// marchés cibles ocre.immo : MENA, Europe occidentale, USA, Canada, Afrique
+// francophone, Golfe). PAYS écrasé par /api/countries.php?action=list au boot
+// si la table countries_config est peuplée.
 let PAYS = [
-  {c:'MA',f:'🇲🇦',d:'MAD',n:'Maroc'},{c:'FR',f:'🇫🇷',d:'€',n:'France'},{c:'ES',f:'🇪🇸',d:'€',n:'Espagne'},
+  {c:'AF',f:'🇦🇫',d:'AFN',n:'Afghanistan'}, {c:'ZA',f:'🇿🇦',d:'ZAR',n:'Afrique du Sud'},
+  {c:'DZ',f:'🇩🇿',d:'DZD',n:'Algérie'}, {c:'DE',f:'🇩🇪',d:'€',n:'Allemagne'},
+  {c:'SA',f:'🇸🇦',d:'SAR',n:'Arabie saoudite'}, {c:'AR',f:'🇦🇷',d:'ARS',n:'Argentine'},
+  {c:'AT',f:'🇦🇹',d:'€',n:'Autriche'}, {c:'BH',f:'🇧🇭',d:'BHD',n:'Bahreïn'},
+  {c:'BE',f:'🇧🇪',d:'€',n:'Belgique'}, {c:'BJ',f:'🇧🇯',d:'XOF',n:'Bénin'},
+  {c:'BR',f:'🇧🇷',d:'BRL',n:'Brésil'}, {c:'BG',f:'🇧🇬',d:'BGN',n:'Bulgarie'},
+  {c:'BF',f:'🇧🇫',d:'XOF',n:'Burkina Faso'}, {c:'CM',f:'🇨🇲',d:'XAF',n:'Cameroun'},
+  {c:'CA',f:'🇨🇦',d:'CAD',n:'Canada'}, {c:'CN',f:'🇨🇳',d:'CNY',n:'Chine'},
+  {c:'CO',f:'🇨🇴',d:'COP',n:'Colombie'}, {c:'CG',f:'🇨🇬',d:'XAF',n:'Congo'},
+  {c:'CI',f:'🇨🇮',d:'XOF',n:"Côte d'Ivoire"}, {c:'DK',f:'🇩🇰',d:'DKK',n:'Danemark'},
+  {c:'EG',f:'🇪🇬',d:'EGP',n:'Égypte'}, {c:'AE',f:'🇦🇪',d:'AED',n:'Émirats arabes unis'},
+  {c:'ES',f:'🇪🇸',d:'€',n:'Espagne'}, {c:'US',f:'🇺🇸',d:'$',n:'États-Unis'},
+  {c:'FI',f:'🇫🇮',d:'€',n:'Finlande'}, {c:'FR',f:'🇫🇷',d:'€',n:'France'},
+  {c:'GA',f:'🇬🇦',d:'XAF',n:'Gabon'}, {c:'GR',f:'🇬🇷',d:'€',n:'Grèce'},
+  {c:'GN',f:'🇬🇳',d:'GNF',n:'Guinée'}, {c:'IN',f:'🇮🇳',d:'INR',n:'Inde'},
+  {c:'ID',f:'🇮🇩',d:'IDR',n:'Indonésie'}, {c:'IE',f:'🇮🇪',d:'€',n:'Irlande'},
+  {c:'IL',f:'🇮🇱',d:'ILS',n:'Israël'}, {c:'IT',f:'🇮🇹',d:'€',n:'Italie'},
+  {c:'JP',f:'🇯🇵',d:'JPY',n:'Japon'}, {c:'JO',f:'🇯🇴',d:'JOD',n:'Jordanie'},
+  {c:'KW',f:'🇰🇼',d:'KWD',n:'Koweït'}, {c:'LB',f:'🇱🇧',d:'LBP',n:'Liban'},
+  {c:'LU',f:'🇱🇺',d:'€',n:'Luxembourg'}, {c:'MG',f:'🇲🇬',d:'MGA',n:'Madagascar'},
+  {c:'MY',f:'🇲🇾',d:'MYR',n:'Malaisie'}, {c:'ML',f:'🇲🇱',d:'XOF',n:'Mali'},
+  {c:'MA',f:'🇲🇦',d:'MAD',n:'Maroc'}, {c:'MR',f:'🇲🇷',d:'MRU',n:'Mauritanie'},
+  {c:'MX',f:'🇲🇽',d:'MXN',n:'Mexique'}, {c:'NO',f:'🇳🇴',d:'NOK',n:'Norvège'},
+  {c:'NL',f:'🇳🇱',d:'€',n:'Pays-Bas'}, {c:'PL',f:'🇵🇱',d:'PLN',n:'Pologne'},
+  {c:'PT',f:'🇵🇹',d:'€',n:'Portugal'}, {c:'QA',f:'🇶🇦',d:'QAR',n:'Qatar'},
+  {c:'GB',f:'🇬🇧',d:'£',n:'Royaume-Uni'}, {c:'RU',f:'🇷🇺',d:'RUB',n:'Russie'},
+  {c:'SN',f:'🇸🇳',d:'XOF',n:'Sénégal'}, {c:'SG',f:'🇸🇬',d:'SGD',n:'Singapour'},
+  {c:'SE',f:'🇸🇪',d:'SEK',n:'Suède'}, {c:'CH',f:'🇨🇭',d:'CHF',n:'Suisse'},
+  {c:'TR',f:'🇹🇷',d:'TRY',n:'Turquie'}, {c:'TN',f:'🇹🇳',d:'TND',n:'Tunisie'},
 ];
+PAYS.sort((a, b) => a.n.localeCompare(b.n, 'fr'));
 const FORMES_JURIDIQUES = ['SARL','SA','SAS','EURL','SCI','Autre'];
 const TYPES_BIEN = ['Appartement','Maison','Villa','Riad','Terrain','Commerce','Bureau'];
 
@@ -693,6 +726,125 @@ function EmailField({label, value, onChange, onBlur, style={}}) {
         {icon && <span style={{position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', color:iconColor, fontWeight:700, fontSize:16}}>{icon}</span>}
       </div>
       {showInvalid && <div style={{fontSize:11, color:'#D64545', marginTop:2}}>Email invalide</div>}
+    </div>
+  );
+}
+
+// M/2026/04/28/32 — CITIES_BY_COUNTRY : 14 listes hardcodées des villes principales
+// (FR, MA, ES, BE, CH, GB, US, AE, TR, IT, PT, DE, NL, CA). Saisie libre permise
+// pour les autres pays via CitySuggestField (legacy, reste en place pour
+// l'adresse complète + fallback).
+const CITIES_BY_COUNTRY = {
+  MA: ['Agadir','Asilah','Beni Mellal','Casablanca','Chefchaouen','El Jadida','Errachidia','Essaouira','Fès','Ifrane','Kenitra','Khouribga','Larache','Marrakech','Meknès','Mohammédia','Nador','Ouarzazate','Oujda','Rabat','Safi','Salé','Tanger','Taroudant','Tétouan','Tiznit'],
+  FR: ['Aix-en-Provence','Amiens','Angers','Annecy','Avignon','Bayonne','Besançon','Biarritz','Bordeaux','Brest','Caen','Cannes','Chambéry','Cherbourg','Clermont-Ferrand','Dijon','Grenoble','La Rochelle','Le Havre','Le Mans','Lille','Limoges','Lyon','Marseille','Metz','Montpellier','Mulhouse','Nancy','Nantes','Nice','Nîmes','Orléans','Paris','Pau','Perpignan','Poitiers','Reims','Rennes','Rouen','Saint-Étienne','Strasbourg','Toulon','Toulouse','Tours','Versailles'],
+  ES: ['Alicante','Barcelone','Bilbao','Cordoue','Grenade','Madrid','Malaga','Marbella','Murcie','Palma','Saint-Sébastien','Santander','Saragosse','Séville','Valence','Valladolid','Vigo'],
+  BE: ['Anvers','Bruges','Bruxelles','Charleroi','Gand','Knokke','Liège','Louvain','Mons','Namur','Ostende'],
+  CH: ['Bâle','Berne','Davos','Genève','Gstaad','Lausanne','Lucerne','Lugano','Montreux','Saint-Moritz','Verbier','Zermatt','Zurich'],
+  GB: ['Birmingham','Brighton','Bristol','Cambridge','Cardiff','Édimbourg','Glasgow','Leeds','Liverpool','Londres','Manchester','Newcastle','Oxford','Sheffield'],
+  US: ['Aspen','Atlanta','Austin','Boston','Chicago','Dallas','Denver','Houston','Las Vegas','Los Angeles','Miami','Nashville','New York','Orlando','Philadelphie','Phoenix','San Diego','San Francisco','Seattle','Washington'],
+  AE: ['Abu Dhabi','Ajman','Dubaï','Fujairah','Ras al-Khaïmah','Sharjah'],
+  TR: ['Adana','Ankara','Antalya','Bodrum','Bursa','Eskişehir','Gaziantep','Istanbul','Izmir','Kayseri','Konya','Mersin','Trabzon'],
+  IT: ['Bari','Bologne','Catane','Florence','Gênes','Milan','Naples','Padoue','Palerme','Rome','Sienne','Turin','Venise','Vérone'],
+  PT: ['Aveiro','Braga','Cascais','Coimbra','Faro','Funchal','Lisbonne','Madère','Porto'],
+  DE: ['Berlin','Brême','Cologne','Dortmund','Düsseldorf','Francfort','Hambourg','Hanovre','Leipzig','Munich','Nuremberg','Stuttgart'],
+  NL: ['Amsterdam','Eindhoven','La Haye','Maastricht','Rotterdam','Utrecht'],
+  CA: ['Calgary','Edmonton','Halifax','Montréal','Ottawa','Québec','Toronto','Vancouver','Winnipeg'],
+};
+
+// CityPicker — sélecteur de ville conditionnel au pays. Désactivé tant que
+// `country` n'est pas sélectionné. Au tap disabled : focus saute sur le champ
+// pays (via callback `onNeedCountry`) + tooltip flash 2s.
+function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Sélectionner une ville…'}) {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+  const [tooltip, setTooltip] = React.useState(false);
+  const isMobile = useIsMobile();
+  const cities = (country && CITIES_BY_COUNTRY[country]) || [];
+  const hasList = cities.length > 0;
+  const disabled = !country;
+
+  const filtered = query.trim()
+    ? cities.filter(c => normalizeAccent(c).includes(normalizeAccent(query)))
+    : cities;
+  const queryTrim = query.trim();
+  const showAddCustom = queryTrim.length >= 3 && !cities.some(c => normalizeAccent(c) === normalizeAccent(queryTrim));
+
+  function handleDisabledClick() {
+    setTooltip(true);
+    setTimeout(() => setTooltip(false), 2000);
+    if (onNeedCountry) onNeedCountry();
+  }
+
+  function pick(city) {
+    onChange(city);
+    setOpen(false);
+    setQuery('');
+  }
+
+  const filled = !!value;
+  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color: disabled ? '#B5A78F' : '#2A2018'};
+  const styleField = disabled
+    ? {...base, background:'#F4ECE0', border:'1.5px solid #E8DDD0', cursor:'not-allowed'}
+    : {...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY), cursor:'pointer'};
+
+  return (
+    <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <button type="button" onClick={() => disabled ? handleDisabledClick() : setOpen(true)}
+        style={{...styleField, textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+        <span>{value || placeholder}</span>
+        <span style={{fontSize:10, opacity:.5}}>▾</span>
+      </button>
+      {tooltip && (
+        <div style={{position:'absolute', bottom:'100%', left:0, right:0, marginBottom:4, padding:'6px 10px', background:'#2A2018', color:'#fff', borderRadius:6, fontSize:11, fontWeight:600, fontFamily:'inherit', textAlign:'center', boxShadow:'0 2px 8px rgba(0,0,0,.2)', zIndex:99}}>
+          Choisis d'abord le pays
+        </div>
+      )}
+      {open && (isMobile ? (
+        <BottomSheet title={label || 'Ville'} onClose={() => { setOpen(false); setQuery(''); }}>
+          <div className="bsheet-search">
+            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" autoFocus autoCapitalize="off" autoCorrect="off"/>
+          </div>
+          <div className="bsheet-list">
+            {!hasList && (
+              <div className="bsheet-empty">Aucune liste pour ce pays — saisie libre :</div>
+            )}
+            {filtered.map(c => (
+              <div key={c} className={'bsheet-item ' + (c === value ? 'selected' : '')} onClick={() => pick(c)}>
+                <span style={{flex:1}}>{c}</span>
+                {c === value && <span style={{color:'#B26D3A', fontWeight:700}}>✓</span>}
+              </div>
+            ))}
+            {showAddCustom && (
+              <div className="bsheet-item" onClick={() => pick(queryTrim)} style={{borderTop:'1px solid #E8DDD0', fontStyle:'italic', color:'#8B5E3C'}}>
+                + Utiliser « {queryTrim} »
+              </div>
+            )}
+            {!hasList && !queryTrim && (
+              <div style={{padding:'10px 14px', fontSize:12, color:'#8B7F6E'}}>Tape le nom de ta ville et appuie sur « + Utiliser ».</div>
+            )}
+          </div>
+        </BottomSheet>
+      ) : (
+        <div style={{position:'absolute', top:'100%', left:0, right:0, zIndex:20, background:'#fff', border:'1px solid #C9B79A', borderRadius:8, marginTop:4, maxHeight:280, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.08)'}}>
+          <div style={{padding:'8px 10px', borderBottom:'1px solid #F0E8D8'}}>
+            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" autoFocus
+              style={{width:'100%', boxSizing:'border-box', padding:'6px 8px', border:'1px solid #E8DDD0', borderRadius:6, fontSize:13, fontFamily:'inherit', outline:'none'}}/>
+          </div>
+          {filtered.map(c => (
+            <div key={c} onClick={() => pick(c)}
+              style={{padding:'7px 12px', cursor:'pointer', fontSize:13, color:'#2A2018', background: c === value ? '#FFF3EC' : '#fff'}}>
+              {c}
+            </div>
+          ))}
+          {showAddCustom && (
+            <div onClick={() => pick(queryTrim)}
+              style={{padding:'7px 12px', cursor:'pointer', fontSize:13, color:'#8B5E3C', fontStyle:'italic', borderTop:'1px solid #F0E8D8'}}>
+              + Utiliser « {queryTrim} »
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -1594,7 +1746,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
         <>
           {/* V18.8 — Ville (CitySuggestField historique) puis DistrictPicker dynamique Overpass. */}
           <div className="row-pair">
-            <CitySuggestField label="Ville" value={bien.ville} onChange={v => setB('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
+            <CityPicker label="Ville" value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays} style={{flex:1}}/>
             <DistrictPicker ville={bien.ville} pays={bien.pays}
               value={bien.quartier} onChange={v => setB('quartier', v)}
               fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
@@ -11854,8 +12006,8 @@ function FormView(props) {
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
               {/* L4 Ville / Pays résidence */}
               <div className="row-pair">
-                <CitySuggestField label="Ville" value={d.ville} onChange={v => set('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
                 <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
+                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
               </div>
               {/* L5 Date naissance / Nationalité */}
               <div className="row-pair">
@@ -11892,8 +12044,8 @@ function FormView(props) {
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
               {/* L6 Ville / Pays résidence */}
               <div className="row-pair">
-                <CitySuggestField label="Ville" value={d.ville} onChange={v => set('ville', v)} suggestAction="suggest_city" style={{flex:1}}/>
                 <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
+                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
               </div>
             </>
           )}
@@ -12101,6 +12253,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428l" defer></script>
+<script src="/v20-bridge.js?v=20260428m" defer></script>
 </body>
 </html>
