@@ -112,6 +112,21 @@ case 'register': {
         @exec('sudo /opt/ocre-app/scripts/provision-tenant.sh ' . escapeshellarg($slug) . ' 2>&1', $provOut, $provRc);
         $tenant_provisioned = ($provRc === 0);
 
+        // M/2026/04/28/16 — Hook seeder mode test : injecte les 10 dossiers
+        // canoniques (3 paires matchantes + 4 libres) dans ocre_wsp_<slug>_test
+        // dès la création du WSp, pour que le mode test soit pré-peuplé.
+        if ($tenant_provisioned) {
+            try {
+                require_once __DIR__ . '/lib/seed_helpers.php';
+                $testPdo = pdo_workspace('ocre_wsp_' . $slug . '_test');
+                // Le user_id local du WSp (table users, pas ocre_meta.users) est
+                // créé par provision-tenant.sh comme owner unique avec id=1.
+                $localOwnerStmt = $testPdo->query("SELECT id FROM users WHERE active = 1 ORDER BY id ASC LIMIT 1");
+                $localOwner = $localOwnerStmt ? $localOwnerStmt->fetch() : null;
+                if ($localOwner) applySeedToTenant($testPdo, (int) $localOwner['id']);
+            } catch (Throwable $e) { /* seed best-effort, ne bloque pas l'inscription */ }
+        }
+
         // Envoi mail OBLIGATOIRE pour valider la transaction.
         $mail_sent = false;
         try {

@@ -26,7 +26,7 @@
 <link rel="manifest" href="/manifest.json?v=19">
 <meta name="apple-mobile-web-app-title" content="OCRE immo">
 <meta name="description" content="CRM immobilier professionnel Ocre Immo : gestion clients, biens, dossiers offres/demandes, planning RDV">
-<!-- V18.47 — OpenGraph + Twitter Card complets -->
+<!-- V18.48 — OpenGraph + Twitter Card complets -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://app.ocre.immo/">
 <meta property="og:site_name" content="OCRE immo">
@@ -38,7 +38,7 @@
 <meta name="twitter:title" content="OCRE immo — Gestion immobilière">
 <meta name="twitter:description" content="CRM immobilier professionnel pour agents, concierges et gestionnaires">
 <meta name="twitter:image" content="https://app.ocre.immo/icons/icon-512.png?v=18.40.1">
-<!-- V18.47 — apple-touch-startup-image (10 résolutions portraits iPhone + iPad) -->
+<!-- V18.48 — apple-touch-startup-image (10 résolutions portraits iPhone + iPad) -->
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/icons/splash/splash-iphone-15-pro-max-1290x2796.png?v=18.41">
 <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/icons/splash/splash-iphone-15-pro-1179x2556.png?v=18.41">
 <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/icons/splash/splash-iphone-14-1170x2532.png?v=18.41">
@@ -4993,7 +4993,7 @@ function PWAInstallOverlay({onClose}) {
   );
 }
 
-// V18.47 — Workflow Publier sur ocre.immo. Bouton affiché en bas des dossiers Vendeur/Bailleur.
+// V18.48 — Workflow Publier sur ocre.immo. Bouton affiché en bas des dossiers Vendeur/Bailleur.
 // PublishButton déclenche PublishPreviewModal qui affiche une preview WYSIWYG + champs
 // éditables (titre, description, vertical). Post-publi : PublishSuccessModal "site en cours
 // de création". Gestion post-publi : bouton devient "Gérer la publication" + toggle visibility.
@@ -5273,7 +5273,7 @@ function PublishSuccessModal({result, onClose}) {
   );
 }
 
-// V18.47 — SW auto-update : détection updatefound + bannière non-bloquante + auto-reload idle.
+// V18.48 — SW auto-update : détection updatefound + bannière non-bloquante + auto-reload idle.
 // Un seul enregistrement SW au chargement. Le nouveau SW reste "waiting" jusqu'à SKIP_WAITING
 // envoyé depuis la bannière (ou auto-reload si user idle > 5min sans form ouvert).
 (function setupServiceWorkerUpdate() {
@@ -7672,6 +7672,31 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
             )}
           </div>
         )}
+
+        {!loading && (() => {
+          const slug = (location.host.match(/^([a-z0-9-]+)\.ocre\.immo/) || [])[1] || '';
+          const ck = document.cookie.split('; ').find(c => c.startsWith('OCRE_MODE_' + slug.toUpperCase() + '='));
+          const mode = ck ? ck.split('=')[1] : 'agent';
+          if (mode !== 'test') return null;
+          return (
+            <div className="ocre-card" style={{marginTop:14}}>
+              <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, color:'#8B5E3C', fontWeight:700, marginBottom:6}}>Mode test</div>
+              <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14, lineHeight:1.5}}>
+                10 dossiers démo canoniques (3 paires conçues pour matcher) sont injectés à l'inscription. Ce bouton réinjecte les dossiers manquants si tu en as supprimé. <b>N'écrase jamais</b> les dossiers que tu as saisis toi-même.
+              </div>
+              <button type="button" className="ocre-tile state-default"
+                onClick={async () => {
+                  try {
+                    const r = await fetch(API + '/seed.php?action=restore_test_seed', {method:'POST', headers:{'X-Session-Token': token()}});
+                    const d = await r.json();
+                    if (d && d.ok) showToast && showToast(d.inserted + ' dossier(s) démo restauré(s) (' + d.skipped + ' déjà présent(s))');
+                    else showToast && showToast((d && d.error) || 'Échec');
+                  } catch (e) { showToast && showToast('Erreur réseau'); }
+                }}
+                style={{width:'100%'}}>Restaurer les dossiers démo</button>
+            </div>
+          );
+        })()}
 
         {!loading && (
           <div className="ocre-card" style={{marginTop:14}}>
@@ -10556,7 +10581,7 @@ function FormView(props) {
   const [imageOverlay, setImageOverlay] = useState(false);
   // V18.37 — modal "+ Ajouter une casquette" (créer nouveau dossier avec mêmes coordonnées).
   const [addCasquetteOpen, setAddCasquetteOpen] = useState(false);
-  // V18.47 — modal publication vitrine ocre.immo.
+  // V18.48 — modal publication vitrine ocre.immo.
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishSuccess, setPublishSuccess] = useState(null);
   // V18.25 — responsive : <420px les boutons footer Archiver/Supprimer affichent l'icône seule.
