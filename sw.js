@@ -1,7 +1,7 @@
 // V52.5 KILL SWITCH — remplace l'ancien SW. Quand l'iPad récupère ce sw.js,
 // il purge tous les caches, désinscrit le SW, et force navigate des fenêtres
 // pour reload propre. Tous les fetchs passent par le réseau (pas de cache).
-const SW_VERSION = 'ocre-sw-v52.6-killswitch';
+const SW_VERSION = 'ocre-sw-v52.7-killswitch';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
