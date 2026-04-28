@@ -26,7 +26,7 @@
 <link rel="manifest" href="/manifest.json?v=19">
 <meta name="apple-mobile-web-app-title" content="OCRE immo">
 <meta name="description" content="CRM immobilier professionnel Ocre Immo : gestion clients, biens, dossiers offres/demandes, planning RDV">
-<!-- V18.46 — OpenGraph + Twitter Card complets -->
+<!-- V18.47 — OpenGraph + Twitter Card complets -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://app.ocre.immo/">
 <meta property="og:site_name" content="OCRE immo">
@@ -38,7 +38,7 @@
 <meta name="twitter:title" content="OCRE immo — Gestion immobilière">
 <meta name="twitter:description" content="CRM immobilier professionnel pour agents, concierges et gestionnaires">
 <meta name="twitter:image" content="https://app.ocre.immo/icons/icon-512.png?v=18.40.1">
-<!-- V18.46 — apple-touch-startup-image (10 résolutions portraits iPhone + iPad) -->
+<!-- V18.47 — apple-touch-startup-image (10 résolutions portraits iPhone + iPad) -->
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/icons/splash/splash-iphone-15-pro-max-1290x2796.png?v=18.41">
 <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/icons/splash/splash-iphone-15-pro-1179x2556.png?v=18.41">
 <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/icons/splash/splash-iphone-14-1170x2532.png?v=18.41">
@@ -3984,8 +3984,8 @@ function PillIconButton({icon, onClick, title, active, style}) {
     </button>
   );
 }
-// M/2026/04/28/5 — TargetWithBadge : icône cible + pastille rouge matchs non vus (UI seule).
-// M/2026/04/28/7 — emoji 🎯 (cohérence visuelle avec niveau dossier, ligne ~9002).
+// TargetWithBadge — icône 🎯 Header + pastille rouge matchs non vus (count figé à 0,
+// compteur câblé plus tard). Emoji aligné sur le niveau dossier (~9002) pour cohérence.
 function TargetWithBadge({onClick, title}) {
   const [count] = React.useState(0);
   const label = count > 9 ? '9+' : String(count);
@@ -5273,7 +5273,7 @@ function PublishSuccessModal({result, onClose}) {
   );
 }
 
-// V18.46 — SW auto-update : détection updatefound + bannière non-bloquante + auto-reload idle.
+// V18.47 — SW auto-update : détection updatefound + bannière non-bloquante + auto-reload idle.
 // Un seul enregistrement SW au chargement. Le nouveau SW reste "waiting" jusqu'à SKIP_WAITING
 // envoyé depuis la bannière (ou auto-reload si user idle > 5min sans form ouvert).
 (function setupServiceWorkerUpdate() {
@@ -8379,9 +8379,7 @@ function ListView(props) {
         center={<OcreTitle/>}
         right={
           <div data-header-actions="1" style={{display:'flex', alignItems:'center', gap:8}}>
-            {/* V18.36 — PillIconButton cohérent (fond crème + contour ovale) pour les 3 actions
-                header droite : Share (placeholder modal), Search (toggle SearchBar), Archive toggle. */}
-            {/* M/2026/04/28/5 — icône cible matchs (UI seule, compteur câblé en mission 3-4) */}
+            {/* Header droite : cible matchs + Share (placeholder modal) + Search (toggle SearchBar) + Archive toggle. */}
             <TargetWithBadge title="Matchs détectés"/>
             <PillIconButton icon={<ShareIcon size={18}/>} title="Partager mes dossiers"
               onClick={() => props.openSharePlaceholder && props.openSharePlaceholder()}/>
@@ -11556,6 +11554,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428b" defer></script>
+<script src="/v20-bridge.js?v=20260428c" defer></script>
 </body>
 </html>
