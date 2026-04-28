@@ -2000,7 +2000,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           <DistrictPicker ville={bien.ville} pays={bien.pays}
             value={bien.quartier} onChange={v => setB('quartier', v)}
             fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
-          {/* M/2026/04/29/15 — Carte TOUJOURS visible (toggle MapPickerToggle supprimé). */}
+          {/* Carte toujours visible. */}
           <div style={{marginTop:8, marginBottom:12}}>
             <MapPicker bien={bien} setB={setB} showToast={showToast}/>
           </div>
