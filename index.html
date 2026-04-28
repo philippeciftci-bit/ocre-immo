@@ -1995,16 +1995,16 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
       {/* V18.7 — Étape 2 progressive : révélée après pays + au moins 1 type cochés. */}
       <AnimatedReveal show={!!(bien.pays && anyType)}>
         <>
-          {/* V18.8 — Ville (CitySuggestField historique) puis DistrictPicker dynamique Overpass. */}
-          <div className="row-pair">
-            <CityPicker label="Ville" value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays} style={{flex:1}}/>
-            <DistrictPicker ville={bien.ville} pays={bien.pays}
-              value={bien.quartier} onChange={v => setB('quartier', v)}
-              fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
+          {/* M/2026/04/29/15 — Ville + Quartier en flux vertical strict 1 par ligne. */}
+          <CityPicker label="Ville" value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays}/>
+          <DistrictPicker ville={bien.ville} pays={bien.pays}
+            value={bien.quartier} onChange={v => setB('quartier', v)}
+            fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
+          {/* M/2026/04/29/15 — Carte TOUJOURS visible (toggle MapPickerToggle supprimé). */}
+          <div style={{marginTop:8, marginBottom:12}}>
+            <MapPicker bien={bien} setB={setB} showToast={showToast}/>
           </div>
           {bien.pays === 'MA' && <Field label="GPS (texte, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589"/>}
-          {/* V61 — Carte masquable persisted localStorage. Default fermée (gain hauteur iPhone). */}
-          <MapPickerToggle bien={bien} setB={setB} showToast={showToast}/>
 
           {/* 4. Champs spécifiques par type (V17.9 : itère sur types[], une section par type) */}
           {types.includes('Villa') && <VillaFields bien={bien} setB={setB} askingMode={askingMode}/>}
@@ -2118,106 +2118,52 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               options={[{value:'zellige',label:'Zellige'},{value:'tadelakt',label:'Tadelakt'},{value:'bejmat',label:'Bejmat'},{value:'fontaine',label:'Fontaine'},{value:'douiria',label:'Douiria'},{value:'zouak',label:'Zouak'},{value:'moucharabieh',label:'Moucharabieh'},{value:'stuc',label:'Stuc sculpté'}]}/>
           )}
 
-          {/* 5. Tronc commun (chambres / sdb / parking / extérieur / énergie) — si au moins un type habitable */}
-          {hasHabitable && <>
-          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:12, marginBottom:6, letterSpacing:.4}}>Caractéristiques communes</div>
-          {askingMode ? (
-            <>
-              <RangeField label="Chambres" minValue={bien.chambres_min} maxValue={bien.chambres_max} onMin={v => setB('chambres_min', v)} onMax={v => setB('chambres_max', v)}/>
-              <RangeField label="Salles de bain" minValue={bien.sdb_min} maxValue={bien.sdb_max} onMin={v => setB('sdb_min', v)} onMax={v => setB('sdb_max', v)}/>
-              <RangeField label="Surface habitable" unit="m²" minValue={bien.surface_min} maxValue={bien.surface_max} onMin={v => setB('surface_min', v)} onMax={v => setB('surface_max', v)}/>
-            </>
-          ) : (
-            <>
-              <div className="row-pair">
-                <Field label="Chambres" type="number" value={bien.chambres} onChange={v => setB('chambres', v)} style={{flex:1}}/>
-                <Field label="Salles de bain" type="number" value={bien.sdb} onChange={v => setB('sdb', v)} style={{flex:1}}/>
-              </div>
-              <Field label="Surface habitable (m²)" type="number" value={bien.surface} onChange={v => setB('surface', v)}/>
-            </>
-          )}
-          <Field label="Année de construction" type="number" value={bien.annee} onChange={v => setB('annee', v)}/>
+          {/* M/2026/04/29/15 — bloc legacy (Caractéristiques communes + Raccordements + Énergie/Climat + Documents FR/ES) supprimé franchement.
+              Statut foncier + Documents Maroc + Architecture marocaine + Équipements MA migrés ici dans BLOC 4 DOCUMENTS & CONFORMITÉ.
+              DPE/GES déjà en flux vertical strict dans BLOC 2 DESCRIPTIF (lines 2066-2067 ci-dessus). */}
 
-          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6}}>Extérieur</div>
-          {askingMode ? (
-            <>
-              <PriorityBoolField label="Terrasse" value={bien.terrasse_prio} onChange={v => setB('terrasse_prio', v)}/>
-              <PriorityBoolField label="Balcon" value={bien.balcon_prio} onChange={v => setB('balcon_prio', v)}/>
-              <PriorityBoolField label="Jardin" value={bien.jardin_prio} onChange={v => setB('jardin_prio', v)}/>
-              {/* M/2026/04/28/33 — Bloc EXTÉRIEUR & ÉQUIPEMENTS. */}
-              <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:8, marginBottom:6, gridColumn:'1 / -1', flexBasis:'100%'}}>Extérieur & équipements</div>
-              <PriorityBoolField label="Piscine" value={bien.piscine_prio} onChange={v => setB('piscine_prio', v)}/>
-              <PriorityBoolField label="Parking / garage" value={bien.parking_prio} onChange={v => setB('parking_prio', v)}/>
-            </>
-          ) : (
-            <div>
-              <BoolChip label="Terrasse" value={bien.terrasse} onChange={v => setB('terrasse', v)}/>
-              <BoolChip label="Balcon" value={bien.balcon} onChange={v => setB('balcon', v)}/>
-              <BoolChip label="Jardin" value={bien.jardin} onChange={v => setB('jardin', v)}/>
-              {/* M/2026/04/28/33 — Bloc EXTÉRIEUR & ÉQUIPEMENTS. */}
-              <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:8, marginBottom:6, flexBasis:'100%', width:'100%'}}>Extérieur & équipements</div>
-              <BoolChip label="Piscine" value={bien.piscine} onChange={v => setB('piscine', v)}/>
-              <BoolChip label="Parking / garage" value={bien.parking_bool} onChange={v => setB('parking_bool', v)}/>
-              <BoolChip label="Cave" value={bien.cave_bool} onChange={v => setB('cave_bool', v)}/>
-            </div>
-          )}
-
-          {/* V17.4 UX v3 : raccordements étendus (universel). */}
-          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:1.2}}>Raccordements</div>
-          <MultiSelectChips value={bien.raccordements} options={RACCORDEMENTS} onChange={v => setB('raccordements', v)}/>
-
-          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:6, marginBottom:6, letterSpacing:1.2}}>Énergie & climat</div>
-          <MultiSelectChips value={bien.energie_climat} options={ENERGIE_CLIMAT} onChange={v => setB('energie_climat', v)}/>
-          <div>
-            <BoolChip label="Ascenseur" value={bien.ascenseur} onChange={v => setB('ascenseur', v)}/>
-          </div>
-          </>}
-
-          {/* V17.4 UX v3 : équipements extérieur MA + intérieur marocain (pays MA + au moins un type MA-friendly). */}
-          {bien.pays === 'MA' && types.some(t => ['Villa','Riad','Maison','Ferme'].includes(t)) && (
-            <>
-              <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:1.2}}>Équipements extérieur (Maroc)</div>
-              <MultiSelectChips value={bien.equip_ext_ma} options={EQUIP_EXT_MA} onChange={v => setB('equip_ext_ma', v)}/>
-              <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:6, marginBottom:6, letterSpacing:1.2}}>Architecture marocaine</div>
-              <MultiSelectChips value={bien.archi_int_ma} options={ARCHI_INT_MA} onChange={v => setB('archi_int_ma', v)}/>
-            </>
-          )}
-
-          {/* 6. Documents conditionnels */}
-          <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:10, marginBottom:6, letterSpacing:1.2}}>Documents & conformité</div>
-          {bien.pays === 'FR' && (
-            <>
-              <div className="row-pair">
-                <Select label="DPE" value={bien.dpe} onChange={v => setB('dpe', v)} options={['A','B','C','D','E','F','G','Vierge']} style={{flex:1}}/>
-                <Select label="GES" value={bien.ges} onChange={v => setB('ges', v)} options={['A','B','C','D','E','F','G','Vierge']} style={{flex:1}}/>
-              </div>
-              <Field label="Surface Loi Carrez (m²)" type="number" value={bien.loi_carrez} onChange={v => setB('loi_carrez', v)}/>
-            </>
-          )}
-          {bien.pays === 'ES' && (
-            <BoolChip label="Nota Simple disponible" value={bien.nota_simple} onChange={v => setB('nota_simple', v)}/>
-          )}
+          {/* M/2026/04/29/15 — BLOC 4 DOCUMENTS & CONFORMITÉ (flux vertical strict). */}
           {bien.pays === 'MA' && (
             <>
-              {/* V17.4 UX v3 : statut foncier MA — 3 tuiles colorées standard notaire. */}
+              <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:18, marginBottom:8}}>Documents &amp; conformité</div>
               <div style={{marginBottom:10}}>
                 <label className="ocre-lbl">Statut foncier</label>
-                <div className="tile-grid-3">
-                  {TITRE_STATUTS_MA_V3.map(s => {
+                <div style={{display:'flex', gap:6, marginTop:4}}>
+                  {(typeof TITRE_STATUTS_MA_V3 !== 'undefined' ? TITRE_STATUTS_MA_V3 : [{k:'Titré',l:'Titré',cls:''},{k:'Réquisition',l:'Réquisition',cls:''},{k:'Moulkia',l:'Moulkia',cls:''}]).map(s => {
                     const active = bien.titre_statut === s.k;
                     return (
                       <button key={s.k} type="button" onClick={() => setB('titre_statut', s.k)}
-                        className={'ocre-tile ' + s.cls + (active ? ' state-selected' : '')}>
-                        {s.l}
-                      </button>
+                        style={{flex:1, padding:'8px 10px', borderRadius:8, border:'1.5px solid ' + (active ? '#8B5E3C' : '#E8DDD0'),
+                                background: active ? '#FFF3EC' : '#FDFAF7', color: active ? '#8B5E3C' : '#8B7F6E',
+                                fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>{s.l}</button>
                     );
                   })}
                 </div>
               </div>
               {bien.titre_statut === 'Titré' && <Field label="N° Titre foncier" value={bien.titre_num} onChange={v => setB('titre_num', v)}/>}
               {bien.titre_statut === 'Réquisition' && <Field label="N° Réquisition" value={bien.requisition_num} onChange={v => setB('requisition_num', v)}/>}
-              <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:6, marginBottom:6, letterSpacing:1.2}}>Documents Maroc</div>
-              <MultiSelectChips value={bien.docs_ma} options={DOCS_MA} onChange={v => setB('docs_ma', v)}/>
+              {typeof DOCS_MA !== 'undefined' && (
+                <MultiSelectPicker label="Documents Maroc" value={bien.docs_ma || []} onChange={v => setB('docs_ma', v)}
+                  options={DOCS_MA.map(o => typeof o === 'string' ? {value: o, label: o} : o)}/>
+              )}
+              {types.some(t => ['Villa','Riad','Maison','Ferme'].includes(t)) && (
+                <>
+                  {typeof EQUIP_EXT_MA !== 'undefined' && (
+                    <MultiSelectPicker label="Équipements extérieur (Maroc)" value={bien.equip_ext_ma || []} onChange={v => setB('equip_ext_ma', v)}
+                      options={EQUIP_EXT_MA.map(o => typeof o === 'string' ? {value: o, label: o} : o)}/>
+                  )}
+                  {typeof ARCHI_INT_MA !== 'undefined' && (
+                    <MultiSelectPicker label="Architecture marocaine" value={bien.archi_int_ma || []} onChange={v => setB('archi_int_ma', v)}
+                      options={ARCHI_INT_MA.map(o => typeof o === 'string' ? {value: o, label: o} : o)}/>
+                  )}
+                </>
+              )}
+            </>
+          )}
+          {bien.pays === 'FR' && (
+            <>
+              <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:18, marginBottom:8}}>Documents &amp; conformité</div>
+              <Field label="Surface Loi Carrez (m²)" type="number" value={bien.loi_carrez} onChange={v => setB('loi_carrez', v)}/>
             </>
           )}
 
@@ -2847,43 +2793,8 @@ async function reverseGeocodeNominatim(lat, lng) {
   } catch (e) { return null; }
 }
 
-// V61 — wrapper masquable autour de MapPicker. Bouton toggle persiste localStorage.
-function MapPickerToggle({bien, setB, showToast}) {
-  const [visible, setVisible] = React.useState(() => {
-    try { return localStorage.getItem('ocre.section2.map.visible') === '1'; } catch (e) { return false; }
-  });
-  function toggle() {
-    setVisible(v => {
-      const next = !v;
-      try { localStorage.setItem('ocre.section2.map.visible', next ? '1' : '0'); } catch (e) {}
-      return next;
-    });
-  }
-  return (
-    <div style={{marginTop:8, marginBottom:8}}>
-      <button type="button" onClick={toggle}
-        style={{width:'100%', padding:'10px 12px', borderRadius:10, fontFamily:'inherit',
-                background: visible ? '#FFF3EC' : '#FBF1E4',
-                border:'1.5px solid #C9B79A', color:'#5C3B1E',
-                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between',
-                fontSize:13, fontWeight:600, minHeight:40}}>
-        <span style={{display:'inline-flex', alignItems:'center', gap:8}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5E3C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
-            <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
-          </svg>
-          {visible ? 'Masquer la carte' : 'Afficher la carte'}
-        </span>
-        <span style={{color:'#8B5E3C', fontSize:14}}>{visible ? '▴' : '▾'}</span>
-      </button>
-      {visible && (
-        <div style={{marginTop:8}}>
-          <MapPicker bien={bien} setB={setB} showToast={showToast}/>
-        </div>
-      )}
-    </div>
-  );
-}
+// M/2026/04/29/15 — MapPickerToggle supprimé franchement (suppression toggle "Afficher la carte").
+// La carte est désormais TOUJOURS visible sous l'adresse via <MapPicker> direct.
 
 // V17.3 Phase 2b — MapPicker Leaflet + OpenStreetMap. Mode précis (marker) ou zone (cercle).
 // V18.0 — Auto-centrage carte sur ville+quartier du bien via Nominatim, cache localStorage,
