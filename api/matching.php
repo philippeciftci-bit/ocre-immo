@@ -261,6 +261,31 @@ case 'score_paire': {
     jsonOk(['result' => $r, 'rules' => ['weights' => $rules['weights'], 'tolerances' => $rules['tolerances_default'], 'geo_mode' => $rules['geo_mode']]]);
 }
 
+case 'find_all_matches': {
+    // M/2026/04/28/40 — restaure l'action utilisée par le frontend pour peupler
+    // matchesById (régression mission 30). Retourne {matches_by_id: {client_id:
+    // {count, max_score, matches: [{other_id, score_pct, status}, ...]}}}.
+    $stmt = db()->prepare(
+        "SELECT id, dossier_a_id, dossier_b_id, score_pct, status FROM matches
+         WHERE JSON_VALID(owner_user_ids) = 1 AND JSON_CONTAINS(owner_user_ids, ?)
+         AND status IN ('non_vu','vu','pertinent','surveiller')"
+    );
+    $stmt->execute([json_encode($uid)]);
+    $rows = $stmt->fetchAll();
+    $byId = [];
+    foreach ($rows as $r) {
+        foreach ([['dossier_a_id', 'dossier_b_id'], ['dossier_b_id', 'dossier_a_id']] as $pair) {
+            $cid = (int) $r[$pair[0]];
+            $other = (int) $r[$pair[1]];
+            if (!isset($byId[$cid])) $byId[$cid] = ['count' => 0, 'max_score' => 0, 'matches' => []];
+            $byId[$cid]['count']++;
+            $byId[$cid]['max_score'] = max($byId[$cid]['max_score'], (int) $r['score_pct']);
+            $byId[$cid]['matches'][] = ['other_id' => $other, 'score_pct' => (int) $r['score_pct'], 'status' => $r['status']];
+        }
+    }
+    jsonOk(['matches_by_id' => $byId]);
+}
+
 case 'stats': {
     $rules = ensureMatchRulesV1();
     $cn = (int) db()->query("SELECT COUNT(*) FROM clients WHERE user_id = " . $uid . " AND deleted_at IS NULL AND archived = 0")->fetchColumn();
