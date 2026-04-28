@@ -1818,6 +1818,17 @@ const HABITABLE_TYPES = ['Villa','Appartement','Riad','Maison'];
 function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) {
   const bien = d.bien || {};
   function setB(k, v) { set('bien', {...bien, [k]: v}); }
+  // M/2026/04/28/44 — conditionnels Section II 22b. Calculé une seule fois
+  // pour éviter la duplication dans le JSX et garder le rendu lisible.
+  const _bienTypes = Array.isArray(bien.types) && bien.types.length ? bien.types : (bien.type ? [bien.type] : []);
+  const _bienCond = {
+    isTerrainOnly: _bienTypes.length === 1 && _bienTypes[0] === 'Terrain',
+    isApptType: _bienTypes.some(t => ['Appartement','Loft','Penthouse','Duplex','Triplex'].includes(t)),
+    isVillaRiadMaison: _bienTypes.some(t => ['Villa','Riad','Maison'].includes(t)),
+    isLocalCommercial: _bienTypes.some(t => ['Garage','Local commercial','Bureau'].includes(t)) && _bienTypes.length === 1,
+    isRiad: _bienTypes.includes('Riad'),
+    isLuxe: _bienTypes.some(t => ['Villa','Riad','Penthouse','Loft'].includes(t)),
+  };
   // V17.4 UX v3 : Acheteur/Locataire/Investisseur → mode "recherche" (fourchettes + priorités).
   //               Vendeur/Bailleur → mode "description" (valeurs précises + bools).
   const askingMode = ['Acheteur','Locataire','Investisseur'].includes(activeProfil);
@@ -1952,12 +1963,93 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               );
             })}
           </div>
-          {(bien.statut === 'vefa') && (
-            <div className="row-pair" style={{marginBottom:8}}>
-              <Field label="Date de livraison prévisionnelle" type="date" value={bien.date_livraison} onChange={v => setB('date_livraison', v)} style={{flex:1}}/>
-              <Field label="Promoteur" value={bien.promoteur} onChange={v => setB('promoteur', v)} style={{flex:1}}/>
-            </div>
+          {/* M/2026/04/28/43 — Bloc 22a flux vertical strict. M/2026/04/28/44 —
+              conditionnels Type×Statut via variables computeBienCond ci-dessous. */}
+          {bien.statut === 'vefa' && (<>
+            <Field label="Date de livraison prévisionnelle" type="date" value={bien.date_livraison} onChange={v => setB('date_livraison', v)}/>
+            <Field label="Promoteur" value={bien.promoteur} onChange={v => setB('promoteur', v)}/>
+          </>)}
+          {!_bienCond.isTerrainOnly && !_bienCond.isLocalCommercial && (
+            <Field label="Surface habitable (m²)" type="number" value={bien.surface_hab} onChange={v => setB('surface_hab', v)}/>
           )}
+          {!_bienCond.isApptType && (
+            <Field label="Surface terrain (m²)" type="number" value={bien.surface_terrain_v2} onChange={v => setB('surface_terrain_v2', v)}/>
+          )}
+          {bien.statut !== 'vefa' && !_bienCond.isTerrainOnly && (<>
+            <Field label="Année de construction" type="number" value={bien.annee_construction} onChange={v => setB('annee_construction', v)}/>
+            <Field label="Année de la dernière rénovation" type="number" value={bien.annee_renovation} onChange={v => setB('annee_renovation', v)}/>
+          </>)}
+          {!_bienCond.isTerrainOnly && (<>
+            <Select label="État général" value={bien.etat_general} onChange={v => setB('etat_general', v)}
+              options={['Neuf','Excellent','Bon état','À rafraîchir','À rénover','À reconstruire']}/>
+            {!_bienCond.isLocalCommercial && (<>
+              <Field label="Chambres" type="number" value={bien.chambres_v2} onChange={v => setB('chambres_v2', v)}/>
+              <Field label="Salles de bain" type="number" value={bien.sdb_v2} onChange={v => setB('sdb_v2', v)}/>
+              <Field label="Salles d'eau (douche sans baignoire)" type="number" value={bien.salles_eau} onChange={v => setB('salles_eau', v)}/>
+              <Select label="Cuisine" value={bien.cuisine_type} onChange={v => setB('cuisine_type', v)}
+                options={['Séparée','Américaine','Ouverte','Aménagée','Équipée','Avec îlot']}/>
+              <Field label="Salon (nombre)" type="number" value={bien.salons_count} onChange={v => setB('salons_count', v)}/>
+              <BoolChip label="Salle à manger" value={!!bien.salle_a_manger} onChange={v => setB('salle_a_manger', v)}/>
+            </>)}
+            {_bienCond.isApptType && (<>
+              <Field label="Étage" type="number" value={bien.etage_v2} onChange={v => setB('etage_v2', v)}/>
+              <Field label="Étages total bâtiment" type="number" value={bien.etages_total} onChange={v => setB('etages_total', v)}/>
+            </>)}
+            <Select label="DPE" value={bien.dpe} onChange={v => setB('dpe', v)} options={['A','B','C','D','E','F','G']}/>
+            <Select label="GES" value={bien.ges} onChange={v => setB('ges', v)} options={['A','B','C','D','E','F','G']}/>
+            <Field label="Charges mensuelles" type="number" value={bien.charges_mensuelles} onChange={v => setB('charges_mensuelles', v)}/>
+            <Field label="Taxe foncière annuelle" type="number" value={bien.taxe_fonciere_annuelle} onChange={v => setB('taxe_fonciere_annuelle', v)}/>
+          </>)}
+
+          <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:18, marginBottom:8}}>Extérieur & équipements</div>
+          <MultiSelectPicker label="Espaces extérieurs" value={bien.espaces_exterieurs || []} onChange={v => setB('espaces_exterieurs', v)}
+            options={[{value:'jardin',label:'Jardin'},{value:'piscine',label:'Piscine'},{value:'terrasse',label:'Terrasse'},{value:'balcon',label:'Balcon'},{value:'loggia',label:'Loggia'},{value:'patio',label:'Patio'},{value:'cour',label:'Cour'},{value:'toit_terrasse',label:'Toit-terrasse'}]}/>
+          {(bien.espaces_exterieurs || []).includes('jardin') && (
+            <Field label="Surface jardin (m²)" type="number" value={bien.surface_jardin} onChange={v => setB('surface_jardin', v)}/>
+          )}
+          {(bien.espaces_exterieurs || []).includes('piscine') && (
+            <Select label="Type piscine" value={bien.type_piscine} onChange={v => setB('type_piscine', v)} options={['Privative extérieure','Privative intérieure','Collective']}/>
+          )}
+          {(bien.espaces_exterieurs || []).includes('terrasse') && (
+            <Field label="Surface terrasse (m²)" type="number" value={bien.surface_terrasse} onChange={v => setB('surface_terrasse', v)}/>
+          )}
+          {(bien.espaces_exterieurs || []).includes('patio') && (
+            <Field label="Nombre de patios" type="number" value={bien.nombre_patios} onChange={v => setB('nombre_patios', v)}/>
+          )}
+          <MultiSelectPicker label="Annexes" value={bien.annexes || []} onChange={v => setB('annexes', v)}
+            options={[{value:'parking_ext',label:'Parking extérieur'},{value:'garage',label:'Garage'},{value:'cave',label:'Cave'},{value:'local_velos',label:'Local vélos / motos'},{value:'buanderie',label:'Buanderie / Cellier'},{value:'dependance',label:'Dépendance / Studio annexe'}]}/>
+          {(bien.annexes || []).includes('parking_ext') && (
+            <Field label="Nombre places parking" type="number" value={bien.nombre_places_parking} onChange={v => setB('nombre_places_parking', v)}/>
+          )}
+          {(bien.annexes || []).includes('garage') && (
+            <Field label="Nombre places garage" type="number" value={bien.nombre_places_garage} onChange={v => setB('nombre_places_garage', v)}/>
+          )}
+          <MultiSelectPicker label="Vue" value={bien.vue || []} onChange={v => setB('vue', v)}
+            options={[{value:'mer',label:'Mer'},{value:'montagne',label:'Montagne'},{value:'atlas',label:'Atlas'},{value:'medina',label:'Médina'},{value:'piscine',label:'Piscine'},{value:'jardin',label:'Jardin'},{value:'verdure',label:'Verdure'},{value:'urbaine',label:'Urbaine'},{value:'place',label:'Place'},{value:'cour_int',label:'Cour intérieure'}]}/>
+          <Select label="Exposition" value={bien.exposition} onChange={v => setB('exposition', v)}
+            options={['Sud','Sud-Est','Sud-Ouest','Est','Ouest','Nord-Est','Nord-Ouest','Nord','Traversant']}/>
+          <Select label="Climatisation" value={bien.climatisation_type} onChange={v => setB('climatisation_type', v)}
+            options={['Centralisée','Réversible','Splits','Aucune']}/>
+          <Select label="Chauffage" value={bien.chauffage_type} onChange={v => setB('chauffage_type', v)}
+            options={['Gaz','Électrique','Pompe à chaleur','Solaire','Cheminée','Aucun']}/>
+          <BoolChip label="Cheminée" value={!!bien.cheminee} onChange={v => setB('cheminee', v)}/>
+          {!_bienCond.isVillaRiadMaison && (
+            <BoolChip label="Ascenseur" value={!!bien.ascenseur} onChange={v => setB('ascenseur', v)}/>
+          )}
+          <BoolChip label="Domotique" value={!!bien.domotique} onChange={v => setB('domotique', v)}/>
+          <MultiSelectPicker label="Sécurité" value={bien.securite || []} onChange={v => setB('securite', v)}
+            options={[{value:'digicode',label:'Digicode'},{value:'interphone',label:'Interphone'},{value:'alarme',label:'Alarme'},{value:'videosurveillance',label:'Vidéosurveillance'},{value:'gardien',label:'Gardien 24/7'}]}/>
+          <Select label="Internet" value={bien.internet_type} onChange={v => setB('internet_type', v)}
+            options={['Fibre','ADSL','4G/5G','Aucun']}/>
+          {_bienCond.isLuxe && (
+            <MultiSelectPicker label="Équipements luxe" value={bien.equipements_luxe || []} onChange={v => setB('equipements_luxe', v)}
+              options={[{value:'spa',label:'Spa'},{value:'hammam',label:'Hammam'},{value:'sauna',label:'Sauna'},{value:'salle_sport',label:'Salle de sport'},{value:'salle_cinema',label:'Salle de cinéma'},{value:'cave_vin',label:'Cave à vin'}]}/>
+          )}
+          {_bienCond.isRiad && (
+            <MultiSelectPicker label="Authenticité Riad" value={bien.authenticite_riad || []} onChange={v => setB('authenticite_riad', v)}
+              options={[{value:'zellige',label:'Zellige'},{value:'tadelakt',label:'Tadelakt'},{value:'bejmat',label:'Bejmat'},{value:'fontaine',label:'Fontaine'},{value:'douiria',label:'Douiria'},{value:'zouak',label:'Zouak'},{value:'moucharabieh',label:'Moucharabieh'},{value:'stuc',label:'Stuc sculpté'}]}/>
+          )}
+
           {/* 5. Tronc commun (chambres / sdb / parking / extérieur / énergie) — si au moins un type habitable */}
           {hasHabitable && <>
           <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', fontWeight:700, marginTop:12, marginBottom:6, letterSpacing:.4}}>Caractéristiques communes</div>
