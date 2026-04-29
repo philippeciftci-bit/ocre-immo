@@ -48,6 +48,17 @@ $expires = htmlspecialchars($link['expires_at']);
 // Décode payload data JSON pour les sections riches
 $data = json_decode($dossier['data'] ?? '{}', true) ?: [];
 function fld($v) { return $v ? htmlspecialchars($v) : '—'; }
+
+// M/2026/04/29/38 — toggle Prix / Sur demande embedded URL.
+$shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
+$prixRaw = $data['prix_affiche'] ?? $data['prix'] ?? $data['budget_max'] ?? null;
+$deviseRaw = $data['devise'] ?? '€';
+function _fmtPrix($v, $d) {
+    if (!$v) return '—';
+    $n = (float) preg_replace('/[^\d.,-]/', '', str_replace(',', '.', (string) $v));
+    if ($n == 0) return htmlspecialchars((string) $v);
+    return number_format($n, 0, ',', ' ') . ' ' . htmlspecialchars($d);
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -74,6 +85,24 @@ function fld($v) { return $v ? htmlspecialchars($v) : '—'; }
   .footer { text-align: center; font-size: 11px; color: #7A7167; margin-top: 40px; padding-top: 16px; border-top: 1px solid #E5DDC8; }
   .logo-wrap { display: inline-flex; flex-direction: column; align-items: center; }
   .test-badge { font-family: 'DM Sans', system-ui, sans-serif; font-size: 18px; font-weight: 500; letter-spacing: 1.5px; color: #DC2626; text-transform: lowercase; line-height: 1; margin-top: 2px; }
+  /* M/2026/04/29/38 — bandeau 4 boutons toggle Prix/Sur demande charte v3. */
+  body { padding-bottom: 80px; }
+  .prix-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; vertical-align: middle; margin-left: 8px; }
+  .prix-pill.affiche { background: #F5EFE7; color: #8B5E3C; }
+  .prix-pill.masque { background: rgba(196,69,59,0.12); color: #C4453B; }
+  .prix-value.demand { color: #6b6b6b; font-style: italic; }
+  .share-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #E8E0D2; padding: 12px 14px calc(env(safe-area-inset-bottom, 0px) + 12px); z-index: 100; }
+  .share-bar-grid { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.6fr; gap: 10px; }
+  .share-btn { height: 56px; border-radius: 12px; border: 1.5px solid #D6C7A8; background: #fff; color: #8B5E3C; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 100ms ease, background 150ms ease, border-color 150ms ease; }
+  .share-btn:hover { border-color: #8B5E3C; background: #F5EFE7; }
+  .share-btn:active { transform: scale(0.98); }
+  .share-btn.toggle { flex-direction: column; gap: 2px; }
+  .share-btn.toggle .lbl-mini { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.85; }
+  .share-btn.active { background: #8B5E3C; border-color: #8B5E3C; color: #fff; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2), 0 2px 8px rgba(139,94,60,0.25); }
+  .share-btn.active.demand { background: #6B4520; border-color: #6B4520; }
+  .share-btn svg { flex-shrink: 0; }
+  @media (max-width: 720px) { .share-bar-grid { gap: 6px; } .share-btn { height: 50px; font-size: 14px; } .share-btn.toggle .lbl-mini { font-size: 9px; } }
+  @media (max-width: 480px) { .share-btn .lbl-full { display: none; } .share-bar-grid { grid-template-columns: 1fr 1fr 1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -107,7 +136,17 @@ function fld($v) { return $v ? htmlspecialchars($v) : '—'; }
 
   <h2>III. Volet financier</h2>
   <div class="grid">
-    <div class="field"><div class="label">Prix / Budget</div><div class="value <?php echo empty($data['prix']) && empty($data['budget_max']) ? 'empty' : ''; ?>"><?php echo fld($data['prix'] ?? $data['budget_max'] ?? null); ?></div></div>
+    <div class="field">
+      <div class="label">
+        Prix / Budget
+        <span class="prix-pill <?php echo $shareMode === 'demand' ? 'masque' : 'affiche'; ?>" id="prix-pill"><?php echo $shareMode === 'demand' ? 'Masqué' : 'Affiché'; ?></span>
+      </div>
+      <div class="value prix-value <?php echo $shareMode === 'demand' ? 'demand' : ''; ?>" id="prix-value"
+           data-prix-real="<?php echo htmlspecialchars(_fmtPrix($prixRaw, $deviseRaw)); ?>"
+           data-prix-demand="Sur demande">
+        <?php echo $shareMode === 'demand' ? 'Sur demande' : _fmtPrix($prixRaw, $deviseRaw); ?>
+      </div>
+    </div>
     <div class="field"><div class="label">Financement</div><div class="value <?php echo empty($data['financement']) ? 'empty' : ''; ?>"><?php echo fld($data['financement']['mode'] ?? null); ?></div></div>
   </div>
 
@@ -118,5 +157,85 @@ function fld($v) { return $v ? htmlspecialchars($v) : '—'; }
     Document partagé via Ocre Immo · expire le <?php echo $expires; ?> · Vue <?php echo (int)$link['viewed_count']; ?>×
   </div>
 </div>
+
+<!-- M/2026/04/29/38 — bandeau footer 4 boutons toggle Prix / Sur demande -->
+<div class="share-bar" data-dossier-id="<?php echo (int) $dossier['id']; ?>">
+  <div class="share-bar-grid">
+    <button type="button" class="share-btn" id="btn-cancel" aria-label="Annuler">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <span class="lbl-full">Annuler</span>
+    </button>
+    <button type="button" class="share-btn toggle <?php echo $shareMode === 'price' ? 'active' : ''; ?>" id="btn-price" aria-label="Afficher le prix">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7.5a4 4 0 0 0-7 0M5 12h9M5 16h9M14 16.5a4 4 0 0 1-7 0"/></svg>
+      <span class="lbl-mini">Prix</span>
+    </button>
+    <button type="button" class="share-btn toggle demand <?php echo $shareMode === 'demand' ? 'active' : ''; ?>" id="btn-demand" aria-label="Sur demande">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7.5a4 4 0 0 0-7 0M5 12h9M5 16h9M14 16.5a4 4 0 0 1-7 0"/><line x1="3" y1="3" x2="21" y2="21" stroke="#C4453B" stroke-width="2.5"/></svg>
+      <span class="lbl-mini">Sur demande</span>
+    </button>
+    <button type="button" class="share-btn" id="btn-share" aria-label="Partager">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      <span class="lbl-full">Partager</span>
+    </button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var dossierId = document.querySelector('.share-bar').getAttribute('data-dossier-id');
+  var btnCancel = document.getElementById('btn-cancel');
+  var btnPrice = document.getElementById('btn-price');
+  var btnDemand = document.getElementById('btn-demand');
+  var btnShare = document.getElementById('btn-share');
+  var prixVal = document.getElementById('prix-value');
+  var prixPill = document.getElementById('prix-pill');
+  var currentMode = (new URLSearchParams(location.search).get('mode') === 'demand') ? 'demand' : 'price';
+  // Persist last chosen mode per dossier in localStorage.
+  var lsKey = 'ocre_share_mode_' + dossierId;
+  if (!new URLSearchParams(location.search).has('mode')) {
+    var stored = localStorage.getItem(lsKey);
+    if (stored === 'demand' || stored === 'price') currentMode = stored;
+  }
+  function applyMode(mode) {
+    currentMode = mode;
+    btnPrice.classList.toggle('active', mode === 'price');
+    btnDemand.classList.toggle('active', mode === 'demand');
+    if (prixVal) {
+      if (mode === 'demand') {
+        prixVal.textContent = prixVal.getAttribute('data-prix-demand');
+        prixVal.classList.add('demand');
+      } else {
+        prixVal.textContent = prixVal.getAttribute('data-prix-real');
+        prixVal.classList.remove('demand');
+      }
+    }
+    if (prixPill) {
+      prixPill.textContent = mode === 'demand' ? 'Masqué' : 'Affiché';
+      prixPill.classList.toggle('masque', mode === 'demand');
+      prixPill.classList.toggle('affiche', mode !== 'demand');
+    }
+    localStorage.setItem(lsKey, mode);
+    var u = new URL(location.href);
+    u.searchParams.set('mode', mode);
+    history.replaceState(null, '', u.toString());
+  }
+  applyMode(currentMode);
+  btnPrice.addEventListener('click', function() { applyMode('price'); });
+  btnDemand.addEventListener('click', function() { applyMode('demand'); });
+  btnCancel.addEventListener('click', function() { history.length > 1 ? history.back() : window.close(); });
+  btnShare.addEventListener('click', function() {
+    var u = new URL(location.href);
+    u.searchParams.set('mode', currentMode);
+    var url = u.toString();
+    if (navigator.share) {
+      navigator.share({url: url, title: document.title}).catch(function() {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function() { alert('Lien copié dans le presse-papier'); });
+    } else {
+      prompt('Copier le lien :', url);
+    }
+  });
+})();
+</script>
 </body>
 </html>

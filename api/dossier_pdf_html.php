@@ -104,6 +104,9 @@ $ville = trim(($bien['ville'] ?? '') . (!empty($bien['quartier']) ? ' — ' . $b
 $prix = $data['prix_affiche'] ?? $data['prix'] ?? null;
 $devise = $data['devise'] ?? '€';
 $honoraires = $data['honoraires_inclus'] ?? true;
+// M/2026/04/29/38 — toggle Prix / Sur demande embedded URL ?mode=price|demand.
+$shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
+$prixDemand = ($shareMode === 'demand');
 
 $ref = sprintf('OCR-%06d', (int) $dossier['id']);
 $shareBase = 'https://app.ocre.immo/share/';
@@ -364,11 +367,11 @@ header('Content-Type: text/html; charset=utf-8');
 
     <div class="cover-foot">
       <div class="price">
-        <?php if ($prix): ?>
+        <?php if ($prix && !$prixDemand): ?>
           <div class="amount"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= h($devise) ?></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
-          <div class="amount" style="font-size:18px; color: var(--muted);">Prix sur demande</div>
+          <div class="amount" style="font-size:18px; color: var(--muted); font-style: italic;">Sur demande</div>
         <?php endif; ?>
       </div>
       <div class="center-mark">
@@ -535,11 +538,11 @@ header('Content-Type: text/html; charset=utf-8');
       </div>
       <div class="col" style="text-align: right;">
         <h5>Prix</h5>
-        <?php if ($prix): ?>
+        <?php if ($prix && !$prixDemand): ?>
           <div class="price-final"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= h($devise) ?></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
-          <div class="price-final" style="font-size: 18px; color: var(--muted);">Sur demande</div>
+          <div class="price-final" style="font-size: 18px; color: var(--muted); font-style: italic;">Sur demande</div>
         <?php endif; ?>
       </div>
     </div>

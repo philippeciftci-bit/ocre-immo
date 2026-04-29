@@ -2132,90 +2132,12 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
     + _num(bien.surface_terrasse) + _num(bien.surface_jardin)
     + _num(bien.surface_garage) + _num(bien.terrasse_couv_m2);
 
-  // M/2026/04/29/19 — Dispatch askingMode : Acheteur/Locataire/Investisseur garde le rendu legacy
-  // (per-type fields RangeField fourchettes) ; Vendeur/Bailleur reçoivent la maquette V1 14 blocs.
-  if (askingMode) {
-    return (
-      <>
-        <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:4, marginBottom:8}}>Localisation</div>
-        <div style={{display:'flex', gap:8, marginBottom:10}}>
-          <button type="button" onClick={() => setV66PaysModal(true)}
-            style={{flex:1, padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
-                    border:'1.5px solid ' + (bien.pays ? '#8B5E3C' : '#C9B79A'),
-                    background: bien.pays ? '#FBF1E4' : '#FFFCF5',
-                    color:'#5C3B1E', borderRadius:8, cursor:'pointer',
-                    display:'flex', alignItems:'center', justifyContent:'space-between', minWidth:0, minHeight:38}}>
-            <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-              {paysSel ? (paysSel.f + ' ' + paysSel.n) : 'Pays'}
-            </span>
-            <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
-          </button>
-          <button type="button" onClick={() => bien.pays && setV66TypeModal(true)}
-            disabled={!bien.pays}
-            style={{flex:1, padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
-                    border:'1.5px solid ' + (types.length > 0 ? '#8B5E3C' : '#C9B79A'),
-                    background: bien.pays ? (types.length > 0 ? '#FBF1E4' : '#FFFCF5') : '#F4ECE3',
-                    color: bien.pays ? '#5C3B1E' : '#8B7F6E',
-                    borderRadius:8, cursor: bien.pays ? 'pointer' : 'not-allowed',
-                    display:'flex', alignItems:'center', justifyContent:'space-between', minHeight:38, opacity: bien.pays ? 1 : 0.6}}>
-            <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-              {types.length > 0 ? ('Type de bien (' + types.length + ')') : 'Type de bien'}
-            </span>
-            <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
-          </button>
-        </div>
-        {!bien.pays && <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'2px 0 6px'}}>Choisissez un pays pour voir les types disponibles.</div>}
-        {types.length > 0 && (
-          <div style={{display:'flex', flexWrap:'wrap', gap:5, marginBottom:10}}>
-            {types.map(t => (
-              <span key={t} style={{padding:'3px 8px', background:'#FBF1E4', border:'1px solid #C9B79A', borderRadius:12, fontSize:11, fontWeight:600, color:'#5C3B1E', display:'inline-flex', alignItems:'center', gap:4}}>
-                {t}
-                <button type="button" onClick={() => toggleType(t)}
-                  style={{background:'none', border:'none', color:'#B26D3A', cursor:'pointer', padding:0, fontSize:14, lineHeight:1, fontFamily:'inherit'}}>×</button>
-              </span>
-            ))}
-          </div>
-        )}
-        {v66PaysModal && (
-          <V58MultiSelectModal title="Pays du bien"
-            options={PAYS_BIEN.map(p => ({value: p.c, label: p.n, flag: p.f}))}
-            selected={bien.pays ? [bien.pays] : []}
-            onToggle={(code) => { setB('pays', code === bien.pays ? '' : code); setV66PaysModal(false); }}
-            onClose={() => setV66PaysModal(false)}/>
-        )}
-        {v66TypeModal && (
-          <V58MultiSelectModal title="Type de bien"
-            options={typesDispo.map(t => ({value: t, label: t}))}
-            selected={types} onToggle={toggleType} onClose={() => setV66TypeModal(false)}/>
-        )}
-        <AnimatedReveal show={!!(bien.pays && anyType)}>
-          <>
-            <CityPicker label="Ville" value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays}/>
-            <DistrictPicker ville={bien.ville} pays={bien.pays}
-              value={bien.quartier} onChange={v => setB('quartier', v)}
-              fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
-            <div style={{marginTop:8, marginBottom:12}}>
-              <MapPicker bien={bien} setB={setB} showToast={showToast}/>
-            </div>
-            {bien.pays === 'MA' && <Field label="GPS (texte, facultatif)" value={bien.gps} onChange={v => setB('gps', v)} placeholder="ex: -7.623, 33.589"/>}
-            {types.includes('Villa') && <VillaFields bien={bien} setB={setB} askingMode={askingMode}/>}
-            {types.includes('Appartement') && <AppartFields bien={bien} setB={setB} askingMode={askingMode}/>}
-            {types.includes('Riad') && <RiadFields bien={bien} setB={setB} askingMode={askingMode}/>}
-            {types.includes('Maison') && <MaisonFields bien={bien} setB={setB} askingMode={askingMode}/>}
-            {types.includes('Terrain') && <TerrainFields bien={bien} setB={setB} askingMode={askingMode}/>}
-            {types.includes('Commerce') && <CommerceFields bien={bien} setB={setB} askingMode={askingMode}/>}
-            {(types.includes('Bâtiment industriel') || types.includes('Industriel')) && <IndustrielFields bien={bien} setB={setB} askingMode={askingMode}/>}
-            {types.includes('Terrain industriel') && <TerrainFields bien={bien} setB={setB} askingMode={askingMode} forceNature="Activité"/>}
-            {types.includes('Ferme') && <FermeFields bien={bien} setB={setB} askingMode={askingMode}/>}
-            {types.includes('Bureau / plateau') && <BureauFields bien={bien} setB={setB} askingMode={askingMode}/>}
-          </>
-        </AnimatedReveal>
-        <CustomFieldList sectionKey="bien" d={d} set={set}/>
-      </>
-    );
-  }
+  // M/2026/04/29/37 — Suppression franche du dispatch askingMode : SSoT exige
+  // structure Section II identique pour tous les profils (Acheteur, Vendeur, Locataire,
+  // Bailleur, Investisseur). Seul le titre de section diverge (gere par le parent via
+  // STAGE_TITLES_BY_PROFIL). Tous profils tombent sur le rendu 14 blocs.
 
-  // M/2026/04/29/19 — Mode description (Vendeur/Bailleur) : maquette V1 14 blocs ordonnés.
+  // M/2026/04/29/19 — Maquette V1 14 blocs ordonnés (applicable a tous profils depuis M/37).
   const sectionTitle = (n, label) => (
     <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.8, marginTop:18, marginBottom:10}}>
       <span style={{display:'inline-block', minWidth:22, color:'#A8896A'}}>{String(n).padStart(2,'0')}</span>{label}
