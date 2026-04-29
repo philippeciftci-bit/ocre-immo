@@ -2672,7 +2672,13 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
   //               Vendeur/Bailleur → mode "description" (valeurs précises + bools).
   const askingMode = ['Acheteur','Locataire','Investisseur'].includes(activeProfil);
   const paysDef = PAYS_BIEN.find(p => p.c === bien.pays);
-  const typesDispo = paysDef ? paysDef.types : [];
+  // M/2026/04/30/6 — fallback typesDispo : si pays hors PAYS_BIEN (245 pays via CountryAutocomplete),
+  // utiliser ALL_TYPES_BIEN (Riad uniquement si MA).
+  const typesDispo = paysDef
+    ? paysDef.types
+    : (bien.pays
+        ? (bien.pays === 'MA' ? ALL_TYPES_BIEN : ALL_TYPES_BIEN.filter(t => t !== 'Riad'))
+        : []);
   // V17.9 : multi-types. Fallback bien.type (legacy singular) si bien.types absent.
   const types = Array.isArray(bien.types) && bien.types.length ? bien.types : (bien.type ? [bien.type] : []);
   const hasHabitable = types.some(t => HABITABLE_TYPES.includes(t));
@@ -2695,10 +2701,8 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
     else if (next.length === 0) setShowTypesGrid(true);
   }
 
-  // V66 — modales pays + types (réutilise V58MultiSelectModal pour types).
-  const [v66PaysModal, setV66PaysModal] = React.useState(false);
+  // V66 — modale types (la modale pays a ete remplacee par CountryAutocomplete inline en M/2026/04/30/6).
   const [v66TypeModal, setV66TypeModal] = React.useState(false);
-  const paysSel = PAYS_BIEN.find(p => p.c === bien.pays);
 
   // M/2026/04/29/19 — Surface totale auto-calculée (somme habitable + terrain + terrasses + jardin + garage).
   const _num = (x) => { const n = parseFloat(x); return isNaN(n) ? 0 : n; };
@@ -2723,56 +2727,41 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
       <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.8, marginTop:4, marginBottom:10}}>
         <span style={{display:'inline-block', minWidth:22, color:'#A8896A'}}>01</span>Localisation
       </div>
-      {/* M/2026/04/29/42 — Bloc 01 V4 layout strict : Pays/Ville(CP)/Quartier 3 cols, Adresse full,
-          Lat/Lng grid 2, [Carte/Précis/Zone/Ma position] dans MapPicker, Carte toujours visible,
-          Breadcrumb, [Confidentialité/Distance aéroport]. */}
-      <div style={{display:'grid', gridTemplateColumns:'1.2fr 2fr 1.5fr', gap:8, marginBottom:10}}>
-        <div>
-          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays</label>
-          <button type="button" onClick={() => setV66PaysModal(true)}
-            style={{width:'100%', padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
-                    border:'1.5px solid '+(bien.pays ? '#8B5E3C' : '#C9B79A'),
-                    background: bien.pays ? '#FBF1E4' : '#FFFCF5',
-                    color:'#5C3B1E', borderRadius:8, cursor:'pointer',
-                    display:'flex', alignItems:'center', justifyContent:'space-between', minHeight:38}}>
-            <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{paysSel ? (paysSel.f+' '+paysSel.n) : 'Pays'}</span>
-            <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
-          </button>
-        </div>
-        <CityPicker label={bien.code_postal ? ('Ville · ' + bien.code_postal) : 'Ville'} value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays} style={{marginBottom:0}}/>
-        <DistrictPicker ville={bien.ville} pays={bien.pays}
-          value={bien.quartier} onChange={v => setB('quartier', v)}
-          fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
+      {/* M/2026/04/30/6 — Bloc 01 refondu coherent Section I :
+          L1 Adresse Nominatim mondial (AddressAutocomplete) + auto-fill ville/CP/pays/lat/lng/quartier au tap suggestion.
+          L2 grid 3 cols [CP | Ville | Pays] + saisie libre indep + Pays popover 245 pays.
+          L3 Quartier seul. Carte/MapPicker en dessous. */}
+      <AddressAutocomplete label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)}
+        country={bien.pays}
+        autoComplete="street-address" name="bien-street-address"
+        onPick={(pick) => {
+          if (pick.adresse) setB('adresse', pick.adresse);
+          if (pick.ville) setB('ville', pick.ville);
+          if (pick.quartier) setB('quartier', pick.quartier);
+          if (pick.code_postal) setB('code_postal', pick.code_postal);
+          if (pick.pays) setB('pays', pick.pays);
+          if (pick.lat) setB('gps_lat', String(pick.lat));
+          if (pick.lng) setB('gps_lng', String(pick.lng));
+          setB('gps_source', 'autocomplete');
+        }}/>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:10}}>
+        <Field label="Code postal" value={bien.code_postal} onChange={v => setB('code_postal', v)} style={{marginBottom:0}}
+          autoComplete="postal-code" name="bien-postal-code" inputMode="text"/>
+        <CityPicker label="Ville" value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays} showFlag={false} style={{marginBottom:0}}
+          autoComplete="address-level2" name="bien-address-level2"/>
+        <CountryAutocomplete label="Pays" value={bien.pays} onChange={v => setB('pays', v)} style={{marginBottom:0}}
+          autoComplete="country-name" name="bien-country-name"/>
       </div>
-      {bien.ville ? (
-        <LocationAutocomplete value={bien.adresse} onChange={v => setB('adresse', v)}
-          ville={bien.ville} pays={bien.pays} quartier={bien.quartier}
-          label="Adresse"
-          onPick={(pick) => {
-            if (pick.adresse) setB('adresse', pick.adresse);
-            if (pick.ville) setB('ville', pick.ville);
-            if (pick.quartier) setB('quartier', pick.quartier);
-            if (pick.code_postal) setB('code_postal', pick.code_postal);
-            if (pick.gps_lat) setB('gps_lat', pick.gps_lat);
-            if (pick.gps_lng) setB('gps_lng', pick.gps_lng);
-            setB('gps_source', 'autocomplete');
-          }}/>
-      ) : (
-        <Field label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)} placeholder="Choisis d'abord une ville pour activer l'autocomplete"/>
-      )}
+      <DistrictPicker ville={bien.ville} pays={bien.pays}
+        value={bien.quartier} onChange={v => setB('quartier', v)}
+        fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
       {/* M/2026/04/29/43 — Lat/Lng grid supprime franchement (state gps_lat/lng preserve, consomme par MapPicker, juste invisible UI). */}
       <MapPicker bien={bien} setB={setB} showToast={showToast}/>
       <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:8, marginBottom:10}}>
         <SelectPopup label="Confidentialité adresse" value={bien.confidentialite_adresse} onChange={v => setB('confidentialite_adresse', v)} options={V4_CONFIDENTIALITE}/>
         <Field label="Distance aéroport (km)" type="number" value={bien.distance_aeroport_km} onChange={v => setB('distance_aeroport_km', v)}/>
       </div>
-      {v66PaysModal && (
-        <V58MultiSelectModal title="Pays du bien"
-          options={PAYS_BIEN.map(p => ({value: p.c, label: p.n, flag: p.f}))}
-          selected={bien.pays ? [bien.pays] : []}
-          onToggle={(code) => { setB('pays', code === bien.pays ? '' : code); setV66PaysModal(false); }}
-          onClose={() => setV66PaysModal(false)}/>
-      )}
+      {/* M/2026/04/30/6 — V58MultiSelectModal Pays supprime franchement (CountryAutocomplete 245 inline). */}
       {v66TypeModal && (
         <V58MultiSelectModal title="Type de bien"
           options={typesDispo.map(t => ({value: t, label: t}))}
@@ -3533,91 +3522,6 @@ function DistrictPicker({ville, pays, value, onChange, fallbackList}) {
   );
 }
 
-// V18.8 — LocationAutocomplete : Nominatim search debounce 500ms biaisé sur viewbox ville/quartier.
-const LOC_TYPE_ICON = {road:'🛣️', highway:'🛣️', shop:'🏪', amenity:'🏪', restaurant:'🍽️', tourism:'🏨', hotel:'🏨', historic:'🏛️', place:'📍'};
-
-function LocationAutocomplete({label, value, onChange, onPick, ville, pays, quartier}) {
-  const [q, setQ] = React.useState(value || '');
-  const [results, setResults] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [open, setOpen] = React.useState(false);
-  const tRef = React.useRef(null);
-  React.useEffect(() => { setQ(value || ''); }, [value]);
-
-  async function search(query) {
-    if (!query || query.length < 3) { setResults([]); return; }
-    setLoading(true);
-    try {
-      const paysName = PAYS_NOM[pays] || pays || '';
-      const ctx = [quartier, ville, paysName].filter(Boolean).join(', ');
-      const fullQ = ctx ? (query + ', ' + ctx) : query;
-      const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=10&addressdetails=1&extratags=1&accept-language=fr&q=' + encodeURIComponent(fullQ);
-      const r = await fetch(url, {headers:{'Accept':'application/json'}});
-      if (r.ok) {
-        const j = await r.json();
-        setResults(Array.isArray(j) ? j : []);
-      }
-    } catch (e) {}
-    setLoading(false);
-  }
-  function onInput(v) {
-    setQ(v); onChange && onChange(v); setOpen(true);
-    if (tRef.current) clearTimeout(tRef.current);
-    tRef.current = setTimeout(() => search(v), 500);
-  }
-  function pickResult(r) {
-    const addr = r.address || {};
-    const road = [addr.house_number, addr.road].filter(Boolean).join(' ');
-    const display = road || r.display_name || r.name;
-    setQ(display);
-    setOpen(false);
-    setResults([]);
-    onPick && onPick({
-      lat: parseFloat(r.lat), lng: parseFloat(r.lon),
-      adresse: display,
-      ville: addr.city || addr.town || addr.village || addr.municipality,
-      quartier: addr.suburb || addr.neighbourhood || addr.quarter,
-      code_postal: addr.postcode,
-      pays: addr.country_code ? addr.country_code.toUpperCase() : null,
-      raw: r,
-    });
-  }
-  function iconFor(r) {
-    const c = (r.class || '').toLowerCase();
-    if (LOC_TYPE_ICON[c]) return LOC_TYPE_ICON[c];
-    if (c === 'shop' || c === 'amenity') {
-      const t = (r.type || '').toLowerCase();
-      if (t === 'restaurant' || t === 'cafe' || t === 'fast_food') return '🍽️';
-      if (t === 'hotel' || t === 'motel') return '🏨';
-      return '🏪';
-    }
-    return LOC_TYPE_ICON[c] || '📍';
-  }
-
-  return (
-    <div style={{position:'relative', marginBottom:10}}>
-      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label || 'Adresse, rue, lieu-dit ou commerce'}</label>
-      <input value={q} onChange={e => onInput(e.target.value)} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)}
-        placeholder={ville ? 'Avenue Mohammed V, Café Argana…' : 'Saisis d\'abord la ville'}
-        style={{width:'100%', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018',
-                border:'1.5px solid ' + (q ? '#BBA88B' : '#E8DDD0'), background: q ? '#FFFCF5' : '#FDFAF7'}}/>
-      {open && (loading || results.length > 0) && (
-        <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:300, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:60, marginTop:2}}>
-          {loading && <div style={{padding:12, fontSize:12, color:'#8B7F6E'}}>Recherche…</div>}
-          {!loading && results.map((r, i) => (
-            <div key={i} onMouseDown={e => e.preventDefault()} onClick={() => pickResult(r)}
-              style={{padding:'10px 12px', cursor:'pointer', borderBottom: i < results.length - 1 ? '1px solid #F4EEE6' : 'none', fontSize:13, display:'flex', alignItems:'center', gap:8}}>
-              <span style={{fontSize:16, flexShrink:0}}>{iconFor(r)}</span>
-              <div style={{flex:1, minWidth:0}}>
-                <div style={{fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{r.display_name}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // V18.8 — reverse geocoding Nominatim : lat/lon → adresse complète.
 async function reverseGeocodeNominatim(lat, lng) {
@@ -3646,7 +3550,8 @@ async function reverseGeocodeNominatim(lat, lng) {
 function MapPicker({bien, setB, showToast}) {
   const mapRef = React.useRef(null);
   // V17.8 : refs stables pour marker + circle, setRadius live sans recreate.
-  const leafletRef = React.useRef({map:null, marker:null, circle:null});
+  // M/2026/04/30/6 : proximityCircle ref distinct (cercle rouge 500m permanent).
+  const leafletRef = React.useRef({map:null, marker:null, circle:null, proximityCircle:null});
   const modeRef = React.useRef(bien.gps_mode || 'precis');
   const radiusRef = React.useRef(bien.gps_radius ? Number(bien.gps_radius) : 1000);
   const [mode, setMode] = React.useState(modeRef.current);
@@ -3657,6 +3562,9 @@ function MapPicker({bien, setB, showToast}) {
   const [mapOpen] = React.useState(true);
 
   const CIRCLE_STYLE = {color:'#B26D3A', fillColor:'#FBF1E4', fillOpacity:.25, weight:2};
+  // M/2026/04/30/6 — cercle proximite rouge tres clair (zone de recherche/proximite 500m).
+  const PROXIMITY_RADIUS = 500;
+  const PROXIMITY_STYLE = {radius: PROXIMITY_RADIUS, color:'#C73E3E', fillColor:'#C73E3E', fillOpacity:0.08, weight:1.5};
 
   function ensureMarker(L, lat, lng) {
     const lr = leafletRef.current;
@@ -3668,6 +3576,7 @@ function MapPicker({bien, setB, showToast}) {
         setB('gps_lng', p.lng.toFixed(6));
         setB('gps_source', 'manual'); // V18.0 : drag = manuel, n'est plus écrasable par geocode.
         if (lr.circle) lr.circle.setLatLng(p);
+        if (lr.proximityCircle) lr.proximityCircle.setLatLng(p);
       });
     } else {
       lr.marker.setLatLng([lat, lng]);
@@ -3686,11 +3595,21 @@ function MapPicker({bien, setB, showToast}) {
     const lr = leafletRef.current;
     if (lr.circle) { lr.map.removeLayer(lr.circle); lr.circle = null; }
   }
+  // M/2026/04/30/6 — cercle proximite 500m permanent (toujours visible quand position GPS connue).
+  function ensureProximityCircle(L, lat, lng) {
+    const lr = leafletRef.current;
+    if (!lr.proximityCircle) {
+      lr.proximityCircle = L.circle([lat, lng], PROXIMITY_STYLE).addTo(lr.map);
+    } else {
+      lr.proximityCircle.setLatLng([lat, lng]);
+    }
+  }
   function place(lat, lng) {
     const L = window.L;
     const lr = leafletRef.current;
     if (!L || !lr.map) return;
     ensureMarker(L, lat, lng);
+    ensureProximityCircle(L, lat, lng);
     if (modeRef.current === 'zone') ensureCircle(L, lat, lng, radiusRef.current);
     else removeCircle();
   }
@@ -3839,19 +3758,31 @@ function MapPicker({bien, setB, showToast}) {
       {enableHighAccuracy:true, timeout:10000, maximumAge:0}
     );
   }
-  // V18.8 — pick depuis LocationAutocomplete : set GPS + adresse + flyTo z17.
-  function applyLocationPick(pick) {
-    if (!pick) return;
-    setB('gps_lat', pick.lat.toFixed(6));
-    setB('gps_lng', pick.lng.toFixed(6));
-    setB('gps_source', 'manual');
-    if (pick.adresse) setB('adresse', pick.adresse);
-    if (pick.code_postal) setB('code_postal', pick.code_postal);
-    if (leafletRef.current.map) {
-      leafletRef.current.map.flyTo([pick.lat, pick.lng], 17, {duration: 0.8});
-      place(pick.lat, pick.lng);
+  // M/2026/04/30/6 — applyLocationPick supprime franchement (LocationAutocomplete supprime,
+  // remplace par AddressAutocomplete dont l onPick pipe direct dans setB).
+
+  // M/2026/04/30/6 — partage position via Web Share API (iOS share sheet) avec fallback clipboard.
+  async function sharePosition() {
+    const lat = Number(bien.gps_lat), lng = Number(bien.gps_lng);
+    if (!lat || !lng) { showToast && showToast('Pas de position GPS a partager'); return; }
+    const url = 'https://www.google.com/maps/place/?q=' + lat + ',' + lng;
+    const ville = bien.ville || '';
+    const paysName = bien.pays ? (PAYS_NOM[bien.pays] || bien.pays) : '';
+    const title = ville ? (ville + (paysName ? ', ' + paysName : '')) : 'Position GPS';
+    const text = 'Position du bien : ' + title;
+    if (navigator.share) {
+      try { await navigator.share({title, text, url}); }
+      catch (err) { if (err && err.name !== 'AbortError') showToast && showToast('Partage annule'); }
+      return;
     }
-    showToast && showToast('📍 ' + (pick.adresse || 'Position enregistrée'));
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        showToast && showToast('Lien copie dans le presse-papier');
+      } else {
+        showToast && showToast(url);
+      }
+    } catch (e) { showToast && showToast('Partage impossible'); }
   }
 
   if (!ready && typeof window !== 'undefined' && !window.L) {
@@ -3888,6 +3819,25 @@ function MapPicker({bien, setB, showToast}) {
             <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
             <line x1="8" y1="2" x2="8" y2="18"/>
             <line x1="16" y1="6" x2="16" y2="22"/>
+          </svg>
+        </button>
+        {/* M/2026/04/30/6 — bouton partage position (Web Share API iOS / fallback clipboard). */}
+        <button type="button" onClick={sharePosition}
+          disabled={!bien.gps_lat || !bien.gps_lng}
+          aria-label="Partager la position"
+          title="Partager la position"
+          style={{padding:'7px 10px', borderRadius:8,
+                  border:'1.5px solid ' + (bien.gps_lat && bien.gps_lng ? '#8B5E3C' : '#E8DDD0'),
+                  background: bien.gps_lat && bien.gps_lng ? '#FFFCF5' : '#F4ECE0',
+                  color: bien.gps_lat && bien.gps_lng ? '#8B5E3C' : '#B5A78F',
+                  cursor: bien.gps_lat && bien.gps_lng ? 'pointer' : 'not-allowed',
+                  fontFamily:'inherit', display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:42}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
           </svg>
         </button>
       </div>
