@@ -1694,6 +1694,86 @@ function BoolChip({label, value, onChange}) {
 // (rétro-compat seed v20 = string, uploads upload.php = {name,url}). Les ajouts/suppressions
 // sont propagés via onPhotosChange qui met à jour bien.photos[] dans data (auto-save FormView).
 // Le storage physique reste géré par api/upload.php (unchanged backend).
+// M/2026/04/29/46 — PhotoLightbox : modal plein ecran swipe horizontal scroll-snap.
+// Ferme via croix top-right, tap fond noir, ou Esc. Body scroll lock pendant ouverture.
+// Carousel native iOS via scroll-snap-x mandatory + dots pagination en bas.
+function PhotoLightbox({photos, startIndex = 0, onClose}) {
+  const scrollerRef = React.useRef(null);
+  const [activeIdx, setActiveIdx] = React.useState(startIndex);
+  // Body scroll lock
+  React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  // Esc keydown
+  React.useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose && onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  // Init scroll position au startIndex
+  React.useEffect(() => {
+    if (scrollerRef.current && startIndex > 0) {
+      const w = scrollerRef.current.clientWidth;
+      scrollerRef.current.scrollLeft = w * startIndex;
+    }
+  }, []);
+  // Update activeIdx au scroll
+  function onScroll() {
+    if (!scrollerRef.current) return;
+    const w = scrollerRef.current.clientWidth;
+    if (w > 0) setActiveIdx(Math.round(scrollerRef.current.scrollLeft / w));
+  }
+  if (!Array.isArray(photos) || photos.length === 0) return null;
+  return (
+    <div onClick={onClose}
+      style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.92)', zIndex:99999,
+              display:'flex', alignItems:'center', justifyContent:'center'}}>
+      <div ref={scrollerRef} onScroll={onScroll}
+        style={{width:'100%', height:'100%', overflowX:'auto', overflowY:'hidden',
+                display:'flex', scrollSnapType:'x mandatory',
+                WebkitOverflowScrolling:'touch'}}>
+        {photos.map((src, i) => (
+          <div key={i} onClick={e => e.stopPropagation()}
+            style={{flex:'0 0 100%', height:'100%', scrollSnapAlign:'center',
+                    display:'flex', alignItems:'center', justifyContent:'center', padding:8}}>
+            <img src={src} alt=""
+              style={{maxWidth:'100%', maxHeight:'100%', objectFit:'contain', display:'block'}}/>
+          </div>
+        ))}
+      </div>
+      {/* Bouton fermer */}
+      <button type="button" onClick={e => { e.stopPropagation(); onClose && onClose(); }}
+        aria-label="Fermer"
+        style={{position:'absolute', top:16, right:16, width:36, height:36, borderRadius:18,
+                background:'rgba(255,255,255,0.15)', backdropFilter:'blur(8px)',
+                border:'none', color:'#fff', fontSize:18, fontWeight:600,
+                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                fontFamily:'inherit', padding:0, lineHeight:1}}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      {/* Dots pagination */}
+      {photos.length > 1 && (
+        <div onClick={e => e.stopPropagation()}
+          style={{position:'absolute', bottom:16, left:0, right:0,
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:6}}>
+          {photos.map((_, i) => (
+            <span key={i}
+              style={{width:6, height:6, borderRadius:3,
+                      background: i === activeIdx ? '#fff' : 'rgba(255,255,255,0.4)',
+                      transition:'background 150ms'}}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
   const [uploading, setUploading] = React.useState(false);
   const inputRef = React.useRef(null);
@@ -12424,6 +12504,8 @@ function MatchModal({clientId, clients, findClientById, setEditingFromMatch, onC
 // Préserve v18.2 navigation par section (initialExpandedSection 1/2/3).
 function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection, isGrouped, isFirstInGroup, isLastInGroup, ...props}) {
   const [telChooser, setTelChooser] = React.useState(false);
+  // M/2026/04/29/46 — lightbox photos local au row.
+  const [lightboxOpen, setLightboxOpen] = React.useState(false);
   const profil = c.projet || c.profil_detecte || 'Acheteur';
   const col = PROFILS[profil] || PROFILS.Acheteur;
   const tint = PROFILS_TINT[profil] || PROFILS_TINT.Acheteur;
@@ -12683,9 +12765,15 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
           seul profil affiché par row. Les casquettes secondaires restent utilisées dans
           le dossier ouvert (linked_dossiers intact). */}
       <div className="client-row-head" style={{display:'flex', gap:10, padding:'10px 12px', alignItems:'stretch', background: tint}}>
-        {/* Thumb 54×54 — toujours affichée (fallback IconHome si pas de photo) */}
-        <button type="button" title="Voir les photos"
-          onClick={e => { e.stopPropagation(); openSec(1, e, 'photos'); }}
+        {/* Thumb 54×54 — toujours affichée (fallback IconHome si pas de photo).
+            M/2026/04/29/46 : tap = ouvre lightbox photos si bien.photos[] non vide,
+            sinon comportement actuel openSec photos (placeholder). */}
+        <button type="button" title={photoCount > 0 ? 'Voir les photos' : 'Ajouter des photos'}
+          onClick={e => {
+            e.stopPropagation();
+            if (photoCount > 0) setLightboxOpen(true);
+            else openSec(1, e, 'photos');
+          }}
           style={{flexShrink:0, width:54, height:54, borderRadius:10, background:'#FBF1E4', border:'1.5px solid #E0CDAE', overflow:'hidden', position:'relative', padding:0, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#8B5E3C'}}>
           {(isStagedRow && importType === 'image' && importImageUrl) ? (
             <img src={importImageUrl} alt="" loading="lazy"
@@ -12814,6 +12902,14 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       </div>
       {telChooser && (
         <ContactChooser entries={tels} scheme="tel:" title="Choisir un numéro" onClose={() => setTelChooser(false)}/>
+      )}
+      {lightboxOpen && photoCount > 0 && (
+        <PhotoLightbox photos={photosArr.map(p => {
+          if (!p) return '';
+          if (p.indexOf('/api/image.php') === 0) return p;
+          if (/^https?:\/\//.test(p)) return p;
+          return '/api/image.php?path=' + encodeURIComponent(p.replace(/^\//, ''));
+        }).filter(Boolean)} startIndex={0} onClose={() => setLightboxOpen(false)}/>
       )}
     </div>
     </div>
