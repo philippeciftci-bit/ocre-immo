@@ -51,9 +51,11 @@ if ($globalLimit <= 0) $globalLimit = 10;
 
 $isSuperAdmin = (($user['role'] ?? '') === 'super_admin');
 
-function getInput() {
-    $raw = file_get_contents('php://input');
-    return $raw ? (json_decode($raw, true) ?: []) : [];
+if (!function_exists('gqGetInput')) {
+    function gqGetInput() {
+        $raw = file_get_contents('php://input');
+        return $raw ? (json_decode($raw, true) ?: []) : [];
+    }
 }
 
 function notifyTelegram($args) {
@@ -80,7 +82,7 @@ if ($method === 'GET' && $action === 'my_status') {
 }
 
 if ($method === 'POST' && $action === 'request') {
-    $in = getInput();
+    $in = gqGetInput();
     $motif = trim((string)($in['motif'] ?? ''));
     if (mb_strlen($motif) > 1000) $motif = mb_substr($motif, 0, 1000);
 
@@ -147,7 +149,7 @@ if ($method === 'GET' && $action === 'usage_list') {
 }
 
 if ($method === 'POST' && ($action === 'approve' || $action === 'deny')) {
-    $in = getInput();
+    $in = gqGetInput();
     $reqId = (int)($in['request_id'] ?? 0);
     $message = trim((string)($in['response_message'] ?? ''));
     $extra = max(1, (int)($in['granted_extra'] ?? 10));
@@ -195,7 +197,7 @@ if ($method === 'POST' && ($action === 'approve' || $action === 'deny')) {
 }
 
 if ($method === 'POST' && $action === 'set_global_limit') {
-    $in = getInput();
+    $in = gqGetInput();
     $limit = (int)($in['limit'] ?? 0);
     if ($limit < 0 || $limit > 10000) jsonError('limit hors plage [0,10000]', 400);
     setSetting('google_places_daily_limit', $limit);
@@ -204,7 +206,7 @@ if ($method === 'POST' && $action === 'set_global_limit') {
 }
 
 if ($method === 'POST' && $action === 'set_api_key') {
-    $in = getInput();
+    $in = gqGetInput();
     $key = trim((string)($in['api_key'] ?? ''));
     setSetting('google_places_api_key', $key);
     logAction((int)$user['id'], 'google_quota_set_api_key', 'len=' . strlen($key));
