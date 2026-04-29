@@ -875,7 +875,7 @@ const CITIES_BY_COUNTRY = {
 // CityPicker — sélecteur de ville conditionnel au pays. Désactivé tant que
 // `country` n'est pas sélectionné. Au tap disabled : focus saute sur le champ
 // pays (via callback `onNeedCountry`) + tooltip flash 2s.
-function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Sélectionner une ville…'}) {
+function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Ville…'}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [tooltip, setTooltip] = React.useState(false);
@@ -912,9 +912,9 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
     <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
       <button type="button" onClick={() => disabled ? handleDisabledClick() : setOpen(true)}
-        style={{...styleField, textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-        <span>{value || placeholder}</span>
-        <span style={{fontSize:10, opacity:.5}}>▾</span>
+        style={{...styleField, minHeight:38, textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between', gap:6}}>
+        <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{value || placeholder}</span>
+        <span style={{fontSize:10, opacity:.5, flexShrink:0}}>▾</span>
       </button>
       {tooltip && (
         <div style={{position:'absolute', bottom:'100%', left:0, right:0, marginBottom:4, padding:'6px 10px', background:'#2A2018', color:'#fff', borderRadius:6, fontSize:11, fontWeight:600, fontFamily:'inherit', textAlign:'center', boxShadow:'0 2px 8px rgba(0,0,0,.2)', zIndex:99}}>
@@ -15258,10 +15258,10 @@ function FormView(props) {
               </div>
               {/* L3 Adresse full width */}
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
-              {/* M/2026/04/29/44 v8 — L4 Ville / Pays residence (ordre Ville d'abord). */}
+              {/* M/2026/04/29/50 — L4 Pays residence / Ville (ordre Pays d'abord, harmonise Section II Bien). */}
               <div className="row-pair">
-                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
                 <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
+                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
               </div>
               {/* M/2026/04/29/44 v8 — L5 Date naissance / Pays de naissance (remplace Nationalite). */}
               <div className="row-pair">
@@ -15293,10 +15293,10 @@ function FormView(props) {
               </div>
               {/* L4 Adresse société full width */}
               <CitySuggestField label="Adresse société" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
-              {/* L5 Ville / Pays résidence (HARMONISÉ Particulier : Ville d'abord) */}
+              {/* M/2026/04/29/50 — L5 Pays residence / Ville (Pays d'abord, harmonise Section II + Particulier). */}
               <div className="row-pair">
-                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
                 <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
+                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
               </div>
               {/* L6 Tel | Email (harmonise Particulier : Tel a gauche, Email a droite). */}
               <div className="row-pair">
