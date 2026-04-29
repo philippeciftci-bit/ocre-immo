@@ -6088,8 +6088,6 @@ function App() {
   const [selectedMatchId, setSelectedMatchId] = useState(null); // match_id pour MatchDetailView
   const [selectedEditId, setSelectedEditId] = useState(null); // edit_id pour EditReviewView
   const [pdfDossierId, setPdfDossierId] = useState(null); // M/2026/04/29/16 dossier_id pour DossierPdfView
-  // M/2026/04/29/23 — onboarding state supprime franchement (bloc Bienvenue intrusif).
-
   useEffect(() => {
     // V52.5 DIAG — beacon TRES TOT pour confirmer que cette version du SPA tourne
     // bien sur le device. Logged dans _diag.log via api/_v52_5_ping.php.
@@ -6551,7 +6549,6 @@ function App() {
     />
   )}
   </div>{pwaOverlay}
-  {/* M/2026/04/29/23 — OnboardingFlow supprime franchement (bloc Bienvenue intrusif). */}
   {/* V18.32 — ShareDossiersModal : génère un ZIP autonome (data.json + photos + viewer.html)
       et le partage via navigator.share (iOS share sheet) ou download direct (fallback desktop). */}
   {sharePlaceholderOpen && (
@@ -7598,7 +7595,6 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
 
 // V18.40 — Dashboard admin : métriques + users + actions (unlock / reset_password / suspend /
 // impersonate / logs) + admin_logs. Nécessite user.is_admin=true (requireAdmin côté backend).
-// M/2026/04/29/23 — OnboardingFlow (Welcome modal + tour 7 steps) supprime franchement.
 
 // M/2026/04/28/64 — HelpPage : FAQ accordéon avec search.
 function HelpPage({onBack}) {
@@ -11209,8 +11205,6 @@ function Header({left, center, right}) {
   );
 }
 
-// M/2026/04/29/23 — OnboardingBanner (V48 "Bienvenue sur OCRE Immo" + texte démo) supprime franchement.
-
 // V57 — Moteur de recherche avancé multi-critères. Calcul score matching + filtrage.
 function v57DefaultCriteria() {
   return {
@@ -11810,7 +11804,6 @@ function ListView(props) {
       )}
 
       <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(50px + env(safe-area-inset-bottom, 0px))'}}>
-        {/* M/2026/04/29/23 — OnboardingBanner supprime franchement (bloc Bienvenue intrusif). */}
         {!showArchives && drafts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
