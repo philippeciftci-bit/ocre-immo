@@ -385,6 +385,43 @@ const V1_SECURITE = ['Gardien 24/24','Vidéosurveillance','Vidéophone','Porte b
 const V1_DISPO_STATUTS = ['Libre','Loué','Occupé','À convenir'];
 const V1_PROXIMITES = ['Aéroport','Centre-ville','Gare','Golf','Plage','Écoles','Hôpital','Souk','Supermarché','Restaurants','Hôtels','Banques','Pharmacie','Transports en commun'];
 
+// M/2026/04/29/42 — Datasets Section II V4 Vague A (SSoT enrichie blocs 01-04).
+const V4_TYPES_BIEN = ['Riad','Villa','Maison','Appartement','Duplex','Penthouse','Loft','Terrain','Local commercial','Bureau','Immeuble','Autre'];
+const V4_SOUS_TYPES_BY_TYPE = {
+  'Riad': ['Riad authentique','Riad rénové','Riad d\'hôtes','Dar','Dar à transformer'],
+  'Villa': ['Villa contemporaine','Villa traditionnelle','Villa avec piscine','Villa de plain-pied','Villa familiale'],
+  'Maison': ['Maison de ville','Maison de village','Maison de campagne','Maison à rénover'],
+  'Appartement': ['Appartement standing','Appartement standard','Appartement haut de gamme','Studio','F1','F2','F3','F4'],
+  'Duplex': ['Duplex standing','Duplex haut de gamme'],
+  'Penthouse': ['Penthouse','Penthouse avec terrasse'],
+  'Loft': ['Loft urbain','Loft industriel'],
+  'Terrain': ['Terrain constructible','Terrain agricole','Terrain industriel','Terrain de loisir'],
+  'Local commercial': ['Boutique','Restaurant','Show-room','Entrepôt'],
+  'Bureau': ['Bureau standard','Plateau bureaux','Open space'],
+  'Immeuble': ['Immeuble de rapport','Immeuble mixte','Immeuble bureaux'],
+};
+const V4_STANDING = ['Économique','Standard','Haut de gamme','Luxe','Exception'];
+const V4_ETATS = ['À rénover','À rafraîchir','Bon état','Rénové','Rénové récent','Neuf'];
+const V4_STYLES_ARCHI = ['Traditionnel marocain','Médina rénovée','Contemporain','Moderne','Méditerranéen','Berbère','Hispano-mauresque','Industriel','Loft','Provençal','Autre'];
+const V4_NIVEAUX_HOUSE = ['RDC seul','R+1','R+2','R+3','Plus'];
+const V4_REGIME_FONCIER = ['Privé melkié','Habous public','Habous privé','Domanial','Autre'];
+const V4_TYPES_TITRE = ['Titré TF','Réquisition','Moulkia','Melk'];
+const V4_HYPOTHEQUES = ['Aucune','Oui — détailler'];
+const V4_SERVITUDES = ['Aucune','Oui — détailler'];
+const V4_LITIGES = ['Aucun','Oui — détailler'];
+const V4_CONFIDENTIALITE = ['Publique','Après validation','Masquée'];
+const V4_TYPE_MANDAT = ['Exclusif','Simple','Semi-exclusif','Co-mandat'];
+const V4_VALIDITE_MANDAT = ['1 mois','3 mois','6 mois','12 mois'];
+const V4_RECONDUCTION = ['Tacite','Express','Aucune'];
+const V4_HONORAIRES_CHARGE = ['Acquéreur','Vendeur','Partagé'];
+const V4_TVA = ['20 %','10 %','0 %','Exonéré'];
+const V4_LUMINOSITE = ['Très lumineux','Lumineux','Moyen','Sombre'];
+const V4_EXPOSITIONS = ['Nord','Nord-Est','Est','Sud-Est','Sud','Sud-Ouest','Ouest','Nord-Ouest','Patio central','Multiple'];
+const V4_VUES = ['Atlas','Médina','Patio','Jardin','Mer','Ville','Dégagée','Vis-à-vis'];
+const V4_TYPES_NEED_NIVEAUX = ['Villa','Riad','Maison','Immeuble'];
+const V4_TYPES_APPART = ['Appartement','Duplex','Penthouse','Loft'];
+const V4_TYPES_COPRO = ['Appartement','Duplex','Penthouse','Bureau','Local commercial'];
+
 // V17.6 Section III — Modes de financement par pays du bien.
 const FINANCE_MODES = {
   MA: [
@@ -2149,19 +2186,26 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
       <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.8, marginTop:4, marginBottom:10}}>
         <span style={{display:'inline-block', minWidth:22, color:'#A8896A'}}>01</span>Localisation
       </div>
-      {/* M/2026/04/29/41 — Bloc 01 reorganise : Pays haut + Adresse autocomplete + CP/Ville + Quartier.
-          Suppression franche du double champ adresse (legacy Field + LocationAutocomplete interne MapPicker). */}
-      <div style={{marginBottom:10}}>
-        <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays</label>
-        <button type="button" onClick={() => setV66PaysModal(true)}
-          style={{width:'100%', padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
-                  border:'1.5px solid '+(bien.pays ? '#8B5E3C' : '#C9B79A'),
-                  background: bien.pays ? '#FBF1E4' : '#FFFCF5',
-                  color:'#5C3B1E', borderRadius:8, cursor:'pointer',
-                  display:'flex', alignItems:'center', justifyContent:'space-between', minHeight:38}}>
-          <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{paysSel ? (paysSel.f+' '+paysSel.n) : 'Pays'}</span>
-          <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
-        </button>
+      {/* M/2026/04/29/42 — Bloc 01 V4 layout strict : Pays/Ville(CP)/Quartier 3 cols, Adresse full,
+          Lat/Lng grid 2, [Carte/Précis/Zone/Ma position] dans MapPicker, Carte toujours visible,
+          Breadcrumb, [Confidentialité/Distance aéroport]. */}
+      <div style={{display:'grid', gridTemplateColumns:'1.2fr 2fr 1.5fr', gap:8, marginBottom:10}}>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays</label>
+          <button type="button" onClick={() => setV66PaysModal(true)}
+            style={{width:'100%', padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
+                    border:'1.5px solid '+(bien.pays ? '#8B5E3C' : '#C9B79A'),
+                    background: bien.pays ? '#FBF1E4' : '#FFFCF5',
+                    color:'#5C3B1E', borderRadius:8, cursor:'pointer',
+                    display:'flex', alignItems:'center', justifyContent:'space-between', minHeight:38}}>
+            <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{paysSel ? (paysSel.f+' '+paysSel.n) : 'Pays'}</span>
+            <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
+          </button>
+        </div>
+        <CityPicker label={bien.code_postal ? ('Ville · ' + bien.code_postal) : 'Ville'} value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays} style={{marginBottom:0}}/>
+        <DistrictPicker ville={bien.ville} pays={bien.pays}
+          value={bien.quartier} onChange={v => setB('quartier', v)}
+          fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
       </div>
       {bien.ville ? (
         <LocationAutocomplete value={bien.adresse} onChange={v => setB('adresse', v)}
@@ -2179,14 +2223,15 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
       ) : (
         <Field label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)} placeholder="Choisis d'abord une ville pour activer l'autocomplete"/>
       )}
-      <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap:8, marginBottom:10}}>
-        <Field label="Code postal" value={bien.code_postal} onChange={v => setB('code_postal', v)} style={{marginBottom:0}}/>
-        <CityPicker label="Ville" value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays} style={{marginBottom:0}}/>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10}}>
+        <Field label="Latitude" value={bien.gps_lat || ''} onChange={v => setB('gps_lat', v)} style={{marginBottom:0}} placeholder="Auto"/>
+        <Field label="Longitude" value={bien.gps_lng || ''} onChange={v => setB('gps_lng', v)} style={{marginBottom:0}} placeholder="Auto"/>
       </div>
-      <DistrictPicker ville={bien.ville} pays={bien.pays}
-        value={bien.quartier} onChange={v => setB('quartier', v)}
-        fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
       <MapPicker bien={bien} setB={setB} showToast={showToast}/>
+      <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:8, marginBottom:10}}>
+        <SelectPopup label="Confidentialité adresse" value={bien.confidentialite_adresse} onChange={v => setB('confidentialite_adresse', v)} options={V4_CONFIDENTIALITE}/>
+        <Field label="Distance aéroport (km)" type="number" value={bien.distance_aeroport_km} onChange={v => setB('distance_aeroport_km', v)}/>
+      </div>
       {v66PaysModal && (
         <V58MultiSelectModal title="Pays du bien"
           options={PAYS_BIEN.map(p => ({value: p.c, label: p.n, flag: p.f}))}
@@ -2204,9 +2249,11 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
 
       <AnimatedReveal show={!!bien.pays}>
         <>
-          {/* === BLOC 02 — TYPE & PÉRIODE === */}
-          {sectionTitle(2, 'Type & période')}
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:8, marginBottom:10}}>
+          {/* M/2026/04/29/42 — Section II V4 Vague A : Blocs 02-04 refondus (SSoT enrichie). */}
+
+          {/* === BLOC 02 — TYPE === */}
+          {sectionTitle(2, 'Type')}
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10}}>
             <div>
               <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Type bien</label>
               <button type="button" onClick={() => setV66TypeModal(true)}
@@ -2219,9 +2266,8 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
                 <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
               </button>
             </div>
-            <SelectPopup label="État" value={bien.etat_general} onChange={v => setB('etat_general', v)} options={V1_ETATS_BIEN}/>
-            <Field label="Année construction" type="number" value={bien.annee_construction} onChange={v => setB('annee_construction', v)}/>
-            <Field label="Année rénovation" type="number" value={bien.annee_renovation} onChange={v => setB('annee_renovation', v)}/>
+            <SelectPopup label="Sous-type" value={bien.sous_type} onChange={v => setB('sous_type', v)}
+              options={(V4_SOUS_TYPES_BY_TYPE[types[0]] || [])}/>
           </div>
           {types.length > 0 && (
             <div style={{display:'flex', flexWrap:'wrap', gap:5, marginBottom:10}}>
@@ -2233,37 +2279,149 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               ))}
             </div>
           )}
-
-          {/* === BLOC 03 — STATUT FONCIER (conditionnel pays=Maroc) === */}
-          {bien.pays === 'MA' && (<>
-            {sectionTitle(3, 'Statut foncier')}
-            <PillRadio value={bien.statut_foncier} onChange={v => setB('statut_foncier', v)} options={V1_STATUTS_FONCIER_MA}/>
-          </>)}
-
-          {/* === BLOC 04 — AUTHENTICITÉ (conditionnel matrice : Riad uniquement) === */}
-          {_bienCond.isRiad && (<>
-            {sectionTitle(4, 'Authenticité')}
-            <PillsMulti value={bien.authenticite_riad || []} onChange={v => setB('authenticite_riad', v)} options={V1_AUTHENTICITE}/>
-          </>)}
-
-          {/* === BLOC 05 — SURFACES === */}
-          {sectionTitle(5, 'Surfaces (m²)')}
-          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginBottom:10}}>
-            <Field label="Habitable" type="number" value={bien.surface_hab} onChange={v => setB('surface_hab', v)} style={{marginBottom:0}}/>
-            <Field label="Terrain" type="number" value={bien.surface_terrain_v2} onChange={v => setB('surface_terrain_v2', v)} style={{marginBottom:0}}/>
-            <Field label="Terrasses" type="number" value={bien.surface_terrasse} onChange={v => setB('surface_terrasse', v)} style={{marginBottom:0}}/>
-            <Field label="Garage" type="number" value={bien.surface_garage} onChange={v => setB('surface_garage', v)} style={{marginBottom:0}}/>
-            <Field label="Jardin" type="number" value={bien.surface_jardin} onChange={v => setB('surface_jardin', v)} style={{marginBottom:0}}/>
-            <div>
-              <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Total auto</label>
-              <input type="text" disabled value={_surfaceTotal>0 ? _surfaceTotal+' m²' : '—'}
-                style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit',
-                        border:'1.5px solid #E8DDD0', background:'#FBF1E4', color:'#5C3B1E', fontWeight:700, cursor:'not-allowed'}}/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <SelectPopup label="Standing" value={bien.standing} onChange={v => setB('standing', v)} options={V4_STANDING}/>
+            <SelectPopup label="État" value={bien.etat_general} onChange={v => setB('etat_general', v)} options={V4_ETATS}/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <Field label="Année construction" type="number" value={bien.annee_construction} onChange={v => setB('annee_construction', v)}/>
+            <Field label="Année rénovation" type="number" value={bien.annee_renovation} onChange={v => setB('annee_renovation', v)}/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <SelectPopup label="Style architectural" value={bien.style_architectural} onChange={v => setB('style_architectural', v)} options={V4_STYLES_ARCHI}/>
+            <Field label="Architecte" value={bien.architecte} onChange={v => setB('architecte', v)} placeholder="Optionnel"/>
+          </div>
+          {types.some(t => V4_TYPES_NEED_NIVEAUX.includes(t)) && (
+            <PillRadio label="Niveaux" value={bien.niveaux} onChange={v => setB('niveaux', v)} options={V4_NIVEAUX_HOUSE}/>
+          )}
+          {types.some(t => V4_TYPES_APPART.includes(t)) && (
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
+              <Field label="Étage" type="number" value={bien.etage_v2} onChange={v => setB('etage_v2', v)}/>
+              <Field label="Total étages" type="number" value={bien.etages_total} onChange={v => setB('etages_total', v)}/>
+              <PillRadio label="Ascenseur" value={bien.ascenseur ? 'Oui' : (bien.ascenseur === false ? 'Non' : '')}
+                onChange={v => setB('ascenseur', v === 'Oui')} options={['Oui','Non']}/>
             </div>
+          )}
+
+          {/* === BLOC 03 — STATUT FONCIER · JURIDIQUE === */}
+          {sectionTitle(3, 'Statut foncier · juridique')}
+          <PillRadio label="Type de titre" value={bien.statut_foncier} onChange={v => setB('statut_foncier', v)} options={V4_TYPES_TITRE}/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <Field label="N° TF" value={bien.titre_num} onChange={v => setB('titre_num', v)} placeholder="Ex: 12345/M"/>
+            <Field label="Conservation" value={bien.conservation} onChange={v => setB('conservation', v)} placeholder="Ex: Marrakech"/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <SelectPopup label="Régime" value={bien.regime_foncier} onChange={v => setB('regime_foncier', v)} options={V4_REGIME_FONCIER}/>
+            <PillRadio label="Indivision" value={bien.indivision ? 'Oui' : (bien.indivision === false ? 'Non' : '')}
+              onChange={v => setB('indivision', v === 'Oui')} options={['Oui','Non']}/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
+            <SelectPopup label="Hypothèques" value={bien.hypotheques} onChange={v => setB('hypotheques', v)} options={V4_HYPOTHEQUES}/>
+            <SelectPopup label="Servitudes" value={bien.servitudes} onChange={v => setB('servitudes', v)} options={V4_SERVITUDES}/>
+            <SelectPopup label="Litiges en cours" value={bien.litiges} onChange={v => setB('litiges', v)} options={V4_LITIGES}/>
+          </div>
+          {(bien.hypotheques === 'Oui — détailler' || bien.servitudes === 'Oui — détailler' || bien.litiges === 'Oui — détailler') && (
+            <Field label="Détail charges juridiques" value={bien.charges_juridiques_detail} onChange={v => setB('charges_juridiques_detail', v)} placeholder="Précisions hypothèques/servitudes/litiges"/>
+          )}
+          <PillRadio label="Droit de préemption" value={bien.preemption ? 'Oui' : (bien.preemption === false ? 'Non' : '')}
+            onChange={v => setB('preemption', v === 'Oui')} options={['Oui','Non']}/>
+          {types.some(t => V4_TYPES_COPRO.includes(t)) && (
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 2fr', gap:8}}>
+              <Field label="Tantièmes" type="number" value={bien.tantiemes} onChange={v => setB('tantiemes', v)}/>
+              <Field label="Charges mensuelles" value={bien.charges_mensuelles} onChange={v => setB('charges_mensuelles', v)} placeholder="Ex: 1500 MAD"/>
+              <Field label="Syndic" value={bien.syndic} onChange={v => setB('syndic', v)}/>
+            </div>
+          )}
+
+          {/* === Sub-head 03b MANDAT === */}
+          <div style={{borderLeft:'3px solid #8B5E3C', paddingLeft:10, marginTop:16, marginBottom:10}}>
+            <div style={{fontSize:12, fontWeight:700, color:'#8B5E3C', fontStyle:'italic', letterSpacing:.4}}>03b · Mandat de vente</div>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <SelectPopup label="Type de mandat" value={bien.type_mandat} onChange={v => setB('type_mandat', v)} options={V4_TYPE_MANDAT}/>
+            <Field label="N° mandat" value={bien.numero_mandat} onChange={v => setB('numero_mandat', v)}/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
+            <Field label="Date mandat" type="date" value={bien.date_mandat} onChange={v => setB('date_mandat', v)}/>
+            <SelectPopup label="Validité" value={bien.validite_mandat} onChange={v => setB('validite_mandat', v)} options={V4_VALIDITE_MANDAT}/>
+            <SelectPopup label="Reconduction" value={bien.reconduction} onChange={v => setB('reconduction', v)} options={V4_RECONDUCTION}/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
+            <Field label="Honoraires (%)" type="number" value={bien.honoraires_pct} onChange={v => setB('honoraires_pct', v)}/>
+            <SelectPopup label="Honoraires à charge" value={bien.honoraires_a_charge} onChange={v => setB('honoraires_a_charge', v)} options={V4_HONORAIRES_CHARGE}/>
+            <SelectPopup label="TVA" value={bien.tva} onChange={v => setB('tva', v)} options={V4_TVA}/>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <Field label="Notaire / Adoul" value={bien.notaire_adoul} onChange={v => setB('notaire_adoul', v)}/>
+            <Field label="Avocat" value={bien.avocat} onChange={v => setB('avocat', v)} placeholder="Optionnel"/>
           </div>
 
-          {/* === BLOC 06 — DISTRIBUTION & PIÈCES === */}
-          {sectionTitle(6, 'Distribution & pièces')}
+          {/* === BLOC 04 — SURFACES (m²) === */}
+          {sectionTitle(4, 'Surfaces (m²)')}
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginBottom:10}}>
+            <Field label="Habitable *" type="number" value={bien.surface_hab} onChange={v => setB('surface_hab', v)} style={{marginBottom:0}}/>
+            <Field label="Terrain" type="number" value={bien.surface_terrain_v2} onChange={v => setB('surface_terrain_v2', v)} style={{marginBottom:0}}/>
+            <Field label="Carrez" type="number" value={bien.surface_carrez} onChange={v => setB('surface_carrez', v)} style={{marginBottom:0}}/>
+            {_bienCond.isRiad && (
+              <Field label="Patio" type="number" value={bien.surface_patio} onChange={v => setB('surface_patio', v)} style={{marginBottom:0}}/>
+            )}
+            <Field label="Jardin" type="number" value={bien.surface_jardin} onChange={v => setB('surface_jardin', v)} style={{marginBottom:0}}/>
+            <Field label="Terrasse" type="number" value={bien.surface_terrasse} onChange={v => setB('surface_terrasse', v)} style={{marginBottom:0}}/>
+            <Field label="Toiture-terrasse" type="number" value={bien.surface_toiture_terrasse} onChange={v => setB('surface_toiture_terrasse', v)} style={{marginBottom:0}}/>
+            {types.some(t => V4_TYPES_APPART.includes(t)) && (
+              <Field label="Balcon" type="number" value={bien.surface_balcon} onChange={v => setB('surface_balcon', v)} style={{marginBottom:0}}/>
+            )}
+            {types.some(t => V4_TYPES_APPART.includes(t)) && (
+              <Field label="Loggia" type="number" value={bien.surface_loggia} onChange={v => setB('surface_loggia', v)} style={{marginBottom:0}}/>
+            )}
+            <Field label="Sous-sol" type="number" value={bien.surface_sous_sol} onChange={v => setB('surface_sous_sol', v)} style={{marginBottom:0}}/>
+            <Field label="Garage" type="number" value={bien.surface_garage} onChange={v => setB('surface_garage', v)} style={{marginBottom:0}}/>
+            <Field label="Dépendance" type="number" value={bien.surface_dependance} onChange={v => setB('surface_dependance', v)} style={{marginBottom:0}}/>
+            <Field label="H. sous plafond" type="number" value={bien.hauteur_sous_plafond} onChange={v => setB('hauteur_sous_plafond', v)} style={{marginBottom:0}}/>
+          </div>
+          {(() => {
+            const _hab = _num(bien.surface_hab);
+            const _ter = _num(bien.surface_terrain_v2);
+            const _patio = _num(bien.surface_patio);
+            const _jar = _num(bien.surface_jardin);
+            const _terr = _num(bien.surface_terrasse);
+            const _toit = _num(bien.surface_toiture_terrasse);
+            const _balc = _num(bien.surface_balcon);
+            const _logg = _num(bien.surface_loggia);
+            const _ss = _num(bien.surface_sous_sol);
+            const _gar = _num(bien.surface_garage);
+            const _dep = _num(bien.surface_dependance);
+            const totalBrut = _hab + _ter + _patio + _jar + _terr + _toit + _balc + _logg + _ss + _gar + _dep;
+            const ponderee = _hab + 0.5*_terr + 0.5*_toit + 0.3*_balc + 0.3*_logg + 0.5*_patio;
+            return (
+              <div style={{marginBottom:10}}>
+                <div style={{padding:'8px 11px', background:'#FBF1E4', border:'1.5px solid #C9B79A', borderRadius:8, marginBottom:6, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                  <span style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Total brut</span>
+                  <span style={{fontSize:14, fontWeight:700, color:'#5C3B1E'}}>{totalBrut > 0 ? totalBrut + ' m²' : '—'}</span>
+                </div>
+                <div style={{padding:'8px 11px', background:'#FDFAF7', border:'1px dashed #C9B79A', borderRadius:8, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                  <span style={{fontSize:11, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, fontStyle:'italic'}}>Pondérée luxe</span>
+                  <span style={{fontSize:13, fontWeight:600, color:'#8B5E3C', fontStyle:'italic'}}>{ponderee > 0 ? ponderee.toFixed(1) + ' m²' : '—'}</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* === Sub-head 04b VUES & EXPOSITION === */}
+          <div style={{borderLeft:'3px solid #8B5E3C', paddingLeft:10, marginTop:16, marginBottom:10}}>
+            <div style={{fontSize:12, fontWeight:700, color:'#8B5E3C', fontStyle:'italic', letterSpacing:.4}}>04b · Vues &amp; exposition</div>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <SelectPopup label="Exposition" value={bien.exposition} onChange={v => setB('exposition', v)} options={V4_EXPOSITIONS}/>
+            <SelectPopup label="Luminosité" value={bien.luminosite} onChange={v => setB('luminosite', v)} options={V4_LUMINOSITE}/>
+          </div>
+          <PillsMulti label="Vues" value={bien.vue || []} onChange={v => setB('vue', v)} options={V4_VUES}/>
+
+          {/* M/2026/04/29/42 Vague A : suppression franche des blocs legacy 04 (Authenticite),
+              05 (Surfaces simples), 07 (Vue Exposition) - integres dans nouveau 03/04/04b. */}
+
+          {/* === BLOC 05 — DISTRIBUTION & PIÈCES === */}
+          {sectionTitle(5, 'Distribution & pièces')}
           <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8}}>
             <NumericPicker label="Pièces" value={bien.pieces_count} onChange={v => setB('pieces_count', v)}/>
             <NumericPicker label="Chambres" value={bien.chambres_v2} onChange={v => setB('chambres_v2', v)}/>
@@ -2273,13 +2431,10 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             <NumericPicker label="Parking" value={bien.nombre_places_parking} onChange={v => setB('nombre_places_parking', v)}/>
           </div>
 
-          {/* === BLOC 07 — VUE & EXPOSITION === */}
-          {sectionTitle(7, 'Vue & exposition')}
-          <PillRadio label="Exposition" value={bien.exposition} onChange={v => setB('exposition', v)} options={V1_EXPOSITIONS}/>
-          <PillsMulti label="Vue" value={bien.vue || []} onChange={v => setB('vue', v)} options={V1_VUES}/>
+          {/* M/2026/04/29/42 Vague A : Bloc 07 VUE EXPOSITION legacy supprime franchement, integre dans 04b. */}
 
-          {/* === BLOC 08 — EXTÉRIEURS === */}
-          {sectionTitle(8, 'Extérieurs')}
+          {/* === BLOC 06 — EXTÉRIEURS === */}
+          {sectionTitle(6, 'Extérieurs')}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <SelectPopup label="Piscine" value={bien.type_piscine} onChange={v => setB('type_piscine', v)} options={V1_PISCINE}/>
             <SelectPopup label="Type jardin" value={bien.type_jardin} onChange={v => setB('type_jardin', v)} options={V1_TYPE_JARDIN}/>
@@ -2289,7 +2444,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           <PillsMulti label="Aménagements" value={bien.amenagements_ext || []} onChange={v => setB('amenagements_ext', v)} options={V1_AMENAGEMENTS_EXT}/>
 
           {/* === BLOC 09 — CONFORT & ÉQUIPEMENTS === */}
-          {sectionTitle(9, 'Confort & équipements')}
+          {sectionTitle(7, 'Confort & équipements')}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <SelectPopup label="Climatisation" value={bien.climatisation_type} onChange={v => setB('climatisation_type', v)} options={V1_CLIMATISATION}/>
             <SelectPopup label="Chauffage" value={bien.chauffage_type} onChange={v => setB('chauffage_type', v)} options={V1_CHAUFFAGE}/>
@@ -2297,11 +2452,11 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           <PillsMulti label="Équipements" value={bien.equipements_confort || []} onChange={v => setB('equipements_confort', v)} options={V1_EQUIPEMENTS_CONFORT}/>
 
           {/* === BLOC 10 — SÉCURITÉ === */}
-          {sectionTitle(10, 'Sécurité')}
+          {sectionTitle(8, 'Sécurité')}
           <PillsMulti value={bien.securite || []} onChange={v => setB('securite', v)} options={V1_SECURITE}/>
 
           {/* === BLOC 11 — PHOTOS === */}
-          {sectionTitle(11, 'Photos')}
+          {sectionTitle(9, 'Photos')}
           <PhotoUpload dossierId={dossierId} showToast={showToast}
             photos={Array.isArray(bien.photos) ? bien.photos : []}
             onPhotosChange={v => setB('photos', v)}/>
@@ -2310,18 +2465,18 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           </div>
 
           {/* === BLOC 12 — DISPONIBILITÉ === */}
-          {sectionTitle(12, 'Disponibilité')}
+          {sectionTitle(10, 'Disponibilité')}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <PillRadio label="Statut" value={bien.dispo_statut} onChange={v => setB('dispo_statut', v)} options={V1_DISPO_STATUTS}/>
             <Field label="Date" type="date" value={bien.dispo_date} onChange={v => setB('dispo_date', v)} placeholder="JJ/MM/AAAA"/>
           </div>
 
           {/* === BLOC 13 — PROXIMITÉS === */}
-          {sectionTitle(13, 'Proximités')}
+          {sectionTitle(11, 'Proximités')}
           <PillsMulti value={bien.proximites || []} onChange={v => setB('proximites', v)} options={V1_PROXIMITES}/>
 
           {/* === BLOC 14 — REMARQUES === */}
-          {sectionTitle(14, 'Remarques')}
+          {sectionTitle(12, 'Remarques')}
           <textarea value={bien.remarques_bien || ''} onChange={e => setB('remarques_bien', e.target.value)}
             placeholder="Particularités, défauts à signaler, points d'attention pour la visite, contraintes copro, etc."
             style={{width:'100%', boxSizing:'border-box', minHeight:90, padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit',
@@ -2963,9 +3118,9 @@ function MapPicker({bien, setB, showToast}) {
   const [mode, setMode] = React.useState(modeRef.current);
   const [radius, setRadius] = React.useState(radiusRef.current);
   const [ready, setReady] = React.useState(typeof window !== 'undefined' && !!window.L);
-  // M/2026/04/29/40 — carte repliee par defaut (UX mobile). Lazy init : la carte
-  // ne s'instancie qu'au premier deploiement. setMode auto-deplie si carte fermee.
-  const [mapOpen, setMapOpen] = React.useState(false);
+  // M/2026/04/29/42 — carte TOUJOURS visible (consigne Philippe Section II V4).
+  // Annulation du toggle M/40 : pas de bouton qui masque la carte.
+  const [mapOpen] = React.useState(true);
 
   const CIRCLE_STYLE = {color:'#B26D3A', fillColor:'#FBF1E4', fillOpacity:.25, weight:2};
 
@@ -3196,21 +3351,18 @@ function MapPicker({bien, setB, showToast}) {
                   fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>⭕ Zone</button>
         <button type="button" onClick={() => { if (!mapOpen) setMapOpen(true); useMyLocation(); }}
           style={{padding:'7px 10px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFFCF5', color:'#8B5E3C', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>📱 Ma position</button>
-        {/* M/2026/04/29/41 — bouton Map plus visible : fond ocre soft #E8DCC0 ferme,
-            ocre #8B5E3C texte blanc ouvert. Icone 24x24 stroke 2.5. flex 1.4 plus large. */}
+        {/* M/2026/04/29/42 — bouton Map mode-only (carte toujours visible, click = recenter sur GPS courant). */}
         <button type="button" onClick={() => {
-            const next = !mapOpen;
-            setMapOpen(next);
-            if (next) setTimeout(() => { try { mapRef.current && mapRef.current.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch (e) {} }, 280);
+            try { mapRef.current && mapRef.current.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch (e) {}
+            const lr = leafletRef.current;
+            if (lr.map && bien.gps_lat && bien.gps_lng) lr.map.setView([Number(bien.gps_lat), Number(bien.gps_lng)], 15);
           }}
-          aria-label={mapOpen ? 'Masquer la carte' : 'Afficher la carte'}
-          title={mapOpen ? 'Masquer la carte' : 'Afficher la carte'}
-          style={{flex:'1.4', padding:'7px 10px', borderRadius:8,
-                  border:'1.5px solid '+(mapOpen?'#8B5E3C':'#A8896A'),
-                  background: mapOpen ? '#8B5E3C' : '#E8DCC0',
-                  color: mapOpen ? '#fff' : '#5C3B1E',
+          aria-label="Recentrer la carte"
+          title="Recentrer la carte"
+          style={{flex:'1', padding:'7px 10px', borderRadius:8,
+                  border:'1.5px solid #A8896A', background:'#E8DCC0', color:'#5C3B1E',
                   cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:56}}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
             <line x1="8" y1="2" x2="8" y2="18"/>
             <line x1="16" y1="6" x2="16" y2="22"/>
