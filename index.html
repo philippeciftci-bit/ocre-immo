@@ -1480,6 +1480,84 @@ function Select({label, value, onChange, options, style={}}) {
   );
 }
 
+// M/2026/04/29/44 — PieceIdentiteBlock : sous-bloc Section I Particulier.
+// 4 champs (Type, N°, Délivré par, Date expiration) + upload multi-fichiers via /api/upload.php.
+const V8_TYPES_PIECE = ['', 'CNI · Carte d\'identité', 'CIN Maroc', 'Passeport', 'Carte de séjour', 'Permis de conduire'];
+function PieceIdentiteBlock({d, set, dossierId, showToast}) {
+  const inputRef = React.useRef(null);
+  const [uploading, setUploading] = React.useState(false);
+  const files = Array.isArray(d.identite_files) ? d.identite_files : [];
+  async function handleFiles(fileList) {
+    if (!fileList || !fileList.length) return;
+    if (!dossierId) { showToast && showToast('Enregistre d\'abord le dossier'); return; }
+    setUploading(true);
+    const tk = localStorage.getItem('ocre_token') || '';
+    const newOnes = [];
+    for (const f of fileList) {
+      try {
+        const fd = new FormData();
+        fd.append('action', 'upload');
+        fd.append('dossier_id', String(dossierId));
+        fd.append('document_type', 'identite');
+        fd.append('file', f);
+        const r = await fetch(API + '/upload.php?action=upload', {
+          method: 'POST', headers: {'X-Session-Token': tk}, body: fd,
+        }).then(r => r.json());
+        if (r && r.ok && r.photo) {
+          newOnes.push({name: r.photo.name || f.name, url: r.photo.url, size: f.size, type: f.type, ts: Date.now()});
+        } else {
+          showToast && showToast((r && r.error) || ('Échec upload ' + f.name));
+        }
+      } catch (e) { showToast && showToast('Erreur réseau'); }
+    }
+    if (newOnes.length) set('identite_files', [...files, ...newOnes]);
+    setUploading(false);
+  }
+  function removeFile(i) {
+    set('identite_files', files.filter((_, j) => j !== i));
+  }
+  function fmtSize(b) {
+    if (!b) return '';
+    if (b < 1024) return b + ' o';
+    if (b < 1024 * 1024) return Math.round(b / 1024) + ' Ko';
+    return (b / (1024 * 1024)).toFixed(1) + ' Mo';
+  }
+  return (
+    <div style={{borderLeft:'3px solid #8B5E3C', paddingLeft:10, marginTop:14, marginBottom:10}}>
+      <div style={{fontSize:12, fontWeight:700, color:'#8B5E3C', fontStyle:'italic', letterSpacing:.4, marginBottom:8}}>Pièce d'identité</div>
+      <div className="row-pair">
+        <Select label="Type pièce" value={d.identite_type || ''} onChange={v => set('identite_type', v)} options={V8_TYPES_PIECE} style={{flex:1}}/>
+        <Field label="N° du document" value={d.identite_numero || ''} onChange={v => set('identite_numero', v)} style={{flex:1}}/>
+      </div>
+      <div className="row-pair">
+        <Field label="Délivré par" value={d.identite_delivre_par || ''} onChange={v => set('identite_delivre_par', v)} style={{flex:1}}/>
+        <DateMaskField label="Date expiration" value={d.identite_date_exp || ''} onChange={v => set('identite_date_exp', v)} style={{flex:1}}/>
+      </div>
+      <div style={{marginTop:6}}>
+        <button type="button" onClick={() => inputRef.current && inputRef.current.click()}
+          disabled={uploading}
+          style={{padding:'7px 12px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFF3EC', color:'#8B5E3C', fontSize:12, fontWeight:700, cursor: uploading ? 'wait' : 'pointer', fontFamily:'inherit'}}>
+          {uploading ? '⏳ Upload…' : '+ Ajouter un fichier'}
+        </button>
+        <input ref={inputRef} type="file" multiple accept="image/*,application/pdf" capture="environment"
+          onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} style={{display:'none'}}/>
+      </div>
+      {files.length > 0 && (
+        <div style={{marginTop:8, display:'flex', flexDirection:'column', gap:4}}>
+          {files.map((f, i) => (
+            <div key={i} style={{display:'flex', alignItems:'center', gap:8, padding:'6px 10px', background:'#FDFAF7', border:'1px solid #EDE6DC', borderRadius:7, fontSize:12}}>
+              <a href={f.url || '#'} target="_blank" rel="noopener" style={{flex:1, color:'#8B5E3C', textDecoration:'none', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{f.name}</a>
+              <span style={{color:'#8B7F6E', fontSize:11, flexShrink:0}}>{fmtSize(f.size)}</span>
+              <button type="button" onClick={() => removeFile(i)} title="Retirer"
+                style={{flex:'0 0 auto', width:22, height:22, borderRadius:11, border:'1px solid #E8DDD0', background:'#fff', color:'#8B7F6E', cursor:'pointer', fontSize:13, padding:0, lineHeight:'20px'}}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // V17.1 fix-ux-4 — CustomFieldList : champs libres par bloc (I..IV).
 // Persistés dans d.custom_fields_<section> = [{label, value}, ...].
 function CustomFieldList({sectionKey, d, set}) {
@@ -14299,7 +14377,7 @@ function FormView(props) {
     setD(prev => ({...prev, [k]: v}));
   }
   // M/2026/04/29/11 — AI message modal state.
-  const [aiMessageOpen, setAiMessageOpen] = useState(false);
+  // M/2026/04/29/44 — aiMessageOpen state retire (boutons Resume/Message supprimes header).
   // M/2026/04/28/51 — banner edit pending : si edit_consent.list_pending retourne
   // un edit pour ce dossier, afficher banner avec lien vers /edit/<id>.
   const [pendingEdit, setPendingEdit] = useState(null);
@@ -14903,25 +14981,7 @@ function FormView(props) {
             active={formSearchOpen || !!formSearchQuery}
             onClick={toggleFormSearch}/>
           <PillIconButton icon={<ShareIcon size={18}/>} title="Partager" onClick={openShare}/>
-          {/* M/2026/04/29/11 — boutons AI assistant (résumé + message) si flag activé. */}
-          {props.currentUser && (
-            <>
-              <AIStarButton title="Résumer ce dossier" label="Résumé" onClick={async () => {
-                const id = editing && editing.id; if (!id || String(id).startsWith('tmp-')) return;
-                const tk = localStorage.getItem('ocre_token') || '';
-                const r = await fetch('/api/ai_assistant.php?action=summarize_dossier', {
-                  method:'POST', headers:{'X-Session-Token': tk, 'Content-Type':'application/json'},
-                  body: JSON.stringify({client_id: id}),
-                }).then(r => r.json());
-                if (r.ok) {
-                  window.alert('Résumé du dossier :\n\n' + r.text);
-                } else {
-                  showToast && showToast(r.error || 'IA indisponible');
-                }
-              }}/>
-              <AIStarButton title="Rédiger un message client" label="Message" onClick={() => setAiMessageOpen(true)}/>
-            </>
-          )}
+          {/* M/2026/04/29/44 — Suppression franche des boutons AIStarButton Resume + Message (consigne v8). */}
           {/* M/2026/04/29/24 — Visualisation dossier : ouvre direct le viewer interne (DossierPdfView) sans popup template. */}
           <PillIconButton title="Visualiser le dossier" onClick={() => {
             const id = editing && editing.id;
@@ -14932,13 +14992,6 @@ function FormView(props) {
         </div>
       </div>
       {_peBanner}
-      {aiMessageOpen && (
-        <AIDraftMessageModal
-          clientId={editing && editing.id}
-          clientPhone={d && d.tel}
-          onClose={() => setAiMessageOpen(false)}
-          showToast={showToast}/>
-      )}
       {/* V18.27 — Barre de recherche dossier avec compteur. */}
       <div className={'search-bar-wrap ' + (formSearchOpen ? 'open' : 'closed')}>
         <div className="search-bar-input-wrap">
@@ -15074,16 +15127,18 @@ function FormView(props) {
               </div>
               {/* L3 Adresse full width */}
               <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
-              {/* L4 Ville / Pays résidence */}
+              {/* M/2026/04/29/44 v8 — L4 Ville / Pays residence (ordre Ville d'abord). */}
               <div className="row-pair">
-                <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
                 <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
+                <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
               </div>
-              {/* L5 Date naissance / Nationalité */}
+              {/* M/2026/04/29/44 v8 — L5 Date naissance / Pays de naissance (remplace Nationalite). */}
               <div className="row-pair">
                 <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1}}/>
-                <CountryAutocomplete label="Nationalité" value={d.nationalite} onChange={v => set('nationalite', v)} style={{flex:1}}/>
+                <CountryAutocomplete label="Pays de naissance" value={d.pays_naissance} onChange={v => set('pays_naissance', v)} style={{flex:1}}/>
               </div>
+              {/* M/2026/04/29/44 v8 — Sub-bloc Piece d'identite. */}
+              <PieceIdentiteBlock d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null} showToast={showToast}/>
             </>
           ) : (
             <>
