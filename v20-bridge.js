@@ -533,35 +533,6 @@
     document.body.insertBefore(banner, document.body.firstChild);
   }
 
-  // === Phase 4 — Empty state mode agent enrichi ===
-  function maybeRenderEmptyState() {
-    if (!state.ctx || state.ctx.workspace.type !== 'wsp' || state.ctx.mode !== 'agent') return;
-    if (document.getElementById('v20-empty-state')) return;
-    setTimeout(() => {
-      const list = document.querySelector('[data-clients-list], .clients-list, main, #root');
-      if (!list) return;
-      const cards = document.querySelectorAll('[data-dossier-id], .client-row, .client-card');
-      if (cards.length > 0) return;
-      const wrap = el('div', { id: 'v20-empty-state', style: 'max-width:480px;margin:60px auto 40px;padding:40px 24px;text-align:center;font-family:DM Sans,sans-serif' },
-        el('div', { html: '<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin:0 auto 18px;display:block"><rect x="14" y="22" width="52" height="40" rx="6" stroke="#8B5E3C" stroke-width="2.5"/><line x1="14" y1="32" x2="66" y2="32" stroke="#8B5E3C" stroke-width="2.5"/><circle cx="40" cy="48" r="6" fill="#F0E8D8" stroke="#8B5E3C" stroke-width="2"/></svg>' }),
-        el('h2', { style: 'font-family:Cormorant Garamond,serif;color:#8B5E3C;font-size:26px;margin:0 0 10px' }, 'Bienvenue dans ton espace Ocre Immo'),
-        el('p', { style: 'color:#6B5E4A;line-height:1.6;font-size:14px;margin:0 0 22px' }, 'Tu n\'as pas encore de dossier. Crée le premier ou découvre l\'app avec des dossiers d\'exemple.'),
-        el('div', { style: 'display:flex;flex-direction:column;gap:12px;align-items:center' },
-          el('button', { class: 'v20-cta', onclick: () => {
-            const btn = document.querySelector('button[aria-label*="ouveau"], button[title*="ouveau"], [data-action="new-dossier"]');
-            if (btn) btn.click();
-          } }, 'Créer mon premier dossier'),
-          el('a', { href: '#', style: 'color:#8B5E3C;text-decoration:underline;font-size:13.5px', onclick: (e) => {
-            e.preventDefault();
-            document.cookie = 'OCRE_MODE_' + tenantSlug.toUpperCase() + '=test;path=/;max-age=31536000';
-            location.reload();
-          } }, 'Essayer en mode test (dossiers d\'exemple)')
-        )
-      );
-      list.appendChild(wrap);
-    }, 1500);
-  }
-
   // === Branding CSS variables ===
   function applyBranding(branding) {
     if (branding.primary_color) document.documentElement.style.setProperty('--ocre-primary', branding.primary_color);
@@ -598,8 +569,6 @@
     }
     // Phase 3 bannière notifs après CGU
     maybeShowNotifBanner(fullUser);
-    // Phase 4 empty state si mode agent vide
-    maybeRenderEmptyState();
 
     renderBanners();
     maybeRenderCustomFieldsPage();
