@@ -924,7 +924,7 @@ const CITIES_BY_COUNTRY = {
 // `country` n'est pas sélectionné. Au tap disabled : focus saute sur le champ
 // pays (via callback `onNeedCountry`) + tooltip flash 2s.
 // M/2026/04/29/51 — CityPicker refondu en combobox : input direct + popover suggestions inline.
-// Saisie libre acceptée. Pas de barre Rechercher séparée dans le popover (l'input principal filtre).
+// M/2026/04/29/54 — drapeau pays affiche en adornment a gauche si country prop defini.
 function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Ville…'}) {
   const [open, setOpen] = React.useState(false);
   const [tooltip, setTooltip] = React.useState(false);
@@ -934,6 +934,12 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
   const cities = (country && CITIES_BY_COUNTRY[country]) || [];
   const hasList = cities.length > 0;
   const disabled = !country;
+  // M/2026/04/29/54 — drapeau pays detecte depuis country prop (code ISO2 ou nom complet).
+  const countryFlag = (() => {
+    if (!country) return '';
+    const ent = PAYS.find(p => p.c === country) || PAYS.find(p => p.n === country);
+    return ent ? ent.f : '';
+  })();
 
   const query = (value || '').trim();
   const filtered = query
@@ -960,18 +966,23 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
   return (
     <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
-      <input ref={inputRef} type="text"
-        value={value || ''}
-        onChange={e => onChange(e.target.value)}
-        onFocus={() => disabled ? handleDisabledClick() : setOpen(true)}
-        onClick={() => disabled ? handleDisabledClick() : setOpen(true)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') { e.preventDefault(); setOpen(false); if (inputRef.current) try { inputRef.current.blur(); } catch (er) {} }
-        }}
-        placeholder={placeholder}
-        autoCapitalize="words" autoCorrect="off" spellCheck="false"
-        readOnly={disabled}
-        style={styleField}/>
+      <div style={{position:'relative'}}>
+        {countryFlag && (
+          <span style={{position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:16, pointerEvents:'none', zIndex:1}} aria-hidden="true">{countryFlag}</span>
+        )}
+        <input ref={inputRef} type="text"
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          onFocus={() => disabled ? handleDisabledClick() : setOpen(true)}
+          onClick={() => disabled ? handleDisabledClick() : setOpen(true)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); setOpen(false); if (inputRef.current) try { inputRef.current.blur(); } catch (er) {} }
+          }}
+          placeholder={placeholder}
+          autoCapitalize="words" autoCorrect="off" spellCheck="false"
+          readOnly={disabled}
+          style={{...styleField, paddingLeft: countryFlag ? 34 : 11}}/>
+      </div>
       {tooltip && (
         <div style={{position:'absolute', bottom:'100%', left:0, right:0, marginBottom:4, padding:'6px 10px', background:'#2A2018', color:'#fff', borderRadius:6, fontSize:11, fontWeight:600, fontFamily:'inherit', textAlign:'center', boxShadow:'0 2px 8px rgba(0,0,0,.2)', zIndex:99}}>
           Choisis d'abord le pays
@@ -1231,15 +1242,22 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
       {open && (suggestions.length > 0 || loading) && (
         <div style={{position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:'#fff', border:'1px solid #C9B79A', borderRadius:8, boxShadow:'0 4px 12px rgba(0,0,0,.08)', zIndex:25, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto'}}>
           {loading && <div style={{padding:10, fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Recherche…</div>}
-          {!loading && suggestions.map((s, i) => (
-            <div key={i} onMouseDown={e => { e.preventDefault(); pick(s); }}
-              style={{padding:'10px 12px', cursor:'pointer', fontSize:13, color:'#2A2018', borderBottom: i < suggestions.length - 1 ? '1px solid #F0E8D8' : 'none', lineHeight:1.4}}>
-              <div style={{fontWeight:600, color:'#8B5E3C'}}>{s.display_name && s.display_name.split(',')[0]}</div>
-              <div style={{fontSize:11, color:'#8B7F6E', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-                {s.display_name && s.display_name.split(',').slice(1).join(',').trim()}
+          {!loading && suggestions.map((s, i) => {
+            // M/2026/04/29/54 — suggestion 1 ligne compacte ellipsis : '<num> <road>, <city>'.
+            const a = s.address || {};
+            const num = a.house_number || '';
+            const road = a.road || '';
+            const cityV = a.city || a.town || a.village || a.municipality || '';
+            const compact = [num, road].filter(Boolean).join(' ') + (cityV ? ', ' + cityV : '');
+            const display = compact || s.display_name || '';
+            return (
+              <div key={i} onMouseDown={e => { e.preventDefault(); pick(s); }}
+                style={{padding:'10px 12px', cursor:'pointer', fontSize:13, color:'#2A2018', borderBottom: i < suggestions.length - 1 ? '1px solid #F0E8D8' : 'none', lineHeight:1.3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}
+                title={display}>
+                {display}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -15303,12 +15321,14 @@ function FormView(props) {
                   if (p.code_postal) set('code_postal', p.code_postal);
                   if (p.pays) set('pays_residence', p.pays);
                 }}/>
-              {/* M/2026/04/29/50 — L4 Pays residence / Ville (ordre Pays d'abord, harmonise Section II Bien). */}
+              {/* M/2026/04/29/54 — L4 NEW Code postal / Ville (drapeau pays inline depuis pays_residence). */}
               <div className="row-pair">
-                <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
+                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{flex:1}}/>
                 <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
               </div>
-              {/* M/2026/04/29/44 v8 — L5 Date naissance / Pays de naissance (remplace Nationalite). */}
+              {/* M/2026/04/29/54 — L5 Pays residence pleine ligne (Pays naissance reste couple a Date L6). */}
+              <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
+              {/* M/2026/04/29/44 v8 — L6 Date naissance / Pays de naissance. */}
               <div className="row-pair">
                 <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1}}/>
                 <CountryAutocomplete label="Pays de naissance" value={d.pays_naissance} onChange={v => set('pays_naissance', v)} style={{flex:1}}/>
@@ -15344,11 +15364,13 @@ function FormView(props) {
                   if (p.code_postal) set('code_postal', p.code_postal);
                   if (p.pays) set('pays_residence', p.pays);
                 }}/>
-              {/* M/2026/04/29/50 — L5 Pays residence / Ville (Pays d'abord, harmonise Section II + Particulier). */}
+              {/* M/2026/04/29/54 — L5 NEW Code postal / Ville (drapeau pays inline). */}
               <div className="row-pair">
-                <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
+                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{flex:1}}/>
                 <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
               </div>
+              {/* M/2026/04/29/54 — L6 Pays residence pleine ligne. */}
+              <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
               {/* L6 Tel | Email (harmonise Particulier : Tel a gauche, Email a droite). */}
               <div className="row-pair">
                 <div style={{flex:1, minWidth:0}}>
