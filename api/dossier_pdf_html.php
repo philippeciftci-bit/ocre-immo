@@ -25,19 +25,30 @@ if (!$agentName) $agentName = $user['email'] ?? 'Agent Ocre';
 $agentTel = $user['telephone'] ?? '';
 $agentEmail = $user['email'] ?? '';
 
-// Photos
+// Photos : 1) liste depuis bien.photos JSON (URLs externes Unsplash etc.), 2) sinon glob /uploads/<id>/.
 $photos = [];
-$photosDir = '/opt/ocre-app/uploads/' . $dossierId;
-if (is_dir($photosDir)) {
-    foreach (glob($photosDir . '/*.{jpg,jpeg,png,webp}', GLOB_BRACE) ?: [] as $p) {
-        if (strpos($p, '_thumb.') !== false) continue;
-        $photos[] = '/uploads/' . $dossierId . '/' . basename($p);
+if (!empty($bien['photos']) && is_array($bien['photos'])) {
+    foreach ($bien['photos'] as $p) {
+        if (is_string($p) && $p !== '') $photos[] = $p;
+        elseif (is_array($p) && !empty($p['url'])) $photos[] = $p['url'];
     }
 }
+if (!$photos) {
+    $photosDir = '/opt/ocre-app/uploads/' . $dossierId;
+    if (is_dir($photosDir)) {
+        foreach (glob($photosDir . '/*.{jpg,jpeg,png,webp}', GLOB_BRACE) ?: [] as $p) {
+            if (strpos($p, '_thumb.') !== false) continue;
+            $photos[] = '/uploads/' . $dossierId . '/' . basename($p);
+        }
+    }
+}
+// M/2026/04/29/29 — pas de doublon : page 1 cover utilise photos[0..4], page 2 editorial utilise photos[5..7].
+// Si moins de 5 photos : cases vides en placeholder. Si moins de 8 photos : column photos page 2 retrecit ou disparait.
 $photoMain = $photos[0] ?? null;
 $photoSmall = array_slice($photos, 1, 4);
 while (count($photoSmall) < 4) $photoSmall[] = null;
-$photoEditorial = array_slice($photos, 0, 3);
+$photoEditorial = array_slice($photos, 5, 3);  // photos 5,6,7 (uniquement si dispos, pas de doublon avec cover)
+$_hasEditorialPhotos = count($photoEditorial) > 0;
 while (count($photoEditorial) < 3) $photoEditorial[] = null;
 
 // Helpers
@@ -63,50 +74,103 @@ function bullets(array $arr, string $sep = ' · '): string {
     return implode($sep, array_map('htmlspecialchars', $arr));
 }
 
+// M/2026/04/29/29 — Schema-fallback : tolere ancien (surface, chambres, etat) ET nouveau
+// (surface_hab, chambres_v2, etat_general). Lecture chainee, premier non-vide.
+function _pick($arr, ...$keys) {
+    foreach ($keys as $k) {
+        if (isset($arr[$k]) && $arr[$k] !== '' && $arr[$k] !== null) return $arr[$k];
+    }
+    return null;
+}
+
+// Type bien (multi-types support : prend le premier de types[] ou le legacy 'type').
+$typeBien = _pick($bien, 'type');
+if (!$typeBien && !empty($bien['types']) && is_array($bien['types'])) $typeBien = $bien['types'][0] ?? null;
+
 // Donnees bien
 $titreBien = $bien['titre'] ?? '';
+$chambres = _pick($bien, 'chambres_v2', 'chambres');
+$piscine = _pick($bien, 'type_piscine');
+// Schema legacy : equipements peut etre un objet (Riad : patio/plunge_pool/...) plutot qu un array de strings.
+$equipementsRaw = $bien['equipements'] ?? null;
+$_hasPiscineLegacy = is_array($equipementsRaw) && !empty($equipementsRaw['plunge_pool']);
 if (!$titreBien) {
-    $piecesPart = !empty($bien['chambres_v2']) ? ($bien['chambres_v2'] . ' chambres') : '';
-    $piscinePart = !empty($bien['type_piscine']) && $bien['type_piscine'] !== 'Aucune' ? '& piscine' : '';
-    $titreBien = trim(($bien['type'] ?? 'Bien') . ' ' . $piecesPart . ' ' . $piscinePart);
+    $piecesPart = $chambres ? ($chambres . ' chambres') : '';
+    $piscinePart = (($piscine && $piscine !== 'Aucune') || $_hasPiscineLegacy) ? '& piscine' : '';
+    $titreBien = trim(($typeBien ?: 'Bien') . ' ' . $piecesPart . ' ' . $piscinePart);
 }
 $ville = trim(($bien['ville'] ?? '') . (!empty($bien['quartier']) ? ' — ' . $bien['quartier'] : ''));
 
-$prix = $data['prix_affiche'] ?? null;
+$prix = $data['prix_affiche'] ?? $data['prix'] ?? null;
 $devise = $data['devise'] ?? '€';
 $honoraires = $data['honoraires_inclus'] ?? true;
 
 $ref = sprintf('OCR-%06d', (int) $dossier['id']);
 $shareBase = 'https://app.ocre.immo/share/';
 
-// Surfaces
-$surfaceHab = $bien['surface_hab'] ?? null;
-$surfaceTerrain = $bien['surface_terrain_v2'] ?? null;
-$surfaceTerrasse = $bien['surface_terrasse'] ?? null;
-$surfaceJardin = $bien['surface_jardin'] ?? null;
-$surfaceGarage = $bien['surface_garage'] ?? null;
+// Surfaces (legacy : 'surface'/'surface_terrain' ; nouveau : 'surface_hab'/'surface_terrain_v2').
+$surfaceHab = _pick($bien, 'surface_hab', 'surface');
+$surfaceTerrain = _pick($bien, 'surface_terrain_v2', 'surface_terrain');
+$surfaceTerrasse = _pick($bien, 'surface_terrasse');
+$surfaceJardin = _pick($bien, 'surface_jardin');
+$surfaceGarage = _pick($bien, 'surface_garage');
+// Si equipements legacy contient roof_terrasse/patio numerique, l'inclure dans terrasses.
+if ($surfaceTerrasse === null && is_array($equipementsRaw)) {
+    $tt = (float) ($equipementsRaw['roof_terrasse'] ?? 0) + (float) ($equipementsRaw['patio'] ?? 0);
+    if ($tt > 0) $surfaceTerrasse = $tt;
+}
 
-// Caracteristiques
-$pieces = $bien['pieces_count'] ?? null;
-$chambres = $bien['chambres_v2'] ?? null;
-$sdb = $bien['sdb_v2'] ?? null;
-$etages = $bien['etage_v2'] ?? null;
-$exposition = $bien['exposition'] ?? null;
+// Caracteristiques (legacy : 'sdb', 'etat', 'etage' ; nouveau : 'sdb_v2', 'etat_general', 'etage_v2').
+$pieces = _pick($bien, 'pieces_count', 'pieces');
+$sdb = _pick($bien, 'sdb_v2', 'sdb');
+$etages = _pick($bien, 'etage_v2', 'etage', 'etages');
+$exposition = _pick($bien, 'exposition');
+if (!$exposition && is_array($equipementsRaw) && !empty($equipementsRaw['exposition'])) {
+    $exposition = $equipementsRaw['exposition'];
+}
 $vues = is_array($bien['vue'] ?? null) ? $bien['vue'] : [];
-$etat = $bien['etat_general'] ?? null;
+if (!$vues && is_array($equipementsRaw) && !empty($equipementsRaw['vue'])) {
+    $vues = is_array($equipementsRaw['vue']) ? $equipementsRaw['vue'] : [$equipementsRaw['vue']];
+}
+$etat = _pick($bien, 'etat_general', 'etat');
 $dispoStatut = $bien['dispo_statut'] ?? null;
 $dispoDate = $bien['dispo_date'] ?? null;
 
+// Equipements : array nouveau OU object legacy a aplatir en chaines lisibles.
 $equipementsConfort = is_array($bien['equipements_confort'] ?? null) ? $bien['equipements_confort'] : [];
+if (!$equipementsConfort && is_array($equipementsRaw)) {
+    $labelsLegacy = [
+        'climatisation' => 'Climatisation',
+        'meuble' => 'Meublé',
+        'plunge_pool' => 'Plunge pool',
+        'roof_terrasse' => 'Terrasse en toit',
+        'patio' => 'Patio',
+        'cheminee' => 'Cheminée',
+        'fibre' => 'Internet fibre',
+        'ascenseur' => 'Ascenseur',
+        'hammam' => 'Hammam',
+        'spa' => 'Spa',
+    ];
+    foreach ($equipementsRaw as $k => $v) {
+        if ($v === false || $v === null || $v === '' || $v === 0) continue;
+        $lbl = $labelsLegacy[$k] ?? ucfirst(str_replace('_', ' ', (string) $k));
+        if (is_numeric($v) && !in_array($k, ['plunge_pool', 'climatisation', 'meuble'], true)) {
+            $lbl .= ' (' . $v . ')';
+        }
+        $equipementsConfort[] = $lbl;
+    }
+}
 $amenagementsExt = is_array($bien['amenagements_ext'] ?? null) ? $bien['amenagements_ext'] : [];
 $securite = is_array($bien['securite'] ?? null) ? $bien['securite'] : [];
 $proximites = is_array($bien['proximites'] ?? null) ? $bien['proximites'] : [];
-$piscine = $bien['type_piscine'] ?? null;
 
 $adresse = trim(($bien['adresse'] ?? '') . ' ' . ($bien['code_postal'] ?? '') . ' ' . ($bien['ville'] ?? ''));
 
 $descriptifLead = $bien['descriptif_lead'] ?? $bien['lead'] ?? '';
 $descriptifTexte = $bien['descriptif'] ?? $bien['descriptif_texte'] ?? $bien['remarques_bien'] ?? '';
+
+// Honoraires : si legacy 'charges' ou 'commission' présents, surface dans une note.
+$chargesNote = _pick($data, 'charges') ?: _pick($bien, 'charges');
 
 header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
@@ -328,7 +392,7 @@ header('Content-Type: text/html; charset=utf-8');
       <?php endif; ?>
     </div>
 
-    <div class="ed-grid">
+    <div class="ed-grid" style="<?= $_hasEditorialPhotos ? '' : 'grid-template-columns: 1fr;' ?>">
       <div class="ed-text">
         <?php if ($descriptifTexte): ?>
           <?= nl2br(h($descriptifTexte)) ?>
@@ -341,6 +405,7 @@ header('Content-Type: text/html; charset=utf-8');
           <p><?= $piscine && $piscine !== 'Aucune' ? 'Piscine ' . htmlspecialchars(strtolower($piscine)) . ' chauffée, ' : '' ?>jardin paysager d'inspiration méditerranéenne, terrasses ombragées et coin barbecue. Climatisation réversible, double vitrage, alarme et vidéosurveillance.</p>
         <?php endif; ?>
       </div>
+      <?php if ($_hasEditorialPhotos): ?>
       <div class="ed-photos">
         <?php foreach ($photoEditorial as $p): ?>
         <div>
@@ -352,6 +417,7 @@ header('Content-Type: text/html; charset=utf-8');
         </div>
         <?php endforeach; ?>
       </div>
+      <?php endif; ?>
     </div>
 
     <div class="runfoot">
@@ -373,8 +439,8 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="tech-section">
       <h3>Identité</h3>
       <div class="tech-rows">
-        <div class="row"><span class="k">Type</span><span><?= h($bien['type'] ?? null) ?></span></div>
-        <div class="row"><span class="k">Statut foncier</span><span><?= h($bien['statut_foncier'] ?? $bien['titre_statut'] ?? null) ?></span></div>
+        <div class="row"><span class="k">Type</span><span><?= h($typeBien) ?></span></div>
+        <div class="row"><span class="k">Statut foncier</span><span><?= h(_pick($bien, 'statut_foncier', 'titre_statut')) ?></span></div>
         <div class="row"><span class="k">État</span><span><?= h($etat) ?></span></div>
         <div class="row"><span class="k">Niveaux</span><span><?= h($etages) ?></span></div>
         <div class="row"><span class="k">Pièces</span><span><?= h($pieces) ?></span></div>
