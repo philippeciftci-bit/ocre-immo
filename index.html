@@ -236,7 +236,7 @@ input, select, textarea, button { font-size:13px }
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes pdfShareFade{from{opacity:0}to{opacity:1}}
 @keyframes pdfShareScaleIn{from{transform:scale(0.92);opacity:0}to{transform:scale(1);opacity:1}}
-.bsheet-overlay{position:fixed;inset:0;background:rgba(42,32,24,.5);z-index:200;animation:fadeIn .2s ease-out;display:flex;align-items:flex-end;justify-content:center}
+.bsheet-overlay{position:fixed;inset:0;background:rgba(42,32,24,.5);z-index:1100;animation:fadeIn .2s ease-out;display:flex;align-items:flex-end;justify-content:center}
 .bsheet{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:560px;height:75vh;display:flex;flex-direction:column;animation:slideUp .25s ease-out;padding-bottom:env(safe-area-inset-bottom,0)}
 .bsheet-handle{width:40px;height:4px;background:#E2D8CC;border-radius:2px;margin:8px auto 0;flex-shrink:0}
 .bsheet-head{padding:10px 14px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0;border-bottom:1px solid #EDE6DC}
@@ -974,7 +974,7 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
           </div>
         </BottomSheet>
       ) : (
-        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
+        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:1050, marginTop:2}}>
           {filtered.length === 0 ? (
             <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E', fontStyle:'italic'}}>
               Aucun pays trouvé. <span style={{color:'#8B5E3C'}}>Tape le nom complet puis Entrée pour saisie libre.</span>
@@ -987,6 +987,61 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+// M/2026/04/30/9 — PaysCompactButton : bouton compact 100px [drapeau + code ISO alpha-2]
+// pour Section II Bloc 01 v2 (cohabite avec AddressAutocomplete sur la meme ligne).
+// Tap -> BottomSheet listant les 245 PAYS (cf liste M/30/2). Fallback alpha-2 si la
+// table alpha-3 n est pas disponible (la majorite des cas usuels).
+function PaysCompactButton({value, onChange}) {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+  const ent = value ? (PAYS.find(p => p.c === value) || PAYS.find(p => p.n === value)) : null;
+  const flag = ent ? ent.f : '🌍';
+  const code = ent ? ent.c : 'Pays';
+  const filtered = query.trim()
+    ? PAYS.filter(p => normalizeAccent(p.n).includes(normalizeAccent(query)) || p.c.toLowerCase().startsWith(query.toLowerCase()))
+    : PAYS;
+  return (
+    <div style={{minWidth:0}}>
+      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays</label>
+      <button type="button" onClick={() => setOpen(true)}
+        title={ent ? ent.n : 'Choisir le pays'}
+        style={{width:'100%', padding:'9px 8px', borderRadius:8, border:'1.5px solid '+(value ? '#BBA88B' : '#E8DDD0'),
+                background: value ? '#FFFCF5' : '#FDFAF7', color:'#2A2018',
+                fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer', minHeight:38,
+                display:'flex', alignItems:'center', justifyContent:'center', gap:6, whiteSpace:'nowrap'}}>
+        <span style={{fontSize:18}} aria-hidden="true">{flag}</span>
+        <span>{code}</span>
+      </button>
+      {open && (
+        <div className="bsheet-overlay" onClick={() => { setOpen(false); setQuery(''); }}>
+          <div className="bsheet" onClick={e => e.stopPropagation()}>
+            <div className="bsheet-handle"/>
+            <div className="bsheet-head">
+              <div className="bsheet-title">Pays</div>
+              <button type="button" className="bsheet-close" onClick={() => { setOpen(false); setQuery(''); }}>×</button>
+            </div>
+            <div className="bsheet-search">
+              <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                placeholder="Rechercher..." autoCapitalize="off" autoCorrect="off"/>
+            </div>
+            <div className="bsheet-list">
+              {filtered.length === 0 ? <div className="bsheet-empty">Aucun pays</div>
+                : filtered.map(p => (
+                  <div key={p.c} className={'bsheet-item ' + (p.c === value ? 'selected' : '')}
+                    onClick={() => { onChange(p.c); setOpen(false); setQuery(''); }}>
+                    <span style={{fontSize:18}}>{p.f}</span>
+                    <span style={{flex:1}}>{p.n}</span>
+                    {p.c === value && <span style={{color:'#B26D3A', fontWeight:700}}>✓</span>}
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1226,7 +1281,7 @@ function CityPicker({label, value, onChange, country, style={}, placeholder='Vil
           style={{...styleField, paddingLeft: countryFlag ? 34 : 11}}/>
       </div>
       {open && hasList && (
-        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
+        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:1050, marginTop:2}}>
           {filtered.length === 0 ? (
             <div style={{padding:'10px 12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Aucune ville trouvée. <span style={{color:'#8B5E3C'}}>Tape librement.</span></div>
           ) : filtered.map(c => (
@@ -1532,7 +1587,7 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
         </div>
       )}
       {open && (suggestions.length > 0 || loading) && (
-        <div style={{position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:'#fff', border:'1px solid #C9B79A', borderRadius:8, boxShadow:'0 4px 12px rgba(0,0,0,.08)', zIndex:25, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto'}}>
+        <div style={{position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:'#fff', border:'1px solid #C9B79A', borderRadius:8, boxShadow:'0 4px 12px rgba(0,0,0,.08)', zIndex:1050, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto'}}>
           {loading && <div style={{padding:10, fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Recherche…</div>}
           {!loading && suggestions.map((s, i) => {
             let display;
@@ -1672,7 +1727,7 @@ function CitySuggestField({label, value, onChange, suggestAction, style={}, plac
         placeholder={placeholder} autoComplete="off"
         style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
       {open && items.length > 0 && (
-        <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:200, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
+        <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:200, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:1050, marginTop:2}}>
           {items.map((it, i) => (
             <div key={i} onMouseDown={() => pick(it)} style={{padding:'8px 12px', fontSize:14, cursor:'pointer', borderBottom:'1px solid #F4EEE6'}}>{it}</div>
           ))}
@@ -2790,6 +2845,7 @@ const SECTION_II_TYPE_MATRIX = {
 function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) {
   const bien = d.bien || {};
   function setB(k, v) { set('bien', {...bien, [k]: v}); }
+  // M/2026/04/30/9 — auto-detection pays via IP gere une fois au niveau FormView (setD).
   // M/2026/04/28/44 — conditionnels Section II 22b. Calculé une seule fois
   // pour éviter la duplication dans le JSX et garder le rendu lisible.
   const _bienTypes = Array.isArray(bien.types) && bien.types.length ? bien.types : (bien.type ? [bien.type] : []);
@@ -2860,34 +2916,37 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
       <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.8, marginTop:4, marginBottom:10}}>
         <span style={{display:'inline-block', minWidth:22, color:'#A8896A'}}>01</span>Localisation
       </div>
-      {/* M/2026/04/30/6 — Bloc 01 refondu coherent Section I :
-          L1 Adresse Nominatim mondial (AddressAutocomplete) + auto-fill ville/CP/pays/lat/lng/quartier au tap suggestion.
-          L2 grid 3 cols [CP | Ville | Pays] + saisie libre indep + Pays popover 245 pays.
-          L3 Quartier seul. Carte/MapPicker en dessous. */}
-      <AddressAutocomplete label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)}
-        country={bien.pays}
-        autoComplete="street-address" name="bien-street-address"
-        onPick={(pick) => {
-          if (pick.adresse) setB('adresse', pick.adresse);
-          if (pick.ville) setB('ville', pick.ville);
-          if (pick.quartier) setB('quartier', pick.quartier);
-          if (pick.code_postal) setB('code_postal', pick.code_postal);
-          if (pick.pays) setB('pays', pick.pays);
-          if (pick.lat) setB('gps_lat', String(pick.lat));
-          if (pick.lng) setB('gps_lng', String(pick.lng));
-          setB('gps_source', 'autocomplete');
-        }}/>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:10}}>
+      {/* M/2026/04/30/9 — Bloc 01 v2 layout :
+          L1 grid 2 cols [PaysCompactButton 100px | AddressAutocomplete flex:1]
+          L2 grid 3 cols [CP | Ville | Quartier]
+          (L3 = ligne 5 boutons egaux dans MapPicker)
+          Picker Quartier z-index >= 1000 (au-dessus carte Leaflet panes 200-700). */}
+      <div style={{display:'grid', gridTemplateColumns:'100px 1fr', gap:8, marginBottom:10, alignItems:'flex-end'}}>
+        <PaysCompactButton value={bien.pays} onChange={v => setB('pays', v)}/>
+        <AddressAutocomplete label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)}
+          country={bien.pays}
+          autoComplete="street-address" name="bien-street-address"
+          style={{marginBottom:0}}
+          onPick={(pick) => {
+            if (pick.adresse) setB('adresse', pick.adresse);
+            if (pick.ville) setB('ville', pick.ville);
+            if (pick.quartier) setB('quartier', pick.quartier);
+            if (pick.code_postal) setB('code_postal', pick.code_postal);
+            if (pick.pays) setB('pays', pick.pays);
+            if (pick.lat) setB('gps_lat', String(pick.lat));
+            if (pick.lng) setB('gps_lng', String(pick.lng));
+            setB('gps_source', 'autocomplete');
+          }}/>
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:10}}>
         <Field label="Code postal" value={bien.code_postal} onChange={v => setB('code_postal', v)} style={{marginBottom:0}}
           autoComplete="postal-code" name="bien-postal-code" inputMode="text"/>
         <CityPicker label="Ville" value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays} showFlag={false} style={{marginBottom:0}}
           autoComplete="address-level2" name="bien-address-level2"/>
-        <CountryAutocomplete label="Pays" value={bien.pays} onChange={v => setB('pays', v)} style={{marginBottom:0}}
-          autoComplete="country-name" name="bien-country-name"/>
+        <DistrictPicker ville={bien.ville} pays={bien.pays}
+          value={bien.quartier} onChange={v => setB('quartier', v)}
+          fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
       </div>
-      <DistrictPicker ville={bien.ville} pays={bien.pays}
-        value={bien.quartier} onChange={v => setB('quartier', v)}
-        fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
       {/* M/2026/04/29/43 — Lat/Lng grid supprime franchement (state gps_lat/lng preserve, consomme par MapPicker, juste invisible UI). */}
       <MapPicker bien={bien} setB={setB} showToast={showToast}/>
       <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:8, marginBottom:10}}>
@@ -3698,11 +3757,26 @@ function MapPicker({bien, setB, showToast}) {
   // M/2026/04/30/6 — cercle proximite rouge tres clair (zone de recherche/proximite 500m).
   const PROXIMITY_RADIUS = 500;
   const PROXIMITY_STYLE = {radius: PROXIMITY_RADIUS, color:'#C73E3E', fillColor:'#C73E3E', fillOpacity:0.08, weight:1.5};
+  // M/2026/04/30/9 — drop pin Google Maps rouge (au lieu de l epingle Leaflet bleue par defaut).
+  const googlePinIconRef = React.useRef(null);
+  function getGooglePinIcon(L) {
+    if (googlePinIconRef.current) return googlePinIconRef.current;
+    googlePinIconRef.current = L.divIcon({
+      className: 'ocre-google-pin',
+      html: '<svg viewBox="0 0 24 36" width="36" height="54" style="display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">'
+        + '<path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24c0-6.63-5.37-12-12-12z" fill="#EA4335"/>'
+        + '<circle cx="12" cy="12" r="4" fill="#FFFFFF"/>'
+        + '</svg>',
+      iconSize: [36, 54],
+      iconAnchor: [18, 54],
+    });
+    return googlePinIconRef.current;
+  }
 
   function ensureMarker(L, lat, lng) {
     const lr = leafletRef.current;
     if (!lr.marker) {
-      lr.marker = L.marker([lat, lng], {draggable: true}).addTo(lr.map);
+      lr.marker = L.marker([lat, lng], {draggable: true, icon: getGooglePinIcon(L)}).addTo(lr.map);
       lr.marker.on('dragend', () => {
         const p = lr.marker.getLatLng();
         setB('gps_lat', p.lat.toFixed(6));
@@ -3926,51 +4000,46 @@ function MapPicker({bien, setB, showToast}) {
 
   return (
     <div style={{marginTop:6, marginBottom:10}}>
-      <div style={{display:'flex', gap:6, marginBottom:6}}>
-        <button type="button" onClick={() => { if (!mapOpen) setMapOpen(true); setMode('precis'); }}
-          style={{flex:1, padding:'7px 8px', borderRadius:8, border:'1.5px solid ' + (mode === 'precis' ? '#8B5E3C' : '#E8DDD0'),
-                  background: mode === 'precis' ? '#FFF3EC' : '#FDFAF7', color: mode === 'precis' ? '#8B5E3C' : '#8B7F6E',
-                  fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>📍 Précis</button>
-        <button type="button" onClick={() => { if (!mapOpen) setMapOpen(true); setMode('zone'); }}
-          style={{flex:1, padding:'7px 8px', borderRadius:8, border:'1.5px solid ' + (mode === 'zone' ? '#8B5E3C' : '#E8DDD0'),
-                  background: mode === 'zone' ? '#FFF3EC' : '#FDFAF7', color: mode === 'zone' ? '#8B5E3C' : '#8B7F6E',
-                  fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>⭕ Zone</button>
-        <button type="button" onClick={() => { if (!mapOpen) setMapOpen(true); useMyLocation(); }}
-          style={{padding:'7px 10px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFFCF5', color:'#8B5E3C', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>📱 Ma position</button>
-        {/* M/2026/04/29/42 — bouton Map mode-only (carte toujours visible, click = recenter sur GPS courant). */}
+      {/* M/2026/04/30/9 — ligne 5 boutons egaux : [Carte | Precis | Zone | Ma position | Partager]. */}
+      <div style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:6, marginBottom:6}}>
+        {/* M/2026/04/29/42 — bouton Carte (recenter sur GPS courant). */}
         <button type="button" onClick={() => {
             try { mapRef.current && mapRef.current.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch (e) {}
             const lr = leafletRef.current;
             if (lr.map && bien.gps_lat && bien.gps_lng) lr.map.setView([Number(bien.gps_lat), Number(bien.gps_lng)], 15);
           }}
-          aria-label="Recentrer la carte"
-          title="Recentrer la carte"
-          style={{flex:'1', padding:'7px 10px', borderRadius:8,
-                  border:'1.5px solid #A8896A', background:'#E8DCC0', color:'#5C3B1E',
-                  cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:56}}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          aria-label="Recentrer la carte" title="Recentrer la carte"
+          style={{padding:'7px 8px', borderRadius:8, border:'1.5px solid #A8896A', background:'#E8DCC0', color:'#5C3B1E',
+                  cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
             <line x1="8" y1="2" x2="8" y2="18"/>
             <line x1="16" y1="6" x2="16" y2="22"/>
           </svg>
         </button>
+        <button type="button" onClick={() => { if (!mapOpen) setMapOpen(true); setMode('precis'); }}
+          style={{padding:'7px 8px', borderRadius:8, border:'1.5px solid ' + (mode === 'precis' ? '#8B5E3C' : '#E8DDD0'),
+                  background: mode === 'precis' ? '#FFF3EC' : '#FDFAF7', color: mode === 'precis' ? '#8B5E3C' : '#8B7F6E',
+                  fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>📍 Precis</button>
+        <button type="button" onClick={() => { if (!mapOpen) setMapOpen(true); setMode('zone'); }}
+          style={{padding:'7px 8px', borderRadius:8, border:'1.5px solid ' + (mode === 'zone' ? '#8B5E3C' : '#E8DDD0'),
+                  background: mode === 'zone' ? '#FFF3EC' : '#FDFAF7', color: mode === 'zone' ? '#8B5E3C' : '#8B7F6E',
+                  fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>⭕ Zone</button>
+        <button type="button" onClick={() => { if (!mapOpen) setMapOpen(true); useMyLocation(); }}
+          style={{padding:'7px 8px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFFCF5', color:'#8B5E3C',
+                  fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>📱 Ma position</button>
         {/* M/2026/04/30/6 — bouton partage position (Web Share API iOS / fallback clipboard). */}
-        <button type="button" onClick={sharePosition}
-          disabled={!bien.gps_lat || !bien.gps_lng}
-          aria-label="Partager la position"
-          title="Partager la position"
-          style={{padding:'7px 10px', borderRadius:8,
+        <button type="button" onClick={sharePosition} disabled={!bien.gps_lat || !bien.gps_lng}
+          aria-label="Partager la position" title="Partager la position"
+          style={{padding:'7px 8px', borderRadius:8,
                   border:'1.5px solid ' + (bien.gps_lat && bien.gps_lng ? '#8B5E3C' : '#E8DDD0'),
                   background: bien.gps_lat && bien.gps_lng ? '#FFFCF5' : '#F4ECE0',
                   color: bien.gps_lat && bien.gps_lng ? '#8B5E3C' : '#B5A78F',
                   cursor: bien.gps_lat && bien.gps_lng ? 'pointer' : 'not-allowed',
-                  fontFamily:'inherit', display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:42}}>
+                  fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="18" cy="5" r="3"/>
-            <circle cx="6" cy="12" r="3"/>
-            <circle cx="18" cy="19" r="3"/>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
           </svg>
         </button>
       </div>
@@ -15187,6 +15256,8 @@ function FormView(props) {
          handleSaveLocal, handleDelete, backToList, toast, showToast,
          clients, openExistingDossier, initialExpandedSection, initialFocus,
          promoteStaged, deleteStaged} = props;
+  // M/2026/04/30/9 — auto-detection pays via IP en mode CREATION (editing null ou tmp-).
+  // Hook reel attache plus bas apres declaration de setD/d (etat local du form).
   // V24 — scroll direct sur #stage2-photos si la nav a demandé focus='photos'.
   React.useEffect(() => {
     if (!initialFocus) return;
@@ -15269,6 +15340,29 @@ function FormView(props) {
   function set(k, v) {
     setD(prev => ({...prev, [k]: v}));
   }
+  // M/2026/04/30/9 — auto-detection pays via IP au mount en mode CREATION.
+  // N ecrase JAMAIS un pays deja saisi par l utilisateur (verification fraiche dans setD).
+  React.useEffect(() => {
+    const isCreate = !editing || !editing.id || String(editing.id).startsWith('tmp-');
+    if (!isCreate) return;
+    let cancelled = false;
+    fetch('/api/detect_country.php')
+      .then(r => r.json())
+      .then(j => {
+        if (cancelled || !j || !j.ok || !j.country_code) return;
+        setD(prev => {
+          const next = {...prev};
+          if (!next.pays_residence) next.pays_residence = j.country_code;
+          if (!next.bien || !next.bien.pays) {
+            next.bien = {...(next.bien || {}), pays: (next.bien && next.bien.pays) || j.country_code};
+          }
+          return next;
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // M/2026/04/29/11 — AI message modal state.
   // M/2026/04/29/44 — aiMessageOpen state retire (boutons Resume/Message supprimes header).
   // M/2026/04/28/51 — banner edit pending : si edit_consent.list_pending retourne
