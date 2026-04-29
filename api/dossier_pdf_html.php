@@ -178,7 +178,7 @@ header('Content-Type: text/html; charset=utf-8');
 <head>
 <meta charset="UTF-8">
 <title>Carnet de bien · <?= h($titreBien) ?></title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;700&family=Caveat:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --ocre: #8B5E3C;
@@ -223,12 +223,21 @@ header('Content-Type: text/html; charset=utf-8');
   /* === Test badge === */
   .test-badge { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; letter-spacing: 1.5px; color: #DC2626; text-transform: lowercase; line-height: 1; margin-top: 4px; display: block; text-align: center; }
 
+  /* === Logo OCRE immo (charte unifiee, single source of truth) === */
+  /* Reference : OcreTitle / OcreLogoButton dans index.html. Cormorant 700 ocre + Caveat 400 noir. */
+  .brand { display: inline-flex; align-items: baseline; gap: 3px; line-height: 1; white-space: nowrap; }
+  .brand .ocre-mark { font-family: 'Cormorant Garamond', serif; font-weight: 700; color: var(--ocre); letter-spacing: 1.5px; }
+  .brand .immo-mark { font-family: 'Caveat', cursive; font-weight: 400; color: var(--ink); margin-left: 2px; }
+  .brand-lg .ocre-mark { font-size: 28px; }
+  .brand-lg .immo-mark { font-size: 32px; }
+  .brand-md .ocre-mark { font-size: 14px; letter-spacing: 1.2px; }
+  .brand-md .immo-mark { font-size: 16px; }
+  .brand-sm .ocre-mark { font-size: 11px; letter-spacing: 1px; }
+  .brand-sm .immo-mark { font-size: 13px; }
+
   /* === Page 1 — Cover === */
   .cover-head { text-align: center; padding: 0 0 14px; border-bottom: 0.5px solid var(--ocre); }
   .eye { font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 5px; text-transform: uppercase; color: var(--ocre-light); margin-bottom: 12px; }
-  .wordmark { font-family: 'Cormorant Garamond', serif; font-size: 28px; letter-spacing: 8px; color: var(--ink); font-weight: 400; }
-  .wordmark .dot { color: var(--ocre); font-weight: 700; margin: 0 4px; }
-  .wordmark .immo { color: var(--ink); font-weight: 400; }
   .agent-line { font-family: 'DM Sans', sans-serif; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--ocre-light); font-weight: 400; margin-top: 10px; }
 
   .mosaic { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4mm; height: 105mm; margin: 12mm 0 8mm; }
@@ -307,7 +316,7 @@ header('Content-Type: text/html; charset=utf-8');
   <section class="page">
     <div class="cover-head">
       <div class="eye">Carnet de bien</div>
-      <div class="wordmark">OCRE<span class="dot">·</span><span class="immo">IMMO</span></div>
+      <span class="brand brand-lg"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span>
       <?php if ($_isTestMode): ?><div class="test-badge">test</div><?php endif; ?>
       <hr class="rule" style="margin: 8px auto 6px; max-width: 60%;">
       <div class="agent-line"><?= h($agentName) ?><?php if ($agentTel): ?> · <?= h($agentTel) ?><?php endif; ?></div>
@@ -363,7 +372,7 @@ header('Content-Type: text/html; charset=utf-8');
         <?php endif; ?>
       </div>
       <div class="center-mark">
-        OCRE<span style="color:var(--ocre); margin: 0 3px;">·</span>IMMO
+        <span class="brand brand-md"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span>
         <div class="sub">Marrakech</div>
       </div>
       <div class="agent">
@@ -377,7 +386,7 @@ header('Content-Type: text/html; charset=utf-8');
   <!-- ====================== PAGE 2 — DESCRIPTIF ====================== -->
   <section class="page">
     <div class="runhead">
-      <span class="left">OCRE<span style="color:var(--ocre); margin: 0 2px;">·</span>IMMO</span>
+      <span class="left brand brand-sm"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span>
       <span>Réf. <?= h($ref) ?> · Page 2/3</span>
     </div>
 
@@ -421,7 +430,7 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
 
     <div class="runfoot">
-      <span>OCRE<span style="color:var(--ocre); margin: 0 2px;">·</span>IMMO · Marrakech</span>
+      <span><span class="brand brand-sm"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span><span style="margin-left:6px">· Marrakech</span></span>
       <span>Document confidentiel — usage agent</span>
     </div>
   </section>
@@ -429,7 +438,7 @@ header('Content-Type: text/html; charset=utf-8');
   <!-- ====================== PAGE 3 — TECHNIQUE ====================== -->
   <section class="page">
     <div class="runhead">
-      <span class="left">OCRE<span style="color:var(--ocre); margin: 0 2px;">·</span>IMMO</span>
+      <span class="left brand brand-sm"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span>
       <span>Réf. <?= h($ref) ?> · Page 3/3</span>
     </div>
 
@@ -536,7 +545,7 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
 
     <div class="runfoot">
-      <span>OCRE<span style="color:var(--ocre); margin: 0 2px;">·</span>IMMO · Marrakech</span>
+      <span><span class="brand brand-sm"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span><span style="margin-left:6px">· Marrakech</span></span>
       <span>Document confidentiel — usage agent</span>
     </div>
   </section>

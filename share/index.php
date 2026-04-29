@@ -55,13 +55,14 @@ function fld($v) { return $v ? htmlspecialchars($v) : '—'; }
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex,nofollow">
-<title>Dossier · <?php echo $nom; ?> — Ocre Immo</title>
+<title>Dossier · <?php echo $nom; ?> — Ocre immo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Caveat:wght@400;500&display=swap" rel="stylesheet">
 <style>
   body { font-family: 'DM Sans', system-ui, sans-serif; background: #E8E5E0; color: #1A1A1A; margin: 0; padding: 20px 16px; min-height: 100vh; }
   .a4 { max-width: 720px; margin: 0 auto; background: #fff; padding: 36px 32px; box-shadow: 0 4px 20px rgba(0,0,0,.08); border-radius: 4px; }
   .header { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 14px; border-bottom: 2px solid #8B5E3C; margin-bottom: 24px; }
   .logo { font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 22px; color: #8B5E3C; letter-spacing: 1.5px; }
-  .logo-immo { font-family: 'Brush Script MT', cursive; color: #1A1A1A; font-size: 24px; margin-left: 4px; }
+  .logo-immo { font-family: 'Caveat', cursive; font-weight: 400; color: #2A1810; font-size: 26px; margin-left: 4px; }
   h1 { font-family: 'Cormorant Garamond', serif; font-size: 26px; color: #8B5E3C; margin: 0 0 4px; }
   .subtitle { color: #7A7167; font-size: 13px; }
   h2 { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 18px; color: #8B5E3C; margin: 28px 0 8px; padding-bottom: 4px; border-bottom: 0.5px solid rgba(139,94,60,.3); }
