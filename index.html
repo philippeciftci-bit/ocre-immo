@@ -538,7 +538,7 @@ const AUTHENTICITE_RIAD = ['Authentique','Rénové','Néo-riad'];
 const FIELD_FILLED = {border:'1.5px solid #BBA88B', background:'#FFFCF5'};
 const FIELD_EMPTY  = {border:'1.5px solid #E8DDD0', background:'#FDFAF7'};
 
-function Field({label, value, onChange, type='text', placeholder='', style={}}) {
+function Field({label, value, onChange, type='text', placeholder='', style={}, autoComplete, name, inputMode, autoCapitalize, ...rest}) {
   const filled = (value !== undefined && value !== null && String(value).trim() !== '');
   // V17.1 fix-ux-1 : ajout box-sizing:border-box → plus d'overflow iOS sur inputs avec padding.
   const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018'};
@@ -547,6 +547,8 @@ function Field({label, value, onChange, type='text', placeholder='', style={}}) 
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
       <input type={type} value={value || ''} placeholder={placeholder}
         onChange={e => onChange(e.target.value)}
+        autoComplete={autoComplete} name={name} inputMode={inputMode} autoCapitalize={autoCapitalize}
+        {...rest}
         style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
     </div>
   );
@@ -633,7 +635,7 @@ function usePopoverAutoClose(isOpen, setOpen, popoverRef) {
   }, [isOpen]);
 }
 
-function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tape un pays…'}) {
+function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tape un pays…', autoComplete='country-name', name='country-name'}) {
   const allOpts = PAYS.map(p => ({code: p.c, flag: p.f, name: p.n}));
   // M/2026/04/29/51 — saisie libre persistante : value peut etre code ISO (FR/MA) OU nom libre (Mongolie).
   const selected = allOpts.find(o => o.code === value || o.name === value);
@@ -702,7 +704,7 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
         </button>
       ) : (
         <input type="text" value={display} onChange={handleChange} onFocus={() => setOpen(true)} onBlur={handleBlur}
-          placeholder={placeholder} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false"
+          placeholder={placeholder} autoComplete={autoComplete} name={name} autoCapitalize="words" autoCorrect="off" spellCheck="false"
           style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
       )}
       {open && (isMobile ? (
@@ -925,7 +927,7 @@ const CITIES_BY_COUNTRY = {
 // pays (via callback `onNeedCountry`) + tooltip flash 2s.
 // M/2026/04/29/51 — CityPicker refondu en combobox : input direct + popover suggestions inline.
 // M/2026/04/29/55 — prop showFlag (default true) controle l'affichage drapeau adornment.
-function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Ville…', showFlag=true}) {
+function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Ville…', showFlag=true, autoComplete='address-level2', name='address-level2'}) {
   const [open, setOpen] = React.useState(false);
   const [tooltip, setTooltip] = React.useState(false);
   const inputRef = React.useRef(null);
@@ -980,6 +982,7 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
           }}
           placeholder={placeholder}
           autoCapitalize="words" autoCorrect="off" spellCheck="false"
+          autoComplete={autoComplete} name={name}
           readOnly={disabled}
           style={{...styleField, paddingLeft: countryFlag ? 34 : 11}}/>
       </div>
@@ -1182,7 +1185,7 @@ function MultiSelectPicker({label, options, value, onChange, placeholder='Sélec
 // (proxy /api/nominatim.php cache 24h). Au tap d'une suggestion : remplit
 // auto Adresse + Ville + Quartier + GPS. Sync carte/épingle reportée
 // (Leaflet integration nécessite tests visuels).
-function AddressAutocomplete({label='Adresse', value, onChange, country, onPick, style={}, placeholder='Tape une adresse…'}) {
+function AddressAutocomplete({label='Adresse', value, onChange, country, onPick, style={}, placeholder='Tape une adresse…', autoComplete='street-address', name='street-address'}) {
   const [open, setOpen] = React.useState(false);
   const [suggestions, setSuggestions] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
@@ -1236,7 +1239,7 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
     <div style={{marginBottom:10, position:'relative', ...style}}>
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
       <input type="text" value={value || ''} onChange={handleChange} onFocus={() => (suggestions.length > 0) && setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)}
-        placeholder={placeholder} autoComplete="off" autoCapitalize="off" autoCorrect="off"
+        placeholder={placeholder} autoComplete={autoComplete} name={name} autoCapitalize="words" autoCorrect="off"
         style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018',
                 ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
       {open && (suggestions.length > 0 || loading) && (
@@ -15299,10 +15302,14 @@ function FormView(props) {
           {/* V17.1 fix-ux-4 : grille 5 lignes strictes, unique pour tous profils. */}
           {profilType === 'Particulier' ? (
             <>
+              {/* M/2026/04/29/56 — wrapper form autoComplete="on" pour iOS Carte personnelle Apple. */}
+              <form autoComplete="on" onSubmit={e => e.preventDefault()}>
               {/* L1 Prénom / Nom */}
               <div className="row-pair">
-                <Field label="Prénom" value={d.prenom} onChange={v => set('prenom', v)} style={{flex:1}}/>
-                <Field label="Nom" value={d.nom} onChange={v => set('nom', v)} style={{flex:1}}/>
+                <Field label="Prénom" value={d.prenom} onChange={v => set('prenom', v)} style={{flex:1}}
+                  autoComplete="given-name" name="given-name" autoCapitalize="words"/>
+                <Field label="Nom" value={d.nom} onChange={v => set('nom', v)} style={{flex:1}}
+                  autoComplete="family-name" name="family-name" autoCapitalize="words"/>
               </div>
               {/* M/2026/04/28/27 — L2 Tel | Email côte à côte (row-pair). */}
               <div className="row-pair">
@@ -15315,6 +15322,7 @@ function FormView(props) {
               </div>
               {/* M/2026/04/29/53 — Adresse autocomplete Nominatim mondial (5 suggestions, debounce 300ms, auto-remplit Ville/CP/Pays). */}
               <AddressAutocomplete label="Adresse" value={d.adresse} onChange={v => set('adresse', v)}
+                autoComplete="street-address" name="street-address"
                 onPick={(p) => {
                   if (p.adresse) set('adresse', p.adresse);
                   if (p.ville) set('ville', p.ville);
@@ -15323,9 +15331,12 @@ function FormView(props) {
                 }}/>
               {/* M/2026/04/29/55 — L2 NEW grid 3 cols [Code postal | Ville (sans drapeau) | Pays residence (avec drapeau)]. */}
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:10}}>
-                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}/>
-                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}/>
-                <CountryAutocomplete label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{marginBottom:0}}/>
+                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
+                  autoComplete="postal-code" name="postal-code" inputMode="text"/>
+                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
+                  autoComplete="address-level2" name="address-level2"/>
+                <CountryAutocomplete label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{marginBottom:0}}
+                  autoComplete="country-name" name="country-name"/>
               </div>
               {/* M/2026/04/29/44 v8 — L3 Date naissance / Pays de naissance. */}
               <div className="row-pair">
@@ -15334,29 +15345,39 @@ function FormView(props) {
               </div>
               {/* M/2026/04/29/44 v8 — Sub-bloc Piece d'identite. */}
               <PieceIdentiteBlock d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null} showToast={showToast}/>
+              </form>
             </>
           ) : (
             <>
+              {/* M/2026/04/29/56 — wrapper form autoComplete="on" pour iOS Carte personnelle. */}
+              <form autoComplete="on" onSubmit={e => e.preventDefault()}>
               {/* M/2026/04/29/45 v8 Société — layout harmonise avec Particulier (6 blocs ordonnes). */}
               {/* L1 Forme juridique | Raison sociale */}
               <div className="row-pair">
                 <Select label="Forme juridique" value={d.forme_juridique} onChange={v => set('forme_juridique', v)} options={FORMES_JURIDIQUES} style={{flex:1}}/>
-                <Field label="Raison sociale" value={d.societe_nom} onChange={v => set('societe_nom', v)} style={{flex:1}}/>
+                <Field label="Raison sociale" value={d.societe_nom} onChange={v => set('societe_nom', v)} style={{flex:1}}
+                  autoComplete="organization" name="organization" autoCapitalize="words"/>
               </div>
               {/* L2 SIRET / ICE | N° société (RC/RCCM) */}
               <div className="row-pair">
-                <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)} style={{flex:1}}/>
-                <Field label="N° société" value={d.numero_societe} onChange={v => set('numero_societe', v)} style={{flex:1}} placeholder="RC, RCCM, etc."/>
+                <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)} style={{flex:1}}
+                  autoComplete="off" name="siret"/>
+                <Field label="N° société" value={d.numero_societe} onChange={v => set('numero_societe', v)} style={{flex:1}} placeholder="RC, RCCM, etc."
+                  autoComplete="off" name="numero-societe"/>
               </div>
               {/* L3 Représentant légal (sub-head + 3 cols Prénom / Nom / Fonction) */}
               <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:8, marginBottom:4, fontWeight:700, fontFamily:'inherit'}}>Représentant légal</div>
               <div className="row-trio">
-                <Field label="Prénom contact" value={d.representant_prenom} onChange={v => set('representant_prenom', v)}/>
-                <Field label="Nom contact" value={d.representant_nom} onChange={v => set('representant_nom', v)}/>
-                <Field label="Fonction" value={d.representant_fonction} onChange={v => set('representant_fonction', v)}/>
+                <Field label="Prénom contact" value={d.representant_prenom} onChange={v => set('representant_prenom', v)}
+                  autoComplete="section-rep given-name" name="rep-given-name" autoCapitalize="words"/>
+                <Field label="Nom contact" value={d.representant_nom} onChange={v => set('representant_nom', v)}
+                  autoComplete="section-rep family-name" name="rep-family-name" autoCapitalize="words"/>
+                <Field label="Fonction" value={d.representant_fonction} onChange={v => set('representant_fonction', v)}
+                  autoComplete="organization-title" name="organization-title"/>
               </div>
               {/* M/2026/04/29/53 — Adresse autocomplete Nominatim mondial (idem Particulier). */}
               <AddressAutocomplete label="Adresse société" value={d.adresse} onChange={v => set('adresse', v)}
+                autoComplete="section-societe street-address" name="societe-street-address"
                 onPick={(p) => {
                   if (p.adresse) set('adresse', p.adresse);
                   if (p.ville) set('ville', p.ville);
@@ -15365,9 +15386,12 @@ function FormView(props) {
                 }}/>
               {/* M/2026/04/29/55 — L5 NEW grid 3 cols [Code postal | Ville (sans drapeau) | Pays (avec drapeau)] - cohere Particulier. */}
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:10}}>
-                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}/>
-                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}/>
-                <CountryAutocomplete label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{marginBottom:0}}/>
+                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
+                  autoComplete="section-societe postal-code" name="societe-postal-code"/>
+                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
+                  autoComplete="section-societe address-level2" name="societe-address-level2"/>
+                <CountryAutocomplete label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{marginBottom:0}}
+                  autoComplete="section-societe country-name" name="societe-country-name"/>
               </div>
               {/* L6 Tel | Email (harmonise Particulier : Tel a gauche, Email a droite). */}
               <div className="row-pair">
@@ -15380,6 +15404,7 @@ function FormView(props) {
               </div>
               {/* M/2026/04/29/45 v8 Société — Sub-bloc Pièce d'identité du représentant légal. */}
               <PieceIdentiteBlock d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null} showToast={showToast}/>
+              </form>
             </>
           )}
           <CustomFieldList sectionKey="client" d={d} set={set}/>
