@@ -4595,7 +4595,10 @@ function DossierPicker({clients, value, onChange, placeholder = '(Aucun dossier)
     if (!nq) return list;
     return list.filter(c => {
       const bien = c.bien || {};
-      const blob = norm([c.prenom, c.nom, c.societe_nom, c.projet, bien.ville, bien.quartier].filter(Boolean).join(' '));
+      // M/2026/04/29/39 — matching enrichi : type bien (single + multi types[]) inclus dans le blob.
+      const typesBlob = Array.isArray(bien.types) ? bien.types.join(' ') : '';
+      const blob = norm([c.prenom, c.nom, c.societe_nom, c.projet,
+                         bien.ville, bien.quartier, bien.type, typesBlob].filter(Boolean).join(' '));
       return blob.includes(nq);
     });
   }
@@ -7071,7 +7074,7 @@ function fmtMoney(n, devise) {
   return x.toLocaleString('fr-FR') + ' ' + sym;
 }
 
-function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, showToast}) {
+function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, showToast, openExisting}) {
   const intent = preview.intent;
   const data = preview.data || {};
   const ref = String(data.client_ref || '').trim().toLowerCase();
@@ -7263,6 +7266,12 @@ function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, sho
       } catch (e) { chainedFail++; }
     }
     setBusy(false);
+    // M/2026/04/29/39 — Si intent ouvrir/recherche_dossier et un dossier selected,
+    // navigate directement vers la fiche (pas de creation).
+    if (intent === 'recherche_dossier' && selected && openExisting) {
+      openExisting(selected, 0);
+      return;
+    }
     const labels = {creer_rdv:'RDV créé', creer_todo:'Tâche ajoutée', noter_interaction:'Interaction notée', recherche_dossier:'Ouverture', creer_dossier:'Dossier créé'};
     let toastMsg = labels[intent] || 'OK';
     if (chainedOk > 0) toastMsg += ' + ' + chainedOk + ' action' + (chainedOk > 1 ? 's' : '') + ' liée' + (chainedOk > 1 ? 's' : '');
@@ -7304,15 +7313,22 @@ function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, sho
       ))}
       {count === 0 && <div style={{fontSize:12, color:'#C04B20', fontStyle:'italic'}}>Aucune information extraite. Re-dicte ou modifie le texte.</div>}
 
-      {/* Résolution dossier (intents non-dossier) */}
+      {/* Résolution dossier (intents non-dossier). M/2026/04/29/39 : si intent=recherche_dossier,
+          le tap dans le picker navigue directement vers la fiche. Pour les autres intents, le tap
+          select pour lier l'action puis Confirm. */}
       {showClientResolver && (
         <div style={{borderTop:'1px solid #F0E4D4', paddingTop:10}}>
-          <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:6}}>Dossier lié</div>
+          <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:6}}>
+            {intent === 'recherche_dossier' ? 'Choisir un dossier à ouvrir' : 'Dossier lié'}
+          </div>
           {data.client_ref && <div style={{fontSize:12, color:'#8B7F6E', marginBottom:6}}>Référence détectée : "<b>{data.client_ref}</b>"</div>}
-          {/* M/2026/04/29/36 — Tous les cas (candidates 0/1/n) utilisent DossierPicker. */}
-          <DossierPicker clients={clients || []} value={selected} onChange={setSelected}
-            placeholder={candidates.length === 0 && data.client_ref ? 'Aucun match auto · choisir manuellement' : '(Aucun dossier)'}/>
-          {candidates.length === 0 && data.client_ref && !selected && (
+          <DossierPicker clients={clients || []} value={selected}
+            onChange={(c) => {
+              if (intent === 'recherche_dossier' && c && openExisting) { openExisting(c, 0); return; }
+              setSelected(c);
+            }}
+            placeholder={candidates.length === 0 && data.client_ref ? 'Aucun match auto · taper pour rechercher' : (intent === 'recherche_dossier' ? 'Tap pour rechercher' : '(Aucun dossier)')}/>
+          {candidates.length === 0 && data.client_ref && !selected && intent !== 'recherche_dossier' && (
             <div style={{padding:'8px 11px', marginTop:6, borderRadius:8, background:'#FFE8E8', border:'1.5px solid #F0BEBE', fontSize:11.5, color:'#C04B20'}}>
               Aucun match auto pour "<b>{data.client_ref}</b>". {intent !== 'noter_interaction' && 'Sera créé sans dossier lié si laissé vide.'}
             </div>
@@ -7320,11 +7336,12 @@ function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, sho
         </div>
       )}
 
-      {/* Boutons */}
+      {/* Boutons. M/2026/04/29/39 : label adapte a l'intent. */}
       <div style={{display:'flex', flexDirection:'column', gap:6, marginTop:6}}>
-        <button onClick={confirm} disabled={busy || (intent === 'noter_interaction' && !selected)}
+        <button onClick={confirm}
+          disabled={busy || (intent === 'noter_interaction' && !selected) || (intent === 'recherche_dossier' && !selected)}
           style={{padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit', opacity: busy ? .6 : 1}}>
-          {busy ? '…' : 'Confirmer et créer'}
+          {busy ? '…' : (intent === 'recherche_dossier' ? 'Ouvrir le dossier' : 'Confirmer et créer')}
         </button>
         <div style={{display:'flex', gap:6}}>
           <button onClick={onCancel} style={{flex:1, padding:'10px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:10, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>← Re-dicter</button>
@@ -7774,6 +7791,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
             clients={clients || []}
             onCancel={() => { setIntentPreview(null); finalBufferRef.current = ''; setFinalText(''); setInterim(''); setEditable(''); setPhase('record'); }}
             onEditText={() => { setIntentPreview(null); setPhase('edit'); }}
+            openExisting={openClientAtSection}
             onConfirmed={(target) => {
               setIntentPreview(null);
               if (intentPreview.intent === 'creer_dossier' && target && onCreated) {
