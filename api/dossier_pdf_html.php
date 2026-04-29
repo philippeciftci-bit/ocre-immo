@@ -60,7 +60,8 @@ header('Content-Type: text/html; charset=utf-8');
   .logo { font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 22px; color: #8B5E3C; letter-spacing: 1.5px; }
   .logo-immo { font-style: italic; color: #1A1A1A; font-size: 22px; margin-left: 4px; font-weight: 400; }
   .gen-date { font-size: 11px; color: #7A7167; }
-  .test-badge { font-family: 'DM Sans', system-ui, sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 1.5px; color: #DC2626; text-transform: lowercase; margin-left: 6px; }
+  .logo-wrap { display: inline-flex; flex-direction: column; align-items: center; }
+  .test-badge { font-family: 'DM Sans', system-ui, sans-serif; font-size: 18px; font-weight: 500; letter-spacing: 1.5px; color: #DC2626; text-transform: lowercase; line-height: 1; margin-top: 2px; }
   @media print { .test-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #DC2626 !important; } }
   h1 { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: #8B5E3C; margin: 0 0 4px; }
   .subtitle { color: #7A7167; font-size: 13px; margin-bottom: 20px; }
@@ -80,7 +81,10 @@ header('Content-Type: text/html; charset=utf-8');
 <body>
 <div class="a4">
   <div class="header">
-    <span class="logo">OCRE<span class="logo-immo">immo</span><?php if ($_isTestMode): ?><span class="test-badge">test</span><?php endif; ?></span>
+    <span class="logo-wrap">
+      <span class="logo">OCRE<span class="logo-immo">immo</span></span>
+      <?php if ($_isTestMode): ?><span class="test-badge">test</span><?php endif; ?>
+    </span>
     <span class="gen-date"><?= $genDate ?></span>
   </div>
 

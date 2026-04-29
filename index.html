@@ -11128,37 +11128,43 @@ function useTestMode() {
   }, []);
   return isTest;
 }
-function TestBadge({inline=false}) {
+// M/2026/04/29/22 — TestBadge sous le wordmark, taille ~18px, lowercase, rouge accessible.
+// Single source of truth : ce composant porte taille/couleur ; les call-sites OcreTitle
+// et OcreLogoButton wrappent leur wordmark dans un flex column pour positionner le badge
+// en-dessous (pas à côté). PDF et share répliquent la même structure visuelle CSS.
+function TestBadge() {
   const isTest = useTestMode();
   if (!isTest) return null;
   return (
-    <span className="test-badge" style={{
+    <div className="test-badge" style={{
       fontFamily:'"DM Sans", system-ui, sans-serif',
-      fontSize:9.5, fontWeight:500, letterSpacing:1.5,
+      fontSize:18, fontWeight:500, letterSpacing:1.5,
       color:'#DC2626', textTransform:'lowercase',
-      marginLeft: inline ? 4 : 6, alignSelf:'center',
+      lineHeight:1, marginTop:2, textAlign:'center',
       whiteSpace:'nowrap'
-    }}>test</span>
+    }}>test</div>
   );
 }
 function OcreTitle() {
   return (
-    <div style={{display: 'flex', alignItems: 'baseline', gap: 3, justifyContent: 'center'}}>
-      <span style={{
-        fontFamily: '"Cormorant Garamond", serif',
-        fontWeight: 700,
-        fontSize: 20,
-        letterSpacing: 1.5,
-        color: '#8B5E3C',
-      }}>OCRE</span>
-      <span style={{
-        fontFamily: '"Caveat", cursive',
-        fontWeight: 400,
-        fontSize: 23,
-        color: '#2A2018',
-        marginLeft: 2,
-        lineHeight: 1,
-      }}>immo</span>
+    <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
+      <div style={{display: 'flex', alignItems: 'baseline', gap: 3, justifyContent: 'center'}}>
+        <span style={{
+          fontFamily: '"Cormorant Garamond", serif',
+          fontWeight: 700,
+          fontSize: 20,
+          letterSpacing: 1.5,
+          color: '#8B5E3C',
+        }}>OCRE</span>
+        <span style={{
+          fontFamily: '"Caveat", cursive',
+          fontWeight: 400,
+          fontSize: 23,
+          color: '#2A2018',
+          marginLeft: 2,
+          lineHeight: 1,
+        }}>immo</span>
+      </div>
       <TestBadge/>
     </div>
   );
@@ -11270,14 +11276,13 @@ function __fetchUserInfo() {
 function OcreLogoButton() {
   // V20 — wordmark "OCRE immo" décoratif (non interactif). V20Switcher déclenché par
   // tap sur l'icône logo "Oi" (OcreLogo) en haut à gauche.
-  // M/2026/04/29/21 — TestBadge ajouté à droite du wordmark si mode test.
+  // M/2026/04/29/22 — TestBadge sous le wordmark via flex column (single source of truth).
   return (
-    <div style={{
-      flex:1, display:'flex', alignItems:'baseline', justifyContent:'center',
-      gap:3, userSelect:'none', minHeight:36,
-    }}>
-      <span style={{fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:22, letterSpacing:1.5, color:'#8B5E3C', lineHeight:1}}>OCRE</span>
-      <span style={{fontFamily:'Caveat,cursive', fontWeight:400, fontSize:24, color:'#2A1810', marginLeft:2, lineHeight:1}}>immo</span>
+    <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', userSelect:'none', minHeight:36}}>
+      <div style={{display:'flex', alignItems:'baseline', justifyContent:'center', gap:3}}>
+        <span style={{fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:22, letterSpacing:1.5, color:'#8B5E3C', lineHeight:1}}>OCRE</span>
+        <span style={{fontFamily:'Caveat,cursive', fontWeight:400, fontSize:24, color:'#2A1810', marginLeft:2, lineHeight:1}}>immo</span>
+      </div>
       <TestBadge/>
     </div>
   );

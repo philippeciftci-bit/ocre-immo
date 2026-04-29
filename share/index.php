@@ -71,13 +71,17 @@ function fld($v) { return $v ? htmlspecialchars($v) : '—'; }
   .value { font-size: 13px; color: #1A1A1A; margin-top: 2px; }
   .value.empty { color: #999; font-style: italic; }
   .footer { text-align: center; font-size: 11px; color: #7A7167; margin-top: 40px; padding-top: 16px; border-top: 1px solid #E5DDC8; }
-  .test-badge { font-family: 'DM Sans', system-ui, sans-serif; font-size: 9.5px; font-weight: 500; letter-spacing: 1.5px; color: #DC2626; text-transform: lowercase; margin-left: 6px; }
+  .logo-wrap { display: inline-flex; flex-direction: column; align-items: center; }
+  .test-badge { font-family: 'DM Sans', system-ui, sans-serif; font-size: 18px; font-weight: 500; letter-spacing: 1.5px; color: #DC2626; text-transform: lowercase; line-height: 1; margin-top: 2px; }
 </style>
 </head>
 <body>
 <div class="a4">
   <div class="header">
-    <span class="logo">OCRE<span class="logo-immo">immo</span><?php if ($_share_is_test): ?><span class="test-badge">test</span><?php endif; ?></span>
+    <span class="logo-wrap">
+      <span class="logo">OCRE<span class="logo-immo">immo</span></span>
+      <?php if ($_share_is_test): ?><span class="test-badge">test</span><?php endif; ?>
+    </span>
     <span class="subtitle">Dossier <?php echo $projet; ?></span>
   </div>
 
