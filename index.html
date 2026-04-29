@@ -6088,21 +6088,7 @@ function App() {
   const [selectedMatchId, setSelectedMatchId] = useState(null); // match_id pour MatchDetailView
   const [selectedEditId, setSelectedEditId] = useState(null); // edit_id pour EditReviewView
   const [pdfDossierId, setPdfDossierId] = useState(null); // M/2026/04/29/16 dossier_id pour DossierPdfView
-  // M/2026/04/28/64 — onboarding state.
-  const [onboardingActive, setOnboardingActive] = useState(false);
-  useEffect(() => {
-    if (!currentUser || !currentUser.id) return;
-    (async () => {
-      try {
-        const tk = localStorage.getItem('ocre_token') || '';
-        const r = await fetch('/api/onboarding.php?action=state', {headers:{'X-Session-Token': tk}}).then(r => r.json());
-        if (r && r.ok && (r.is_first_login || !r.onboarding_completed)) {
-          setOnboardingActive(true);
-          await fetch('/api/onboarding.php?action=mark_first_login', {method:'POST', headers:{'X-Session-Token': tk}});
-        }
-      } catch (e) {}
-    })();
-  }, [currentUser && currentUser.id]);
+  // M/2026/04/29/23 — onboarding state supprime franchement (bloc Bienvenue intrusif).
 
   useEffect(() => {
     // V52.5 DIAG — beacon TRES TOT pour confirmer que cette version du SPA tourne
@@ -6565,13 +6551,7 @@ function App() {
     />
   )}
   </div>{pwaOverlay}
-  {onboardingActive && currentUser && view === 'list' && (
-    <OnboardingFlow
-      currentUser={currentUser}
-      displayName={currentUser.display_name}
-      onComplete={() => setOnboardingActive(false)}
-    />
-  )}
+  {/* M/2026/04/29/23 — OnboardingFlow supprime franchement (bloc Bienvenue intrusif). */}
   {/* V18.32 — ShareDossiersModal : génère un ZIP autonome (data.json + photos + viewer.html)
       et le partage via navigator.share (iOS share sheet) ou download direct (fallback desktop). */}
   {sharePlaceholderOpen && (
@@ -7618,82 +7598,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
 
 // V18.40 — Dashboard admin : métriques + users + actions (unlock / reset_password / suspend /
 // impersonate / logs) + admin_logs. Nécessite user.is_admin=true (requireAdmin côté backend).
-// M/2026/04/28/64 — OnboardingFlow : Welcome modal + tour 7 steps tooltips.
-function OnboardingFlow({onComplete, displayName, currentUser}) {
-  const [step, setStep] = React.useState(0); // 0 = welcome modal, 1-7 = tour, 8 = done
-  const TOUR = [
-    {target: null, title: 'Bienvenue ' + (displayName || currentUser?.email || '') + ' !', body: 'Avant de commencer, prends 2 minutes pour découvrir Ocre Immo. Tu peux tout faire sans risque dans le mode test.'},
-    {target: '[data-onboarding="liste-dossiers"]', title: 'Tes dossiers', body: 'Ici s\'affichent tous les dossiers que tu suis (acheteurs, vendeurs, locataires, etc.).'},
-    {target: '[data-onboarding="bouton-create"]', title: 'Bouton + pour créer', body: 'Clique pour ajouter un nouveau dossier. Tu peux aussi importer des données automatiquement.'},
-    {target: '[data-onboarding="filters"]', title: 'Filtres par profil', body: 'Filtre rapidement par type : Acheteur, Vendeur, Bailleur, Locataire, Investisseur.'},
-    {target: '[data-onboarding="cible"]', title: 'Cible : tes matches', body: 'Ocre détecte automatiquement les biens compatibles entre tes dossiers. Le badge rouge te notifie.'},
-    {target: '[data-onboarding="cog"]', title: 'Tes préférences', body: 'Configure tes notifs (Telegram, Email), tes seuils de matching, l\'apparence et plus.'},
-    {target: '[data-onboarding="bell"]', title: 'Cloche notifications', body: 'Tes notifications in-app s\'accumulent ici (matches, edits, événements).'},
-    {target: null, title: 'Tu es prêt !', body: 'Tu peux relancer ce tour à tout moment depuis Mes préférences. Bonne route !'},
-  ];
-
-  function rectFor(sel) {
-    if (!sel) return null;
-    const el = document.querySelector(sel);
-    if (!el) return null;
-    return el.getBoundingClientRect();
-  }
-  const cur = TOUR[step];
-  const rect = cur ? rectFor(cur.target) : null;
-
-  async function done() {
-    try {
-      const tk = localStorage.getItem('ocre_token') || '';
-      await fetch('/api/onboarding.php?action=complete', {method:'POST', headers:{'X-Session-Token': tk}});
-    } catch (e) {}
-    onComplete && onComplete();
-  }
-  async function skip() { done(); }
-
-  if (step >= TOUR.length) { done(); return null; }
-
-  // Style : si pas de target → modal centrée. Si target → tooltip à proximité + spotlight.
-  const bg = 'rgba(42,32,24,.6)';
-  if (!rect) {
-    return (
-      <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:bg, zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:14}}>
-        <div style={{background:'#fff', borderRadius:14, padding:24, maxWidth:420, width:'100%', boxShadow:'0 8px 40px rgba(0,0,0,.3)'}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:24, fontWeight:700, color:'#8B5E3C', marginBottom:8}}>{cur.title}</div>
-          <div style={{fontSize:14, color:'#5A4E3D', lineHeight:1.5, marginBottom:18}}>{cur.body}</div>
-          <div style={{display:'flex', gap:8, justifyContent:'space-between', alignItems:'center'}}>
-            <button onClick={skip} style={{padding:'6px 10px', background:'transparent', border:'none', color:'#8B7F6E', fontSize:12, cursor:'pointer', textDecoration:'underline'}}>Passer</button>
-            <div style={{display:'flex', gap:6}}>
-              {step > 0 && <button onClick={() => setStep(step - 1)} style={{padding:'8px 14px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'#8B5E3C', fontFamily:'inherit', fontSize:13, cursor:'pointer'}}>Précédent</button>}
-              <button onClick={() => setStep(step + 1)} style={{padding:'8px 16px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer'}}>{step === 0 ? 'Commencer le tour' : (step === TOUR.length - 1 ? 'Terminer' : 'Suivant')}</button>
-            </div>
-          </div>
-          <div style={{textAlign:'center', marginTop:12, fontSize:11, color:'#8B7F6E'}}>{step + 1} / {TOUR.length}</div>
-        </div>
-      </div>
-    );
-  }
-  // Mode tooltip avec spotlight : on highlight l'élément + tooltip flottante.
-  const margin = 10;
-  const tooltipTop = (rect.bottom + margin + 200) > window.innerHeight ? rect.top - 200 - margin : rect.bottom + margin;
-  return (
-    <>
-      <div onClick={() => setStep(step + 1)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:bg, zIndex:500, pointerEvents:'auto'}}/>
-      <div style={{position:'fixed', top:rect.top - 4, left:rect.left - 4, width:rect.width + 8, height:rect.height + 8, border:'2px solid #FAF3E0', borderRadius:8, boxShadow:'0 0 0 9999px ' + bg, zIndex:501, pointerEvents:'none'}}/>
-      <div style={{position:'fixed', top: Math.max(tooltipTop, 10), left: Math.max(10, Math.min(window.innerWidth - 320, rect.left)), width:300, background:'#fff', borderRadius:10, padding:14, boxShadow:'0 8px 40px rgba(0,0,0,.3)', zIndex:502}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', marginBottom:6}}>{cur.title}</div>
-        <div style={{fontSize:13, color:'#5A4E3D', lineHeight:1.4, marginBottom:12}}>{cur.body}</div>
-        <div style={{display:'flex', gap:6, justifyContent:'space-between', alignItems:'center'}}>
-          <button onClick={skip} style={{padding:'4px 8px', background:'transparent', border:'none', color:'#8B7F6E', fontSize:11, cursor:'pointer'}}>Passer</button>
-          <div style={{display:'flex', gap:6}}>
-            {step > 0 && <button onClick={() => setStep(step - 1)} style={{padding:'6px 10px', background:'transparent', border:'1px solid #B89968', borderRadius:5, color:'#8B5E3C', fontSize:12, cursor:'pointer'}}>Préc.</button>}
-            <button onClick={() => setStep(step + 1)} style={{padding:'6px 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:5, fontSize:12, cursor:'pointer'}}>{step === TOUR.length - 1 ? 'Fin' : 'Suivant'}</button>
-          </div>
-        </div>
-        <div style={{textAlign:'center', marginTop:8, fontSize:10, color:'#8B7F6E'}}>{step + 1} / {TOUR.length}</div>
-      </div>
-    </>
-  );
-}
+// M/2026/04/29/23 — OnboardingFlow (Welcome modal + tour 7 steps) supprime franchement.
 
 // M/2026/04/28/64 — HelpPage : FAQ accordéon avec search.
 function HelpPage({onBack}) {
@@ -11304,27 +11209,7 @@ function Header({left, center, right}) {
   );
 }
 
-// V48 — Bandeau onboarding (premier login Ophélie). Visible uniquement si l'utilisateur
-// a des dossiers is_demo et n'a pas encore dismissé. Persisté en localStorage.
-function OnboardingBanner({clients}) {
-  const [dismissed, setDismissed] = React.useState(() => localStorage.getItem('ocre.onboarding.dismissed') === '1');
-  const hasDemo = Array.isArray(clients) && clients.some(c => c && c.is_demo);
-  if (dismissed || !hasDemo) return null;
-  return (
-    <div style={{position:'relative', background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:12, padding:'12px 14px', marginBottom:12, boxShadow:'0 1px 3px rgba(139,94,60,.08)'}}>
-      <button type="button" onClick={() => { localStorage.setItem('ocre.onboarding.dismissed', '1'); setDismissed(true); }}
-        aria-label="Fermer"
-        style={{position:'absolute', top:8, right:8, width:26, height:26, padding:0, border:'none', background:'transparent', color:'#8B5E3C', cursor:'pointer', borderRadius:13, fontSize:16, fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>×</button>
-      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
-        <span style={{fontSize:18}}>👋</span>
-        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'#8B5E3C'}}>Bienvenue sur OCRE Immo</span>
-      </div>
-      <div style={{fontSize:12.5, color:'#5C3B1E', lineHeight:1.5, paddingRight:18}}>
-        Voici 6 dossiers d'exemple pour te familiariser avec l'app. Tu peux les ouvrir, modifier, archiver ou supprimer en toute liberté — ce sont des données fictives marquées <b>DÉMO</b>. Demande à Philippe quand tu veux passer aux vrais dossiers.
-      </div>
-    </div>
-  );
-}
+// M/2026/04/29/23 — OnboardingBanner (V48 "Bienvenue sur OCRE Immo" + texte démo) supprime franchement.
 
 // V57 — Moteur de recherche avancé multi-critères. Calcul score matching + filtrage.
 function v57DefaultCriteria() {
@@ -11925,8 +11810,7 @@ function ListView(props) {
       )}
 
       <div style={{flex:1, overflowY:'auto', padding:12, paddingBottom:'calc(50px + env(safe-area-inset-bottom, 0px))'}}>
-        {/* V48 — bandeau onboarding pour les comptes ayant des dossiers démo. Dismissable. */}
-        <OnboardingBanner clients={clients}/>
+        {/* M/2026/04/29/23 — OnboardingBanner supprime franchement (bloc Bienvenue intrusif). */}
         {!showArchives && drafts.length > 0 && (
           <>
             <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, margin:'6px 4px'}}>Brouillons · {drafts.length}</div>
