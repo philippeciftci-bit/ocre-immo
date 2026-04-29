@@ -838,7 +838,10 @@ function usePopoverAutoClose(isOpen, setOpen, popoverRef) {
     try { window.dispatchEvent(new CustomEvent('ocre-popover-open', {detail: {id: myId}})); } catch (e) {}
     function onPopoverOpen(e) { if (e.detail && e.detail.id !== myId) setOpen(false); }
     function onFocusIn(e) {
-      if (popoverRef && popoverRef.current && popoverRef.current.contains(e.target)) return;
+      // M/2026/04/30/5 — chemin mobile (BottomSheet) : popoverRef pas attache.
+      // Ne PAS fermer sur focusin sinon le BottomSheet se ferme des qu on tape la barre de recherche.
+      if (!popoverRef || !popoverRef.current) return;
+      if (popoverRef.current.contains(e.target)) return;
       setOpen(false);
     }
     function onKey(e) { if (e.key === 'Escape') setOpen(false); }
@@ -1165,20 +1168,19 @@ const CITIES_BY_COUNTRY = {
   CA: ['Calgary','Edmonton','Halifax','Montréal','Ottawa','Québec','Toronto','Vancouver','Winnipeg'],
 };
 
-// CityPicker — sélecteur de ville conditionnel au pays. Désactivé tant que
-// `country` n'est pas sélectionné. Au tap disabled : focus saute sur le champ
-// pays (via callback `onNeedCountry`) + tooltip flash 2s.
+// CityPicker — saisie libre Ville + suggestions optionnelles filtrees par pays.
 // M/2026/04/29/51 — CityPicker refondu en combobox : input direct + popover suggestions inline.
 // M/2026/04/29/55 — prop showFlag (default true) controle l'affichage drapeau adornment.
-function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Ville…', showFlag=true, autoComplete='address-level2', name='address-level2'}) {
+// M/2026/04/30/5 — saisie libre toujours acceptee (plus de blocage si country vide).
+function CityPicker({label, value, onChange, country, style={}, placeholder='Ville…', showFlag=true, autoComplete='address-level2', name='address-level2'}) {
+  // M/2026/04/30/5 — saisie libre indep du country. Plus de readOnly/tooltip si pays vide.
+  // Si country defini -> filtre suggestions par pays. Sinon -> pas de suggestions mais saisie libre OK.
   const [open, setOpen] = React.useState(false);
-  const [tooltip, setTooltip] = React.useState(false);
   const inputRef = React.useRef(null);
   const popoverRef = React.useRef(null);
   usePopoverAutoClose(open, setOpen, popoverRef);
   const cities = (country && CITIES_BY_COUNTRY[country]) || [];
   const hasList = cities.length > 0;
-  const disabled = !country;
   // Drapeau pays detecte depuis country prop (code ISO2 ou nom complet). Affiche si showFlag=true.
   const countryFlag = (() => {
     if (!country || !showFlag) return '';
@@ -1191,11 +1193,6 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
     ? cities.filter(c => normalizeAccent(c).includes(normalizeAccent(query)))
     : cities;
 
-  function handleDisabledClick() {
-    setTooltip(true);
-    setTimeout(() => setTooltip(false), 2000);
-    if (onNeedCountry) onNeedCountry();
-  }
   function pick(city) {
     onChange(city);
     setOpen(false);
@@ -1203,10 +1200,8 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
   }
 
   const filled = !!value;
-  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color: disabled ? '#B5A78F' : '#2A2018', minHeight:38};
-  const styleField = disabled
-    ? {...base, background:'#F4ECE0', border:'1.5px solid #E8DDD0', cursor:'not-allowed'}
-    : {...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)};
+  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018', minHeight:38};
+  const styleField = {...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)};
 
   return (
     <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
@@ -1218,31 +1213,21 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
         <input ref={inputRef} type="text"
           value={value || ''}
           onChange={e => onChange(e.target.value)}
-          onFocus={() => disabled ? handleDisabledClick() : setOpen(true)}
-          onClick={() => disabled ? handleDisabledClick() : setOpen(true)}
+          onFocus={() => setOpen(true)}
+          onClick={() => setOpen(true)}
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); setOpen(false); if (inputRef.current) try { inputRef.current.blur(); } catch (er) {} }
           }}
           placeholder={placeholder}
           autoCapitalize="words" autoCorrect="off" spellCheck="false"
           autoComplete={autoComplete} name={name}
-          readOnly={disabled}
           style={{...styleField, paddingLeft: countryFlag ? 34 : 11}}/>
       </div>
-      {tooltip && (
-        <div style={{position:'absolute', bottom:'100%', left:0, right:0, marginBottom:4, padding:'6px 10px', background:'#2A2018', color:'#fff', borderRadius:6, fontSize:11, fontWeight:600, fontFamily:'inherit', textAlign:'center', boxShadow:'0 2px 8px rgba(0,0,0,.2)', zIndex:99}}>
-          Choisis d'abord le pays
-        </div>
-      )}
-      {open && !disabled && (
+      {open && hasList && (
         <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
-          {!hasList && (
-            <div style={{padding:'10px 12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Aucune liste pour ce pays — saisie libre acceptée.</div>
-          )}
-          {filtered.length === 0 && hasList && (
+          {filtered.length === 0 ? (
             <div style={{padding:'10px 12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Aucune ville trouvée. <span style={{color:'#8B5E3C'}}>Tape librement.</span></div>
-          )}
-          {filtered.map(c => (
+          ) : filtered.map(c => (
             <div key={c} onMouseDown={() => pick(c)}
               style={{padding:'10px 12px', fontSize:14, cursor:'pointer', borderBottom:'1px solid #F4EEE6', display:'flex', alignItems:'center', gap:6}}>
               <span style={{flex:1}}>{c}</span>
