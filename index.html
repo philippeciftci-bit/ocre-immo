@@ -924,8 +924,8 @@ const CITIES_BY_COUNTRY = {
 // `country` n'est pas sélectionné. Au tap disabled : focus saute sur le champ
 // pays (via callback `onNeedCountry`) + tooltip flash 2s.
 // M/2026/04/29/51 — CityPicker refondu en combobox : input direct + popover suggestions inline.
-// M/2026/04/29/54 — drapeau pays affiche en adornment a gauche si country prop defini.
-function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Ville…'}) {
+// M/2026/04/29/55 — prop showFlag (default true) controle l'affichage drapeau adornment.
+function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Ville…', showFlag=true}) {
   const [open, setOpen] = React.useState(false);
   const [tooltip, setTooltip] = React.useState(false);
   const inputRef = React.useRef(null);
@@ -934,9 +934,9 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
   const cities = (country && CITIES_BY_COUNTRY[country]) || [];
   const hasList = cities.length > 0;
   const disabled = !country;
-  // M/2026/04/29/54 — drapeau pays detecte depuis country prop (code ISO2 ou nom complet).
+  // Drapeau pays detecte depuis country prop (code ISO2 ou nom complet). Affiche si showFlag=true.
   const countryFlag = (() => {
-    if (!country) return '';
+    if (!country || !showFlag) return '';
     const ent = PAYS.find(p => p.c === country) || PAYS.find(p => p.n === country);
     return ent ? ent.f : '';
   })();
@@ -15321,14 +15321,13 @@ function FormView(props) {
                   if (p.code_postal) set('code_postal', p.code_postal);
                   if (p.pays) set('pays_residence', p.pays);
                 }}/>
-              {/* M/2026/04/29/54 — L4 NEW Code postal / Ville (drapeau pays inline depuis pays_residence). */}
-              <div className="row-pair">
-                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{flex:1}}/>
-                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
+              {/* M/2026/04/29/55 — L2 NEW grid 3 cols [Code postal | Ville (sans drapeau) | Pays residence (avec drapeau)]. */}
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:10}}>
+                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}/>
+                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}/>
+                <CountryAutocomplete label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{marginBottom:0}}/>
               </div>
-              {/* M/2026/04/29/54 — L5 Pays residence pleine ligne (Pays naissance reste couple a Date L6). */}
-              <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
-              {/* M/2026/04/29/44 v8 — L6 Date naissance / Pays de naissance. */}
+              {/* M/2026/04/29/44 v8 — L3 Date naissance / Pays de naissance. */}
               <div className="row-pair">
                 <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1}}/>
                 <CountryAutocomplete label="Pays de naissance" value={d.pays_naissance} onChange={v => set('pays_naissance', v)} style={{flex:1}}/>
@@ -15364,13 +15363,12 @@ function FormView(props) {
                   if (p.code_postal) set('code_postal', p.code_postal);
                   if (p.pays) set('pays_residence', p.pays);
                 }}/>
-              {/* M/2026/04/29/54 — L5 NEW Code postal / Ville (drapeau pays inline). */}
-              <div className="row-pair">
-                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{flex:1}}/>
-                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} style={{flex:1}}/>
+              {/* M/2026/04/29/55 — L5 NEW grid 3 cols [Code postal | Ville (sans drapeau) | Pays (avec drapeau)] - cohere Particulier. */}
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:10}}>
+                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}/>
+                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}/>
+                <CountryAutocomplete label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{marginBottom:0}}/>
               </div>
-              {/* M/2026/04/29/54 — L6 Pays residence pleine ligne. */}
-              <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
               {/* L6 Tel | Email (harmonise Particulier : Tel a gauche, Email a droite). */}
               <div className="row-pair">
                 <div style={{flex:1, minWidth:0}}>
