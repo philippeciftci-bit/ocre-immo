@@ -7,16 +7,18 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<!-- M/2026/04/29/27 — Version-check synchrone : compare APP_VERSION (injectee au deploy)
-     vs localStorage. Si mismatch → purge caches + unregister SW + reload. AUCUNE manip
-     Philippe : detection automatique au prochain accès, regle zero_manipulation_philippe. -->
+<!-- M/2026/04/29/47 — Auto-invalidation FORCEE 4 couches.
+     Couche 1 : headers HTTP no-cache (nginx, en place depuis M/27).
+     Couche 2 : SW killswitch sw.js v82 (skipWaiting + clients.claim + caches.delete + unregister + navigate).
+     Couche 3 : version-check synchrone APP_VERSION (localStorage compare + purge + reload).
+     Couche 4 : registration.update() FORCE au load + fetch /api/version.php periodique 30s.
+     Garantie : Philippe ne touche JAMAIS son cache. -->
 <script>
 (function() {
   var APP_VERSION = '__BUILD_VERSION__';
-  if (APP_VERSION === '__BUILD_' + 'VERSION__') return; // pas remplacé (dev local)
-  var stored = null;
-  try { stored = localStorage.getItem('ocre_app_version'); } catch (e) {}
-  if (stored && stored !== APP_VERSION) {
+  if (APP_VERSION === '__BUILD_' + 'VERSION__') return;
+
+  function purgeAndReload() {
     var done = function() {
       try { localStorage.setItem('ocre_app_version', APP_VERSION); } catch (e) {}
       location.reload(true);
@@ -34,9 +36,44 @@
     }
     if (purges.length) Promise.all(purges).then(done, done);
     else done();
-  } else if (!stored) {
-    try { localStorage.setItem('ocre_app_version', APP_VERSION); } catch (e) {}
   }
+
+  // Couche 3 : version-check synchrone au boot.
+  var stored = null;
+  try { stored = localStorage.getItem('ocre_app_version'); } catch (e) {}
+  if (stored && stored !== APP_VERSION) { purgeAndReload(); return; }
+  if (!stored) { try { localStorage.setItem('ocre_app_version', APP_VERSION); } catch (e) {} }
+
+  // Couche 4 : force registration.update() + check periodique /api/version.php.
+  // Safari iOS est réticent à re-fetch sw.js même avec no-cache headers. update()
+  // force le navigateur à check la nouvelle version sur le réseau.
+  function forceSwUpdate() {
+    if (!navigator.serviceWorker || !navigator.serviceWorker.getRegistration) return;
+    navigator.serviceWorker.getRegistration().then(function(reg) {
+      if (reg) { try { reg.update(); } catch (e) {} }
+    }).catch(function() {});
+  }
+
+  function checkServerVersion() {
+    fetch('/api/version.php?_=' + Date.now(), {cache: 'no-store', credentials: 'omit'})
+      .then(function(r) { return r.ok ? r.text() : null; })
+      .then(function(serverVer) {
+        if (!serverVer) return;
+        serverVer = serverVer.trim();
+        if (serverVer && serverVer !== APP_VERSION) purgeAndReload();
+      })
+      .catch(function() {});
+  }
+
+  // Au load + intervalle 30s. visibilitychange déclenche aussi un check immédiat
+  // (utile sur mobile quand l'utilisateur revient sur l'app après mise en arrière-plan).
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { forceSwUpdate(); checkServerVersion(); });
+  } else { forceSwUpdate(); checkServerVersion(); }
+  setInterval(function() { forceSwUpdate(); checkServerVersion(); }, 30000);
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') { forceSwUpdate(); checkServerVersion(); }
+  });
 })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
