@@ -7,6 +7,38 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<!-- M/2026/04/29/27 — Version-check synchrone : compare APP_VERSION (injectee au deploy)
+     vs localStorage. Si mismatch → purge caches + unregister SW + reload. AUCUNE manip
+     Philippe : detection automatique au prochain accès, regle zero_manipulation_philippe. -->
+<script>
+(function() {
+  var APP_VERSION = '__BUILD_VERSION__';
+  if (APP_VERSION === '__BUILD_' + 'VERSION__') return; // pas remplacé (dev local)
+  var stored = null;
+  try { stored = localStorage.getItem('ocre_app_version'); } catch (e) {}
+  if (stored && stored !== APP_VERSION) {
+    var done = function() {
+      try { localStorage.setItem('ocre_app_version', APP_VERSION); } catch (e) {}
+      location.reload(true);
+    };
+    var purges = [];
+    if (window.caches) {
+      purges.push(caches.keys().then(function(keys) {
+        return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+      }));
+    }
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      purges.push(navigator.serviceWorker.getRegistrations().then(function(regs) {
+        return Promise.all(regs.map(function(r) { return r.unregister(); }));
+      }));
+    }
+    if (purges.length) Promise.all(purges).then(done, done);
+    else done();
+  } else if (!stored) {
+    try { localStorage.setItem('ocre_app_version', APP_VERSION); } catch (e) {}
+  }
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
