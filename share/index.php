@@ -25,16 +25,18 @@ if (!$link) {
 // Incr viewed_count
 $meta->prepare("UPDATE shared_links SET viewed_count = viewed_count + 1, last_viewed_at = NOW() WHERE id = ?")->execute([$link['id']]);
 
-// Lire le dossier dans la WSp source : essai mode agent puis mode test
+// Lire le dossier dans la WSp source : essai mode agent puis mode test.
+// M/2026/04/29/21 — capture du suffix gagnant pour afficher badge "test" si dossier source mode test.
 $slug_clean = preg_replace('/[^a-z0-9_-]/', '', $link['wsp_slug']);
 $dossier = null;
+$_share_is_test = false;
 foreach (['', '_test'] as $suffix) {
     try {
         $pdo = pdo_workspace('ocre_wsp_' . $slug_clean . $suffix);
         $d = $pdo->prepare("SELECT * FROM clients WHERE id = ? AND deleted_at IS NULL LIMIT 1");
         $d->execute([$link['dossier_id']]);
         $r = $d->fetch();
-        if ($r) { $dossier = $r; break; }
+        if ($r) { $dossier = $r; $_share_is_test = ($suffix === '_test'); break; }
     } catch (Throwable $e) {}
 }
 if (!$dossier) { http_response_code(404); echo "Dossier introuvable"; exit; }
@@ -69,12 +71,13 @@ function fld($v) { return $v ? htmlspecialchars($v) : '—'; }
   .value { font-size: 13px; color: #1A1A1A; margin-top: 2px; }
   .value.empty { color: #999; font-style: italic; }
   .footer { text-align: center; font-size: 11px; color: #7A7167; margin-top: 40px; padding-top: 16px; border-top: 1px solid #E5DDC8; }
+  .test-badge { font-family: 'DM Sans', system-ui, sans-serif; font-size: 9.5px; font-weight: 500; letter-spacing: 1.5px; color: #DC2626; text-transform: lowercase; margin-left: 6px; }
 </style>
 </head>
 <body>
 <div class="a4">
   <div class="header">
-    <span class="logo">OCRE<span class="logo-immo">immo</span></span>
+    <span class="logo">OCRE<span class="logo-immo">immo</span><?php if ($_share_is_test): ?><span class="test-badge">test</span><?php endif; ?></span>
     <span class="subtitle">Dossier <?php echo $projet; ?></span>
   </div>
 

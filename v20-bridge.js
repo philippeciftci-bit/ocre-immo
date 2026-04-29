@@ -110,8 +110,13 @@
     if (c.is_super_admin && c.is_readonly) {
       banners.push({ cls: 'v20-banner-superadmin', txt: 'Vue super-administrateur · Lecture seule' });
     }
+    // M/2026/04/29/21 — Bandeau MODE TEST supprime franchement, remplace par
+    // indicateur compact "test" rouge dans le header app (cf TestBadge inline
+    // dans le wordmark OcreTitle, exposition globale via window.__ocreMode).
     if (c.workspace.type === 'wsp' && c.mode === 'test') {
-      banners.push({ cls: 'v20-banner-test', txt: 'MODE TEST · Données isolées de votre activité réelle' });
+      try { window.__ocreMode = 'test'; } catch (e) {}
+    } else {
+      try { window.__ocreMode = c.mode || 'agent'; } catch (e) {}
     }
     if (c.rupture_pending) {
       const d = new Date(c.rupture_pending.scheduled_for);

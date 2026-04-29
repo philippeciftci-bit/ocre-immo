@@ -11101,6 +11101,46 @@ function OcreLogo({size = 36}) {
 
 // V18.19 — titre bi-typo. "OCRE" Cormorant ocre bold + "immo" Caveat noir manuscrit.
 // Les deux 'i' (logo + immo) partagent Caveat pour cohérence visuelle.
+// M/2026/04/29/21 — TestBadge "test" rouge accessible (#DC2626) à côté du wordmark
+// si mode test actif. Detection : cookie OCRE_MODE_<SLUG>=test (lecture côté React,
+// fallback window.__ocreMode populé par v20-bridge).
+function useTestMode() {
+  const [isTest, setIsTest] = React.useState(() => {
+    try {
+      if (typeof window !== 'undefined' && window.__ocreMode === 'test') return true;
+      const slug = (location.host.match(/^([a-z0-9-]+)\.ocre\.immo/) || [])[1] || '';
+      if (!slug) return false;
+      const ck = document.cookie.split('; ').find(c => c.startsWith('OCRE_MODE_' + slug.toUpperCase() + '='));
+      return ck && ck.split('=')[1] === 'test';
+    } catch (e) { return false; }
+  });
+  React.useEffect(() => {
+    const id = setInterval(() => {
+      try {
+        const slug = (location.host.match(/^([a-z0-9-]+)\.ocre\.immo/) || [])[1] || '';
+        if (!slug) return;
+        const ck = document.cookie.split('; ').find(c => c.startsWith('OCRE_MODE_' + slug.toUpperCase() + '='));
+        const next = (ck && ck.split('=')[1] === 'test') || window.__ocreMode === 'test';
+        setIsTest(prev => prev !== next ? next : prev);
+      } catch (e) {}
+    }, 2000);
+    return () => clearInterval(id);
+  }, []);
+  return isTest;
+}
+function TestBadge({inline=false}) {
+  const isTest = useTestMode();
+  if (!isTest) return null;
+  return (
+    <span className="test-badge" style={{
+      fontFamily:'"DM Sans", system-ui, sans-serif',
+      fontSize:9.5, fontWeight:500, letterSpacing:1.5,
+      color:'#DC2626', textTransform:'lowercase',
+      marginLeft: inline ? 4 : 6, alignSelf:'center',
+      whiteSpace:'nowrap'
+    }}>test</span>
+  );
+}
 function OcreTitle() {
   return (
     <div style={{display: 'flex', alignItems: 'baseline', gap: 3, justifyContent: 'center'}}>
@@ -11119,6 +11159,7 @@ function OcreTitle() {
         marginLeft: 2,
         lineHeight: 1,
       }}>immo</span>
+      <TestBadge/>
     </div>
   );
 }
@@ -11229,6 +11270,7 @@ function __fetchUserInfo() {
 function OcreLogoButton() {
   // V20 — wordmark "OCRE immo" décoratif (non interactif). V20Switcher déclenché par
   // tap sur l'icône logo "Oi" (OcreLogo) en haut à gauche.
+  // M/2026/04/29/21 — TestBadge ajouté à droite du wordmark si mode test.
   return (
     <div style={{
       flex:1, display:'flex', alignItems:'baseline', justifyContent:'center',
@@ -11236,6 +11278,7 @@ function OcreLogoButton() {
     }}>
       <span style={{fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:22, letterSpacing:1.5, color:'#8B5E3C', lineHeight:1}}>OCRE</span>
       <span style={{fontFamily:'Caveat,cursive', fontWeight:400, fontSize:24, color:'#2A1810', marginLeft:2, lineHeight:1}}>immo</span>
+      <TestBadge/>
     </div>
   );
 }
