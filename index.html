@@ -1198,12 +1198,23 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
   }
 
   function pick(s) {
-    onChange(s.display_name || '');
+    // M/2026/04/29/53 — adresse rue+numero (vs display_name complet trop long).
+    const a = s.address || {};
+    const adresseRue = [a.house_number, a.road].filter(Boolean).join(' ') || (s.display_name || '').split(',')[0];
+    onChange(adresseRue);
     setOpen(false); setSuggestions([]);
     if (onPick) onPick({
-      address: s.display_name || '',
-      city: (s.address && (s.address.city || s.address.town || s.address.village)) || '',
-      suburb: (s.address && (s.address.suburb || s.address.neighbourhood)) || '',
+      adresse: adresseRue,
+      address: adresseRue,
+      ville: a.city || a.town || a.village || a.municipality || '',
+      city: a.city || a.town || a.village || a.municipality || '',
+      quartier: a.suburb || a.neighbourhood || a.quarter || '',
+      suburb: a.suburb || a.neighbourhood || '',
+      code_postal: a.postcode || '',
+      postcode: a.postcode || '',
+      pays: a.country_code ? a.country_code.toUpperCase() : '',
+      country: a.country_code ? a.country_code.toUpperCase() : '',
+      country_name: a.country || '',
       lat: s.lat, lng: s.lon,
       gps: (s.lat && s.lon) ? (s.lat + ',' + s.lon) : '',
     });
@@ -15284,8 +15295,14 @@ function FormView(props) {
                   <EmailMulti value={d.emails} onChange={v => set('emails', v)} showToast={showToast}/>
                 </div>
               </div>
-              {/* L3 Adresse full width */}
-              <CitySuggestField label="Adresse" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
+              {/* M/2026/04/29/53 — Adresse autocomplete Nominatim mondial (5 suggestions, debounce 300ms, auto-remplit Ville/CP/Pays). */}
+              <AddressAutocomplete label="Adresse" value={d.adresse} onChange={v => set('adresse', v)}
+                onPick={(p) => {
+                  if (p.adresse) set('adresse', p.adresse);
+                  if (p.ville) set('ville', p.ville);
+                  if (p.code_postal) set('code_postal', p.code_postal);
+                  if (p.pays) set('pays_residence', p.pays);
+                }}/>
               {/* M/2026/04/29/50 — L4 Pays residence / Ville (ordre Pays d'abord, harmonise Section II Bien). */}
               <div className="row-pair">
                 <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
@@ -15319,8 +15336,14 @@ function FormView(props) {
                 <Field label="Nom contact" value={d.representant_nom} onChange={v => set('representant_nom', v)}/>
                 <Field label="Fonction" value={d.representant_fonction} onChange={v => set('representant_fonction', v)}/>
               </div>
-              {/* L4 Adresse société full width */}
-              <CitySuggestField label="Adresse société" value={d.adresse} onChange={v => set('adresse', v)} suggestAction="suggest_address"/>
+              {/* M/2026/04/29/53 — Adresse autocomplete Nominatim mondial (idem Particulier). */}
+              <AddressAutocomplete label="Adresse société" value={d.adresse} onChange={v => set('adresse', v)}
+                onPick={(p) => {
+                  if (p.adresse) set('adresse', p.adresse);
+                  if (p.ville) set('ville', p.ville);
+                  if (p.code_postal) set('code_postal', p.code_postal);
+                  if (p.pays) set('pays_residence', p.pays);
+                }}/>
               {/* M/2026/04/29/50 — L5 Pays residence / Ville (Pays d'abord, harmonise Section II + Particulier). */}
               <div className="row-pair">
                 <CountryAutocomplete label="Pays résidence" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{flex:1}}/>
