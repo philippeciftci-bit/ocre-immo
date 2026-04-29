@@ -853,6 +853,33 @@ function usePopoverAutoClose(isOpen, setOpen, popoverRef) {
   }, [isOpen]);
 }
 
+// M/2026/04/30/4 — useSwipeExclusive : meme pattern que usePopoverAutoClose mais
+// pour les swipes ClientRow. 1 SEUL swipe ouvert a la fois (Mail iOS pattern).
+// Dispatch ocre-swipe-open quand on ouvre, ecoute pour fermer si autre s'ouvre.
+// Tap pointerdown hors rowRef → close. Esc → close.
+function useSwipeExclusive(isOpen, close, rowRef) {
+  const idRef = React.useRef(Math.random().toString(36).slice(2, 10));
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const myId = idRef.current;
+    try { window.dispatchEvent(new CustomEvent('ocre-swipe-open', {detail: {id: myId}})); } catch (e) {}
+    function onSwipeOpen(e) { if (e.detail && e.detail.id !== myId) close(); }
+    function onPointerDown(e) {
+      if (rowRef && rowRef.current && rowRef.current.contains(e.target)) return;
+      close();
+    }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    window.addEventListener('ocre-swipe-open', onSwipeOpen);
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('ocre-swipe-open', onSwipeOpen);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen]);
+}
+
 function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tape un pays…', autoComplete='country-name', name='country-name'}) {
   const allOpts = PAYS.map(p => ({code: p.c, flag: p.f, name: p.n}));
   // M/2026/04/29/51 — saisie libre persistante : value peut etre code ISO (FR/MA) OU nom libre (Mongolie).
@@ -13048,6 +13075,9 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   // proteger contre suppression accidentelle).
   const [swipeX, setSwipeX] = React.useState(0);
   const [swipeStart, setSwipeStart] = React.useState(null);
+  // M/2026/04/30/4 — swipe exclusif (Mail iOS pattern) : 1 seul ouvert a la fois.
+  const swipeRowRef = React.useRef(null);
+  useSwipeExclusive(swipeX < 0, () => setSwipeX(0), swipeRowRef);
   async function doArchive(e) {
     if (e) e.stopPropagation();
     if (!c.id) return;
@@ -13120,7 +13150,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
               : 0)));
   const wrapperMargin = isGrouped ? 0 : 10;
   return (
-    <div style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent'}}>
+    <div ref={swipeRowRef} style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent'}}>
       {/* M/2026/04/30/3 — 3 boutons swipe (de gauche a droite quand reveles) :
           SUPPRIMER (rouge, right:160, revele en dernier a -200) +
           APERCU   (right:80, revele a -140) +
@@ -13162,7 +13192,8 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         </svg>
         <span>Archiver</span>
       </button>
-    <div className="client-row-card" onClick={onClick}
+    <div className="client-row-card"
+      onClick={e => { if (swipeX < 0) { setSwipeX(0); return; } if (onClick) onClick(e); }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       style={{transform:'translateX(' + swipeX + 'px)', transition: swipeStart ? 'none' : 'transform 200ms ease', background:'#fff', position:'relative', zIndex:1, marginBottom:0}}>
       {/* V40 — Header ClientRow : thumb 54×54 + colonne 2 lignes à droite (Variante 1).
