@@ -1883,6 +1883,19 @@ const HABITABLE_TYPES = ['Villa','Appartement','Riad','Maison'];
 // V17.2 Phase 2a — BienForm : Section II "Le bien", country-first × type-driven (multi depuis v17.9).
 // M/2026/04/28/28 — V64 ruban d'ancres supprimé franchement (4 sous-onglets perçus
 // comme imbrication inutile). Section II = flux vertical unique scrollable.
+//
+// M/2026/04/29/17 — Matrice Type × Statut formalisée (schema-driven, source de vérité).
+// 6 catégories de types pour conditionnels Section II.
+// Statuts foncier : existant / vefa (impacte Année construction vs Date livraison).
+const SECTION_II_TYPE_MATRIX = {
+  appt:        { types: ['Appartement','Loft','Penthouse','Duplex','Triplex'],     surfaceTerrain: false, etages: true,  authenticite: false, equipLuxe: true,  vefa: true  },
+  villa:       { types: ['Villa','Maison'],                                         surfaceTerrain: true,  etages: false, authenticite: false, equipLuxe: true,  vefa: true  },
+  riad:        { types: ['Riad'],                                                   surfaceTerrain: true,  etages: false, authenticite: true,  equipLuxe: true,  vefa: false },
+  terrain:     { types: ['Terrain','Terrain industriel'],                           surfaceTerrain: true,  etages: false, authenticite: false, equipLuxe: false, vefa: false },
+  commerce:    { types: ['Local commercial','Garage','Bureau','Bureau / plateau'],  surfaceTerrain: false, etages: false, authenticite: false, equipLuxe: false, vefa: true  },
+  industriel:  { types: ['Bâtiment industriel','Industriel','Ferme'],               surfaceTerrain: true,  etages: false, authenticite: false, equipLuxe: false, vefa: false },
+};
+
 function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) {
   const bien = d.bien || {};
   function setB(k, v) { set('bien', {...bien, [k]: v}); }
