@@ -1009,11 +1009,12 @@ function PaysCompactButton({value, onChange}) {
       <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays</label>
       <button type="button" onClick={() => setOpen(true)}
         title={ent ? ent.n : 'Choisir le pays'}
-        style={{width:'100%', padding:'9px 8px', borderRadius:8, border:'1.5px solid '+(value ? '#BBA88B' : '#E8DDD0'),
+        style={{width:'100%', boxSizing:'border-box', height:40, padding:'0 8px', borderRadius:8,
+                border:'1.5px solid '+(value ? '#BBA88B' : '#E8DDD0'),
                 background: value ? '#FFFCF5' : '#FDFAF7', color:'#2A2018',
-                fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer', minHeight:38,
+                fontFamily:'inherit', fontSize:14, fontWeight:600, cursor:'pointer', lineHeight:1,
                 display:'flex', alignItems:'center', justifyContent:'center', gap:6, whiteSpace:'nowrap'}}>
-        <span style={{fontSize:18}} aria-hidden="true">{flag}</span>
+        <span style={{fontSize:18, lineHeight:1}} aria-hidden="true">{flag}</span>
         <span>{code}</span>
       </button>
       {open && (
@@ -1579,7 +1580,7 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
       <input type="text" value={value || ''} onChange={handleChange} onFocus={() => (suggestions.length > 0) && setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)}
         placeholder={placeholder} autoComplete={autoComplete} name={name} autoCapitalize="words" autoCorrect="off"
-        style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018',
+        style={{width:'100%', boxSizing:'border-box', height:40, padding:'0 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018',
                 ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
       {showQuotaCounter && (
         <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:3, fontStyle:'italic'}}>
@@ -3749,9 +3750,9 @@ function MapPicker({bien, setB, showToast}) {
   const [mode, setMode] = React.useState(modeRef.current);
   const [radius, setRadius] = React.useState(radiusRef.current);
   const [ready, setReady] = React.useState(typeof window !== 'undefined' && !!window.L);
-  // M/2026/04/29/42 — carte TOUJOURS visible (consigne Philippe Section II V4).
-  // Annulation du toggle M/40 : pas de bouton qui masque la carte.
-  const [mapOpen] = React.useState(true);
+  // M/2026/04/30/10 — carte retractable via bouton Carte (toggle).
+  // Mini-indicateur GPS sous la barre L3 si carte repliee + position connue.
+  const [mapOpen, setMapOpen] = React.useState(false);
 
   const CIRCLE_STYLE = {color:'#B26D3A', fillColor:'#FBF1E4', fillOpacity:.25, weight:2};
   // M/2026/04/30/6 — cercle proximite rouge tres clair (zone de recherche/proximite 500m).
@@ -3968,28 +3969,32 @@ function MapPicker({bien, setB, showToast}) {
   // M/2026/04/30/6 — applyLocationPick supprime franchement (LocationAutocomplete supprime,
   // remplace par AddressAutocomplete dont l onPick pipe direct dans setB).
 
-  // M/2026/04/30/6 — partage position via Web Share API (iOS share sheet) avec fallback clipboard.
-  async function sharePosition() {
+  // M/2026/04/30/10 — partage position. navigator.share doit etre appele SYNCHRONEMENT
+  // depuis le handler (sans async/await) pour que iOS preserve le user-gesture token et
+  // ouvre la share sheet native (Mail/Messages/WhatsApp/AirDrop). Payload enrichi avec
+  // adresse + ville + pays si dispo.
+  function sharePosition() {
     const lat = Number(bien.gps_lat), lng = Number(bien.gps_lng);
     if (!lat || !lng) { showToast && showToast('Pas de position GPS a partager'); return; }
-    const url = 'https://www.google.com/maps/place/?q=' + lat + ',' + lng;
+    const mapsUrl = 'https://www.google.com/maps/place/?q=' + lat + ',' + lng;
     const ville = bien.ville || '';
     const paysName = bien.pays ? (PAYS_NOM[bien.pays] || bien.pays) : '';
-    const title = ville ? (ville + (paysName ? ', ' + paysName : '')) : 'Position GPS';
-    const text = 'Position du bien : ' + title;
+    const adresseLine = [bien.adresse, ville, paysName].filter(Boolean).join(', ');
+    const title = adresseLine || 'Position du bien';
+    const text = adresseLine ? (adresseLine + '\n' + mapsUrl) : ('Position : ' + mapsUrl);
     if (navigator.share) {
-      try { await navigator.share({title, text, url}); }
-      catch (err) { if (err && err.name !== 'AbortError') showToast && showToast('Partage annule'); }
+      // SYNCHRONOUSLY appele depuis le handler iOS user-gesture.
+      navigator.share({title, text, url: mapsUrl})
+        .catch(err => { if (err && err.name !== 'AbortError') showToast && showToast('Partage annule'); });
       return;
     }
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url);
-        showToast && showToast('Lien copie dans le presse-papier');
-      } else {
-        showToast && showToast(url);
-      }
-    } catch (e) { showToast && showToast('Partage impossible'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => showToast && showToast('Lien copie dans le presse-papier'))
+        .catch(() => showToast && showToast('Partage impossible'));
+    } else {
+      showToast && showToast(mapsUrl);
+    }
   }
 
   if (!ready && typeof window !== 'undefined' && !window.L) {
@@ -4002,14 +4007,15 @@ function MapPicker({bien, setB, showToast}) {
     <div style={{marginTop:6, marginBottom:10}}>
       {/* M/2026/04/30/9 — ligne 5 boutons egaux : [Carte | Precis | Zone | Ma position | Partager]. */}
       <div style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:6, marginBottom:6}}>
-        {/* M/2026/04/29/42 — bouton Carte (recenter sur GPS courant). */}
-        <button type="button" onClick={() => {
-            try { mapRef.current && mapRef.current.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch (e) {}
-            const lr = leafletRef.current;
-            if (lr.map && bien.gps_lat && bien.gps_lng) lr.map.setView([Number(bien.gps_lat), Number(bien.gps_lng)], 15);
-          }}
-          aria-label="Recentrer la carte" title="Recentrer la carte"
-          style={{padding:'7px 8px', borderRadius:8, border:'1.5px solid #A8896A', background:'#E8DCC0', color:'#5C3B1E',
+        {/* M/2026/04/30/10 — bouton Carte = toggle visibilite (deploie/replie). Active = ocre #A07842. */}
+        <button type="button" onClick={() => setMapOpen(o => !o)}
+          aria-label={mapOpen ? 'Replier la carte' : 'Deployer la carte'}
+          aria-pressed={mapOpen}
+          title={mapOpen ? 'Replier la carte' : 'Deployer la carte'}
+          style={{padding:'7px 8px', borderRadius:8,
+                  border:'1.5px solid ' + (mapOpen ? '#A07842' : '#A8896A'),
+                  background: mapOpen ? '#A07842' : '#E8DCC0',
+                  color: mapOpen ? '#fff' : '#5C3B1E',
                   cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
@@ -4054,11 +4060,21 @@ function MapPicker({bien, setB, showToast}) {
           <span style={{fontSize:12, color:'#2A2018', fontWeight:700, minWidth:70, textAlign:'right'}}>{radius >= 1000 ? (radius/1000).toFixed(radius % 1000 === 0 ? 0 : 1) + ' km' : radius + ' m'}</span>
         </div>
       )}
-      {/* M/2026/04/29/40 — carte repliee par defaut, deploiement via bouton Map. */}
+      {/* M/2026/04/30/10 — mini-indicateur GPS sous la barre L3 quand carte repliee + position connue. */}
+      {!mapOpen && bien.gps_lat && bien.gps_lng && (
+        <div style={{display:'flex', alignItems:'center', gap:6, fontSize:11, color:'#8B7F6E', marginTop:4, marginBottom:4, fontFamily:'inherit'}}>
+          <svg viewBox="0 0 24 36" width="14" height="21" style={{flexShrink:0}}>
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24c0-6.63-5.37-12-12-12z" fill="#EA4335"/>
+            <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+          </svg>
+          <span>Position GPS définie · <span style={{fontFamily:'monospace'}}>{bien.gps_lat}, {bien.gps_lng}</span></span>
+        </div>
+      )}
+      {/* M/2026/04/29/40 — carte deploiement via bouton Carte (toggle M/30/10). */}
       <div style={{maxHeight: mapOpen ? 320 : 0, overflow:'hidden', transition:'max-height 250ms ease-out'}}>
         <div ref={mapRef} style={{height:300, width:'100%', borderRadius:10, border:'1px solid #EDE6DC', overflow:'hidden'}}/>
       </div>
-      {bien.gps_lat && bien.gps_lng && (
+      {mapOpen && bien.gps_lat && bien.gps_lng && (
         <div style={{fontSize:11, color:'#8B7F6E', marginTop:4, fontFamily:'monospace'}}>{bien.gps_lat}, {bien.gps_lng}</div>
       )}
     </div>
