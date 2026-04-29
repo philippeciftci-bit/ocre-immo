@@ -13043,6 +13043,9 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   );
 
   // V41 — Swipe-to-archive : translation X révèle bouton archive derrière la row.
+  // M/2026/04/30/3 — 3 boutons : ARCHIVER (right:0, revele en premier, sur) +
+  // APERCU (right:80) + SUPPRIMER (right:160, rouge, revele en dernier pour
+  // proteger contre suppression accidentelle).
   const [swipeX, setSwipeX] = React.useState(0);
   const [swipeStart, setSwipeStart] = React.useState(null);
   async function doArchive(e) {
@@ -13063,6 +13066,26 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       if (j && j.ok) { window.location.reload(); }
     } catch (e) { /* noop */ }
   }
+  async function doDelete(e) {
+    if (e) e.stopPropagation();
+    if (!c.id) return;
+    const nameLabel = (c.prenom || c.nom) ? ((c.prenom || '') + ' ' + (c.nom || '')).trim() : (c.raison_sociale || 'ce dossier');
+    if (!(await askConfirm({
+      title: 'Supprimer ce dossier ?',
+      message: 'Le dossier "' + nameLabel + '" sera supprimé. Cette suppression est restaurable pendant 90 jours depuis Archives, après quoi le dossier et ses fichiers attachés seront purgés définitivement.',
+      danger: true, confirmLabel: 'Supprimer',
+    }))) { setSwipeX(0); return; }
+    try {
+      const token = localStorage.getItem('ocre_token') || '';
+      const r = await fetch(API + '/clients.php?action=delete', {
+        method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
+        body: JSON.stringify({id: c.id}),
+      });
+      const j = await r.json();
+      if (j && j.ok) { window.location.reload(); }
+      else { setSwipeX(0); alert(j && j.error ? j.error : 'Suppression impossible'); }
+    } catch (e) { setSwipeX(0); }
+  }
   function onTouchStart(e) { setSwipeStart({x: e.touches[0].clientX, y: e.touches[0].clientY, initial: swipeX}); }
   function onTouchMove(e) {
     if (!swipeStart) return;
@@ -13074,13 +13097,13 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       setSwipeX(0);
       return;
     }
-    // M/2026/04/29/16 — révèle 2 boutons (APERÇU + ARCHIVER) = -160px max
-    const next = Math.min(0, Math.max(-180, swipeStart.initial + dx));
+    // M/2026/04/30/3 — revele 3 boutons (ARCHIVER + APERCU + SUPPRIMER) = -240px snap, -260px max drag
+    const next = Math.min(0, Math.max(-260, swipeStart.initial + dx));
     setSwipeX(next);
   }
   function onTouchEnd() {
     if (!swipeStart) return;
-    if (swipeX <= -100) setSwipeX(-160); // snap 2 boutons visibles
+    if (swipeX <= -120) setSwipeX(-240); // snap 3 boutons visibles
     else setSwipeX(0);
     setSwipeStart(null);
   }
@@ -13098,12 +13121,29 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   const wrapperMargin = isGrouped ? 0 : 10;
   return (
     <div style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent'}}>
-      {/* M/2026/04/29/16 — 2 boutons swipe : APERCU (gauche) + ARCHIVER (droite). */}
+      {/* M/2026/04/30/3 — 3 boutons swipe (de gauche a droite quand reveles) :
+          SUPPRIMER (rouge, right:160, revele en dernier a -200) +
+          APERCU   (right:80, revele a -140) +
+          ARCHIVER (right:0, revele en premier a -60). */}
       <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX <= -100 && props.openDossierPdf) { props.openDossierPdf(c.id); setSwipeX(0); } }}
-        disabled={swipeX > -100}
+        onClick={e => { e.stopPropagation(); if (swipeX <= -200) doDelete(e); }}
+        disabled={swipeX > -200}
+        title="Supprimer"
+        style={{position:'absolute', right:160, top:0, bottom:0, width:80, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#C73E3E', color:'#fff', fontSize:10.5, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -200 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:.3, textTransform:'uppercase', pointerEvents: swipeX <= -200 ? 'auto' : 'none'}}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+          <path d="M10 11v6"/>
+          <path d="M14 11v6"/>
+          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+        <span>Supprimer</span>
+      </button>
+      <button type="button"
+        onClick={e => { e.stopPropagation(); if (swipeX <= -140 && props.openDossierPdf) { props.openDossierPdf(c.id); setSwipeX(0); } }}
+        disabled={swipeX > -140}
         title="Aperçu"
-        style={{position:'absolute', right:80, top:0, bottom:0, width:80, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#8B5E3C', color:'#fff', fontSize:10.5, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -100 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:.3, textTransform:'uppercase', pointerEvents: swipeX <= -100 ? 'auto' : 'none'}}>
+        style={{position:'absolute', right:80, top:0, bottom:0, width:80, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#8B5E3C', color:'#fff', fontSize:10.5, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -140 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:.3, textTransform:'uppercase', pointerEvents: swipeX <= -140 ? 'auto' : 'none'}}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
           <circle cx="12" cy="12" r="3"/>
