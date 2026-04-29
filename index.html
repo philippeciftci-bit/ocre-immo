@@ -7169,12 +7169,49 @@ function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, sho
       const sj = await save.json();
       if (sj && sj.ok && sj.client) { ok = true; createdClient = sj.client; }
     }
+    if (!ok) { setBusy(false); showToast('Échec création'); return; }
+    // M/2026/04/29/35 — chaînage intents composites : si un dossier vient d'être cree,
+    // ses additional_actions reçoivent client_id automatiquement.
+    const additional = Array.isArray(preview.additional_actions) ? preview.additional_actions : [];
+    let chainedOk = 0; let chainedFail = 0;
+    const chainCid = (createdClient && createdClient.id) || cid;
+    for (const act of additional) {
+      const aIntent = act.intent;
+      const aData = act.data || {};
+      try {
+        if (aIntent === 'creer_rdv') {
+          const r = await suiviApi('add_event', {body: {
+            client_id: chainCid, type: aData.type || 'rdv',
+            title: aData.titre || aData.title || 'RDV',
+            when_at: parseRelDate(aData.when_relatif || aData.when_at),
+            duration_min: aData.duration_min || 60, location: aData.location || '',
+            notes: aData.notes || '',
+            reminder_min_before: aData.reminder_min_before != null ? aData.reminder_min_before : 60,
+          }});
+          (r && r.ok) ? chainedOk++ : chainedFail++;
+        } else if (aIntent === 'creer_todo') {
+          const due = aData.due_relatif || aData.due_at;
+          const r = await suiviApi('add_todo', {body: {
+            client_id: chainCid, title: aData.title || aData.titre || '',
+            due_at: due ? parseRelDate(due) : null, priority: aData.priority || 'medium',
+          }});
+          (r && r.ok) ? chainedOk++ : chainedFail++;
+        } else if (aIntent === 'noter_interaction') {
+          const r = await suiviApi('add_journal_entry', {body: {
+            client_id: chainCid, kind: aData.kind || 'note',
+            content: aData.content || preview.transcript,
+          }});
+          (r && r.ok) ? chainedOk++ : chainedFail++;
+        }
+      } catch (e) { chainedFail++; }
+    }
     setBusy(false);
-    if (ok) {
-      const labels = {creer_rdv:'RDV créé', creer_todo:'Tâche ajoutée', noter_interaction:'Interaction notée', recherche_dossier:'Ouverture', creer_dossier:'Dossier créé'};
-      showToast(labels[intent] || 'OK');
-      onConfirmed(createdClient || selected || null);
-    } else showToast('Échec création');
+    const labels = {creer_rdv:'RDV créé', creer_todo:'Tâche ajoutée', noter_interaction:'Interaction notée', recherche_dossier:'Ouverture', creer_dossier:'Dossier créé'};
+    let toastMsg = labels[intent] || 'OK';
+    if (chainedOk > 0) toastMsg += ' + ' + chainedOk + ' action' + (chainedOk > 1 ? 's' : '') + ' liée' + (chainedOk > 1 ? 's' : '');
+    if (chainedFail > 0) toastMsg += ' (' + chainedFail + ' échec)';
+    showToast(toastMsg);
+    onConfirmed(createdClient || selected || null);
   }
 
   const intentLabel = {
@@ -7458,7 +7495,10 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
         body: JSON.stringify({transcript: text, date_ref_iso: new Date().toISOString()}),
       }).then(r => r.json()).catch(() => null);
       if (v2 && v2.ok && v2.intent) {
-        setIntentPreview({intent: v2.intent, data: v2.data || {}, mode: v2.mode, transcript: text});
+        // M/2026/04/29/35 — propager additional_actions pour intents composites (dossier+RDV).
+        setIntentPreview({intent: v2.intent, data: v2.data || {},
+          additional_actions: v2.additional_actions || [],
+          mode: v2.mode, transcript: text});
         setPhase('preview_intent');
         return;
       }

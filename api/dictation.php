@@ -11,12 +11,27 @@ $input = getInput();
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 
 // V18.4 — prompt classification d'intention pour assistant vocal multi-actions.
+// M/2026/04/29/35 — support intents composites : additional_actions[] pour chaîner
+// création dossier + RDV/todo dans une même dictée. Le primary intent est exécuté en
+// premier ; si dossier créé, son client_id propage aux additional_actions.
 const SYSTEM_PROMPT_V2 = <<<'PROMPT'
 Tu es un assistant vocal pour un agent immobilier. Analyse la transcription FRANÇAIS et retourne UNIQUEMENT un JSON valide :
 {
   "intent": "creer_dossier" | "creer_rdv" | "creer_todo" | "noter_interaction" | "recherche_dossier",
-  "data": { ... selon l'intent ... }
+  "data": { ... selon l'intent ... },
+  "additional_actions": [ { "intent": "...", "data": {...} }, ... ]   // optionnel, intents composites
 }
+
+INTENTS COMPOSITES — RÈGLE IMPORTANTE :
+Si la transcription contient PLUSIEURS intentions distinctes (ex: rencontre nouveau client + planifier RDV), retourne :
+- intent = creer_dossier (priorité la plus haute : créer la fiche d'abord)
+- additional_actions = [{intent: creer_rdv, data: {...}}]
+Le frontend chaînera automatiquement (création dossier → propagation client_id → création RDV lié).
+
+Exemple : "J'ai rencontré Marc, budget 250k€, achète un Riad à rénover Médina, organiser un RDV demain"
+→ intent=creer_dossier, data={prenom:"Marc", profil:"Acheteur", types_bien:["Riad"], budget_max:250000, devise:"EUR", quartier_bien:"Médina", notes_libres:"Riad à rénover"}
+→ additional_actions=[{intent:"creer_rdv", data:{client_ref:"Marc", type:"rdv", titre:"RDV avec Marc", when_relatif:"demain"}}]
+
 
 Règles détection intent :
 - "j'ai rencontré X", "nouveau client X", "X cherche Y", "X veut acheter/vendre/louer" → creer_dossier (data = champs dossier comme avant)
@@ -396,27 +411,50 @@ switch ($action) {
         $date_ref = (string)($input['date_ref_iso'] ?? date('c'));
         $r = callClaudeIntent($transcript, $date_ref);
         if (isset($r['parsed'])) {
-            jsonOk(['intent' => $r['parsed']['intent'], 'data' => $r['parsed']['data'] ?? [], 'transcript' => $transcript, 'mode' => 'ai']);
+            jsonOk([
+                'intent' => $r['parsed']['intent'],
+                'data' => $r['parsed']['data'] ?? [],
+                'additional_actions' => $r['parsed']['additional_actions'] ?? [],
+                'transcript' => $transcript,
+                'mode' => 'ai',
+            ]);
         }
-        // Fallback heuristique : si phrase contient "rappelle", "rendez-vous", "appelé"… on devine intent.
+        // Fallback heuristique : intents composites detectes si phrase contient à la fois
+        // une rencontre client (creer_dossier) et une mention RDV (creer_rdv).
         $low = mb_strtolower($transcript);
+        $hasMeet = (bool) preg_match('/\b(rencontr|nouveau\s+client|cherche|veut\s+(acheter|vendre|louer))\b/u', $low);
+        $hasRdv = (bool) preg_match('/\b(rendez-vous|rdv|visite|appeler|organiser\s+un)\b/u', $low);
+        $hasTodo = (bool) preg_match('/\b(rappelle|tâche|à\s+faire|n\'oublie\s+pas)\b/u', $low);
         $intent = 'creer_dossier';
         $data = [];
-        if (preg_match('/\b(rappelle|tâche|à\s+faire|n\'oublie\s+pas)\b/u', $low)) {
+        $additional = [];
+        if ($hasMeet) {
+            $heur = heuristicExtract($transcript);
+            if ($heur) { $data = $heur; }
+            if ($hasRdv) {
+                $additional[] = ['intent' => 'creer_rdv', 'data' => [
+                    'client_ref' => $heur['prenom'] ?? '',
+                    'type' => preg_match('/visite/', $low) ? 'visite' : 'rdv',
+                    'titre' => 'RDV',
+                    'when_relatif' => '',
+                    'reminder_min_before' => 60,
+                ]];
+            }
+        } elseif ($hasTodo) {
             $intent = 'creer_todo';
             $data = ['title' => $transcript];
-        } elseif (preg_match('/\b(rendez-vous|rdv|visite|appeler)\b/u', $low)) {
+        } elseif ($hasRdv) {
             $intent = 'creer_rdv';
             $data = ['titre' => $transcript, 'type' => preg_match('/visite/', $low) ? 'visite' : (preg_match('/appel/', $low) ? 'appel' : 'rdv')];
         } elseif (preg_match('/\b(appelé|envoyé|m\'a\s+dit)\b/u', $low)) {
             $intent = 'noter_interaction';
             $data = ['kind' => preg_match('/appel/', $low) ? 'appel_sortant' : 'note', 'content' => $transcript];
         } else {
-            // Heuristique dossier classique
             $heur = heuristicExtract($transcript);
             if ($heur) { $data = $heur; }
         }
-        jsonOk(['intent' => $intent, 'data' => $data, 'transcript' => $transcript, 'mode' => 'heuristic', 'ai_error' => $r['error'] ?? 'no_key']);
+        jsonOk(['intent' => $intent, 'data' => $data, 'additional_actions' => $additional,
+                'transcript' => $transcript, 'mode' => 'heuristic', 'ai_error' => $r['error'] ?? 'no_key']);
     }
 
     case 'extract': {
