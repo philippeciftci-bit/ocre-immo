@@ -599,21 +599,55 @@ function DateMaskField({label, value, onChange, style={}}) {
 function normalizeAccent(s) {
   return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
+// M/2026/04/29/51 — usePopoverAutoClose hook : auto-close cross-champ.
+// Chaque popover qui s'ouvre dispatch event ocre-popover-open avec son id.
+// Tous les autres popovers ferment si event.detail.id !== monId.
+// Plus : focusin document hors popoverRef → close, Esc keydown → close.
+function usePopoverAutoClose(isOpen, setOpen, popoverRef) {
+  const idRef = React.useRef(Math.random().toString(36).slice(2, 10));
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const myId = idRef.current;
+    // Annonce ouverture : tous les autres popovers se ferment
+    try { window.dispatchEvent(new CustomEvent('ocre-popover-open', {detail: {id: myId}})); } catch (e) {}
+    function onPopoverOpen(e) { if (e.detail && e.detail.id !== myId) setOpen(false); }
+    function onFocusIn(e) {
+      if (popoverRef && popoverRef.current && popoverRef.current.contains(e.target)) return;
+      setOpen(false);
+    }
+    function onKey(e) { if (e.key === 'Escape') setOpen(false); }
+    window.addEventListener('ocre-popover-open', onPopoverOpen);
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('ocre-popover-open', onPopoverOpen);
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen]);
+}
+
 function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tape un pays…'}) {
   const allOpts = PAYS.map(p => ({code: p.c, flag: p.f, name: p.n}));
-  const selected = allOpts.find(o => o.code === value);
-  const [display, setDisplay] = React.useState(selected ? (selected.flag + ' ' + selected.name) : '');
+  // M/2026/04/29/51 — saisie libre persistante : value peut etre code ISO (FR/MA) OU nom libre (Mongolie).
+  const selected = allOpts.find(o => o.code === value || o.name === value);
+  const [display, setDisplay] = React.useState(
+    selected ? (selected.flag + ' ' + selected.name)
+             : (value ? '🌍 ' + value : '')
+  );
   const [open, setOpen] = React.useState(false);
   const [filtered, setFiltered] = React.useState(allOpts);
   const [query, setQuery] = React.useState('');
   const isMobile = useIsMobile();
+  const popoverRef = React.useRef(null);
+  usePopoverAutoClose(open, setOpen, popoverRef);
   React.useEffect(() => {
-    const s = allOpts.find(o => o.code === value);
-    setDisplay(s ? (s.flag + ' ' + s.name) : '');
+    const s = allOpts.find(o => o.code === value || o.name === value);
+    setDisplay(s ? (s.flag + ' ' + s.name) : (value ? '🌍 ' + value : ''));
   }, [value]);
 
-  const filled = !!selected;
-  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018'};
+  const filled = !!value;
+  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018', minHeight:38};
 
   function handleChange(e) {
     const raw = e.target.value;
@@ -634,10 +668,16 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
     if (isMobile) return;
     setTimeout(() => {
       setOpen(false);
-      const match = allOpts.find(o => normalizeAccent(o.name) === normalizeAccent(display.replace(/^[^A-Za-zÀ-ÿ]+/, '').trim()));
+      // M/2026/04/29/51 — saisie libre persistante : si pas de match, accepter texte tel quel.
+      const cleanInput = display.replace(/^[^A-Za-zÀ-ÿ]+/, '').trim();
+      const match = allOpts.find(o => normalizeAccent(o.name) === normalizeAccent(cleanInput));
       if (match) { onChange(match.code); setDisplay(match.flag + ' ' + match.name); }
+      else if (cleanInput) { onChange(cleanInput); setDisplay('🌍 ' + cleanInput); }
       else if (!value) setDisplay('');
-      else { const s = allOpts.find(o => o.code === value); setDisplay(s ? (s.flag + ' ' + s.name) : ''); }
+      else {
+        const s = allOpts.find(o => o.code === value || o.name === value);
+        setDisplay(s ? (s.flag + ' ' + s.name) : (value ? '🌍 ' + value : ''));
+      }
     }, 150);
   }
 
@@ -676,9 +716,11 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
           </div>
         </BottomSheet>
       ) : (
-        <div style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:240, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
+        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:240, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
           {filtered.length === 0 ? (
-            <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E'}}>Aucun pays trouvé</div>
+            <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E', fontStyle:'italic'}}>
+              Aucun pays trouvé. <span style={{color:'#8B5E3C'}}>Tape le nom complet puis Entrée pour saisie libre.</span>
+            </div>
           ) : filtered.map(o => (
             <div key={o.code} onMouseDown={() => pick(o)}
               style={{padding:'10px 12px', fontSize:14, cursor:'pointer', borderBottom:'1px solid #F4EEE6'}}>
@@ -875,97 +917,77 @@ const CITIES_BY_COUNTRY = {
 // CityPicker — sélecteur de ville conditionnel au pays. Désactivé tant que
 // `country` n'est pas sélectionné. Au tap disabled : focus saute sur le champ
 // pays (via callback `onNeedCountry`) + tooltip flash 2s.
+// M/2026/04/29/51 — CityPicker refondu en combobox : input direct + popover suggestions inline.
+// Saisie libre acceptée. Pas de barre Rechercher séparée dans le popover (l'input principal filtre).
 function CityPicker({label, value, onChange, country, onNeedCountry, style={}, placeholder='Ville…'}) {
   const [open, setOpen] = React.useState(false);
-  const [query, setQuery] = React.useState('');
   const [tooltip, setTooltip] = React.useState(false);
-  const isMobile = useIsMobile();
+  const inputRef = React.useRef(null);
+  const popoverRef = React.useRef(null);
+  usePopoverAutoClose(open, setOpen, popoverRef);
   const cities = (country && CITIES_BY_COUNTRY[country]) || [];
   const hasList = cities.length > 0;
   const disabled = !country;
 
-  const filtered = query.trim()
+  const query = (value || '').trim();
+  const filtered = query
     ? cities.filter(c => normalizeAccent(c).includes(normalizeAccent(query)))
     : cities;
-  const queryTrim = query.trim();
-  const showAddCustom = queryTrim.length >= 3 && !cities.some(c => normalizeAccent(c) === normalizeAccent(queryTrim));
 
   function handleDisabledClick() {
     setTooltip(true);
     setTimeout(() => setTooltip(false), 2000);
     if (onNeedCountry) onNeedCountry();
   }
-
   function pick(city) {
     onChange(city);
     setOpen(false);
-    setQuery('');
+    if (inputRef.current) try { inputRef.current.blur(); } catch (e) {}
   }
 
   const filled = !!value;
-  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color: disabled ? '#B5A78F' : '#2A2018'};
+  const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color: disabled ? '#B5A78F' : '#2A2018', minHeight:38};
   const styleField = disabled
     ? {...base, background:'#F4ECE0', border:'1.5px solid #E8DDD0', cursor:'not-allowed'}
-    : {...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY), cursor:'pointer'};
+    : {...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)};
 
   return (
     <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
-      <button type="button" onClick={() => disabled ? handleDisabledClick() : setOpen(true)}
-        style={{...styleField, minHeight:38, textAlign:'left', display:'flex', alignItems:'center', justifyContent:'space-between', gap:6}}>
-        <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{value || placeholder}</span>
-        <span style={{fontSize:10, opacity:.5, flexShrink:0}}>▾</span>
-      </button>
+      <input ref={inputRef} type="text"
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        onFocus={() => disabled ? handleDisabledClick() : setOpen(true)}
+        onClick={() => disabled ? handleDisabledClick() : setOpen(true)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { e.preventDefault(); setOpen(false); if (inputRef.current) try { inputRef.current.blur(); } catch (er) {} }
+        }}
+        placeholder={placeholder}
+        autoCapitalize="words" autoCorrect="off" spellCheck="false"
+        readOnly={disabled}
+        style={styleField}/>
       {tooltip && (
         <div style={{position:'absolute', bottom:'100%', left:0, right:0, marginBottom:4, padding:'6px 10px', background:'#2A2018', color:'#fff', borderRadius:6, fontSize:11, fontWeight:600, fontFamily:'inherit', textAlign:'center', boxShadow:'0 2px 8px rgba(0,0,0,.2)', zIndex:99}}>
           Choisis d'abord le pays
         </div>
       )}
-      {open && (isMobile ? (
-        <BottomSheet title={label || 'Ville'} onClose={() => { setOpen(false); setQuery(''); }}>
-          <div className="bsheet-search">
-            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" autoFocus autoCapitalize="off" autoCorrect="off"/>
-          </div>
-          <div className="bsheet-list">
-            {!hasList && (
-              <div className="bsheet-empty">Aucune liste pour ce pays — saisie libre :</div>
-            )}
-            {filtered.map(c => (
-              <div key={c} className={'bsheet-item ' + (c === value ? 'selected' : '')} onClick={() => pick(c)}>
-                <span style={{flex:1}}>{c}</span>
-                {c === value && <span style={{color:'#B26D3A', fontWeight:700}}>✓</span>}
-              </div>
-            ))}
-            {showAddCustom && (
-              <div className="bsheet-item" onClick={() => pick(queryTrim)} style={{borderTop:'1px solid #E8DDD0', fontStyle:'italic', color:'#8B5E3C'}}>
-                + Utiliser « {queryTrim} »
-              </div>
-            )}
-            {!hasList && !queryTrim && (
-              <div style={{padding:'10px 14px', fontSize:12, color:'#8B7F6E'}}>Tape le nom de ta ville et appuie sur « + Utiliser ».</div>
-            )}
-          </div>
-        </BottomSheet>
-      ) : (
-        <div style={{position:'absolute', top:'100%', left:0, right:0, zIndex:20, background:'#fff', border:'1px solid #C9B79A', borderRadius:8, marginTop:4, maxHeight:280, overflowY:'auto', boxShadow:'0 4px 12px rgba(0,0,0,.08)'}}>
-          <div style={{padding:'8px 10px', borderBottom:'1px solid #F0E8D8'}}>
-            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher…" autoFocus
-              style={{width:'100%', boxSizing:'border-box', padding:'6px 8px', border:'1px solid #E8DDD0', borderRadius:6, fontSize:13, fontFamily:'inherit', outline:'none'}}/>
-          </div>
+      {open && !disabled && (
+        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:240, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
+          {!hasList && (
+            <div style={{padding:'10px 12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Aucune liste pour ce pays — saisie libre acceptée.</div>
+          )}
+          {filtered.length === 0 && hasList && (
+            <div style={{padding:'10px 12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Aucune ville trouvée. <span style={{color:'#8B5E3C'}}>Tape librement.</span></div>
+          )}
           {filtered.map(c => (
-            <div key={c} onClick={() => pick(c)}
-              style={{padding:'7px 12px', cursor:'pointer', fontSize:13, color:'#2A2018', background: c === value ? '#FFF3EC' : '#fff'}}>
-              {c}
+            <div key={c} onMouseDown={() => pick(c)}
+              style={{padding:'10px 12px', fontSize:14, cursor:'pointer', borderBottom:'1px solid #F4EEE6', display:'flex', alignItems:'center', gap:6}}>
+              <span style={{flex:1}}>{c}</span>
+              {c === value && <span style={{color:'#B26D3A', fontWeight:700}}>✓</span>}
             </div>
           ))}
-          {showAddCustom && (
-            <div onClick={() => pick(queryTrim)}
-              style={{padding:'7px 12px', cursor:'pointer', fontSize:13, color:'#8B5E3C', fontStyle:'italic', borderTop:'1px solid #F0E8D8'}}>
-              + Utiliser « {queryTrim} »
-            </div>
-          )}
         </div>
-      ))}
+      )}
     </div>
   );
 }
