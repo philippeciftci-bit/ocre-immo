@@ -154,15 +154,13 @@ input, select, textarea, button { font-size:13px }
 .state-default{background:#FFF;border:1.5px solid #EDE1CC;color:#2A2018;font-weight:500;transition:all .15s}
 .state-selected{background:#FBF1E4 !important;border:2px solid #B26D3A !important;color:#8B4E22 !important;font-weight:600 !important;padding-top:calc(var(--ocre-pad-y,7px) - 1px) !important;padding-bottom:calc(var(--ocre-pad-y,7px) - 1px) !important;padding-left:calc(var(--ocre-pad-x,10px) - 1px) !important;padding-right:calc(var(--ocre-pad-x,10px) - 1px) !important}
 
-/* V17.1 fix-ux-5 : paires 50/50 stackent en mobile portrait < 500px. */
+/* M/2026/04/29/48 — suppression franche du stack mobile sur .row-pair et .row-trio.
+   Philippe veut le layout 2 cols (Prénom/Nom etc) et 3 cols (Représentant Société)
+   conservé sur iPhone aussi, sans flex-direction:column qui empilait verticalement. */
 .row-pair{display:flex;gap:6px}
+.row-pair > *{flex:1 1 0;min-width:0}
 .row-trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
-@media(max-width:480px){.row-trio{grid-template-columns:1fr;gap:0}}
 .row-trio > *{min-width:0}
-@media (max-width: 499px){
-  .row-pair{flex-direction:column;gap:0}
-  .row-pair > *{flex:1 1 auto !important;width:100%}
-}
 
 /* V18.9 — chips profil scroll horizontal single-line (gain 40px hauteur iPhone). */
 /* V18.15 — compactage : chips padding 5/10, fs 11, min-height 28. */
