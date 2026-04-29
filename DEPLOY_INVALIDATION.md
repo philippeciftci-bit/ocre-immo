@@ -95,3 +95,17 @@ curl -sk https://app.ocre.immo/api/version.php
 ## Règle absolue
 
 Philippe ne touche **jamais** son cache iPad. Pas de Réglages iOS, pas de "Données de sites web", pas de fermeture/réouverture d'onglet, pas de hard reload. Les 4 couches ci-dessus sont la seule source acceptable d'invalidation.
+
+## Garde-fous commit (M/2026/04/29/49)
+
+Pour empêcher le scénario "commit dans le mauvais repo" qui a coûté 30 minutes le 29/04 :
+
+1. **`/root/bin/safe-commit <project> "<msg>"`** : wrapper unique. Refuse commit si `git rev-parse --show-toplevel` ≠ `/root/workspace/<project>`. Refuse commit vide. Affiche `COMMIT_HASH=` pour traçabilité.
+
+2. **Hook `pre-commit` local** dans `.git/hooks/pre-commit` de chaque repo : refuse commit hors `/root/workspace`. Alerte (sans bloquer) si nom du dossier ≠ remote URL.
+
+3. **`/root/bin/verify-deployed <project> <hash>`** : vérifie post-deploy que le commit annoncé est bien dans le repo concerné ET (pour `ocre-immo`) que `/api/version.php` retourne le bon hash. Sinon exit non-zéro.
+
+4. **CLAUDE.md `atelier-philippe`** : workflow obligatoire documenté. Commit "à la main" `git add -A && git commit` interdit, `safe-commit` obligatoire.
+
+Toute mission CC qui annonce "livré" sans `verify-deployed OK` doit être marquée FAIL et réexécutée.
