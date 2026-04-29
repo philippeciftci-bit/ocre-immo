@@ -2223,10 +2223,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
       ) : (
         <Field label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)} placeholder="Choisis d'abord une ville pour activer l'autocomplete"/>
       )}
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10}}>
-        <Field label="Latitude" value={bien.gps_lat || ''} onChange={v => setB('gps_lat', v)} style={{marginBottom:0}} placeholder="Auto"/>
-        <Field label="Longitude" value={bien.gps_lng || ''} onChange={v => setB('gps_lng', v)} style={{marginBottom:0}} placeholder="Auto"/>
-      </div>
+      {/* M/2026/04/29/43 — Lat/Lng grid supprime franchement (state gps_lat/lng preserve, consomme par MapPicker, juste invisible UI). */}
       <MapPicker bien={bien} setB={setB} showToast={showToast}/>
       <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:8, marginBottom:10}}>
         <SelectPopup label="Confidentialité adresse" value={bien.confidentialite_adresse} onChange={v => setB('confidentialite_adresse', v)} options={V4_CONFIDENTIALITE}/>
@@ -3324,22 +3321,10 @@ function MapPicker({bien, setB, showToast}) {
     return <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'10px 0'}}>Carte indisponible — utilisez le champ GPS texte ci-dessus.</div>;
   }
 
-  // V18.8 — breadcrumb "Pays › Ville › Quartier › Adresse" sticky au-dessus carte.
-  const paysFlag = (PAYS_BIEN.find(p => p.c === bien.pays) || {}).f || '';
-  const crumbs = [paysFlag + (paysFlag ? ' ' : '') + (bien.pays || ''), bien.ville, bien.quartier, bien.adresse].filter(Boolean);
+  // M/2026/04/29/43 — breadcrumb supprime franchement (info technique non desiree par Philippe).
 
   return (
     <div style={{marginTop:6, marginBottom:10}}>
-      {/* M/2026/04/29/41 — LocationAutocomplete legacy supprime franchement,
-          remonte dans Bloc 01 BienForm comme champ Adresse unique (SSoT). */}
-      {/* V18.8 — breadcrumb cascade sticky */}
-      {crumbs.length > 0 && (
-        <div style={{display:'flex', alignItems:'center', gap:6, padding:'8px 10px', background:'#FBF1E4', border:'1px solid #E8DDD0', borderRadius:8, marginBottom:6, fontSize:12, color:'#5C4A3A', fontWeight:600, overflow:'hidden'}}>
-          <span style={{flex:1, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-            {crumbs.map((c, i) => <span key={i}>{i > 0 && <span style={{color:'#B5A78F', margin:'0 4px'}}>›</span>}{c}</span>)}
-          </span>
-        </div>
-      )}
       <div style={{display:'flex', gap:6, marginBottom:6}}>
         <button type="button" onClick={() => { if (!mapOpen) setMapOpen(true); setMode('precis'); }}
           style={{flex:1, padding:'7px 8px', borderRadius:8, border:'1.5px solid ' + (mode === 'precis' ? '#8B5E3C' : '#E8DDD0'),
