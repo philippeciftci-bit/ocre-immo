@@ -599,6 +599,12 @@ function DateMaskField({label, value, onChange, style={}}) {
 function normalizeAccent(s) {
   return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
+// M/2026/04/29/52 — Constante max 5 lignes visibles dans tous les popovers de pickers.
+// Item typique padding 10x12 + font-size 14 = ~40px -> 5 lignes = 200px max.
+const POPOVER_MAX_VISIBLE_ITEMS = 5;
+const POPOVER_ITEM_HEIGHT = 40;
+const POPOVER_MAX_HEIGHT = POPOVER_MAX_VISIBLE_ITEMS * POPOVER_ITEM_HEIGHT;
+
 // M/2026/04/29/51 — usePopoverAutoClose hook : auto-close cross-champ.
 // Chaque popover qui s'ouvre dispatch event ocre-popover-open avec son id.
 // Tous les autres popovers ferment si event.detail.id !== monId.
@@ -716,7 +722,7 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
           </div>
         </BottomSheet>
       ) : (
-        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:240, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
+        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
           {filtered.length === 0 ? (
             <div style={{padding:'10px 12px', fontSize:13, color:'#8B7F6E', fontStyle:'italic'}}>
               Aucun pays trouvé. <span style={{color:'#8B5E3C'}}>Tape le nom complet puis Entrée pour saisie libre.</span>
@@ -972,7 +978,7 @@ function CityPicker({label, value, onChange, country, onNeedCountry, style={}, p
         </div>
       )}
       {open && !disabled && (
-        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:240, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
+        <div ref={popoverRef} style={{position:'absolute', top:'100%', left:0, right:0, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto', background:'#fff', border:'1.5px solid #BBA88B', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,.1)', zIndex:100, marginTop:2}}>
           {!hasList && (
             <div style={{padding:'10px 12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Aucune liste pour ce pays — saisie libre acceptée.</div>
           )}
@@ -1212,7 +1218,7 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
         style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018',
                 ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
       {open && (suggestions.length > 0 || loading) && (
-        <div style={{position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:'#fff', border:'1px solid #C9B79A', borderRadius:8, boxShadow:'0 4px 12px rgba(0,0,0,.08)', zIndex:25, maxHeight:280, overflowY:'auto'}}>
+        <div style={{position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:'#fff', border:'1px solid #C9B79A', borderRadius:8, boxShadow:'0 4px 12px rgba(0,0,0,.08)', zIndex:25, maxHeight:POPOVER_MAX_HEIGHT, overflowY:'auto'}}>
           {loading && <div style={{padding:10, fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Recherche…</div>}
           {!loading && suggestions.map((s, i) => (
             <div key={i} onMouseDown={e => { e.preventDefault(); pick(s); }}
