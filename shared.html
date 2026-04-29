@@ -37,7 +37,12 @@ h2{font-family:'Cormorant Garamond',serif;font-size:18px;color:#8B5E3C;margin-bo
 <div id="root"><div class="loader">Chargement du dossier…</div></div>
 <script>
 const PATH_MATCH = location.pathname.match(/\/s\/([a-f0-9]{16,64})/i);
-const TOKEN = PATH_MATCH ? PATH_MATCH[1] : (new URLSearchParams(location.search).get('t') || '');
+const _SHARE_QS = new URLSearchParams(location.search);
+const TOKEN = PATH_MATCH ? PATH_MATCH[1] : (_SHARE_QS.get('t') || '');
+// M/2026/04/30/8 — masquages selectifs cote destinataire via query params.
+const HIDE_PRICE = _SHARE_QS.get('hide_price') === '1';
+const HIDE_ADDRESS = _SHARE_QS.get('hide_address') === '1';
+const HIDE_IDENTITY = _SHARE_QS.get('hide_identity') === '1';
 const PROFIL_COLORS = {Acheteur:'#8B5E3C', Vendeur:'#2E4A7A', Locataire:'#2E7D5C', Bailleur:'#C96B2E'};
 const PAYS_LABEL = {MA:'🇲🇦 Maroc', FR:'🇫🇷 France', ES:'🇪🇸 Espagne'};
 const PRIORITE_LABEL = {redhibitoire:'Rédhibitoire', souhaite:'Souhaité', bonus:'Bonus', indifferent:'Indifférent'};
@@ -104,9 +109,17 @@ function renderBien(b, isAsking) {
   if (b.type) head.appendChild(e('span', {class:'badge'}, b.type));
   card.appendChild(head);
 
-  card.appendChild(row('Adresse', b.adresse));
-  card.appendChild(row('Ville', b.ville));
-  if (b.gps) card.appendChild(row('GPS', b.gps));
+  // M/2026/04/30/8 — adresse bien masquee : 1 seule ligne placeholder.
+  if (HIDE_ADDRESS) {
+    const placeholder = e('div', {class:'sub'}, 'Adresse sur demande');
+    placeholder.style.fontStyle = 'italic';
+    placeholder.style.padding = '6px 0';
+    card.appendChild(placeholder);
+  } else {
+    card.appendChild(row('Adresse', b.adresse));
+    card.appendChild(row('Ville', b.ville));
+    if (b.gps) card.appendChild(row('GPS', b.gps));
+  }
 
   // Type-specific
   if (b.type === 'Villa') {
@@ -197,11 +210,19 @@ function renderClient(d) {
   if (d.is_investisseur) head.appendChild(e('span', {class:'badge'}, '💎 Investisseur'));
   card.appendChild(head);
 
-  if (d.profil_type === 'Société') {
+  // M/2026/04/30/8 — identite contrepartie masquee : remplace nom/tel/email par placeholder.
+  if (HIDE_IDENTITY) {
+    const placeholder = e('div', {class:'sub'}, 'Coordonnées sur demande auprès de l\'agent');
+    placeholder.style.fontStyle = 'italic';
+    placeholder.style.padding = '6px 0';
+    card.appendChild(placeholder);
+  } else if (d.profil_type === 'Société') {
     card.appendChild(row('Raison sociale', d.societe_nom));
     card.appendChild(row('Forme', d.forme_juridique));
     card.appendChild(row('Représentant', d.representant));
     card.appendChild(row('SIRET / ICE', d.siret));
+    card.appendChild(row('Téléphone', d.tel));
+    card.appendChild(row('Email', d.email));
   } else {
     card.appendChild(row('Prénom', d.prenom));
     card.appendChild(row('Nom', d.nom));
@@ -210,12 +231,20 @@ function renderClient(d) {
       const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d.date_naissance);
       card.appendChild(row('Né le', m ? (m[3] + '/' + m[2] + '/' + m[1]) : d.date_naissance));
     }
+    card.appendChild(row('Téléphone', d.tel));
+    card.appendChild(row('Email', d.email));
   }
-  card.appendChild(row('Téléphone', d.tel));
-  card.appendChild(row('Email', d.email));
-  card.appendChild(row('Adresse', d.adresse));
-  card.appendChild(row('Ville', d.ville));
-  card.appendChild(row('Pays résidence', d.pays_residence));
+  // M/2026/04/30/8 — adresse contrepartie masquee idem.
+  if (HIDE_ADDRESS) {
+    const placeholder = e('div', {class:'sub'}, 'Adresse sur demande');
+    placeholder.style.fontStyle = 'italic';
+    placeholder.style.padding = '6px 0';
+    card.appendChild(placeholder);
+  } else {
+    card.appendChild(row('Adresse', d.adresse));
+    card.appendChild(row('Ville', d.ville));
+    card.appendChild(row('Pays résidence', d.pays_residence));
+  }
   return card;
 }
 
@@ -226,12 +255,21 @@ function renderBudget(d) {
   if (d.projet === 'Acheteur' && (d.budget_min || d.budget_max)) { card.appendChild(row('Budget', range(d.budget_min, d.budget_max))); any = true; }
   if (d.apport) { card.appendChild(row('Apport', d.apport)); any = true; }
   if (d.financement) { card.appendChild(row('Financement', d.financement)); any = true; }
-  if (d.projet === 'Vendeur' && d.prix_affiche) { card.appendChild(row('Prix affiché', d.prix_affiche)); any = true; }
-  if (d.projet === 'Locataire' && d.loyer_max) { card.appendChild(row('Loyer max', d.loyer_max)); any = true; }
-  if (d.projet === 'Bailleur') {
-    if (d.loyer_demande) { card.appendChild(row('Loyer demandé', d.loyer_demande)); any = true; }
-    if (d.charges) { card.appendChild(row('Charges', d.charges)); any = true; }
-    if (d.depot) { card.appendChild(row('Dépôt', d.depot)); any = true; }
+  // M/2026/04/30/8 — prix masque cote destinataire : remplace par "Prix sur demande".
+  if (HIDE_PRICE) {
+    const placeholder = e('div', {class:'sub'}, 'Prix sur demande');
+    placeholder.style.fontStyle = 'italic';
+    placeholder.style.padding = '6px 0';
+    card.appendChild(placeholder);
+    any = true;
+  } else {
+    if (d.projet === 'Vendeur' && d.prix_affiche) { card.appendChild(row('Prix affiché', d.prix_affiche)); any = true; }
+    if (d.projet === 'Locataire' && d.loyer_max) { card.appendChild(row('Loyer max', d.loyer_max)); any = true; }
+    if (d.projet === 'Bailleur') {
+      if (d.loyer_demande) { card.appendChild(row('Loyer demandé', d.loyer_demande)); any = true; }
+      if (d.charges) { card.appendChild(row('Charges', d.charges)); any = true; }
+      if (d.depot) { card.appendChild(row('Dépôt', d.depot)); any = true; }
+    }
   }
   if (d.is_investisseur && d.rendement_cible) { card.appendChild(row('Rendement cible', d.rendement_cible + ' %')); any = true; }
   if (!any) return null;

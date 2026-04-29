@@ -107,6 +107,11 @@ $honoraires = $data['honoraires_inclus'] ?? true;
 // M/2026/04/29/38 — toggle Prix / Sur demande embedded URL ?mode=price|demand.
 $shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
 $prixDemand = ($shareMode === 'demand');
+// M/2026/04/30/8 — masquages selectifs partage : prix / adresse / identite agent referent.
+$hidePrice = !empty($_GET['hide_price']);
+$hideAddress = !empty($_GET['hide_address']);
+$hideIdentity = !empty($_GET['hide_identity']);
+if ($hidePrice) $prixDemand = true;
 
 $ref = sprintf('OCR-%06d', (int) $dossier['id']);
 $shareBase = 'https://app.ocre.immo/share/';
@@ -352,7 +357,11 @@ header('Content-Type: text/html; charset=utf-8');
 
     <div class="cartouche">
       <div class="cartouche-title"><b><?= h($titreBien) ?></b></div>
-      <div class="cartouche-loc"><?= h($ville) ?></div>
+      <?php if ($hideAddress): ?>
+        <div class="cartouche-loc" style="color: var(--muted); font-style: italic;">Adresse sur demande</div>
+      <?php else: ?>
+        <div class="cartouche-loc"><?= h($ville) ?></div>
+      <?php endif; ?>
       <div class="cartouche-bullets">
         <?php
         $b = [];
@@ -379,9 +388,13 @@ header('Content-Type: text/html; charset=utf-8');
         <div class="sub">Marrakech</div>
       </div>
       <div class="agent">
-        <div class="name"><?= h($agentName) ?></div>
-        <?php if ($agentTel): ?><div><?= h($agentTel) ?></div><?php endif; ?>
-        <?php if ($agentEmail): ?><div><?= h($agentEmail) ?></div><?php endif; ?>
+        <?php if ($hideIdentity): ?>
+          <div style="color: var(--muted); font-style: italic; font-size: 11px;">Coordonnées sur demande</div>
+        <?php else: ?>
+          <div class="name"><?= h($agentName) ?></div>
+          <?php if ($agentTel): ?><div><?= h($agentTel) ?></div><?php endif; ?>
+          <?php if ($agentEmail): ?><div><?= h($agentEmail) ?></div><?php endif; ?>
+        <?php endif; ?>
       </div>
     </div>
   </section>
@@ -508,8 +521,10 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="tech-section">
       <h3>Adresse &amp; proximités</h3>
       <div class="tech-rows">
-        <?php if ($adresse): ?>
-        <div class="row"><span class="k">Adresse</span><span><?= h($adresse) ?></span></div>
+        <?php if ($hideAddress): ?>
+          <div class="row"><span class="k">Adresse</span><span style="color: var(--muted); font-style: italic;">Sur demande</span></div>
+        <?php elseif ($adresse): ?>
+          <div class="row"><span class="k">Adresse</span><span><?= h($adresse) ?></span></div>
         <?php endif; ?>
         <div class="inline">
           <?php foreach ($proximites as $e): ?>
@@ -524,9 +539,13 @@ header('Content-Type: text/html; charset=utf-8');
       <div class="col">
         <h5>Agent référent</h5>
         <div class="body">
-          <div class="name"><?= h($agentName) ?></div>
-          <?php if ($agentTel): ?><div><?= h($agentTel) ?></div><?php endif; ?>
-          <?php if ($agentEmail): ?><div><?= h($agentEmail) ?></div><?php endif; ?>
+          <?php if ($hideIdentity): ?>
+            <div style="color: var(--muted); font-style: italic; font-size: 12px;">Coordonnées sur demande auprès de l'agent</div>
+          <?php else: ?>
+            <div class="name"><?= h($agentName) ?></div>
+            <?php if ($agentTel): ?><div><?= h($agentTel) ?></div><?php endif; ?>
+            <?php if ($agentEmail): ?><div><?= h($agentEmail) ?></div><?php endif; ?>
+          <?php endif; ?>
         </div>
       </div>
       <div class="col">
