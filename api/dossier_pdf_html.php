@@ -102,7 +102,9 @@ if (!$titreBien) {
 $ville = trim(($bien['ville'] ?? '') . (!empty($bien['quartier']) ? ' — ' . $bien['quartier'] : ''));
 
 $prix = $data['prix_affiche'] ?? $data['prix'] ?? null;
-$devise = $data['devise'] ?? '€';
+// M/2026/04/30/22 — fallback decoratif : '$' au lieu de '€' (lisibilite + universalite).
+// La valeur metier reste celle de data.devise si definie ($ MAD £ etc.).
+$devise = $data['devise'] ?? '$';
 $honoraires = $data['honoraires_inclus'] ?? true;
 // M/2026/04/29/38 — toggle Prix / Sur demande embedded URL ?mode=price|demand.
 $shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
@@ -268,8 +270,10 @@ header('Content-Type: text/html; charset=utf-8');
 
   .cover-foot { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; padding-top: 6mm; border-top: 0.5px solid var(--ocre); align-items: end; }
   .cover-foot .price { text-align: left; }
-  .cover-foot .price .amount { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; }
+  .cover-foot .price .amount { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; overflow: visible; white-space: nowrap; padding-right: 4px; }
   .cover-foot .price .amount b { font-weight: 700; }
+  /* M/2026/04/30/22 — visibilite complete du symbole devise : pas de clipping. */
+  .devise-symbol { display: inline-block; padding-left: 2px; padding-right: 4px; overflow: visible; white-space: nowrap; }
   .cover-foot .price .hon { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
   .cover-foot .center-mark { text-align: center; font-family: 'Cormorant Garamond', serif; font-size: 13px; letter-spacing: 4px; color: var(--ocre); }
   .cover-foot .center-mark .sub { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
@@ -312,7 +316,7 @@ header('Content-Type: text/html; charset=utf-8');
   .contact-block .col h5 { font-family: 'DM Sans', sans-serif; font-size: 8px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--ocre-light); margin: 0 0 3mm; }
   .contact-block .col .body { font-family: 'DM Sans', sans-serif; font-size: 10px; line-height: 1.6; color: var(--ink); }
   .contact-block .col .body .name { font-weight: 700; font-size: 11px; }
-  .contact-block .col .price-final { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; }
+  .contact-block .col .price-final { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; overflow: visible; white-space: nowrap; padding-right: 4px; }
   .contact-block .col .price-final b { font-weight: 700; }
   .contact-block .col .price-final .hon { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
 </style>
@@ -377,7 +381,7 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="cover-foot">
       <div class="price">
         <?php if ($prix && !$prixDemand): ?>
-          <div class="amount"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= h($devise) ?></div>
+          <div class="amount"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <span class="devise-symbol"><?= h($devise) ?></span></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
           <div class="amount" style="font-size:18px; color: var(--muted); font-style: italic;">Sur demande</div>
@@ -558,7 +562,7 @@ header('Content-Type: text/html; charset=utf-8');
       <div class="col" style="text-align: right;">
         <h5>Prix</h5>
         <?php if ($prix && !$prixDemand): ?>
-          <div class="price-final"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= h($devise) ?></div>
+          <div class="price-final"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <span class="devise-symbol"><?= h($devise) ?></span></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
           <div class="price-final" style="font-size: 18px; color: var(--muted); font-style: italic;">Sur demande</div>
