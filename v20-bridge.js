@@ -138,37 +138,74 @@
   }
 
   // === Switcher overlay (tap logo) ===
+  // M/2026/04/30/32 — refonte switcher : pas de repetition prenom user courant + WSc avec
+  // prenoms des autres membres tries alpha + WS test rouge en bas + separateurs discrets
+  // entre 3 zones (perso / WSc / test) sans labels textes "MON ESPACE/PARTAGES/TEST".
   function openSwitcher() {
     const wsp = state.workspaces.filter(w => w.type === 'wsp');
     const wsc = state.workspaces.filter(w => w.type === 'wsc' && w.pact_active);
     const cur = state.ctx ? state.ctx.workspace.slug : '';
     const curMode = state.ctx ? state.ctx.mode : 'agent';
+    const u = state.ctx && state.ctx.user ? state.ctx.user : {};
+    const userFirstname = (u.display_name || u.email || '').split(' ')[0] || 'mon';
 
     const goto = (slug, mode) => {
       if (mode) document.cookie = `OCRE_MODE_${slug.toUpperCase()}=${mode};path=/;max-age=31536000`;
       location.href = `https://${slug}.ocre.immo/`;
     };
 
-    const body = el('div', {},
-      el('h3', {}, 'Mon espace'),
-      ...wsp.map(w => {
-        const activeAgent = (w.slug === cur && curMode === 'agent');
-        const activeTest = (w.slug === cur && curMode === 'test');
-        return el('div', {},
-          el('div', { class: 'v20-row' + (activeAgent ? ' active' : ''), onclick: () => goto(w.slug, 'agent') },
-            el('strong', {}, w.display_name + ' · Mode agent')),
-          el('div', { class: 'v20-row' + (activeTest ? ' active' : ''), onclick: () => goto(w.slug, 'test') },
-            el('strong', {}, w.display_name + ' · Mode test'))
+    const sep = () => el('div', { style: 'border-top:1px solid #E5DCC4;margin:14px 0' });
+    const children = [];
+    // Section 1 : WS perso mode agent par defaut. Pas de "Mode agent" libelle.
+    wsp.forEach(w => {
+      const active = (w.slug === cur && curMode === 'agent');
+      const label = 'WS ' + userFirstname;
+      children.push(
+        el('div', {
+          class: 'v20-row v20-ws-row' + (active ? ' active' : ''),
+          onclick: () => goto(w.slug, 'agent'),
+        }, el('strong', {}, label))
+      );
+    });
+    // Section 2 : WSc (uniquement si > 0). Pas de label "Partenariats".
+    if (wsc.length) {
+      children.push(sep());
+      wsc.forEach(w => {
+        // Prenoms des AUTRES membres uniquement, tries alpha, separes ", ".
+        const others = (w.other_members || [])
+          .map(m => (typeof m === 'string' ? m : (m && (m.firstname || m.display_name || m.email))))
+          .filter(Boolean)
+          .map(s => String(s).split(' ')[0])
+          .sort((a, b) => a.localeCompare(b, 'fr'));
+        const label = others.length ? ('WS ' + others.join(', ')) : 'WS partage';
+        const active = (w.slug === cur);
+        children.push(
+          el('div', {
+            class: 'v20-row v20-ws-row' + (active ? ' active' : ''),
+            onclick: () => goto(w.slug),
+          }, el('strong', {}, label))
         );
-      }),
-      wsc.length ? el('h3', {}, 'Partenariats') : null,
-      ...wsc.map(w => el('div', { class: 'v20-row' + (w.slug === cur ? ' active' : ''), onclick: () => goto(w.slug) },
-        el('strong', {}, w.display_name),
-        el('small', {}, 'Avec ' + (w.other_members || []).join(', '))
-      )),
+      });
+    }
+    // Section 3 : WS test (toujours visible, rouge). WS perso mode test.
+    if (wsp.length) {
+      children.push(sep());
+      const w = wsp[0];
+      const active = (w.slug === cur && curMode === 'test');
+      children.push(
+        el('div', {
+          class: 'v20-row v20-ws-row v20-ws-test' + (active ? ' active' : ''),
+          style: 'color:#DC2626',
+          onclick: () => goto(w.slug, 'test'),
+        }, el('strong', {}, 'WS test'))
+      );
+    }
+    children.push(
       el('div', { style: 'margin-top:18px;padding-top:14px;border-top:1px solid #E5DDC8' },
         el('button', { class: 'v20-cta-secondary', onclick: logout }, 'Se déconnecter'))
     );
+
+    const body = el('div', {}, ...children);
     overlay('Espaces de travail', null, body);
   }
 

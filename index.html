@@ -7576,6 +7576,8 @@ function PWAInstallOverlay({onClose}) {
 // éditables (titre, description, vertical). Post-publi : PublishSuccessModal "site en cours
 // de création". Gestion post-publi : bouton devient "Gérer la publication" + toggle visibility.
 function PublishButton({dossier, dossierId, disabled, onOpen, showToast}) {
+  // M/2026/04/30/32 — verrou mode test : ne pas afficher Publier en mode test (sandbox isole).
+  if (typeof window !== 'undefined' && window.__ocreMode === 'test') return null;
   const published = !!dossier.is_published;
   const visible = dossier.public_visible !== 0 && dossier.public_visible !== false;
   let label, subBadge = null, btnStyle, iconEl;
@@ -17492,6 +17494,6 @@ function FormView(props) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
-<script src="/v20-bridge.js?v=20260428n" defer></script>
+<script src="/v20-bridge.js?v=20260430b" defer></script>
 </body>
 </html>
