@@ -758,6 +758,51 @@ const AUTHENTICITE_RIAD = ['Authentique','Rénové','Néo-riad'];
 const FIELD_FILLED = {border:'1.5px solid #BBA88B', background:'#FFFCF5'};
 const FIELD_EMPTY  = {border:'1.5px solid #E8DDD0', background:'#FDFAF7'};
 
+// M/2026/04/30/14 — Cadastre Phase 1 : Maroc lien externe ANCFCC.
+// Architecture extensible : Phase 2 ajoutera ES/IT (WMS) + autres pays.
+const CADASTRE_PROVIDERS = {
+  MA: {label: 'Cadastre ANCFCC', type: 'external_link', url: 'https://www.ancfcc.gov.ma/PlanCadastral'},
+  // Phase 2 : ES, IT (WMS publics gratuits) + autres a venir.
+};
+function CadastreButton({pays}) {
+  if (!pays) return null; // pays absent : bouton entierement masque (mission spec).
+  const provider = CADASTRE_PROVIDERS[pays];
+  const baseStyle = {
+    display:'inline-flex', alignItems:'center', gap:8,
+    padding:'8px 14px', borderRadius:8, fontSize:13,
+    fontFamily:"'DM Sans', -apple-system, sans-serif",
+    marginBottom:8, border:'1px solid #D9C9A8',
+  };
+  const Icon = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+      <line x1="8" y1="2" x2="8" y2="18"/>
+      <line x1="16" y1="6" x2="16" y2="22"/>
+    </svg>
+  );
+  if (!provider) {
+    return (
+      <button type="button" disabled
+        title="Cadastre non disponible pour ce pays (Phase 2 a venir)"
+        style={{...baseStyle, background:'#F5EFE6', color:'#8B7F6E', opacity:0.5, cursor:'not-allowed'}}>
+        {Icon}<span>Cadastre indisponible</span>
+      </button>
+    );
+  }
+  if (provider.type === 'external_link') {
+    return (
+      <button type="button"
+        onClick={() => window.open(provider.url, '_blank', 'noopener,noreferrer')}
+        title={'Ouvrir ' + provider.url + ' dans un nouvel onglet'}
+        style={{...baseStyle, background:'#FAF6EE', color:'#5C3B1E', cursor:'pointer'}}>
+        {Icon}<span>{provider.label}</span>
+      </button>
+    );
+  }
+  // type 'wms' Phase 2 : pas implemente.
+  return null;
+}
+
 // M/2026/04/30/11 — helper unique pour formater l adresse du bien (Section II Bloc 01).
 // Source de verite : bien.* (jamais le c.ville top-level, qui represente la ville de
 // residence du contact). Utilise par ClientRow + DossierPdfView + shared.html + autres
@@ -4106,7 +4151,9 @@ function MapPicker({bien, setB, showToast}) {
         </div>
       )}
       {/* M/2026/04/29/40 — carte deploiement via bouton Carte (toggle M/30/10). */}
-      <div style={{maxHeight: mapOpen ? 320 : 0, overflow:'hidden', transition:'max-height 250ms ease-out'}}>
+      {/* M/2026/04/30/14 — bouton Cadastre Phase 1 : visible uniquement si carte ouverte ET pays defini. */}
+      {mapOpen && <CadastreButton pays={bien.pays}/>}
+      <div style={{maxHeight: mapOpen ? 360 : 0, overflow:'hidden', transition:'max-height 250ms ease-out'}}>
         <div ref={mapRef} style={{height:300, width:'100%', borderRadius:10, border:'1px solid #EDE6DC', overflow:'hidden'}}/>
       </div>
       {mapOpen && bien.gps_lat && bien.gps_lng && (
