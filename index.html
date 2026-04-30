@@ -809,15 +809,42 @@ function CadastreButton({pays}) {
 function PhotosExifButton({dossierId, bien, onApply, showToast}) {
   const [loading, setLoading] = React.useState(false);
   const photoCount = (bien && Array.isArray(bien.photos)) ? bien.photos.length : 0;
-  const enabled = !!dossierId && photoCount > 0;
+  // M/2026/04/30/21 — bouton actif meme sans photos (invitation a uploader si tap).
+  // Disabled UNIQUEMENT si !dossierId (etat logique : dossier pas encore enregistre).
+  const enabled = !!dossierId;
   const baseStyle = {
     display:'inline-flex', alignItems:'center', gap:8,
     padding:'8px 14px', borderRadius:8, fontSize:13,
     fontFamily:"'DM Sans', -apple-system, sans-serif",
     border:'1px solid #D9C9A8',
   };
+  // M/2026/04/30/21 — scroll vers Bloc 09 Photos (#stage2-photos) + tentative ouverture file picker iOS.
+  function scrollAndOpenPhotosBlock() {
+    const anchor = document.getElementById('stage2-photos');
+    if (!anchor) {
+      showToast && showToast('La section Photos sera bientôt disponible');
+      return;
+    }
+    try { anchor.scrollIntoView({behavior:'smooth', block:'center'}); } catch (e) {}
+    setTimeout(() => {
+      const fileInput = anchor.querySelector('input[type="file"]');
+      if (fileInput) { try { fileInput.click(); } catch (e) {} }
+    }, 400);
+  }
   async function onClick() {
     if (loading || !enabled) return;
+    // M/2026/04/30/21 — court-circuit : si aucune photo, modale d invitation au lieu de fetch.
+    if (photoCount === 0) {
+      const goImport = await askConfirm({
+        title: 'Aucune photo dans ce dossier',
+        message: "Importez d'abord des photos pour utiliser cette fonction. La position GPS détectée dans les photos pourra ensuite être proposée automatiquement.",
+        confirmLabel: 'Importer des photos',
+        cancelLabel: 'Annuler',
+        danger: false,
+      });
+      if (goImport) scrollAndOpenPhotosBlock();
+      return;
+    }
     setLoading(true);
     try {
       const tk = localStorage.getItem('ocre_token') || '';
@@ -855,7 +882,7 @@ function PhotosExifButton({dossierId, bien, onApply, showToast}) {
   }
   return (
     <button type="button" onClick={onClick} disabled={!enabled || loading}
-      title={!enabled ? 'Aucune photo enregistrée dans le dossier' : 'Détecter la position depuis les photos GPS'}
+      title={!enabled ? 'Enregistrez d\'abord le dossier' : 'Détecter la position depuis les photos GPS'}
       style={{...baseStyle,
               background: enabled ? '#FAF6EE' : '#F5EFE6',
               color: enabled ? '#5C3B1E' : '#8B7F6E',
