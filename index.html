@@ -4201,15 +4201,22 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             photos={Array.isArray(bien.photos) ? bien.photos : []}
             onPhotosChange={v => setB('photos', v)}/>
           <div style={{fontSize:11, color:'#8B7F6E', marginTop:6}}>
-            {(bien.photos || []).length} / 20 photos · WebP auto · 1920 px max
+            {(bien.photos || []).length} / 30 photos · WebP auto · 1920 px max
           </div>
 
           {/* === BLOC 12 — DISPONIBILITÉ === */}
+          {/* M/2026/04/30/42 — sub-bloc conditionnel Occupé : libération prévue + bail fin. */}
           {sectionTitle(10, 'Disponibilité')}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <PillRadio label="Statut" value={bien.dispo_statut} onChange={v => setB('dispo_statut', v)} options={V1_DISPO_STATUTS}/>
             <Field label="Date" type="date" value={bien.dispo_date} onChange={v => setB('dispo_date', v)} placeholder="JJ/MM/AAAA"/>
           </div>
+          {(bien.dispo_statut === 'Occupé' || bien.dispo_statut === 'Loué') && (
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+              <Field label="Libération prévue le" value={bien.dispo_liberation_date} onChange={v => setB('dispo_liberation_date', v)} placeholder="JJ/MM/AAAA"/>
+              <Field label="Bail en cours jusqu'au" value={bien.dispo_bail_fin_date} onChange={v => setB('dispo_bail_fin_date', v)} placeholder="JJ/MM/AAAA"/>
+            </div>
+          )}
 
           {/* === BLOC 13 — PROXIMITÉS === */}
           {sectionTitle(11, 'Proximités')}
