@@ -643,6 +643,30 @@ const V1_SECURITE = ['Gardien 24/24','Vidéosurveillance','Vidéophone','Porte b
 const V1_DISPO_STATUTS = ['Libre','Loué','Occupé','À convenir'];
 const V1_PROXIMITES = ['Aéroport','Centre-ville','Gare','Golf','Plage','Écoles','Hôpital','Souk','Supermarché','Restaurants','Hôtels','Banques','Pharmacie','Transports en commun'];
 
+// M/2026/04/30/43 — Bloc 13 Documents. Types autorisés Section II dossier bien.
+// SVG path d (24x24) : icône métier minimaliste, stroke 1.5, color inherit ocre #8B5E3C.
+const DOC_TYPES = [
+  {key:'mandat',           label:'Mandat de vente',     icon:'M14 3v4a1 1 0 0 0 1 1h4 M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z M9 12h6 M9 16h6'},
+  {key:'titre_foncier',    label:'Titre foncier',       icon:'M4 4h16v16H4z M4 9h16 M9 4v16'},
+  {key:'requisition',      label:'Réquisition',         icon:'M9 12h6 M9 16h6 M9 8h6 M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z'},
+  {key:'cin_proprio',      label:'CIN propriétaire',    icon:'M4 6h16v12H4z M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z M5 16c1-2 3-3 4-3s3 1 4 3 M14 9h4 M14 12h3'},
+  {key:'rib',              label:'RIB',                 icon:'M3 10h18 M5 10V8l7-4 7 4v2 M6 10v6 M10 10v6 M14 10v6 M18 10v6 M3 18h18 M3 21h18'},
+  {key:'dpe',              label:'DPE',                 icon:'M12 2v6 M12 2L6 8 M12 2l6 6 M5 14h14a2 2 0 0 1 2 2v4H3v-4a2 2 0 0 1 2-2z M8 17h.01 M12 17h.01 M16 17h.01'},
+  {key:'plans',            label:'Plans architecte',    icon:'M3 4h18v16H3z M3 9h18 M3 14h18 M9 4v16 M15 4v16'},
+  {key:'permis_construire',label:'Permis de construire',icon:'M3 21h18 M5 21V10l7-5 7 5v11 M9 21v-6h6v6 M9 9h.01 M15 9h.01'},
+  {key:'taxe_fonciere',    label:'Taxe foncière',       icon:'M12 1v22 M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6'},
+  {key:'certificat_urba',  label:'Certificat d’urbanisme', icon:'M5 4h14v16H5z M9 8h6 M9 12h6 M9 16h4 M17 17l1.5 1.5 3-3'},
+  {key:'autre',            label:'Autre document',      icon:'M14 3v4a1 1 0 0 0 1 1h4 M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z'},
+];
+
+function DocIcon({path, size=18, color='#8B5E3C'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={path}/>
+    </svg>
+  );
+}
+
 // M/2026/04/29/42 — Datasets Section II V4 Vague A (SSoT enrichie blocs 01-04).
 const V4_TYPES_BIEN = ['Riad','Villa','Maison','Appartement','Duplex','Penthouse','Loft','Terrain','Local commercial','Bureau','Immeuble','Autre'];
 const V4_SOUS_TYPES_BY_TYPE = {
@@ -3360,6 +3384,122 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
   );
 }
 
+// M/2026/04/30/43 — Bloc 13 Documents : upload PDF/JPG/PNG, 10 Mo max, 30 docs max.
+// Persisté dans bien.documents[] (JSON dossier).
+function DocumentUpload({dossierId, documents, onDocumentsChange, showToast}) {
+  const [uploading, setUploading] = React.useState(false);
+  const [pickType, setPickType] = React.useState(false); // affiche le mini-grid de types
+  const pendingTypeRef = React.useRef(null);
+  const inputRef = React.useRef(null);
+  const list = Array.isArray(documents) ? documents : [];
+  const token = () => localStorage.getItem('ocre_token') || '';
+
+  function fmtSize(bytes) {
+    if (!bytes && bytes !== 0) return '';
+    if (bytes < 1024) return bytes + ' o';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' Ko';
+    return (bytes / 1024 / 1024).toFixed(1) + ' Mo';
+  }
+
+  function pickAndUpload(typeKey) {
+    pendingTypeRef.current = typeKey;
+    setPickType(false);
+    setTimeout(() => inputRef.current && inputRef.current.click(), 30);
+  }
+
+  async function handleFile(f) {
+    if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); return; }
+    if (list.length >= 30) { showToast && showToast('Limite 30 documents'); return; }
+    if (f.size > 10 * 1024 * 1024) { showToast && showToast('Fichier trop volumineux (max 10 Mo)'); return; }
+    const fd = new FormData();
+    fd.append('action', 'upload_doc');
+    fd.append('dossier_id', dossierId);
+    fd.append('doc_type', pendingTypeRef.current || 'autre');
+    fd.append('file', f);
+    setUploading(true);
+    try {
+      const r = await fetch(API + '/upload.php?action=upload_doc', {
+        method:'POST', headers:{'X-Session-Token': token()}, body: fd,
+      });
+      const d = await r.json();
+      if (d && d.ok && d.document) {
+        onDocumentsChange && onDocumentsChange([d.document, ...list]);
+      } else showToast && showToast(d && d.error ? d.error : 'Échec upload');
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setUploading(false);
+    if (inputRef.current) inputRef.current.value = '';
+  }
+
+  async function removeDoc(doc) {
+    if (!(await askConfirm({title:'Supprimer ce document ?', message: doc.original_name || doc.name || '', danger:true}))) return;
+    if (doc.name) {
+      try {
+        await fetch(API + '/upload.php?action=delete_doc', {
+          method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
+          body: JSON.stringify({dossier_id: dossierId, name: doc.name}),
+        });
+      } catch (e) { /* silent */ }
+    }
+    onDocumentsChange && onDocumentsChange(list.filter(x => x !== doc));
+  }
+
+  return (
+    <div style={{marginTop:6}}>
+      {list.length > 0 && (
+        <div style={{display:'flex', flexDirection:'column', gap:8, marginBottom:8}}>
+          {list.map((doc, idx) => {
+            const meta = DOC_TYPES.find(t => t.key === doc.doc_type) || DOC_TYPES[DOC_TYPES.length - 1];
+            return (
+              <div key={doc.name || idx}
+                style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:'1px solid #E8DDD0', background:'#FDFAF7'}}>
+                <div style={{width:32, height:32, borderRadius:8, background:'#FBF1E4', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                  <DocIcon path={meta.icon} size={18}/>
+                </div>
+                <div style={{flex:1, minWidth:0}}>
+                  <div style={{fontSize:13, fontWeight:600, color:'#3A2D24', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{meta.label}</div>
+                  <div style={{fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                    {doc.original_name || doc.name} · {fmtSize(doc.size)}
+                  </div>
+                </div>
+                {doc.url && (
+                  <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                    style={{fontSize:12, color:'#8B5E3C', textDecoration:'none', padding:'6px 10px', borderRadius:6, border:'1px solid #D9C9A8', background:'#fff'}}>Voir</a>
+                )}
+                <button type="button" onClick={() => removeDoc(doc)}
+                  style={{width:28, height:28, borderRadius:14, border:'none', background:'rgba(42,32,24,.08)', color:'#8B5E3C', fontSize:14, cursor:'pointer', padding:0}}>×</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {pickType ? (
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:6, padding:10, borderRadius:10, border:'1px solid #E8DDD0', background:'#FDFAF7'}}>
+          {DOC_TYPES.map(t => (
+            <button key={t.key} type="button" onClick={() => pickAndUpload(t.key)}
+              style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'1px solid #D9C9A8', background:'#fff', color:'#3A2D24', fontSize:12, fontWeight:500, cursor:'pointer', textAlign:'left'}}>
+              <DocIcon path={t.icon} size={16}/>
+              <span style={{flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{t.label}</span>
+            </button>
+          ))}
+          <button type="button" onClick={() => setPickType(false)}
+            style={{padding:'8px 10px', borderRadius:8, border:'1px dashed #BBA88B', background:'transparent', color:'#8B7F6E', fontSize:12, cursor:'pointer'}}>Annuler</button>
+        </div>
+      ) : (
+        list.length < 30 && (
+          <button type="button" onClick={() => setPickType(true)} disabled={uploading || !dossierId}
+            title={!dossierId ? 'Enregistrez d\'abord le dossier' : ''}
+            style={{width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px dashed #BBA88B', background:'#FDFAF7', color:'#8B5E3C', fontSize:13, fontWeight:600, cursor: dossierId ? 'pointer' : 'not-allowed', opacity: dossierId ? 1 : .5}}>
+            {uploading ? 'Upload…' : '+ Ajouter un document'}
+          </button>
+        )
+      )}
+      <input ref={inputRef} type="file" accept="application/pdf,image/jpeg,image/png"
+        onChange={e => { const f = e.target.files && e.target.files[0]; if (f) handleFile(f); }} style={{display:'none'}}/>
+      {!dossierId && <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', marginTop:4}}>Enregistrez le dossier pour activer les documents.</div>}
+    </div>
+  );
+}
+
 // V17.2 Phase 2a — ShareMenu : création lien public, copie, partage natif, révocation.
 function ShareMenu({dossierId, dossierName, onClose, showToast}) {
   const [link, setLink] = React.useState(null);
@@ -4228,6 +4368,15 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             placeholder="Particularités, défauts à signaler, points d'attention pour la visite, contraintes copro, etc."
             style={{width:'100%', boxSizing:'border-box', minHeight:90, padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit',
                     border:'1.5px solid #E8DDD0', background:'#FDFAF7', color:'#2A2018', resize:'vertical', outline:'none'}}/>
+
+          {/* === BLOC 15 — DOCUMENTS (M/2026/04/30/43) === */}
+          {sectionTitle(13, 'Documents')}
+          <DocumentUpload dossierId={dossierId} showToast={showToast}
+            documents={Array.isArray(bien.documents) ? bien.documents : []}
+            onDocumentsChange={v => setB('documents', v)}/>
+          <div style={{fontSize:11, color:'#8B7F6E', marginTop:6}}>
+            {(bien.documents || []).length} / 30 documents · PDF / JPG / PNG · 10 Mo max
+          </div>
 
           {/* Bandeau auto-enregistré */}
           <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'10px 0 4px', marginTop:14, fontSize:10, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, background:'#FBF1E4', borderRadius:6}}>

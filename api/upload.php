@@ -164,6 +164,65 @@ switch ($action) {
         jsonOk(['deleted' => $name]);
     }
 
+    // M/2026/04/30/43 — Bloc 13 Documents : PDF + scans CIN/RIB. Stockage /uploads/<id>/documents/.
+    case 'upload_doc': {
+        $user = requireAuth();
+        $dossier_id = (int)($_POST['dossier_id'] ?? 0);
+        if (!$dossier_id) jsonError('dossier_id requis');
+        checkOwnership($dossier_id, $user);
+
+        $doc_type = preg_replace('/[^a-z0-9_]+/i', '', strtolower((string)($_POST['doc_type'] ?? 'autre')));
+        if ($doc_type === '') $doc_type = 'autre';
+
+        if (empty($_FILES['file'])) jsonError('Aucun fichier reçu');
+        $f = $_FILES['file'];
+        if ($f['error'] !== UPLOAD_ERR_OK) jsonError('Erreur upload code=' . $f['error']);
+        // Limite 10 Mo pour les documents (vs 8 Mo photos).
+        if ($f['size'] > 10 * 1024 * 1024) jsonError('Fichier trop volumineux (max 10 Mo)');
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($f['tmp_name']);
+        $allowed = ['application/pdf', 'image/jpeg', 'image/png'];
+        if (!in_array($mime, $allowed, true)) jsonError('Format non supporté (PDF/JPG/PNG)');
+        $ext = ['application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png'][$mime];
+
+        $dir = dossierDir($dossier_id) . '/documents';
+        if (!is_dir($dir)) @mkdir($dir, 0755, true);
+
+        $existing = glob($dir . '/*') ?: [];
+        if (count($existing) >= 30) jsonError('Limite 30 documents par dossier', 409);
+
+        $original = preg_replace('/[^A-Za-z0-9._-]+/', '_', basename((string)$f['name']));
+        $name = $doc_type . '-' . date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
+        $dest = $dir . '/' . $name;
+        if (!move_uploaded_file($f['tmp_name'], $dest)) jsonError('Écriture impossible', 500);
+        @chmod($dest, 0644);
+
+        jsonOk(['document' => [
+            'name' => $name,
+            'original_name' => $original,
+            'doc_type' => $doc_type,
+            'size' => filesize($dest),
+            'mime' => $mime,
+            'url' => publicBase() . '/' . $dossier_id . '/documents/' . $name,
+            'uploaded_at' => date('c'),
+        ]]);
+    }
+
+    case 'delete_doc': {
+        $user = requireAuth();
+        $input = getInput();
+        $dossier_id = (int)($input['dossier_id'] ?? 0);
+        $name = basename((string)($input['name'] ?? ''));
+        if (!$dossier_id || !$name) jsonError('dossier_id et name requis');
+        if (!preg_match('/^[A-Za-z0-9._-]+\.(pdf|jpe?g|png)$/i', $name)) jsonError('Nom invalide');
+        checkOwnership($dossier_id, $user);
+        $path = dossierDir($dossier_id) . '/documents/' . $name;
+        if (!file_exists($path)) jsonError('Fichier introuvable', 404);
+        if (!@unlink($path)) jsonError('Suppression impossible', 500);
+        jsonOk(['deleted' => $name]);
+    }
+
     default:
         jsonError('Action inconnue', 404);
 }
