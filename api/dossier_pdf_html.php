@@ -316,15 +316,26 @@ header('Content-Type: text/html; charset=utf-8');
   .cover-foot .price .amount { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; overflow: visible; white-space: nowrap; padding-right: 4px; }
   .cover-foot .price .amount b { font-weight: 700; }
   /* M/2026/04/30/22 — visibilite complete du symbole devise : pas de clipping.
-     M/2026/04/30/52 — font-family fallback DM Sans force (Cormorant Garamond peut manquer
-     le glyphe € sur Safari iOS / sidebearing negatif). Test MAD/USD/GBP coherent. */
-  .devise-symbol {
-    display: inline-block;
-    padding: 0 4px 0 3px;
-    overflow: visible;
+     M/2026/04/30/52 — font-family fallback DM Sans force (Cormorant Garamond manque souvent
+     le glyphe € sur Safari iOS / sidebearing negatif).
+     M/2026/04/30/57 — fix universel : padding-right 6px + classes parents protegees
+     (.amount, .price-final, .cover-foot, .price-display, .budget-display) overflow visible. */
+  .devise-symbol,
+  .currency-glyph,
+  [data-currency-glyph] {
+    display: inline-block !important;
+    padding: 0 6px 0 3px !important;
+    overflow: visible !important;
     white-space: nowrap;
     font-family: 'DM Sans', 'Helvetica Neue', system-ui, -apple-system, sans-serif !important;
-    font-weight: 600;
+    font-weight: inherit;
+    letter-spacing: 0 !important;
+    vertical-align: baseline;
+    font-feature-settings: 'kern' 1;
+  }
+  .amount, .price-final, .cover-foot, .price-display, .budget-display, .price-button, .price-badge {
+    overflow: visible !important;
+    padding-right: 6px;
   }
   .cover-foot .price .hon { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
   .cover-foot .center-mark { text-align: center; font-family: 'Cormorant Garamond', serif; font-size: 13px; letter-spacing: 4px; color: var(--ocre); }

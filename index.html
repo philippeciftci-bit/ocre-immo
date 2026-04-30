@@ -273,6 +273,9 @@ input, select, textarea, button { font-size:13px }
 .phone-popover{position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:#fff;border:1.5px solid #BBA88B;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:100;margin-top:2px}
 .phone-popover .item{padding:10px 12px;font-size:14px;cursor:pointer;border-bottom:1px solid #F4EEE6;display:flex;gap:8px;align-items:center}
 .phone-popover .item:hover{background:#FFF3EC}
+/* M/2026/04/30/57 — fix universel symbole devise tronque (Safari iOS Cormorant side-bearing negatif). */
+.devise-symbol,.currency-glyph,[data-currency-glyph]{display:inline-block!important;padding:0 6px 0 3px!important;overflow:visible!important;white-space:nowrap;font-family:'DM Sans','Helvetica Neue',system-ui,-apple-system,sans-serif!important;font-weight:inherit;letter-spacing:0!important;vertical-align:baseline;font-feature-settings:'kern' 1}
+.amount,.price-final,.price-display,.budget-display,.price-button,.price-badge{overflow:visible!important;padding-right:6px}
 </style>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -6234,7 +6237,10 @@ function V55Field({label, value, onChange, type='text', options, suffix, placeho
             disabled={disabled}
             style={Object.assign({}, baseInput, suffix ? {paddingRight:36} : {}, disabled ? {background:'#F4ECE3', color:'#8B7F6E'} : {})}/>
           {suffix && (
-            <span style={{position:'absolute', right:11, top:12, fontSize:13, color:'#8B7F6E', pointerEvents:'none', fontWeight:600}}>{suffix}</span>
+            // M/2026/04/30/57 — fix universel symbole € tronque : font-family DM Sans force +
+            // padding-right defensif + overflow visible. Cormorant Garamond a un sidebearing
+            // negatif sur le glyphe € (Safari iOS).
+            <span className="devise-symbol" style={{position:'absolute', right:8, top:12, fontSize:13, color:'#8B7F6E', pointerEvents:'none', fontWeight:600, fontFamily:"'DM Sans', 'Helvetica Neue', system-ui, sans-serif", paddingRight:6, overflow:'visible', whiteSpace:'nowrap'}}>{suffix}</span>
           )}
         </div>
       )}

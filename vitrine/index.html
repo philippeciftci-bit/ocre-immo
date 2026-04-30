@@ -94,8 +94,10 @@ section .lede { text-align: center; color: var(--muted); max-width: 680px; margi
 .plan { background: #fff; padding: 30px 26px; border-radius: 12px; border: 1px solid var(--border); text-align: center; }
 .plan.featured { border: 2px solid var(--ocre-dark); transform: scale(1.04); }
 .plan h3 { font-family: 'Cormorant Garamond', serif; font-size: 24px; color: var(--ocre-dark); margin-bottom: 6px; }
-.plan .price { font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 700; color: var(--ink); margin: 18px 0; }
+.plan .price { font-family: 'Cormorant Garamond', serif; font-size: 42px; font-weight: 700; color: var(--ink); margin: 18px 0; overflow: visible; padding-right: 6px; }
 .plan .price small { font-size: 15px; color: var(--muted); font-weight: normal; }
+/* M/2026/04/30/57 — fix universel glyphe € (Cormorant sidebearing negatif Safari iOS). */
+.devise-symbol { display: inline-block; padding: 0 6px 0 3px; overflow: visible; white-space: nowrap; font-family: 'DM Sans', 'Helvetica Neue', system-ui, sans-serif !important; font-weight: inherit; letter-spacing: 0 !important; vertical-align: baseline; }
 .plan ul { list-style: none; text-align: left; margin: 18px 0; }
 .plan li { padding: 6px 0; color: var(--ink); font-size: 14px; padding-left: 22px; position: relative; }
 .plan li::before { content: "✓"; color: var(--ocre-dark); position: absolute; left: 0; font-weight: 700; }
@@ -192,7 +194,7 @@ footer .copyright { color: #8B7F6E; font-size: 11px; margin-top: 16px; }
         <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#8B7F6E; margin-bottom:6px;">Gratuit</div>
         <h3>Découverte</h3>
         <div style="font-size:13px; color:#8B7F6E; margin-bottom:8px;">Pour découvrir Ocre Immo</div>
-        <div class="price">0&nbsp;€<small>/mois pour toujours</small></div>
+        <div class="price">0&nbsp;<span class="devise-symbol">€</span><small>/mois pour toujours</small></div>
         <ul>
           <li>10 dossiers max</li>
           <li>5 photos par dossier</li>
@@ -208,7 +210,7 @@ footer .copyright { color: #8B7F6E; font-size: 11px; margin-top: 16px; }
         <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#8B5E3C; font-weight:700; margin-bottom:6px;">Le plus populaire</div>
         <h3>Pro</h3>
         <div style="font-size:13px; color:#8B7F6E; margin-bottom:8px;">Pour les agents indépendants</div>
-        <div class="price">29&nbsp;€<small>/mois HT</small></div>
+        <div class="price">29&nbsp;<span class="devise-symbol">€</span><small>/mois HT</small></div>
         <ul>
           <li>100 dossiers</li>
           <li>20 photos par dossier</li>
@@ -225,7 +227,7 @@ footer .copyright { color: #8B7F6E; font-size: 11px; margin-top: 16px; }
         <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#8B7F6E; margin-bottom:6px;">Pour les agences</div>
         <h3>Équipe</h3>
         <div style="font-size:13px; color:#8B7F6E; margin-bottom:8px;">Pour les agences et collectifs</div>
-        <div class="price">79&nbsp;€<small>/mois HT</small></div>
+        <div class="price">79&nbsp;<span class="devise-symbol">€</span><small>/mois HT</small></div>
         <ul>
           <li>Dossiers illimités</li>
           <li>30 photos par dossier</li>
