@@ -645,6 +645,15 @@ const V1_SECURITE = ['Gardien 24/24','Vidéosurveillance','Vidéophone','Porte b
 const V1_DISPO_STATUTS = ['Libre','Loué','Occupé','À convenir'];
 // M/2026/04/30/44 — enrichi (audit M/61) : Mer, Montagne, Médina, Université, Marché, Mosquée, Église, Espaces verts, Parc, Sport, Tennis.
 const V1_PROXIMITES = ['Plage','Mer','Montagne','Centre-ville','Médina','Aéroport','Gare','Écoles','Université','Hôpital','Pharmacie','Souk','Marché','Supermarché','Commerces','Restaurants','Hôtels','Banques','Mosquée','Église','Espaces verts','Parc','Sport','Tennis','Golf','Transports en commun'];
+// M/2026/04/30/49 — Section III sous-bloc Recherche bien.
+const V1_CRITERES_RECHERCHE = ['Piscine','Jardin','Parking','Ascenseur','Climatisation','Vue mer','Vue jardin','Calme','Sécurisé'];
+const V1_DELAIS_RECHERCHE = [
+  {k:'urgent',     l:'Urgent (< 1 mois)'},
+  {k:'3mois',      l:'3 mois'},
+  {k:'6mois',      l:'6 mois'},
+  {k:'1an',        l:'1 an'},
+  {k:'pas_presse', l:'Pas pressé'},
+];
 
 // M/2026/04/30/43 — Bloc 13 Documents. Types autorisés Section II dossier bien.
 // SVG path d (24x24) : icône métier minimaliste, stroke 1.5, color inherit ocre #8B5E3C.
@@ -6178,6 +6187,81 @@ function V62SubTitle({children}) {
   );
 }
 
+// M/2026/04/30/49 — Sous-bloc Recherche bien (Section III pour Acheteur/Locataire/Investisseur).
+function RechercheBienBloc({d, set}) {
+  const paysList = Array.isArray(d.recherche_pays) ? d.recherche_pays : [];
+  const villesList = Array.isArray(d.recherche_villes) ? d.recherche_villes : [];
+  const typesList = Array.isArray(d.recherche_types_bien) ? d.recherche_types_bien : [];
+  const criteres = Array.isArray(d.recherche_criteres_confort) ? d.recherche_criteres_confort : [];
+  const profilBien = d.recherche_profil_bien || '';
+  const delai = d.recherche_delai || '';
+  const notesLen = (d.recherche_notes || '').length;
+  return (
+    <V55Bloc title="Recherche bien">
+      <div style={{display:'flex', flexDirection:'column', gap:10}}>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays cibles</label>
+          <CountryMultiPicker value={paysList} onChange={v => set('recherche_pays', v)} max={5} placeholder="Pays cibles"/>
+        </div>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Villes cibles</label>
+          <CityMultiPicker value={villesList} onChange={v => set('recherche_villes', v)} selectedCountries={paysList} placeholder="Villes cibles"/>
+        </div>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Types bien souhaités</label>
+          <TypeBienMultiPicker value={typesList} onChange={v => set('recherche_types_bien', v)} selectedCountries={paysList} max={5} placeholder="Types bien"/>
+        </div>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+          <V55Field label="Surface habitable min (m²)" type="number" value={d.recherche_surface_hab_min} onChange={v => set('recherche_surface_hab_min', v)}/>
+          <V55Field label="Surface terrain min (m²)" type="number" value={d.recherche_surface_terrain_min} onChange={v => set('recherche_surface_terrain_min', v)}/>
+        </div>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+          <NumericPicker label="Pièces min" value={d.recherche_pieces_min} onChange={v => set('recherche_pieces_min', v)} max={15}/>
+          <NumericPicker label="Chambres min" value={d.recherche_chambres_min} onChange={v => set('recherche_chambres_min', v)} max={10}/>
+        </div>
+        <PillsMulti label="Critères confort" value={criteres} onChange={v => set('recherche_criteres_confort', v)} options={V1_CRITERES_RECHERCHE}/>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:6, textTransform:'uppercase', letterSpacing:.4}}>Profil bien</label>
+          <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+            {[{k:'neuf',l:'Neuf'},{k:'ancien',l:'Ancien'},{k:'indifferent',l:'Indifférent'}].map(o => {
+              const sel = profilBien === o.k;
+              return (
+                <button key={o.k} type="button" onClick={() => set('recherche_profil_bien', sel ? '' : o.k)}
+                  style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(sel?'#8B5E3C':'#D9C9A8'), background: sel?'#8B5E3C':'#fff', color: sel?'#fff':'#5C3B1E', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
+                  {o.l}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:6, textTransform:'uppercase', letterSpacing:.4}}>Délai recherche</label>
+          <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+            {V1_DELAIS_RECHERCHE.map(o => {
+              const sel = delai === o.k;
+              return (
+                <button key={o.k} type="button" onClick={() => set('recherche_delai', sel ? '' : o.k)}
+                  style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(sel?'#8B5E3C':'#D9C9A8'), background: sel?'#8B5E3C':'#fff', color: sel?'#fff':'#5C3B1E', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
+                  {o.l}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Notes recherche</label>
+          <textarea value={d.recherche_notes || ''} onChange={e => set('recherche_notes', e.target.value)}
+            placeholder="Préférences, contraintes, contexte..."
+            style={{width:'100%', boxSizing:'border-box', minHeight:70, padding:'9px 11px', borderRadius:8, fontSize:13, fontFamily:'inherit', border:'1.5px solid #E8DDD0', background:'#FDFAF7', color:'#2A2018', resize:'vertical', outline:'none'}}/>
+          <div style={{textAlign:'right', fontSize:11, fontStyle:'italic', color: notesLen > 1000 ? '#C68A3F' : '#8B7F6E', marginTop:4}}>
+            {notesLen} / 1000
+          </div>
+        </div>
+      </div>
+    </V55Bloc>
+  );
+}
+
 // V55 — Section III pro : selon profil + invest. Stockage dans d (data JSON, pas de migration DB).
 // V62 — réordonné : essentiels (Prix / Frais agence / Frais notaire / Coût total) en haut,
 // détails (Capacité, Mandat, Co-courtage, Répartition, Stratégie, Performance) en bas.
@@ -6214,6 +6298,8 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const coutTotal = budget + (honoCharge === 'Acheteur' ? honoEst : 0) + fraisNotEst;
     return (
       <>
+        {/* M/2026/04/30/49 — Sous-bloc Recherche bien en tete (audit M/67 prio normale). */}
+        <RechercheBienBloc d={d} set={set}/>
         {/* M/2026/04/30/47 — CurrencyPicker + ConversionDisplay live cote Acheteur/Investisseur
             (etend M/30/29 cote Vendeur). Suffixe dynamique {devise} partout (suppression franche
             ternaire MAD/€ binaire). */}
@@ -6412,6 +6498,8 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
   if (activeProfil === 'Locataire') {
     return (
       <>
+        {/* M/2026/04/30/49 — Sous-bloc Recherche bien aussi pour Locataire. */}
+        <RechercheBienBloc d={d} set={set}/>
         <V55Bloc title="Loyer">
           <V55Field label="Loyer max charges comprises" type="number" value={d.loyer_max} onChange={v => set('loyer_max', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
         </V55Bloc>
