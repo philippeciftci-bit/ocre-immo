@@ -770,11 +770,13 @@ const CADASTRE_PROVIDERS = {
 function CadastreButton({pays}) {
   if (!pays) return null; // pays absent : bouton entierement masque (mission spec).
   const provider = CADASTRE_PROVIDERS[pays];
+  // M/2026/04/30/35 — alignement style L3 : meme baseStyle que PhotosExifButton voisin
+  // (display:flex pour remplir la cellule grid auto-fit + suppression franche marginBottom).
   const baseStyle = {
-    display:'inline-flex', alignItems:'center', gap:8,
+    display:'flex', alignItems:'center', justifyContent:'center', gap:8,
     padding:'8px 14px', borderRadius:8, fontSize:13,
     fontFamily:"'DM Sans', -apple-system, sans-serif",
-    marginBottom:8, border:'1px solid #D9C9A8',
+    border:'1px solid #D9C9A8',
   };
   const Icon = (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -815,8 +817,10 @@ function PhotosExifButton({dossierId, bien, onApply, showToast}) {
   // M/2026/04/30/21 — bouton actif meme sans photos (invitation a uploader si tap).
   // Disabled UNIQUEMENT si !dossierId (etat logique : dossier pas encore enregistre).
   const enabled = !!dossierId;
+  // M/2026/04/30/35 — alignement style L3 : display:flex pour remplir la cellule grid auto-fit
+  // (cohérent CadastreButton voisin).
   const baseStyle = {
-    display:'inline-flex', alignItems:'center', gap:8,
+    display:'flex', alignItems:'center', justifyContent:'center', gap:8,
     padding:'8px 14px', borderRadius:8, fontSize:13,
     fontFamily:"'DM Sans', -apple-system, sans-serif",
     border:'1px solid #D9C9A8',
@@ -4901,8 +4905,9 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
       {/* M/2026/04/29/40 — carte deploiement via bouton Carte (toggle M/30/10). */}
       {/* M/2026/04/30/14 — bouton Cadastre Phase 1 : visible uniquement si carte ouverte ET pays defini. */}
       {/* M/2026/04/30/20 — bouton Photos geolocalisees a cote de Cadastre (extraction EXIF GPS centroide cluster). */}
+      {/* M/2026/04/30/35 — wrapper grid auto-fit responsive : iPhone 1-2 col, iPad 3-4 col. */}
       {mapOpen && (
-        <div style={{display:'flex', gap:8, marginBottom:8, flexWrap:'wrap'}}>
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8, marginTop:8, marginBottom:8}}>
           <CadastreButton pays={bien.pays}/>
           <PhotosExifButton dossierId={dossierId} bien={bien}
             onApply={(lat, lng, address) => {
