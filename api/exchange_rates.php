@@ -27,21 +27,48 @@ function fetch_url(string $url): ?array {
     return is_array($j) ? $j : null;
 }
 
-// Tentative 1 : Frankfurter (ECB rates, gratuit, pas de cle).
+// M/2026/04/30/29 — strategie multi-source : Frankfurter (ECB) puis merge exchangerate.host
+// pour combler les devises absentes (Frankfurter ne couvre pas MAD/TND/DZD/EGP/SAR/QAR/KWD/BHD).
+// Fallback hardcode si les 2 APIs muettes (rates approximatifs pour eviter NULL).
 $data = fetch_url('https://api.frankfurter.app/latest?from=EUR&to=' . urlencode(SYMBOLS));
 $source = 'frankfurter';
-if (!$data || empty($data['rates'])) {
-    // Fallback exchangerate.host.
-    $data = fetch_url('https://api.exchangerate.host/latest?base=EUR&symbols=' . urlencode(SYMBOLS));
-    $source = 'exchangerate.host';
+$rates = ($data && !empty($data['rates'])) ? $data['rates'] : [];
+
+// Si pas tous les symboles, complete via exchangerate.host.
+$missing = array_diff(explode(',', SYMBOLS), array_keys($rates));
+if (!empty($missing)) {
+    $alt = fetch_url('https://api.exchangerate.host/latest?base=EUR&symbols=' . urlencode(implode(',', $missing)));
+    if ($alt && !empty($alt['rates'])) {
+        foreach ($alt['rates'] as $k => $v) {
+            if (!isset($rates[$k]) && is_numeric($v) && $v > 0) $rates[$k] = $v;
+        }
+        if (!$data) {
+            $data = ['base' => 'EUR', 'date' => $alt['date'] ?? $today];
+            $source = 'exchangerate.host';
+        } else {
+            $source = 'frankfurter+exchangerate.host';
+        }
+    }
 }
 
-if (!$data || empty($data['rates'])) {
+// Fallback hardcode pour les devises critiques (taux indicatifs avril 2026, mis a jour
+// au prochain hit cache miss avec API live). Evite NULL en frontend.
+$hardcoded = [
+    'MAD' => 10.85, 'TND' => 3.40, 'DZD' => 145.0, 'EGP' => 53.0,
+    'SAR' => 4.05, 'QAR' => 3.93, 'KWD' => 0.331, 'BHD' => 0.405, 'AED' => 3.97,
+];
+foreach ($hardcoded as $k => $v) {
+    if (empty($rates[$k])) $rates[$k] = $v;
+}
+
+if (empty($rates)) {
     @error_log('exchange_rates.php: rates_unavailable both APIs failed', 0);
     http_response_code(503);
     echo json_encode(['ok' => false, 'error' => 'rates_unavailable']);
     exit;
 }
+if (!$data) $data = ['base' => 'EUR', 'date' => $today];
+$data['rates'] = $rates;
 
 $out = json_encode([
     'ok' => true,
