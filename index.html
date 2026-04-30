@@ -11442,7 +11442,8 @@ function WeekGridView({events, showToast, onChanged}) {
   });
 
   async function moveEvent(eventId, newDate, newHour) {
-    if (!window.confirm('Déplacer cet événement vers ' + newDate + ' à ' + String(newHour).padStart(2,'0') + ':00 ?')) return;
+    // M/2026/04/30/46 — askConfirm M/14 (suppression franche window.confirm).
+    if (!(await askConfirm({title:'Déplacer cet événement ?', message:'Vers ' + newDate + ' à ' + String(newHour).padStart(2,'0') + ':00', confirmLabel:'Déplacer'}))) return;
     const newScheduled = newDate + ' ' + String(newHour).padStart(2,'0') + ':00:00';
     try {
       const r = await fetch('/api/events.php?action=update', {
@@ -11733,29 +11734,57 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
     return t.getDate() + ' ' + months[t.getMonth()] + ' ' + hh;
   }
 
-  async function createEvent(type) {
+  // M/2026/04/30/46 — refonte UX : suppression franche window.prompt + window.confirm.
+  // Modal stylee EventModal pour create + DocCategoryModal pour upload categorie.
+  // askConfirm M/14 pour confirmations destructives.
+  const [modal, setModal] = React.useState(null);
+
+  function openCreateEvent(type) {
     if (!clientId) { showToast && showToast('Enregistre le dossier d\'abord'); return; }
-    const title = window.prompt(type === 'note' ? 'Note (titre court)' : 'Titre — ' + TYPE_LABELS[type]);
-    if (!title) return;
+    const def = new Date(Date.now() + 3600000);
+    const dStr = def.toISOString().slice(0, 10);
+    const tStr = String(def.getHours()).padStart(2, '0') + ':' + String(def.getMinutes()).padStart(2, '0');
+    setModal({
+      kind: 'event_create', type,
+      title: '', date: type === 'note' ? '' : dStr, time: type === 'note' ? '' : tStr,
+      lieu: '', notes: '',
+    });
+  }
+
+  async function submitCreateEvent() {
+    const m = modal;
+    if (!m || !m.title.trim()) { showToast && showToast('Titre requis'); return; }
     let scheduled = null;
-    if (type !== 'note') {
-      const def = new Date(Date.now() + 3600000).toISOString().slice(0, 16);
-      const dt = window.prompt('Date et heure (YYYY-MM-DD HH:MM)', def.replace('T', ' '));
-      if (dt === null) return;
-      scheduled = dt || null;
+    if (m.type !== 'note' && m.date) {
+      scheduled = m.date + ' ' + (m.time || '00:00') + ':00';
     }
     setBusy(true);
     try {
       const r = await fetch('/api/events.php?action=create', {
         method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
-        body: JSON.stringify({client_id: clientId, type, title, scheduled_at: scheduled,
-          document_recipient: type === 'document' ? defaultRecipient : null}),
+        body: JSON.stringify({
+          client_id: clientId, type: m.type, title: m.title.trim(),
+          scheduled_at: scheduled,
+          notes: m.notes ? m.notes.trim() : null,
+          lieu: m.lieu ? m.lieu.trim() : null,
+          document_recipient: m.type === 'document' ? defaultRecipient : null,
+        }),
       });
       const d = await r.json();
-      if (d && d.ok) { await refresh(); showToast && showToast('Événement créé'); }
+      if (d && d.ok) { await refresh(); setModal(null); showToast && showToast('Événement créé'); }
       else showToast && showToast((d && d.error) || 'Échec');
     } catch (e) { showToast && showToast('Erreur réseau'); }
     setBusy(false);
+  }
+
+  async function tryCloseModal() {
+    if (!modal) return;
+    const dirty = (modal.title || modal.notes || modal.lieu);
+    if (dirty) {
+      const ok = await askConfirm({title:'Fermer sans enregistrer ?', message:'Les modifications seront perdues.', danger:true, confirmLabel:'Fermer'});
+      if (!ok) return;
+    }
+    setModal(null);
   }
 
   async function markDone(id) {
@@ -11770,7 +11799,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
     setBusy(false);
   }
   async function deleteEvent(id) {
-    if (!window.confirm('Supprimer cet événement ?')) return;
+    if (!(await askConfirm({title:'Supprimer cet événement ?', message:'Cette action est définitive.', danger:true}))) return;
     await fetch('/api/events.php?action=delete', {
       method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
       body: JSON.stringify({id}),
@@ -11778,23 +11807,27 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
     await refresh();
   }
 
-  async function uploadFile(file) {
+  function uploadFile(file) {
     if (!file) return;
     if (!clientId) { showToast && showToast('Enregistre le dossier d\'abord'); return; }
-    const cat = window.prompt('Catégorie : ' + CATEGORIES.map(c => c.k).join(', '), 'autre');
-    if (cat === null) return;
+    setModal({kind:'doc_cat', file, cat:'autre'});
+  }
+
+  async function submitDocUpload() {
+    const m = modal;
+    if (!m || !m.file) return;
     setBusy(true);
     try {
       const fd = new FormData();
       fd.append('client_id', String(clientId));
-      fd.append('category', cat || 'autre');
-      fd.append('file', file);
-      fd.append('file_name', file.name);
+      fd.append('category', m.cat || 'autre');
+      fd.append('file', m.file);
+      fd.append('file_name', m.file.name);
       const r = await fetch('/api/documents.php?action=upload', {
         method:'POST', headers:{'X-Session-Token': token()}, body: fd,
       });
       const d = await r.json();
-      if (d && d.ok) { await refresh(); showToast && showToast('Document ajouté : ' + d.file_name); }
+      if (d && d.ok) { await refresh(); setModal(null); showToast && showToast('Document ajouté : ' + d.file_name); }
       else showToast && showToast((d && d.error) || 'Échec upload');
     } catch (e) { showToast && showToast('Erreur réseau'); }
     setBusy(false);
@@ -11802,7 +11835,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
   }
 
   async function deleteDoc(id, name) {
-    if (!window.confirm('Supprimer ' + name + ' ?')) return;
+    if (!(await askConfirm({title:'Supprimer ce document ?', message: name || '', danger:true}))) return;
     await fetch('/api/documents.php?action=delete', {
       method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()},
       body: JSON.stringify({id}),
@@ -11820,7 +11853,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
       <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginBottom:8}}>Activité chronologique</div>
       <div style={{display:'flex', gap:6, marginBottom:10, flexWrap:'wrap'}}>
         {[['appel','Appel'],['rdv','RDV'],['document','Document'],['note','Note']].map(([k, l]) => (
-          <button key={k} type="button" disabled={busy} onClick={() => createEvent(k)}
+          <button key={k} type="button" disabled={busy} onClick={() => openCreateEvent(k)}
             style={{flex:'1 1 calc(50% - 3px)', padding:'9px 8px', background:'#FFF3EC', border:'1.5px solid #C9A87A', borderRadius:8,
                     color:'#8B5E3C', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer',
                     display:'flex', alignItems:'center', justifyContent:'center', gap:6}}>
@@ -11883,6 +11916,88 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
           </div>
         );
       })}
+
+      {/* M/2026/04/30/46 — EventModal + DocCategoryModal stylees (suppression window.prompt). */}
+      {modal && modal.kind === 'event_create' && (
+        <div onClick={tryCloseModal}
+          style={{position:'fixed', inset:0, zIndex:9999, background:'rgba(42,32,24,.42)', display:'flex', alignItems:'flex-end', justifyContent:'center', animation:'fadeIn 200ms ease'}}>
+          <div onClick={e => e.stopPropagation()}
+            style={{width:'100%', maxWidth:460, maxHeight:'90vh', overflowY:'auto', background:'#FDFAF7', borderRadius:'14px 14px 0 0', boxShadow:'0 -10px 40px rgba(42,32,24,.25)', padding:'18px 18px calc(18px + env(safe-area-inset-bottom, 0px))'}}>
+            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:22, fontWeight:600, color:'#5C3B1E', marginBottom:14, paddingBottom:8, borderBottom:'2px solid #A07842', display:'inline-block'}}>
+              {modal.type === 'appel' ? 'Nouvel appel' : modal.type === 'rdv' ? 'Nouveau RDV' : modal.type === 'document' ? 'Nouveau document' : 'Nouvelle note'}
+            </div>
+            <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginTop:8, marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Titre</label>
+            <input value={modal.title} onChange={e => setModal({...modal, title: e.target.value})}
+              placeholder={modal.type === 'note' ? 'Titre court' : 'Titre — ' + TYPE_LABELS[modal.type]} autoFocus
+              style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none'}}/>
+            {modal.type !== 'note' && (
+              <>
+                <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:8, marginTop:10}}>
+                  <div>
+                    <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Date</label>
+                    <input type="date" value={modal.date} onChange={e => setModal({...modal, date: e.target.value})}
+                      style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none'}}/>
+                  </div>
+                  <div>
+                    <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Heure</label>
+                    <input type="time" value={modal.time} onChange={e => setModal({...modal, time: e.target.value})}
+                      style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none'}}/>
+                  </div>
+                </div>
+                {modal.type === 'rdv' && (
+                  <>
+                    <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginTop:10, marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Lieu</label>
+                    <input value={modal.lieu} onChange={e => setModal({...modal, lieu: e.target.value})}
+                      placeholder="Adresse / Visioconférence / Bureau"
+                      style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none'}}/>
+                  </>
+                )}
+              </>
+            )}
+            <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginTop:10, marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Notes</label>
+            <textarea value={modal.notes} onChange={e => setModal({...modal, notes: e.target.value})}
+              placeholder="Détails, contexte, conclusions…"
+              style={{width:'100%', boxSizing:'border-box', minHeight:70, padding:'9px 11px', borderRadius:8, fontSize:13, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none', resize:'vertical'}}/>
+            <div style={{display:'flex', gap:8, marginTop:14}}>
+              <button type="button" onClick={tryCloseModal} disabled={busy}
+                style={{flex:1, padding:'10px 14px', background:'transparent', border:'1.5px solid #D9C9A8', color:'#8B7F6E', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button type="button" onClick={submitCreateEvent} disabled={busy || !modal.title.trim()}
+                style={{flex:1, padding:'10px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', border:'none', color:'#fff', borderRadius:8, fontSize:13, fontWeight:700, cursor: (busy || !modal.title.trim()) ? 'not-allowed' : 'pointer', opacity: (busy || !modal.title.trim()) ? .55 : 1, fontFamily:'inherit'}}>
+                {busy ? '…' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modal && modal.kind === 'doc_cat' && (
+        <div onClick={() => setModal(null)}
+          style={{position:'fixed', inset:0, zIndex:9999, background:'rgba(42,32,24,.42)', display:'flex', alignItems:'flex-end', justifyContent:'center', animation:'fadeIn 200ms ease'}}>
+          <div onClick={e => e.stopPropagation()}
+            style={{width:'100%', maxWidth:460, maxHeight:'90vh', overflowY:'auto', background:'#FDFAF7', borderRadius:'14px 14px 0 0', boxShadow:'0 -10px 40px rgba(42,32,24,.25)', padding:'18px 18px calc(18px + env(safe-area-inset-bottom, 0px))'}}>
+            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:22, fontWeight:600, color:'#5C3B1E', marginBottom:14, paddingBottom:8, borderBottom:'2px solid #A07842', display:'inline-block'}}>
+              Catégorie du document
+            </div>
+            <div style={{fontSize:12, color:'#8B7F6E', marginBottom:10}}>{modal.file && modal.file.name}</div>
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:6}}>
+              {CATEGORIES.map(c => (
+                <button key={c.k} type="button" onClick={() => setModal({...modal, cat: c.k})}
+                  style={{padding:'9px 10px', borderRadius:8, border: modal.cat === c.k ? '2px solid #8B5E3C' : '1.5px solid #D9C9A8', background: modal.cat === c.k ? '#FFF3EC' : '#fff', color:'#5C3B1E', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', textAlign:'left'}}>
+                  {c.l}
+                </button>
+              ))}
+            </div>
+            <div style={{display:'flex', gap:8, marginTop:14}}>
+              <button type="button" onClick={() => setModal(null)} disabled={busy}
+                style={{flex:1, padding:'10px 14px', background:'transparent', border:'1.5px solid #D9C9A8', color:'#8B7F6E', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button type="button" onClick={submitDocUpload} disabled={busy}
+                style={{flex:1, padding:'10px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', border:'none', color:'#fff', borderRadius:8, fontSize:13, fontWeight:700, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? .55 : 1, fontFamily:'inherit'}}>
+                {busy ? '…' : 'Uploader'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
