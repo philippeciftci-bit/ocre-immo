@@ -2920,17 +2920,48 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
   // STAGE_TITLES_BY_PROFIL). Tous profils tombent sur le rendu 14 blocs.
 
   // M/2026/04/29/19 — Maquette V1 14 blocs ordonnés (applicable a tous profils depuis M/37).
-  const sectionTitle = (n, label) => (
-    <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.8, marginTop:18, marginBottom:10}}>
-      <span style={{display:'inline-block', minWidth:22, color:'#A8896A'}}>{String(n).padStart(2,'0')}</span>{label}
-    </div>
-  );
+  // M/2026/04/30/12 — refonte headers sous-sections : badge ocre rond #A07842 + titre
+  // Cormorant Garamond 22pt fontWeight 600 + sous-titre uppercase letterSpacing optionnel.
+  // Ligne separatrice fine 1px #E8DDC9 au-dessus de chaque bloc a partir du 02 (isFirst=false).
+  const sectionTitle = (n, label, subtitle) => {
+    const isFirst = n === 1;
+    return (
+      <div style={{
+        marginTop: isFirst ? 0 : 32,
+        paddingTop: isFirst ? 0 : 24,
+        borderTop: isFirst ? 'none' : '1px solid #E8DDC9',
+        marginBottom: 16,
+      }}>
+        <div style={{display:'flex', alignItems:'center', gap:14}}>
+          <div style={{
+            flex:'0 0 auto', width:32, height:32, borderRadius:'50%',
+            background:'#A07842', color:'#FFFFFF',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontFamily:"'DM Sans', -apple-system, sans-serif",
+            fontSize:13, fontWeight:600, letterSpacing:0.5,
+            boxShadow:'0 1px 3px rgba(160, 120, 66, 0.25)',
+          }}>{String(n).padStart(2,'0')}</div>
+          <div style={{flex:1, minWidth:0}}>
+            <div style={{
+              fontFamily:"'Cormorant Garamond', Georgia, serif",
+              fontSize:22, color:'#5C3B1E', lineHeight:1.1, fontWeight:600,
+            }}>{label}</div>
+            {subtitle && (
+              <div style={{
+                fontFamily:"'DM Sans', -apple-system, sans-serif",
+                fontSize:11, color:'#8B7F6E',
+                letterSpacing:1.5, textTransform:'uppercase', marginTop:2,
+              }}>{subtitle}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
   return (
     <>
       {/* === BLOC 01 — LOCALISATION === */}
-      <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.8, marginTop:4, marginBottom:10}}>
-        <span style={{display:'inline-block', minWidth:22, color:'#A8896A'}}>01</span>Localisation
-      </div>
+      {sectionTitle(1, 'Localisation')}
       {/* M/2026/04/30/9 — Bloc 01 v2 layout :
           L1 grid 2 cols [PaysCompactButton 100px | AddressAutocomplete flex:1]
           L2 grid 3 cols [CP | Ville | Quartier]
@@ -3041,7 +3072,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           )}
 
           {/* === BLOC 03 — STATUT FONCIER · JURIDIQUE === */}
-          {sectionTitle(3, 'Statut foncier · juridique')}
+          {sectionTitle(3, 'Statut foncier', 'Juridique')}
           <PillRadio label="Type de titre" value={bien.statut_foncier} onChange={v => setB('statut_foncier', v)} options={V4_TYPES_TITRE}/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <Field label="N° TF" value={bien.titre_num} onChange={v => setB('titre_num', v)} placeholder="Ex: 12345/M"/>
