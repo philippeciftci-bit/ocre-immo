@@ -3709,7 +3709,9 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
       </div>
       {/* M/2026/04/29/43 — Lat/Lng grid supprime franchement (state gps_lat/lng preserve, consomme par MapPicker, juste invisible UI). */}
       <MapPicker bien={bien} setB={setB} setBMany={setBMany} dossierId={dossierId} showToast={showToast}/>
-      <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:8, marginBottom:10}}>
+      {/* M/2026/04/30/36 — grid 2 cols egales (au lieu de 2fr 1fr) : Confidentialite + Distance aeroport
+          partagent la meme ligne avec largeur identique. */}
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10}}>
         <SelectPopup label="Confidentialité adresse" value={bien.confidentialite_adresse} onChange={v => setB('confidentialite_adresse', v)} options={V4_CONFIDENTIALITE}/>
         <Field label="Distance aéroport (km)" type="number" value={bien.distance_aeroport_km} onChange={v => setB('distance_aeroport_km', v)}/>
       </div>
@@ -4415,15 +4417,17 @@ function DistrictPicker({ville, pays, value, onChange, fallbackList}) {
     : [];
 
   return (
-    <div style={{flex:1}}>
+    <div style={{flex:1, minWidth:0}}>
       <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Quartier</label>
       <div onClick={() => ville && setOpen(true)}
         style={{padding:'9px 11px', borderRadius:8, border:'1.5px solid ' + (value ? '#BBA88B' : '#E8DDD0'),
                 background: !ville ? '#F4EEE6' : (value ? '#FFFCF5' : '#FDFAF7'),
                 fontSize:14, cursor: ville ? 'pointer' : 'not-allowed', color: value ? '#2A2018' : '#B5A78F',
-                fontFamily:'inherit', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-        <span>{value || (ville ? 'Choisir un quartier…' : 'Saisir d\'abord la ville')}</span>
-        <span style={{color:'#8B7F6E'}}>▾</span>
+                fontFamily:'inherit', display:'flex', justifyContent:'space-between', alignItems:'center', minHeight:38, gap:6, minWidth:0}}>
+        {/* M/2026/04/30/36 — placeholder raccourci 'Choisir…' (au lieu de 'Choisir un quartier…')
+            + ellipsis si saisie/valeur depasse la cellule grid (uniformise vs CodePostal/Ville). */}
+        <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{value || (ville ? 'Choisir…' : 'Saisir d\'abord la ville')}</span>
+        <span style={{color:'#8B7F6E', flexShrink:0}}>▾</span>
       </div>
       {open && (
         <div className="bsheet-overlay" onClick={() => setOpen(false)}>
