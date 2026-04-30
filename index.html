@@ -277,6 +277,8 @@ input, select, textarea, button { font-size:13px }
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<!-- M/2026/04/30/53 — SheetJS pour export XLSX multi-onglets cote client (navigator.share natif iOS). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -6944,102 +6946,7 @@ function PillIconButton({icon, onClick, title, active, style}) {
     </button>
   );
 }
-// M/2026/04/29/33 — DriveConnectCard : carte modal sauvegarde, statut connecte/non-connecte.
-function DriveConnectCard({showToast}) {
-  const [status, setStatus] = React.useState({connected: false, loading: true});
-  const [busy, setBusy] = React.useState(false);
-  const token = () => localStorage.getItem('ocre_token') || '';
-  React.useEffect(() => {
-    fetch('/api/drive_oauth.php?action=status', {headers:{'X-Session-Token': token()}})
-      .then(r => r.json()).then(j => setStatus({...(j || {}), loading: false}))
-      .catch(() => setStatus({connected: false, loading: false}));
-  }, []);
-  function connect() { window.location = '/api/drive_oauth.php?action=connect'; }
-  async function syncNow() {
-    setBusy(true);
-    try {
-      const r = await fetch('/api/drive_sync.php?action=now', {method:'POST', headers:{'X-Session-Token': token()}}).then(r => r.json());
-      if (r && r.ok) showToast && showToast('Sync Drive ✓');
-      else showToast && showToast(r.error || 'Sync échouée');
-      const s = await fetch('/api/drive_oauth.php?action=status', {headers:{'X-Session-Token': token()}}).then(r => r.json());
-      setStatus({...(s || {}), loading: false});
-    } catch (e) { showToast && showToast('Erreur réseau'); }
-    setBusy(false);
-  }
-  async function disconnect() {
-    if (!window.confirm('Déconnecter Google Drive ?')) return;
-    setBusy(true);
-    try {
-      await fetch('/api/drive_oauth.php?action=disconnect', {method:'POST', headers:{'X-Session-Token': token()}}).then(r => r.json());
-      setStatus({connected: false, loading: false});
-      showToast && showToast('Drive déconnecté');
-    } catch (e) {}
-    setBusy(false);
-  }
-  if (status.loading) return null;
-  // M/2026/04/30/24 — si l OAuth n est pas configure cote serveur (secrets absents),
-  // afficher le bouton en mode 'Bientot disponible' au lieu d ouvrir un connect qui 503.
-  if (!status.connected) {
-    const oauthOk = status.oauth_configured !== false;
-    if (!oauthOk) {
-      return (
-        <div style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', marginBottom:10, borderRadius:10, border:'1.5px solid #E8DDD0', background:'#F5EFE6', color:'#8B7F6E', fontFamily:'inherit', textAlign:'left', cursor:'not-allowed', opacity:0.7}}
-          title="Intégration Google Drive en cours de configuration">
-          <span style={{width:32, height:32, background:'#C9B79A', color:'#fff', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07L11.76 5.24"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07L12.24 19"/></svg>
-          </span>
-          <div style={{flex:1, minWidth:0}}>
-            <div style={{fontSize:13, fontWeight:700}}>Connecter Google Drive
-              <span style={{marginLeft:6, padding:'1px 7px', borderRadius:8, background:'#E0CDAE', color:'#5C3B1E', fontSize:10, fontWeight:700, letterSpacing:.3}}>Bientôt</span>
-            </div>
-            <div style={{fontSize:11}}>Sync auto hebdo en cours de configuration</div>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <button onClick={connect}
-        style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', marginBottom:10, borderRadius:10, border:'1.5px solid #8B5E3C', background:'#FBF1E4', color:'#5C3B1E', cursor:'pointer', fontFamily:'inherit', textAlign:'left'}}>
-        <span style={{width:32, height:32, background:'#8B5E3C', color:'#fff', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07L11.76 5.24"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07L12.24 19"/></svg>
-        </span>
-        <div style={{flex:1, minWidth:0}}>
-          <div style={{fontSize:13, fontWeight:700}}>Connecter Google Drive</div>
-          <div style={{fontSize:11, color:'#8B7F6E'}}>Sync auto hebdo (lundi 04 h UTC) du tableau dossiers</div>
-        </div>
-      </button>
-    );
-  }
-  return (
-    <div style={{padding:'12px 14px', marginBottom:10, borderRadius:10, border:'1.5px solid #8B5E3C', background:'#FFF3EC'}}>
-      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:8}}>
-        <span style={{width:32, height:32, background:'#5BA85B', color:'#fff', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </span>
-        <div style={{flex:1, minWidth:0}}>
-          <div style={{fontSize:13, fontWeight:700, color:'#5C3B1E'}}>Drive connecté</div>
-          <div style={{fontSize:11, color:'#8B7F6E', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-            {status.drive_email || '—'}{status.last_sync_at ? ' · dernière sync : ' + new Date(status.last_sync_at).toLocaleString('fr-FR') : ' · pas encore syncé'}
-          </div>
-        </div>
-      </div>
-      <div style={{display:'flex', gap:6}}>
-        <button onClick={syncNow} disabled={busy}
-          style={{flex:1, padding:'8px 10px', borderRadius:8, border:'1.5px solid #8B5E3C', background:'#8B5E3C', color:'#fff', cursor:busy?'wait':'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600}}>
-          {busy ? '⏳ Sync…' : 'Synchroniser maintenant'}
-        </button>
-        <button onClick={disconnect} disabled={busy}
-          style={{padding:'8px 12px', borderRadius:8, border:'1.5px solid #C9B79A', background:'#FFFCF5', color:'#8B7F6E', cursor:busy?'wait':'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600}}>
-          Déconnecter
-        </button>
-      </div>
-      {status.last_sync_status === 'error' && status.last_sync_error && (
-        <div style={{fontSize:11, color:'#DC2626', marginTop:6}}>Dernière erreur : {status.last_sync_error}</div>
-      )}
-    </div>
-  );
-}
-
+// M/2026/04/30/53 — DriveConnectCard supprime franchement (modale teaser supprimee + composant code mort).
 // M/2026/04/29/36 — DossierPicker : bottom-sheet recherche fuzzy + scroll, remplace
 // les <select> natifs dans IntentPreview vocal. Couleurs profil cohérentes avec PROFILS_TINT.
 function DossierPicker({clients, value, onChange, placeholder = '(Aucun dossier)'}) {
@@ -16132,9 +16039,8 @@ function SheetView({onBack, clients, openClient, showToast}) {
   const [density, setDensity] = React.useState(() => localStorage.getItem('ocre.sheet.density') || 'normal');
   // M/2026/04/30/25 — lightbox unifiee (M/18) au lieu de SheetPhotosModal pour la colonne PHOTOS.
   const [lightboxState, setLightboxState] = React.useState(null); // {photos: [], startIndex: 0}
-  // V50 — modal teaser première utilisation Sheet.
-  const [teaserOpen, setTeaserOpen] = React.useState(() => !localStorage.getItem('ocre.sheet.first_seen'));
-  function dismissTeaser() { localStorage.setItem('ocre.sheet.first_seen', '1'); setTeaserOpen(false); }
+  // M/2026/04/30/53 — V50 modal teaser supprimee franchement. Export direct XLSX + navigator.share natif iOS.
+  const [exporting, setExporting] = React.useState(false);
   React.useEffect(() => { localStorage.setItem('ocre.sheet.density', density); }, [density]);
   const dens = SHEET_DENSITIES[density] || SHEET_DENSITIES.normal;
   const filtered = (clients || []).filter(c => {
@@ -16155,39 +16061,94 @@ function SheetView({onBack, clients, openClient, showToast}) {
     return true;
   });
   const totalCount = filtered.length;
-  function exportCSV() {
-    const headers = ['Client','Tel','Email','Photos','Type','Localisation','Surface','Pieces','SDB','Equipements','Prix demande','Prix accepte','Periode','Frais %','Frais montant','Statut','Recu %','Etape','Score','Dernier contact','Prochaine action','Taches'];
-    const lines = [headers.join(';')];
-    filtered.forEach(c => {
+  // M/2026/04/30/53 — Export XLSX multi-onglets via SheetJS + navigator.share natif iOS.
+  // Onglet "Tous" + onglets par profil (Vendeur/Acheteur/Locataire/Bailleur/Investisseur/Curieux).
+  function buildSheetRows(rows) {
+    const header = ['Nom complet','Téléphone','Email','Profil','Type bien','Ville','Quartier','Budget','Devise','Surface (m²)','Statut','Date création','Date modif','Notes'];
+    const aoa = [header];
+    rows.forEach(c => {
       const fin = c.financement || {};
       const bien = c.bien || {};
       const plan = Array.isArray(c.payment_plan) ? c.payment_plan : [];
-      const recv = Array.isArray(c.received_payments) ? c.received_payments : [];
       const planTot = plan.reduce((s, l) => s + (Number(l.amount) || 0), 0);
-      const recvTot = recv.reduce((s, l) => s + (Number(l.amount) || 0), 0);
-      const pct = planTot > 0 ? Math.round((recvTot / planTot) * 100) : 0;
-      const row = [
+      const fmtDate = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR'); };
+      const statut = c.archived ? 'Archivé' : (c.is_published ? 'Publié' : (c.is_draft ? 'Brouillon' : '—'));
+      aoa.push([
         ((c.prenom || '') + ' ' + (c.nom || '')).trim() || c.societe_nom || '—',
-        c.tel || '', c.email || '',
-        aggregatePhotos(c).length,
-        bien.type || '', [bien.ville, bien.quartier].filter(Boolean).join(' · '),
-        bien.surface ? bien.surface + ' m²' : '',
-        bien.pieces || '', bien.sdb || '',
-        Array.isArray(bien.equipements) ? bien.equipements.join('|') : '',
-        fmtSheetMoney(fin.prix_affiche || c.prix_affiche || planTot),
-        '—', c.prix_periode || 'Total',
-        fin.frais_pct || '', fmtSheetMoney(fin.frais_montant || ''),
-        recvTot >= planTot && planTot > 0 ? 'Soldé' : (recvTot > 0 ? 'Partiel' : 'Devis'),
-        pct + ' %', '', '', '', '', '',
-      ];
-      lines.push(row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';'));
+        c.tel || '',
+        c.email || '',
+        c.projet || '—',
+        bien.type || '',
+        bien.ville || '',
+        bien.quartier || '',
+        Number(fin.prix_affiche || c.prix_affiche || planTot) || '',
+        c.devise || (bien.pays === 'MA' ? 'MAD' : 'EUR'),
+        Number(bien.surface || bien.surface_hab) || '',
+        statut,
+        fmtDate(c.created_at),
+        fmtDate(c.updated_at || c.modified_at),
+        (c.notes || c.remarques || '').slice(0, 500),
+      ]);
     });
-    const blob = new Blob(['\ufeff' + lines.join('\n')], {type:'text/csv;charset=utf-8'});
+    return aoa;
+  }
+  async function exportDossiersToXLSX() {
+    if (!window.XLSX) { showToast && showToast('Bibliothèque XLSX non chargée'); return null; }
+    if (!filtered || filtered.length === 0) {
+      await askConfirm({title:'Aucun dossier à exporter', message:'La sélection courante est vide.', confirmLabel:'OK'});
+      return null;
+    }
+    const wb = window.XLSX.utils.book_new();
+    const PROFILS = ['Vendeur','Acheteur','Locataire','Bailleur','Investisseur','Curieux'];
+    const sheets = [{name:'Tous', rows: filtered}];
+    PROFILS.forEach(p => {
+      const rows = filtered.filter(c => c.projet === p);
+      if (rows.length > 0) sheets.push({name: p, rows});
+    });
+    sheets.forEach(s => {
+      const aoa = buildSheetRows(s.rows);
+      const ws = window.XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [{wch:24},{wch:16},{wch:26},{wch:14},{wch:16},{wch:18},{wch:18},{wch:14},{wch:8},{wch:12},{wch:12},{wch:12},{wch:12},{wch:40}];
+      ws['!autofilter'] = {ref: 'A1:N1'};
+      window.XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0, 31));
+    });
+    const buf = window.XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    return new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }
+  async function shareOrDownloadXLSX(blob, filename) {
+    if (!blob) return;
+    try {
+      if (navigator.canShare && typeof File !== 'undefined') {
+        const file = new File([blob], filename, {type: blob.type});
+        if (navigator.canShare({files: [file]})) {
+          await navigator.share({
+            files: [file],
+            title: 'Export dossiers Ocre Immo',
+            text: 'Sauvegarde des dossiers — ' + new Date().toLocaleDateString('fr-FR'),
+          });
+          return;
+        }
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'ocre-sheet-' + new Date().toISOString().slice(0, 10) + '.csv';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  async function handleExport() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const blob = await exportDossiersToXLSX();
+      if (blob) {
+        const fname = 'ocre-immo-dossiers-' + new Date().toISOString().slice(0, 10) + '.xlsx';
+        await shareOrDownloadXLSX(blob, fname);
+      }
+    } catch (e) { showToast && showToast('Erreur export'); }
+    setExporting(false);
   }
   const cellStyle = {padding: dens.pad, borderBottom:'1px solid #F0E9DC', borderRight:'1px solid #F0E9DC', fontSize: dens.font, color:'#2A2018', whiteSpace:'nowrap', verticalAlign:'middle', height: dens.row, fontFamily:'inherit'};
   const colHeaderStyle = {padding:'7px 10px', background:'#F5ECD9', fontSize:10, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', color:'#8B7F6E', borderBottom:'1.5px solid #C9B79A', borderRight:'1px solid #E8DDD0', position:'sticky', top: 28, zIndex:3, whiteSpace:'nowrap', textAlign:'left', fontFamily:'inherit'};
@@ -16229,25 +16190,13 @@ function SheetView({onBack, clients, openClient, showToast}) {
             </button>
           ))}
         </div>
-        <button type="button" onClick={exportCSV}
-          style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#FBF1E4', color:'#5C3B1E', borderRadius:8, cursor:'pointer'}}>
-          ↓ Export
-        </button>
-        {/* V51 — téléchargement .csv serveur (auth, contenu complet, BOM UTF-8 Excel). */}
-        <button type="button" onClick={() => {
-            const token = localStorage.getItem('ocre_token') || '';
-            fetch('/api/export_xlsx.php', {headers: {'X-Session-Token': token}})
-              .then(r => r.blob()).then(blob => {
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'ocre-immo-' + new Date().toISOString().slice(0,10) + '.csv';
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-              });
-          }}
-          title="Télécharger tableau complet (iCloud / Fichiers)"
-          style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #8B5E3C', background:'#8B5E3C', color:'#fff', borderRadius:8, cursor:'pointer'}}>
-          ↓ xlsx
+        {/* M/2026/04/30/53 — bouton unique Exporter Excel (suppression franche 2 boutons CSV/xlsx
+            serveur + modale teaser Sauvegarde). XLSX multi-onglets cote client + navigator.share natif iOS. */}
+        <button type="button" onClick={handleExport} disabled={exporting}
+          title="Exporter le tableau (Excel · partage natif iOS)"
+          style={{padding:'5px 12px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'1.5px solid #8B5E3C', background:'#8B5E3C', color:'#fff', borderRadius:8, cursor: exporting ? 'wait' : 'pointer', display:'inline-flex', alignItems:'center', gap:6, opacity: exporting ? .7 : 1}}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          {exporting ? 'Export…' : 'Exporter Excel'}
         </button>
       </div>
       {/* Tableau */}
@@ -16521,54 +16470,8 @@ function SheetView({onBack, clients, openClient, showToast}) {
         <PhotoLightbox photos={lightboxState.photos} startIndex={lightboxState.startIndex}
           onClose={() => setLightboxState(null)}/>
       )}
-      {/* V51 — modal complète Sheet première utilisation : xlsx actif + Drive bientôt. */}
-      {teaserOpen && (
-        <div onClick={dismissTeaser} style={{position:'fixed', inset:0, background:'rgba(20,12,4,0.55)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
-          <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:16, padding:22, maxWidth:420, width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,.4)'}}>
-            <div style={{textAlign:'center', marginBottom:14}}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8B5E3C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/>
-                <polyline points="7 3 7 8 15 8"/>
-              </svg>
-              <h2 style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', margin:'6px 0 6px'}}>Sauvegarde de ton tableau</h2>
-              <p style={{fontSize:12.5, color:'#5C3B1E', margin:0, lineHeight:1.45}}>Tu peux sauvegarder ton tableau de dossiers en dehors de l'application :</p>
-            </div>
-            <button onClick={() => {
-                const token = localStorage.getItem('ocre_token') || '';
-                const url = '/api/export_xlsx.php?t=' + encodeURIComponent(token);
-                // Auth via header impossible pour download direct : fallback fetch→blob→link.
-                fetch('/api/export_xlsx.php', {headers: {'X-Session-Token': token}})
-                  .then(r => r.blob()).then(blob => {
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = 'ocre-immo-' + new Date().toISOString().slice(0,10) + '.csv';
-                    a.click();
-                    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-                  });
-              }}
-              style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', marginBottom:8, borderRadius:10, border:'1.5px solid #8B5E3C', background:'#FBF1E4', color:'#5C3B1E', cursor:'pointer', fontFamily:'inherit', textAlign:'left'}}>
-              <span style={{width:32, height:32, background:'#8B5E3C', color:'#fff', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </span>
-              <div style={{flex:1, minWidth:0}}>
-                <div style={{fontSize:13, fontWeight:700}}>Télécharger .csv (Excel-compatible)</div>
-                <div style={{fontSize:11, color:'#8B7F6E'}}>Sauvegarde manuelle dans Fichiers / iCloud Drive</div>
-              </div>
-            </button>
-            <DriveConnectCard showToast={showToast}/>
-            <p style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', margin:'0 0 14px', textAlign:'center', lineHeight:1.5}}>
-              Tes données sont déjà protégées par 3 niveaux de sauvegarde serveur automatiques.
-            </p>
-            <div style={{textAlign:'center'}}>
-              <button onClick={dismissTeaser}
-                style={{padding:'10px 22px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
-                Plus tard
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* M/2026/04/30/53 — modale Sauvegarde de ton tableau supprimee franchement.
+          Export direct via bouton Exporter Excel + navigator.share natif iOS. */}
     </div>
   );
 }
