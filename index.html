@@ -758,6 +758,20 @@ const AUTHENTICITE_RIAD = ['Authentique','Rénové','Néo-riad'];
 const FIELD_FILLED = {border:'1.5px solid #BBA88B', background:'#FFFCF5'};
 const FIELD_EMPTY  = {border:'1.5px solid #E8DDD0', background:'#FDFAF7'};
 
+// M/2026/04/30/11 — helper unique pour formater l adresse du bien (Section II Bloc 01).
+// Source de verite : bien.* (jamais le c.ville top-level, qui represente la ville de
+// residence du contact). Utilise par ClientRow + DossierPdfView + shared.html + autres
+// vues qui affichent une adresse de bien.
+function formatAdresseBien(bien) {
+  if (!bien || typeof bien !== 'object') return '';
+  const parts = [];
+  if (bien.adresse) parts.push(bien.adresse);
+  if (bien.quartier) parts.push(bien.quartier);
+  if (bien.ville) parts.push(bien.ville);
+  if (bien.pays) parts.push((typeof PAYS_NOM !== 'undefined' && PAYS_NOM[bien.pays]) || bien.pays);
+  return parts.filter(Boolean).join(', ');
+}
+
 function Field({label, value, onChange, type='text', placeholder='', style={}, autoComplete, name, inputMode, autoCapitalize, ...rest}) {
   const filled = (value !== undefined && value !== null && String(value).trim() !== '');
   // V17.1 fix-ux-1 : ajout box-sizing:border-box → plus d'overflow iOS sur inputs avec padding.
@@ -2924,7 +2938,14 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           Picker Quartier z-index >= 1000 (au-dessus carte Leaflet panes 200-700). */}
       <div style={{display:'grid', gridTemplateColumns:'100px 1fr', gap:8, marginBottom:10, alignItems:'flex-end'}}>
         <PaysCompactButton value={bien.pays} onChange={v => setB('pays', v)}/>
-        <AddressAutocomplete label="Adresse" value={bien.adresse} onChange={v => setB('adresse', v)}
+        <AddressAutocomplete label="Adresse" value={bien.adresse} onChange={v => {
+            setB('adresse', v);
+            // M/2026/04/30/11 — adresse vidée -> reset gps_source pour reactiver le zoom
+            // progressif (pays/ville/quartier) si l utilisateur efface une adresse pickee.
+            if (!v || !v.trim()) {
+              if (bien.gps_source === 'autocomplete') setB('gps_source', '');
+            }
+          }}
           country={bien.pays}
           autoComplete="street-address" name="bien-street-address"
           style={{marginBottom:0}}
@@ -3887,12 +3908,16 @@ function MapPicker({bien, setB, showToast}) {
 
   // V18.0 + V18.8 — Auto-centrage cascade : pays z6 → ville z12 → quartier z14 → adresse z17 (flyTo 1s).
   // N'écrase JAMAIS gps_source='manual' ou 'gps' (drag, clic, géoloc utilisateur).
+  // M/2026/04/30/11 — ajoute 'autocomplete' au guard : si l adresse a ete pickee via
+  // AddressAutocomplete (Nominatim/Google Places), le marker est deja precis -> ne pas
+  // recadrer sur pays/ville/quartier. Skip aussi si carte fermee (economie requetes).
   React.useEffect(() => {
+    if (!mapOpen) return;
     const pays = (bien.pays || '').trim();
     const ville = (bien.ville || '').trim();
     const quartier = (bien.quartier || '').trim();
     if (!pays) return;
-    if (bien.gps_source === 'manual' || bien.gps_source === 'gps') return;
+    if (['manual', 'gps', 'autocomplete'].includes(bien.gps_source)) return;
     let cancelled = false;
     const t = setTimeout(async () => {
       const lr = leafletRef.current;
@@ -3931,7 +3956,7 @@ function MapPicker({bien, setB, showToast}) {
       }
     }, 600);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [bien.ville, bien.pays, bien.quartier]);
+  }, [bien.ville, bien.pays, bien.quartier, mapOpen]);
 
   // V18.8 — Ma position + reverse geocoding Nominatim → pré-remplit adresse/ville/quartier/CP/pays.
   async function useMyLocation() {
@@ -13369,7 +13394,10 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     ? bien.types
     : (bien.type ? [bien.type] : []);
   const typeBien = typesArr.join(' · ');
-  const villeQuartier = [bien.ville || c.ville, bien.quartier].filter(Boolean).join(' · ');
+  // M/2026/04/30/11 — supprime le fallback c.ville (ville residence contact != ville bien).
+  // Source de verite unique : bien.* defini en Section II Bloc 01. Aligne avec
+  // formatAdresseBien() utilise dans la fiche dossier + carnet PDF + shared.html.
+  const villeQuartier = [bien.ville, bien.quartier].filter(Boolean).join(' · ');
   const currency = bien.pays === 'MA' ? 'MAD' : '€';
 
   // V18.22 — thumbnail photo bien 1ère + badge +N si plusieurs.
