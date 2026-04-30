@@ -1015,6 +1015,59 @@ function usePopoverAutoClose(isOpen, setOpen, popoverRef) {
   }, [isOpen]);
 }
 
+// M/2026/04/30/26 — auto-logout securite apres 30 min d inactivite (28 min warning).
+// Ecoute events globaux (mousemove/keydown/touchstart/scroll/click/touchmove) avec
+// debounce 1s. Modale askConfirm M/14 a 28 min. Si pas de reaction -> logout 2 min apres.
+const AUTO_LOGOUT_CONFIG = {warningAt: 28 * 60 * 1000, logoutAt: 30 * 60 * 1000, enabled: true};
+function useInactivityLogout(logoutFn) {
+  const lastActivityRef = React.useRef(Date.now());
+  const debounceRef = React.useRef(null);
+  const checkRef = React.useRef(null);
+  const warnedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!AUTO_LOGOUT_CONFIG.enabled || typeof logoutFn !== 'function') return;
+    function bump() {
+      if (debounceRef.current) return; // debounce 1s sur les events haute frequence.
+      debounceRef.current = setTimeout(() => { debounceRef.current = null; }, 1000);
+      lastActivityRef.current = Date.now();
+      warnedRef.current = false;
+    }
+    const events = ['mousemove', 'keydown', 'touchstart', 'touchmove', 'scroll', 'click'];
+    events.forEach(e => window.addEventListener(e, bump, {passive: true}));
+    async function tick() {
+      const idleMs = Date.now() - lastActivityRef.current;
+      if (idleMs >= AUTO_LOGOUT_CONFIG.logoutAt) {
+        try { await logoutFn(); } catch (e) {}
+        return;
+      }
+      if (idleMs >= AUTO_LOGOUT_CONFIG.warningAt && !warnedRef.current) {
+        warnedRef.current = true;
+        const stay = await askConfirm({
+          title: 'Toujours là ?',
+          message: 'Tu es inactif depuis 28 minutes. Tu seras déconnecté automatiquement dans 2 minutes pour protéger tes données.',
+          confirmLabel: 'Rester connecté',
+          cancelLabel: 'Se déconnecter',
+          danger: false,
+        });
+        if (stay) {
+          // Reset timer (l utilisateur a confirme via le tap modale = activite).
+          lastActivityRef.current = Date.now();
+          warnedRef.current = false;
+        } else {
+          try { await logoutFn(); } catch (e) {}
+        }
+      }
+    }
+    checkRef.current = setInterval(tick, 15000); // verifie toutes les 15s
+    return () => {
+      events.forEach(e => window.removeEventListener(e, bump));
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (checkRef.current) clearInterval(checkRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
 // M/2026/04/30/16 — verrou global lightbox/modale plein ecran : empêche la propagation
 // d un swipe (ClientRow swipe-delete) quand une modale capture les gestures au-dessus.
 // Compteur via document.body.dataset.ocreLightboxCount + dispatch CustomEvent.
@@ -7881,6 +7934,8 @@ function App() {
     localStorage.removeItem('ocre_user');
     window.location = '/login/';
   }
+  // M/2026/04/30/26 — auto-logout 30 min inactivite (warning a 28 min via askConfirm).
+  useInactivityLogout(logout);
 
   // V18.17 — promote staged → liste principale + highlight ocre 3s.
   async function promoteStaged(id) {
