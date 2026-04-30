@@ -222,6 +222,49 @@ header('Content-Type: text/html; charset=utf-8');
     .page { box-shadow: none; margin: 0; width: 210mm; height: 297mm; min-height: 297mm; padding: 14mm 14mm 12mm; }
   }
 
+  /* M/2026/04/30/52 — responsive iPhone/iPad (capture IMG_4026 montrait debordement A4 sur iPhone). */
+  @media screen and (max-width: 480px) {
+    body, html { background: #fff; }
+    .pages { padding: 8px 0; }
+    .page {
+      width: 100% !important;
+      max-width: 100vw !important;
+      min-height: auto !important;
+      margin: 0 0 12px;
+      padding: 14px 14px 16px !important;
+      box-shadow: 0 1px 6px rgba(0,0,0,.05);
+      overflow-x: hidden;
+    }
+    .mosaic {
+      grid-template-columns: 1fr 1fr !important;
+      grid-template-rows: auto !important;
+      height: auto !important;
+      gap: 6px !important;
+      margin: 8mm 0 6mm;
+    }
+    .mosaic .m1 { grid-column: 1 / span 2 !important; grid-row: auto !important; aspect-ratio: 16 / 10; }
+    .mosaic .m2, .mosaic .m3, .mosaic .m4, .mosaic .m5 { grid-column: auto !important; grid-row: auto !important; aspect-ratio: 4 / 3; }
+    .cartouche { padding: 14px 12px !important; margin: 0 0 12px; }
+    .cartouche-title { font-size: 22px !important; margin-bottom: 12px !important; }
+    .cover-foot { grid-template-columns: 1fr !important; gap: 12px !important; padding-top: 12px; }
+    .cover-foot .price, .cover-foot .agent { text-align: left !important; }
+    .cover-foot .price .amount { font-size: 24px !important; }
+    .brand-lg .ocre-mark { font-size: 22px !important; }
+    .brand-lg .immo-mark { font-size: 26px !important; }
+    .ed-title { font-size: 24px !important; margin: 2mm 0 4mm !important; }
+    .runhead, .runfoot { font-size: 7px !important; letter-spacing: 1.5px !important; padding: 0 0 8px; }
+    .runfoot { position: static !important; margin-top: 12px; }
+  }
+  @media screen and (min-width: 481px) and (max-width: 768px) {
+    /* iPad portrait : largeur centree confortable, evite scroll horizontal. */
+    .pages { padding: 14px 0; }
+    .page {
+      width: 96vw !important;
+      max-width: 640px !important;
+      padding: 24px !important;
+    }
+  }
+
   /* === Couleurs & typographies utilitaires === */
   .cormorant { font-family: 'Cormorant Garamond', Georgia, serif; }
   .ocre { color: var(--ocre); }
@@ -272,8 +315,17 @@ header('Content-Type: text/html; charset=utf-8');
   .cover-foot .price { text-align: left; }
   .cover-foot .price .amount { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; overflow: visible; white-space: nowrap; padding-right: 4px; }
   .cover-foot .price .amount b { font-weight: 700; }
-  /* M/2026/04/30/22 — visibilite complete du symbole devise : pas de clipping. */
-  .devise-symbol { display: inline-block; padding-left: 2px; padding-right: 4px; overflow: visible; white-space: nowrap; }
+  /* M/2026/04/30/22 — visibilite complete du symbole devise : pas de clipping.
+     M/2026/04/30/52 — font-family fallback DM Sans force (Cormorant Garamond peut manquer
+     le glyphe € sur Safari iOS / sidebearing negatif). Test MAD/USD/GBP coherent. */
+  .devise-symbol {
+    display: inline-block;
+    padding: 0 4px 0 3px;
+    overflow: visible;
+    white-space: nowrap;
+    font-family: 'DM Sans', 'Helvetica Neue', system-ui, -apple-system, sans-serif !important;
+    font-weight: 600;
+  }
   .cover-foot .price .hon { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
   .cover-foot .center-mark { text-align: center; font-family: 'Cormorant Garamond', serif; font-size: 13px; letter-spacing: 4px; color: var(--ocre); }
   .cover-foot .center-mark .sub { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
