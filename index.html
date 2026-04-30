@@ -11771,6 +11771,117 @@ function PdfBottomBar({onBack, showPrice, setShowPrice, showAddress, setShowAddr
 }
 
 // M/2026/04/30/8 — modale Partager centree ecran (pas bottom-sheet) avec recap des 3 choix.
+// M/2026/04/30/30 — ShareDossierModal : modale partage swipe droit cards dossiers.
+// 3 toggles interactifs (Masquer prix/adresse/identite) + Partager (POST share_links_v20
+// + navigator.share iOS) + Annuler. Reutilise pattern visuel PdfShareModal M/25 mais avec
+// state interne (interactive). useLightboxLock M/30/16 hérité pour bloquer swipe-delete
+// arriere-plan.
+function ShareDossierModal({client, onClose, showToast}) {
+  useLightboxLock(true);
+  const [hidePrice, setHidePrice] = React.useState(false);
+  const [hideAddress, setHideAddress] = React.useState(false);
+  const [hideIdentity, setHideIdentity] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const token = () => localStorage.getItem('ocre_token') || '';
+  const profilLabel = ((client && (client.projet || client.profil_type)) || '').toLowerCase() || 'contrepartie';
+  function buildHideParams() {
+    const p = [];
+    if (hidePrice) p.push('hide_price=1');
+    if (hideAddress) p.push('hide_address=1');
+    if (hideIdentity) p.push('hide_identity=1');
+    return p.join('&');
+  }
+  async function send() {
+    if (!client || !client.id) { onClose(); return; }
+    setBusy(true);
+    try {
+      const r = await fetch(API + '/share_links_v20.php?action=create_link', {
+        method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+        body: JSON.stringify({dossier_id: client.id, type: 'public'}),
+      }).then(r => r.json());
+      if (r && r.ok && r.url) {
+        const params = buildHideParams();
+        const fullUrl = params ? (r.url + (r.url.indexOf('?') >= 0 ? '&' : '?') + params) : r.url;
+        const nameLabel = (client.prenom || client.nom)
+          ? ((client.prenom || '') + ' ' + (client.nom || '')).trim()
+          : (client.raison_sociale || 'Dossier Ocre Immo');
+        if (navigator.share) {
+          try { await navigator.share({title: 'Ocre Immo - ' + nameLabel, text: 'Voici le dossier', url: fullUrl}); }
+          catch (e) { /* abort silent */ }
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+          try { await navigator.clipboard.writeText(fullUrl); showToast && showToast('Lien copie'); } catch (e) {}
+        }
+        onClose();
+      } else showToast && showToast((r && r.error) || 'Echec creation lien');
+    } catch (e) { showToast && showToast('Reseau indisponible'); }
+    setBusy(false);
+  }
+  function ToggleRow({label, value, onChange}) {
+    return (
+      <div onClick={() => onChange(!value)}
+        style={{padding:'12px 16px', borderBottom:'1px solid #E8DDC9',
+                display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer'}}>
+        <span style={{fontSize:14, color:'#2D2018'}}>{label}</span>
+        <span aria-pressed={value} style={{
+          width:42, height:24, borderRadius:12, position:'relative', flexShrink:0,
+          background: value ? '#A07842' : '#D9C9A8', transition:'background 150ms ease'}}>
+          <span style={{
+            position:'absolute', top:2, left: value ? 20 : 2, width:20, height:20, borderRadius:10,
+            background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.2)',
+            transition:'left 150ms ease'}}/>
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div onClick={onClose}
+      style={{position:'fixed', inset:0, background:'rgba(20,12,4,0.55)', zIndex:1000,
+              display:'flex', alignItems:'center', justifyContent:'center', padding:20,
+              animation:'pdfShareFade 200ms ease-out'}}>
+      <div onClick={e => e.stopPropagation()}
+        style={{background:'#fff', borderRadius:20, padding:22, maxWidth:460, width:'100%',
+                boxShadow:'0 20px 60px rgba(20,12,4,0.35), 0 4px 12px rgba(20,12,4,0.15)',
+                maxHeight:'calc(100vh - 40px)', overflowY:'auto', position:'relative',
+                animation:'pdfShareScaleIn 220ms cubic-bezier(0.2, 0.8, 0.2, 1)'}}>
+        <button type="button" onClick={onClose} aria-label="Fermer"
+          style={{position:'absolute', top:10, right:12, width:32, height:32, borderRadius:16, border:'none',
+                  background:'transparent', color:'#8B7F6E', fontSize:18, cursor:'pointer',
+                  fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:22, color:'#2D2018', fontWeight:700, marginBottom:6}}>Partager le dossier</div>
+        <div style={{fontSize:13, color:'#8B7F6E', marginBottom:14, lineHeight:1.5}}>
+          Coche ce que tu souhaites masquer dans le lien partage.
+        </div>
+        <div style={{background:'#F5EFE6', borderRadius:12, padding:'4px 0', marginBottom:18}}>
+          <ToggleRow label="Masquer le prix" value={hidePrice} onChange={setHidePrice}/>
+          <ToggleRow label="Masquer l'adresse" value={hideAddress} onChange={setHideAddress}/>
+          <ToggleRow label={"Masquer l'identité du " + profilLabel} value={hideIdentity} onChange={setHideIdentity}/>
+        </div>
+        <div style={{display:'flex', gap:10}}>
+          <button type="button" onClick={onClose} disabled={busy}
+            style={{flex:'0 0 38%', height:50, borderRadius:14, border:'1.5px solid #E8DDC9',
+                    background:'#fff', color:'#2D2018', fontFamily:'inherit', fontSize:15, fontWeight:500,
+                    cursor: busy ? 'wait' : 'pointer'}}>Annuler</button>
+          <button type="button" onClick={send} disabled={busy}
+            style={{flex:1, height:50, borderRadius:14, border:'none', background:'#A07842',
+                    color:'#fff', fontFamily:'inherit', fontSize:15, fontWeight:600,
+                    cursor: busy ? 'wait' : 'pointer',
+                    display:'flex', alignItems:'center', justifyContent:'center', gap:8}}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            <span>{busy ? 'Envoi...' : 'Partager'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PdfShareModal({dossierId, showPrice, showAddress, showIdentity, profil, onClose, showToast}) {
   // M/2026/04/30/16 — verrou lightbox.
   useLightboxLock(true);
@@ -14357,26 +14468,15 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   // M/2026/04/30/4 — swipe exclusif (Mail iOS pattern) : 1 seul ouvert a la fois.
   const swipeRowRef = React.useRef(null);
   useSwipeExclusive(swipeX !== 0, () => setSwipeX(0), swipeRowRef);
-  // M/2026/04/30/18 — partage public dossier via /api/share_links_v20.php?action=create_link
-  // puis navigator.share natif iOS sync (preserve le user-gesture token).
-  function doShare(e) {
+  // M/2026/04/30/30 — doShare 1-tap direct supprime franchement, remplace par modale
+  // ShareDossierModal avec 3 toggles interactifs (Masquer prix/adresse/identite).
+  // useLightboxLock M/30/16 herite via la modale -> bloque swipe-delete arriere-plan.
+  const [shareOpen, setShareOpen] = React.useState(false);
+  function openShareModal(e) {
     if (e) e.stopPropagation();
     if (!c.id) { setSwipeX(0); return; }
-    const tk = localStorage.getItem('ocre_token') || '';
-    fetch(API + '/share_links_v20.php?action=create_link', {
-      method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk},
-      body: JSON.stringify({dossier_id: c.id, type:'public'}),
-    }).then(r => r.json()).then(j => {
-      if (!j || !j.ok || !j.url) { setSwipeX(0); return; }
-      const nameLabel = (c.prenom || c.nom) ? ((c.prenom || '') + ' ' + (c.nom || '')).trim() : (c.raison_sociale || 'Dossier Ocre Immo');
-      if (navigator.share) {
-        navigator.share({title:'Ocre Immo - ' + nameLabel, text:'Voici le dossier', url: j.url})
-          .catch(err => { if (err && err.name !== 'AbortError') { /* silent */ } });
-      } else if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(j.url).catch(() => {});
-      }
-      setSwipeX(0);
-    }).catch(() => { setSwipeX(0); });
+    setShareOpen(true);
+    setSwipeX(0); // ferme le swipe pendant que la modale est ouverte (cohérent Mail iOS).
   }
   async function doArchive(e) {
     if (e) e.stopPropagation();
@@ -14490,7 +14590,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         <span>Archiver</span>
       </button>
       <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX >= 120) doShare(e); }}
+        onClick={e => { e.stopPropagation(); if (swipeX >= 120) openShareModal(e); }}
         disabled={swipeX < 120}
         title="Partager"
         style={{position:'absolute', left:0, top:0, bottom:0, width:120, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#A07842', color:'#fff', fontSize:12, fontWeight:700, gap:4, border:'none', cursor: swipeX >= 120 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:.3, textTransform:'uppercase', pointerEvents: swipeX >= 120 ? 'auto' : 'none'}}>
@@ -14668,6 +14768,10 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
           if (/^https?:\/\//.test(p)) return p;
           return '/api/image.php?path=' + encodeURIComponent(p.replace(/^\//, ''));
         }).filter(Boolean)} startIndex={0} onClose={() => setLightboxOpen(false)}/>
+      )}
+      {/* M/2026/04/30/30 — modale Partager dossier (3 toggles) ouverte au tap PARTAGER swipe droit. */}
+      {shareOpen && (
+        <ShareDossierModal client={c} onClose={() => setShareOpen(false)} showToast={() => {}}/>
       )}
     </div>
     </div>
