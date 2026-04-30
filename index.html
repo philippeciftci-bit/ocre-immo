@@ -1580,7 +1580,10 @@ function CityMultiPicker({value = '', onChange, selectedCountries = [], placehol
 // M/2026/04/30/37 — TypeBienMultiPicker : popover dropdown multi-select max 5.
 // Riad conditionnel : present uniquement si MA dans selectedCountries (regle metier
 // existante PAYS_BIEN.filter Section II Bloc 02).
-function TypeBienMultiPicker({value = [], onChange, selectedCountries = [], max = 5, placeholder = 'Type de bien', style = {}}) {
+// M/2026/04/30/40 — TypeBienMultiPicker prop 'single' : mode single-select avec fermeture
+// immediate au tap (pas de checkbox + pas de footer Annuler/OK). Pour Section II Bloc 02
+// (1 seul type bien) au lieu de V58MultiSelectModal full-screen obsolete.
+function TypeBienMultiPicker({value = [], onChange, selectedCountries = [], max = 5, placeholder = 'Type de bien', single = false, style = {}}) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [tempSel, setTempSel] = React.useState(value || []);
@@ -1604,6 +1607,12 @@ function TypeBienMultiPicker({value = [], onChange, selectedCountries = [], max 
   function toggle(t) {
     if (tempSel.includes(t)) setTempSel(tempSel.filter(x => x !== t));
     else if (tempSel.length < max) setTempSel([...tempSel, t]);
+  }
+  // M/2026/04/30/40 — mode single : tap row -> onChange([t]) + close immediat (pas de checkbox/footer).
+  function pickSingleAndClose(t) {
+    onChange([t]);
+    setOpen(false);
+    setSearch('');
   }
   // Riad uniquement si Maroc dans pays selectionnes.
   const hasMA = Array.isArray(selectedCountries) && selectedCountries.includes('MA');
@@ -1644,32 +1653,39 @@ function TypeBienMultiPicker({value = [], onChange, selectedCountries = [], max 
             {filtered.length === 0 ? (
               <div style={{padding:14, fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center'}}>Aucun type</div>
             ) : filtered.map(t => {
-              const sel = tempSel.includes(t);
+              const isCurrent = single
+                ? (Array.isArray(value) && value[0] === t)
+                : tempSel.includes(t);
               return (
-                <div key={t} onClick={() => toggle(t)}
+                <div key={t} onClick={() => single ? pickSingleAndClose(t) : toggle(t)}
                   style={{display:'flex', alignItems:'center', gap:8,
                           padding:'8px 12px', cursor:'pointer', fontSize:13,
-                          background: sel ? '#FBF4E5' : 'transparent',
+                          background: isCurrent ? '#FBF4E5' : 'transparent',
                           borderBottom:'1px solid #F4EEE6'}}>
-                  <input type="checkbox" checked={sel} readOnly
-                    style={{accentColor:'#8B5E3C', pointerEvents:'none', flexShrink:0}}/>
+                  {!single && (
+                    <input type="checkbox" checked={isCurrent} readOnly
+                      style={{accentColor:'#8B5E3C', pointerEvents:'none', flexShrink:0}}/>
+                  )}
                   <span style={{flex:1, color:'#2D2018'}}>{t}</span>
+                  {single && isCurrent && <span style={{color:'#8B5E3C', fontWeight:700}}>✓</span>}
                 </div>
               );
             })}
           </div>
-          <div style={{display:'flex', alignItems:'center', gap:8,
-                       padding:'8px 12px', borderTop:'1px solid #E8DDC9'}}>
-            <button type="button" onClick={close}
-              style={{padding:'7px 12px', background:'#fff', border:'1.5px solid #C9B79A',
-                      color:'#5A4E3D', borderRadius:6, fontFamily:'inherit', fontSize:12,
-                      fontWeight:600, cursor:'pointer'}}>Annuler</button>
-            <span style={{flex:1, fontSize:11, color:'#8B7F6E', textAlign:'center'}}>{tempSel.length}/{max}</span>
-            <button type="button" onClick={ok}
-              style={{padding:'7px 14px', background:'#8B5E3C', border:'none',
-                      color:'#fff', borderRadius:6, fontFamily:'inherit', fontSize:12,
-                      fontWeight:700, cursor:'pointer'}}>OK ({tempSel.length})</button>
-          </div>
+          {!single && (
+            <div style={{display:'flex', alignItems:'center', gap:8,
+                         padding:'8px 12px', borderTop:'1px solid #E8DDC9'}}>
+              <button type="button" onClick={close}
+                style={{padding:'7px 12px', background:'#fff', border:'1.5px solid #C9B79A',
+                        color:'#5A4E3D', borderRadius:6, fontFamily:'inherit', fontSize:12,
+                        fontWeight:600, cursor:'pointer'}}>Annuler</button>
+              <span style={{flex:1, fontSize:11, color:'#8B7F6E', textAlign:'center'}}>{tempSel.length}/{max}</span>
+              <button type="button" onClick={ok}
+                style={{padding:'7px 14px', background:'#8B5E3C', border:'none',
+                        color:'#fff', borderRadius:6, fontFamily:'inherit', fontSize:12,
+                        fontWeight:700, cursor:'pointer'}}>OK ({tempSel.length})</button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -3847,7 +3863,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
   }
 
   // V66 — modale types (la modale pays a ete remplacee par CountryAutocomplete inline en M/2026/04/30/6).
-  const [v66TypeModal, setV66TypeModal] = React.useState(false);
+  // M/2026/04/30/40 — v66TypeModal state supprime franchement (TypeBienMultiPicker gere son propre open).
 
   // M/2026/04/29/19 — Surface totale auto-calculée (somme habitable + terrain + terrasses + jardin + garage).
   const _num = (x) => { const n = parseFloat(x); return isNaN(n) ? 0 : n; };
@@ -3914,11 +3930,8 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
         <Field label="Distance aéroport (km)" type="number" value={bien.distance_aeroport_km} onChange={v => setB('distance_aeroport_km', v)}/>
       </div>
       {/* M/2026/04/30/6 — V58MultiSelectModal Pays supprime franchement (CountryAutocomplete 245 inline). */}
-      {v66TypeModal && (
-        <V58MultiSelectModal title="Type de bien"
-          options={typesDispo.map(t => ({value: t, label: t}))}
-          selected={types} onToggle={toggleType} onClose={() => setV66TypeModal(false)}/>
-      )}
+      {/* M/2026/04/30/40 — V58MultiSelectModal Type bien Section II Bloc 02 supprime franchement
+          (remplace par TypeBienMultiPicker mode single popover dropdown harmonise). */}
 
       {!bien.pays && <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', padding:'10px 0'}}>Choisissez un pays pour continuer.</div>}
 
@@ -3927,19 +3940,19 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           {/* M/2026/04/29/42 — Section II V4 Vague A : Blocs 02-04 refondus (SSoT enrichie). */}
 
           {/* === BLOC 02 — TYPE === */}
+          {/* M/2026/04/30/40 — TypeBienMultiPicker M/30/37 mode single (popover dropdown harmonise)
+              remplace V58MultiSelectModal full-screen. onChange = [single] -> setB('types', arr) +
+              setB('type', arr[0]) preserve compat legacy bien.type. selectedCountries=[bien.pays]
+              respecte regle Riad si MA. */}
           {sectionTitle(2, 'Type')}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10}}>
             <div>
               <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Type bien</label>
-              <button type="button" onClick={() => setV66TypeModal(true)}
-                style={{width:'100%', padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
-                        border:'1.5px solid '+(types.length>0 ? '#8B5E3C' : '#C9B79A'),
-                        background: types.length>0 ? '#FBF1E4' : '#FFFCF5',
-                        color:'#5C3B1E', borderRadius:8, cursor:'pointer',
-                        display:'flex', alignItems:'center', justifyContent:'space-between', minHeight:38}}>
-                <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{types.length>0 ? (types.length===1 ? types[0] : ('Type ('+types.length+')')) : 'Type'}</span>
-                <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
-              </button>
+              <TypeBienMultiPicker value={types}
+                onChange={arr => { setB('types', arr); setB('type', arr[0] || ''); }}
+                selectedCountries={bien.pays ? [bien.pays] : []}
+                placeholder="Type"
+                single/>
             </div>
             <SelectPopup label="Sous-type" value={bien.sous_type} onChange={v => setB('sous_type', v)}
               options={(V4_SOUS_TYPES_BY_TYPE[types[0]] || [])}/>
@@ -13879,45 +13892,6 @@ function V57RangeInputs({label, vMin, vMax, onMin, onMax, suffix}) {
   );
 }
 // V58 — modale multi-select bottom sheet réutilisable pour pays + types bien.
-function V58MultiSelectModal({title, options, selected, onToggle, onClose, max}) {
-  const [q, setQ] = React.useState('');
-  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const nq = norm(q);
-  const filtered = nq ? options.filter(o => norm(o.label).includes(nq) || norm(o.value).includes(nq)) : options;
-  return (
-    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,12,4,0.55)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
-      <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:520, maxHeight:'75vh', borderRadius:'16px 16px 0 0', display:'flex', flexDirection:'column', boxShadow:'0 -10px 40px rgba(0,0,0,.3)'}}>
-        <div style={{padding:'14px 16px 8px', borderBottom:'1px solid #E8DDD0', display:'flex', alignItems:'center', gap:10}}>
-          <span style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C'}}>{title}</span>
-          <button type="button" onClick={onClose} style={{padding:'8px 14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontWeight:700, fontSize:12, cursor:'pointer'}}>OK ({selected.length})</button>
-        </div>
-        <div style={{padding:'8px 16px', borderBottom:'1px solid #F0E9DC'}}>
-          <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher…"
-            style={{width:'100%', padding:'9px 11px', fontSize:13, border:'1.5px solid #C9B79A', borderRadius:8, fontFamily:'inherit', outline:'none', boxSizing:'border-box'}}/>
-        </div>
-        <div style={{flex:1, overflowY:'auto', padding:'4px 0'}}>
-          {filtered.map(o => {
-            const on = selected.includes(o.value);
-            const disabled = !on && max != null && selected.length >= max;
-            return (
-              <button key={o.value} type="button" onClick={() => !disabled && onToggle(o.value)}
-                disabled={disabled}
-                style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background: on ? '#FBF1E4' : 'transparent', border:'none', borderBottom:'1px solid #F0E9DC', cursor: disabled ? 'not-allowed' : 'pointer', textAlign:'left', fontFamily:'inherit', opacity: disabled ? .5 : 1}}>
-                <span style={{width:22, height:22, borderRadius:6, border:'1.5px solid ' + (on ? '#8B5E3C' : '#C9B79A'), background: on ? '#8B5E3C' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'#fff', fontSize:14, fontWeight:800}}>{on ? '✓' : ''}</span>
-                {o.flag && <span style={{fontSize:18}}>{o.flag}</span>}
-                <span style={{flex:1, fontSize:14, color:'#2A2018'}}>{o.label}</span>
-                {o.dial && <span style={{fontSize:11, color:'#8B7F6E', fontFamily:'Menlo,monospace'}}>+{o.dial}</span>}
-              </button>
-            );
-          })}
-        </div>
-        {max != null && (
-          <div style={{padding:'6px 16px 10px', fontSize:10.5, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', borderTop:'1px solid #F0E9DC'}}>Sélection max : {max}</div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCount}) {
   const PROFS = ['Acheteur','Vendeur','Locataire','Bailleur'];
