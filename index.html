@@ -3389,13 +3389,43 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
 
 // M/2026/04/30/43 — Bloc 13 Documents : upload PDF/JPG/PNG, 10 Mo max, 30 docs max.
 // Persisté dans bien.documents[] (JSON dossier).
+// M/2026/04/30/48 — Détails contrat (statut + signature + signataires) par document.
+const CONTRAT_STATUTS = [
+  {k:'brouillon', l:'Brouillon', color:'#999999'},
+  {k:'envoye',    l:'Envoyé',    color:'#A07842'},
+  {k:'signe',     l:'Signé',     color:'#00A651'},
+  {k:'archive',   l:'Archivé',   color:'#C9B698'},
+];
+const SIGNATAIRE_FONCTIONS = ['Vendeur','Acheteur','Bailleur','Locataire','Agent','Notaire','Témoin','Autre'];
+
 function DocumentUpload({dossierId, documents, onDocumentsChange, showToast}) {
   const [uploading, setUploading] = React.useState(false);
   const [pickType, setPickType] = React.useState(false); // affiche le mini-grid de types
+  const [expandedDoc, setExpandedDoc] = React.useState(null); // index du doc deplie pour Details contrat
   const pendingTypeRef = React.useRef(null);
   const inputRef = React.useRef(null);
   const list = Array.isArray(documents) ? documents : [];
   const token = () => localStorage.getItem('ocre_token') || '';
+
+  function updateDoc(idx, patch) {
+    const next = list.map((d, i) => i === idx ? {...d, ...patch} : d);
+    onDocumentsChange && onDocumentsChange(next);
+  }
+  function addSignataire(idx) {
+    const cur = Array.isArray(list[idx].signataires) ? list[idx].signataires : [];
+    updateDoc(idx, {signataires: [...cur, {nom:'', fonction:'Acheteur', date:'', email:''}]});
+  }
+  function updateSignataire(idx, sIdx, patch) {
+    const cur = Array.isArray(list[idx].signataires) ? list[idx].signataires : [];
+    const next = cur.map((s, i) => i === sIdx ? {...s, ...patch} : s);
+    updateDoc(idx, {signataires: next});
+  }
+  async function removeSignataire(idx, sIdx) {
+    const cur = Array.isArray(list[idx].signataires) ? list[idx].signataires : [];
+    const s = cur[sIdx];
+    if (s && (s.nom || s.email) && !(await askConfirm({title:'Retirer ce signataire ?', message: s.nom || s.email || '', danger:true}))) return;
+    updateDoc(idx, {signataires: cur.filter((_, i) => i !== sIdx)});
+  }
 
   function fmtSize(bytes) {
     if (!bytes && bytes !== 0) return '';
@@ -3452,24 +3482,88 @@ function DocumentUpload({dossierId, documents, onDocumentsChange, showToast}) {
         <div style={{display:'flex', flexDirection:'column', gap:8, marginBottom:8}}>
           {list.map((doc, idx) => {
             const meta = DOC_TYPES.find(t => t.key === doc.doc_type) || DOC_TYPES[DOC_TYPES.length - 1];
+            const expanded = expandedDoc === idx;
+            const statut = doc.statut_contrat || '';
+            const statutMeta = CONTRAT_STATUTS.find(s => s.k === statut);
+            const signataires = Array.isArray(doc.signataires) ? doc.signataires : [];
             return (
-              <div key={doc.name || idx}
-                style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:'1px solid #E8DDD0', background:'#FDFAF7'}}>
-                <div style={{width:32, height:32, borderRadius:8, background:'#FBF1E4', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-                  <DocIcon path={meta.icon} size={18}/>
-                </div>
-                <div style={{flex:1, minWidth:0}}>
-                  <div style={{fontSize:13, fontWeight:600, color:'#3A2D24', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{meta.label}</div>
-                  <div style={{fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-                    {doc.original_name || doc.name} · {fmtSize(doc.size)}
+              <div key={doc.name || idx} style={{borderRadius:10, border:'1px solid #E8DDD0', background:'#FDFAF7', overflow:'hidden'}}>
+                <div style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px'}}>
+                  <div style={{width:32, height:32, borderRadius:8, background:'#FBF1E4', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                    <DocIcon path={meta.icon} size={18}/>
                   </div>
+                  <div style={{flex:1, minWidth:0}}>
+                    <div style={{display:'flex', alignItems:'center', gap:6, minWidth:0}}>
+                      <div style={{fontSize:13, fontWeight:600, color:'#3A2D24', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{meta.label}</div>
+                      {statutMeta && (
+                        <span style={{flexShrink:0, padding:'2px 7px', borderRadius:8, fontSize:10, fontWeight:700, color:'#fff', background: statutMeta.color, textTransform:'uppercase', letterSpacing:.3}}>{statutMeta.l}</span>
+                      )}
+                    </div>
+                    <div style={{fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                      {doc.original_name || doc.name} · {fmtSize(doc.size)}
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setExpandedDoc(expanded ? null : idx)} title={expanded ? 'Replier' : 'Détails contrat'}
+                    style={{width:28, height:28, borderRadius:14, border:'1px solid #D9C9A8', background:'#fff', color:'#8B5E3C', fontSize:11, cursor:'pointer', padding:0, flexShrink:0}}>
+                    {expanded ? '▴' : '▾'}
+                  </button>
+                  {doc.url && (
+                    <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                      style={{fontSize:12, color:'#8B5E3C', textDecoration:'none', padding:'6px 10px', borderRadius:6, border:'1px solid #D9C9A8', background:'#fff'}}>Voir</a>
+                  )}
+                  <button type="button" onClick={() => removeDoc(doc)}
+                    style={{width:28, height:28, borderRadius:14, border:'none', background:'rgba(42,32,24,.08)', color:'#8B5E3C', fontSize:14, cursor:'pointer', padding:0}}>×</button>
                 </div>
-                {doc.url && (
-                  <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                    style={{fontSize:12, color:'#8B5E3C', textDecoration:'none', padding:'6px 10px', borderRadius:6, border:'1px solid #D9C9A8', background:'#fff'}}>Voir</a>
+                {expanded && (
+                  <div style={{padding:'12px 14px', borderTop:'1px solid #EFE4D2', background:'#FFFCF6'}}>
+                    <label style={{display:'block', fontSize:10, fontWeight:700, color:'#8B7F6E', marginBottom:6, textTransform:'uppercase', letterSpacing:.4}}>Statut contrat</label>
+                    <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:10}}>
+                      {CONTRAT_STATUTS.map(s => {
+                        const sel = statut === s.k;
+                        return (
+                          <button key={s.k} type="button" onClick={() => updateDoc(idx, {statut_contrat: sel ? '' : s.k})}
+                            style={{padding:'5px 11px', borderRadius:14, border: '1.5px solid '+s.color, background: sel ? s.color : '#fff', color: sel ? '#fff' : s.color, fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
+                            {s.l}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {statut === 'signe' && (
+                      <div style={{marginBottom:10}}>
+                        <label style={{display:'block', fontSize:10, fontWeight:700, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Date signature</label>
+                        <input type="date" value={doc.date_signature || ''} onChange={e => updateDoc(idx, {date_signature: e.target.value})}
+                          style={{width:'100%', maxWidth:200, boxSizing:'border-box', padding:'8px 10px', borderRadius:7, fontSize:13, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none'}}/>
+                      </div>
+                    )}
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6}}>
+                      <label style={{fontSize:10, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Signataires ({signataires.length})</label>
+                      <button type="button" onClick={() => addSignataire(idx)}
+                        style={{padding:'4px 10px', borderRadius:6, border:'1px dashed #BBA88B', background:'transparent', color:'#8B5E3C', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter signataire</button>
+                    </div>
+                    {signataires.map((s, sIdx) => (
+                      <div key={sIdx} style={{display:'grid', gridTemplateColumns:'2fr 1fr auto', gap:6, marginBottom:6, alignItems:'start'}}>
+                        <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                          <input value={s.nom || ''} onChange={e => updateSignataire(idx, sIdx, {nom: e.target.value})}
+                            placeholder="Nom complet"
+                            style={{boxSizing:'border-box', padding:'7px 9px', borderRadius:6, fontSize:12, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none'}}/>
+                          <input value={s.email || ''} onChange={e => updateSignataire(idx, sIdx, {email: e.target.value})}
+                            placeholder="Email (optionnel)" type="email"
+                            style={{boxSizing:'border-box', padding:'7px 9px', borderRadius:6, fontSize:12, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none'}}/>
+                        </div>
+                        <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                          <select value={s.fonction || 'Acheteur'} onChange={e => updateSignataire(idx, sIdx, {fonction: e.target.value})}
+                            style={{boxSizing:'border-box', padding:'7px 9px', borderRadius:6, fontSize:12, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none'}}>
+                            {SIGNATAIRE_FONCTIONS.map(f => <option key={f} value={f}>{f}</option>)}
+                          </select>
+                          <input type="date" value={s.date || ''} onChange={e => updateSignataire(idx, sIdx, {date: e.target.value})}
+                            style={{boxSizing:'border-box', padding:'7px 9px', borderRadius:6, fontSize:12, fontFamily:'inherit', border:'1.5px solid #D9C9A8', background:'#fff', color:'#2A2018', outline:'none'}}/>
+                        </div>
+                        <button type="button" onClick={() => removeSignataire(idx, sIdx)}
+                          style={{width:28, height:28, borderRadius:14, border:'none', background:'rgba(192,75,32,.08)', color:'#C0392B', fontSize:14, cursor:'pointer', padding:0}}>×</button>
+                      </div>
+                    ))}
+                  </div>
                 )}
-                <button type="button" onClick={() => removeDoc(doc)}
-                  style={{width:28, height:28, borderRadius:14, border:'none', background:'rgba(42,32,24,.08)', color:'#8B5E3C', fontSize:14, cursor:'pointer', padding:0}}>×</button>
               </div>
             );
           })}
