@@ -917,6 +917,28 @@ function usePopoverAutoClose(isOpen, setOpen, popoverRef) {
   }, [isOpen]);
 }
 
+// M/2026/04/30/16 — verrou global lightbox/modale plein ecran : empêche la propagation
+// d un swipe (ClientRow swipe-delete) quand une modale capture les gestures au-dessus.
+// Compteur via document.body.dataset.ocreLightboxCount + dispatch CustomEvent.
+function useLightboxLock(isActive) {
+  React.useEffect(() => {
+    if (!isActive) return;
+    const cur = parseInt(document.body.dataset.ocreLightboxCount || '0', 10) || 0;
+    document.body.dataset.ocreLightboxCount = String(cur + 1);
+    try { window.dispatchEvent(new CustomEvent('ocre-lightbox-open')); } catch (e) {}
+    return () => {
+      const c = parseInt(document.body.dataset.ocreLightboxCount || '0', 10) || 0;
+      const next = Math.max(0, c - 1);
+      if (next === 0) delete document.body.dataset.ocreLightboxCount;
+      else document.body.dataset.ocreLightboxCount = String(next);
+      try { window.dispatchEvent(new CustomEvent('ocre-lightbox-close')); } catch (e) {}
+    };
+  }, [isActive]);
+}
+function isLightboxLocked() {
+  return !!(typeof document !== 'undefined' && document.body && document.body.dataset.ocreLightboxCount);
+}
+
 // M/2026/04/30/4 — useSwipeExclusive : meme pattern que usePopoverAutoClose mais
 // pour les swipes ClientRow. 1 SEUL swipe ouvert a la fois (Mail iOS pattern).
 // Dispatch ocre-swipe-open quand on ouvre, ecoute pour fermer si autre s'ouvre.
@@ -1682,6 +1704,8 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
 
 // M/2026/04/30/7 — Modale "Limite Google Maps atteinte" : continuer OSM ou demander extension super-admin.
 function QuotaExceededModal({quota, onClose}) {
+  // M/2026/04/30/16 — verrou lightbox.
+  useLightboxLock(true);
   const [motif, setMotif] = React.useState('');
   const [requesting, setRequesting] = React.useState(false);
   const [sent, setSent] = React.useState(false);
@@ -2327,6 +2351,10 @@ function BoolChip({label, value, onChange}) {
 function PhotoLightbox({photos, startIndex = 0, onClose}) {
   const scrollerRef = React.useRef(null);
   const [activeIdx, setActiveIdx] = React.useState(startIndex);
+  // M/2026/04/30/16 — verrou global lightbox empeche le bleed-through swipe horizontal
+  // (scroll-snap iOS) vers le swipe-delete card sous-jacente quand on insiste apres
+  // la derniere photo.
+  useLightboxLock(true);
   // Body scroll lock
   React.useEffect(() => {
     const prev = document.body.style.overflow;
@@ -2355,10 +2383,16 @@ function PhotoLightbox({photos, startIndex = 0, onClose}) {
   if (!Array.isArray(photos) || photos.length === 0) return null;
   return (
     <div onClick={onClose}
+      onTouchStart={e => e.stopPropagation()}
+      onTouchMove={e => e.stopPropagation()}
+      onTouchEnd={e => e.stopPropagation()}
       style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.92)', zIndex:99999,
-              display:'flex', alignItems:'center', justifyContent:'center'}}>
+              display:'flex', alignItems:'center', justifyContent:'center', touchAction:'none'}}>
       <div ref={scrollerRef} onScroll={onScroll}
+        onTouchStart={e => e.stopPropagation()}
+        onTouchMove={e => e.stopPropagation()}
         style={{width:'100%', height:'100%', overflowX:'auto', overflowY:'hidden',
+                touchAction:'pan-x',
                 display:'flex', scrollSnapType:'x mandatory',
                 WebkitOverflowScrolling:'touch'}}>
         {photos.map((src, i) => (
@@ -2590,7 +2624,9 @@ function useIsMobile() {
 }
 
 // V17.13 — BottomSheet générique pour pickers mobile.
+// M/2026/04/30/16 — useLightboxLock pour empecher le swipe-delete card sous-jacente.
 function BottomSheet({title, onClose, children}) {
+  useLightboxLock(true);
   React.useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
@@ -11058,6 +11094,8 @@ function PdfBottomBar({onBack, showPrice, setShowPrice, showAddress, setShowAddr
 
 // M/2026/04/30/8 — modale Partager centree ecran (pas bottom-sheet) avec recap des 3 choix.
 function PdfShareModal({dossierId, showPrice, showAddress, showIdentity, profil, onClose, showToast}) {
+  // M/2026/04/30/16 — verrou lightbox.
+  useLightboxLock(true);
   const [busy, setBusy] = React.useState(false);
   const token = () => localStorage.getItem('ocre_token') || '';
   function badge(visible) {
@@ -13681,8 +13719,15 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       else { setSwipeX(0); alert(j && j.error ? j.error : 'Suppression impossible'); }
     } catch (e) { setSwipeX(0); }
   }
-  function onTouchStart(e) { setSwipeStart({x: e.touches[0].clientX, y: e.touches[0].clientY, initial: swipeX}); }
+  // M/2026/04/30/16 — short-circuit total des handlers swipe si une lightbox/modale plein
+  // ecran est ouverte (verrou global document.body.dataset.ocreLightboxCount). Empeche le
+  // bleeding du geste swipe horizontal lightbox (scroll-snap iOS) vers le swipe-delete card.
+  function onTouchStart(e) {
+    if (isLightboxLocked()) return;
+    setSwipeStart({x: e.touches[0].clientX, y: e.touches[0].clientY, initial: swipeX});
+  }
   function onTouchMove(e) {
+    if (isLightboxLocked()) { setSwipeStart(null); return; }
     if (!swipeStart) return;
     const dx = e.touches[0].clientX - swipeStart.x;
     const dy = e.touches[0].clientY - swipeStart.y;
@@ -13697,6 +13742,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     setSwipeX(next);
   }
   function onTouchEnd() {
+    if (isLightboxLocked()) { setSwipeStart(null); return; }
     if (!swipeStart) return;
     if (swipeX <= -120) setSwipeX(-240); // snap 3 boutons visibles
     else setSwipeX(0);
@@ -13922,6 +13968,8 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
 // V18.20 — ConfirmModal global. Monté par App quand state confirmReq est actif.
 // Promesse résolue true/false via les deux boutons.
 function ConfirmModal({title, message, danger, confirmLabel, cancelLabel, onConfirm, onCancel}) {
+  // M/2026/04/30/16 — verrou lightbox : empeche le swipe-delete card sous-jacente.
+  useLightboxLock(true);
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape') onCancel && onCancel();
