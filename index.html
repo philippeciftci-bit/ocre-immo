@@ -6120,19 +6120,29 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const coutTotal = budget + (honoCharge === 'Acheteur' ? honoEst : 0) + fraisNotEst;
     return (
       <>
-        {/* V62 — Bloc essentiels en haut */}
+        {/* M/2026/04/30/47 — CurrencyPicker + ConversionDisplay live cote Acheteur/Investisseur
+            (etend M/30/29 cote Vendeur). Suffixe dynamique {devise} partout (suppression franche
+            ternaire MAD/€ binaire). */}
         <V55Bloc title="Prix">
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <V55Field label="Budget min" type="number" value={d.budget_min} onChange={v => set('budget_min', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
-            <V55Field label="Budget max" type="number" value={d.budget_max} onChange={v => set('budget_max', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+            <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise</span>
+            <CurrencyPicker value={devise} onChange={pickDevise}/>
+            {d.devise_source === 'manual' && (
+              <span style={{fontSize:10, color:'#A07842', fontStyle:'italic'}}>(choix manuel)</span>
+            )}
           </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+            <V55Field label="Budget min" type="number" value={d.budget_min} onChange={v => set('budget_min', v)} suffix={devise}/>
+            <V55Field label="Budget max" type="number" value={d.budget_max} onChange={v => set('budget_max', v)} suffix={devise}/>
+          </div>
+          <ConversionDisplay amount={d.budget_max} devise={devise} pays={paysBien}/>
         </V55Bloc>
 
         <V55Bloc title="Frais d'agence">
           <V55Field label="Honoraires à charge" type="select" value={d.honoraires_charge} onChange={v => set('honoraires_charge', v)}
             options={['Vendeur','Acheteur','Partagés']}/>
           {honoCharge === 'Acheteur' && (
-            <V55Field label="Honoraires estimés à votre charge" type="number" value={d.honoraires_montant_estime} onChange={v => set('honoraires_montant_estime', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+            <V55Field label="Honoraires estimés à votre charge" type="number" value={d.honoraires_montant_estime} onChange={v => set('honoraires_montant_estime', v)} suffix={devise}/>
           )}
           {honoCharge === 'Vendeur' && (
             <V55ReadOnly label="Honoraires" value="Supportés par le vendeur" hint="Aucun frais d'agence à votre charge"/>
@@ -6155,13 +6165,13 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* V62 — Détails financement en bas */}
         <V62SubTitle>Détails de financement</V62SubTitle>
         <V55Bloc title="Capacité d'achat">
-          <V55Field label="Apport personnel" type="number" value={d.apport_personnel} onChange={v => set('apport_personnel', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          <V55Field label="Apport personnel" type="number" value={d.apport_personnel} onChange={v => set('apport_personnel', v)} suffix={devise}/>
           <V55Field label="Mode de financement" type="select" value={d.mode_financement} onChange={v => set('mode_financement', v)}
             options={['Comptant','Crédit','Mixte']}/>
           {showPret && (
             <>
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-                <V55Field label="Montant prêt" type="number" value={d.pret_montant} onChange={v => set('pret_montant', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+                <V55Field label="Montant prêt" type="number" value={d.pret_montant} onChange={v => set('pret_montant', v)} suffix={devise}/>
                 <V55Field label="Durée (années)" type="number" value={d.pret_duree_annees} onChange={v => set('pret_duree_annees', v)} suffix="ans"/>
               </div>
               <V55Field label="Taux estimé" type="pct" value={d.pret_taux_estime} onChange={v => set('pret_taux_estime', v)} suffix="%"/>
