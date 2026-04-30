@@ -637,11 +637,14 @@ const V1_TYPE_JARDIN = ['Aucun','Paysager','Méditerranéen','Tropical','Verger'
 const V1_POOL_HOUSE = ['Aucun','Cuisine d\'été','Cuisine + douche','Studio complet'];
 const V1_AMENAGEMENTS_EXT = ['Cuisine d\'été','Bar extérieur','Coin BBQ','Arrosage automatique','Pergola','Cabanon','Local technique','Cuve à eau + surpresseur','Verger','Potager'];
 const V1_CLIMATISATION = ['Aucune','Centralisée','Réversible','Splits'];
-const V1_CHAUFFAGE = ['Aucun','Gaz','Électrique','Pompe à chaleur','Solaire','Cheminée','Centralisé fioul'];
+// M/2026/04/30/44 — enrichi : Bois, Pellets, Sol chauffant (audit M/61).
+const V1_CHAUFFAGE = ['Aucun','Gaz','Électrique','Bois','Pellets','Pompe à chaleur','Sol chauffant','Solaire','Cheminée','Centralisé fioul'];
 const V1_EQUIPEMENTS_CONFORT = ['Cheminée','Double vitrage','Volets roulants élec.','Ventilation double flux','Fenêtres aluminium','Coulissantes pleine hauteur','Internet fibre','Meublé','Salle de sport','Hammam','Spa','Sauna','Cave à vin','Buanderie','Dressing','Bibliothèque','Bureau','Ascenseur'];
-const V1_SECURITE = ['Gardien 24/24','Vidéosurveillance','Vidéophone','Porte blindée','Portail électrique','Clôture','Éclairage extérieur','Alarme','Service de sécurité','Coffre-fort'];
+// M/2026/04/30/44 — Digicode + Volets motorisés ajoutés (audit M/61).
+const V1_SECURITE = ['Gardien 24/24','Vidéosurveillance','Vidéophone','Porte blindée','Digicode','Volets motorisés','Portail électrique','Clôture','Éclairage extérieur','Alarme','Service de sécurité','Coffre-fort'];
 const V1_DISPO_STATUTS = ['Libre','Loué','Occupé','À convenir'];
-const V1_PROXIMITES = ['Aéroport','Centre-ville','Gare','Golf','Plage','Écoles','Hôpital','Souk','Supermarché','Restaurants','Hôtels','Banques','Pharmacie','Transports en commun'];
+// M/2026/04/30/44 — enrichi (audit M/61) : Mer, Montagne, Médina, Université, Marché, Mosquée, Église, Espaces verts, Parc, Sport, Tennis.
+const V1_PROXIMITES = ['Plage','Mer','Montagne','Centre-ville','Médina','Aéroport','Gare','Écoles','Université','Hôpital','Pharmacie','Souk','Marché','Supermarché','Commerces','Restaurants','Hôtels','Banques','Mosquée','Église','Espaces verts','Parc','Sport','Tennis','Golf','Transports en commun'];
 
 // M/2026/04/30/43 — Bloc 13 Documents. Types autorisés Section II dossier bien.
 // SVG path d (24x24) : icône métier minimaliste, stroke 1.5, color inherit ocre #8B5E3C.
@@ -4174,13 +4177,30 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             <PillRadio label="Indivision" value={bien.indivision ? 'Oui' : (bien.indivision === false ? 'Non' : '')}
               onChange={v => setB('indivision', v === 'Oui')} options={['Oui','Non']}/>
           </div>
+          {/* M/2026/04/30/44 — conditional Indivision détails. */}
+          {bien.indivision === true && (
+            <textarea value={bien.indivision_details || ''} onChange={e => setB('indivision_details', e.target.value)}
+              placeholder="Parts, indivisaires, accord vente requis, etc."
+              style={{width:'100%', boxSizing:'border-box', minHeight:60, padding:'9px 11px', borderRadius:8, fontSize:13, fontFamily:'inherit',
+                      border:'1.5px solid #E8DDD0', background:'#FDFAF7', color:'#2A2018', resize:'vertical', outline:'none', marginBottom:10}}/>
+          )}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
             <SelectPopup label="Hypothèques" value={bien.hypotheques} onChange={v => setB('hypotheques', v)} options={V4_HYPOTHEQUES}/>
             <SelectPopup label="Servitudes" value={bien.servitudes} onChange={v => setB('servitudes', v)} options={V4_SERVITUDES}/>
             <SelectPopup label="Litiges en cours" value={bien.litiges} onChange={v => setB('litiges', v)} options={V4_LITIGES}/>
           </div>
-          {(bien.hypotheques === 'Oui — détailler' || bien.servitudes === 'Oui — détailler' || bien.litiges === 'Oui — détailler') && (
-            <Field label="Détail charges juridiques" value={bien.charges_juridiques_detail} onChange={v => setB('charges_juridiques_detail', v)} placeholder="Précisions hypothèques/servitudes/litiges"/>
+          {/* M/2026/04/30/44 — conditionals dédiés (suppression franche charges_juridiques_detail partagé). */}
+          {bien.hypotheques === 'Oui — détailler' && (
+            <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap:8, marginBottom:10}}>
+              <Field label="Hypothèque — montant" value={bien.hypotheque_montant} onChange={v => setB('hypotheque_montant', v)} placeholder="ex: 500000 MAD"/>
+              <Field label="Hypothèque — détails" value={bien.hypotheque_details} onChange={v => setB('hypotheque_details', v)} placeholder="Créancier, mainlevée, échéance..."/>
+            </div>
+          )}
+          {bien.servitudes === 'Oui — détailler' && (
+            <Field label="Nature servitudes" value={bien.servitudes_nature} onChange={v => setB('servitudes_nature', v)} placeholder="Droit de passage, vue, canalisation, etc."/>
+          )}
+          {bien.litiges === 'Oui — détailler' && (
+            <Field label="Détails litiges" value={bien.litiges_details} onChange={v => setB('litiges_details', v)} placeholder="Statut procédure, juridiction, échéance..."/>
           )}
           <PillRadio label="Droit de préemption" value={bien.preemption ? 'Oui' : (bien.preemption === false ? 'Non' : '')}
             onChange={v => setB('preemption', v === 'Oui')} options={['Oui','Non']}/>
@@ -4214,6 +4234,10 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             <Field label="Notaire / Adoul" value={bien.notaire_adoul} onChange={v => setB('notaire_adoul', v)}/>
             <Field label="Avocat" value={bien.avocat} onChange={v => setB('avocat', v)} placeholder="Optionnel"/>
           </div>
+          {/* M/2026/04/30/44 — conditional Mandat Exclusif → pénalité rupture. */}
+          {bien.type_mandat === 'Exclusif' && (
+            <Field label="Pénalité rupture (%)" type="number" value={bien.mandat_penalite_pct} onChange={v => setB('mandat_penalite_pct', v)} placeholder="ex: 5"/>
+          )}
 
           {/* === BLOC 04 — SURFACES (m²) === */}
           {sectionTitle(4, 'Surfaces (m²)')}
@@ -4301,19 +4325,28 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               05 (Surfaces simples), 07 (Vue Exposition) - integres dans nouveau 03/04/04b. */}
 
           {/* === BLOC 05 — DISTRIBUTION & PIÈCES === */}
+          {/* M/2026/04/30/44 — Cuisines + Buanderies (toujours) + Patios (cond Riad). Ascenseur déjà
+              géré Bloc 02 conditional appartements (pas de doublon). */}
           {sectionTitle(5, 'Distribution & pièces')}
           <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8}}>
             <NumericPicker label="Pièces" value={bien.pieces_count} onChange={v => setB('pieces_count', v)}/>
             <NumericPicker label="Chambres" value={bien.chambres_v2} onChange={v => setB('chambres_v2', v)}/>
             <NumericPicker label="SDB" value={bien.sdb_v2} onChange={v => setB('sdb_v2', v)}/>
             <NumericPicker label="Toilettes" value={bien.toilettes_count} onChange={v => setB('toilettes_count', v)}/>
+            <NumericPicker label="Cuisines" value={bien.nb_cuisines} onChange={v => setB('nb_cuisines', v)}/>
+            <NumericPicker label="Buanderies" value={bien.nb_buanderies} onChange={v => setB('nb_buanderies', v)}/>
             <NumericPicker label="Étages" value={bien.etage_v2} onChange={v => setB('etage_v2', v)}/>
             <NumericPicker label="Parking" value={bien.nombre_places_parking} onChange={v => setB('nombre_places_parking', v)}/>
+            {_bienCond.isRiad && (
+              <NumericPicker label="Patios" value={bien.nb_patios} onChange={v => setB('nb_patios', v)}/>
+            )}
           </div>
 
           {/* M/2026/04/29/42 Vague A : Bloc 07 VUE EXPOSITION legacy supprime franchement, integre dans 04b. */}
 
           {/* === BLOC 06 — EXTÉRIEURS === */}
+          {/* M/2026/04/30/44 — conditional piscine_dimensions + surface_pool_house. Surface jardin
+              non dupliquée (existe Bloc 04). */}
           {sectionTitle(6, 'Extérieurs')}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <SelectPopup label="Piscine" value={bien.type_piscine} onChange={v => setB('type_piscine', v)} options={V1_PISCINE}/>
@@ -4321,19 +4354,41 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             <Field label="Terrasse couverte (m²)" type="number" value={bien.terrasse_couv_m2} onChange={v => setB('terrasse_couv_m2', v)}/>
             <SelectPopup label="Pool house" value={bien.pool_house} onChange={v => setB('pool_house', v)} options={V1_POOL_HOUSE}/>
           </div>
+          {bien.type_piscine && bien.type_piscine !== 'Aucune' && (
+            <Field label="Piscine — dimensions" value={bien.piscine_dimensions} onChange={v => setB('piscine_dimensions', v)} placeholder="ex: 10×4m"/>
+          )}
+          {bien.pool_house && bien.pool_house !== 'Aucun' && (
+            <Field label="Pool house — surface (m²)" type="number" value={bien.surface_pool_house} onChange={v => setB('surface_pool_house', v)}/>
+          )}
           <PillsMulti label="Aménagements" value={bien.amenagements_ext || []} onChange={v => setB('amenagements_ext', v)} options={V1_AMENAGEMENTS_EXT}/>
 
           {/* === BLOC 09 — CONFORT & ÉQUIPEMENTS === */}
+          {/* M/2026/04/30/44 — conditional Réversible → marque clim ; Pompe à chaleur ou Sol chauffant → marque chauffage. */}
           {sectionTitle(7, 'Confort & équipements')}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <SelectPopup label="Climatisation" value={bien.climatisation_type} onChange={v => setB('climatisation_type', v)} options={V1_CLIMATISATION}/>
             <SelectPopup label="Chauffage" value={bien.chauffage_type} onChange={v => setB('chauffage_type', v)} options={V1_CHAUFFAGE}/>
           </div>
+          {bien.climatisation_type === 'Réversible' && (
+            <Field label="Climatisation — marque/modèle" value={bien.clim_marque} onChange={v => setB('clim_marque', v)} placeholder="ex: Daikin Altherma"/>
+          )}
+          {(bien.chauffage_type === 'Pompe à chaleur' || bien.chauffage_type === 'Sol chauffant') && (
+            <Field label="Chauffage — marque/modèle" value={bien.chauffage_marque} onChange={v => setB('chauffage_marque', v)} placeholder="ex: Atlantic Hybride"/>
+          )}
           <PillsMulti label="Équipements" value={bien.equipements_confort || []} onChange={v => setB('equipements_confort', v)} options={V1_EQUIPEMENTS_CONFORT}/>
 
           {/* === BLOC 10 — SÉCURITÉ === */}
+          {/* M/2026/04/30/44 — label + conditionals Gardien horaires + Vidéosurveillance enregistrement. */}
           {sectionTitle(8, 'Sécurité')}
-          <PillsMulti value={bien.securite || []} onChange={v => setB('securite', v)} options={V1_SECURITE}/>
+          <PillsMulti label="Sécurité" value={bien.securite || []} onChange={v => setB('securite', v)} options={V1_SECURITE}/>
+          {((bien.securite || []).includes('Gardien 24/24') || (bien.securite || []).includes('Service de sécurité')) && (
+            <Field label="Horaires gardien" value={bien.gardien_horaires} onChange={v => setB('gardien_horaires', v)} placeholder="ex: 24/7 ou 8h-20h"/>
+          )}
+          {(bien.securite || []).includes('Vidéosurveillance') && (
+            <PillRadio label="Enregistrement vidéosurveillance"
+              value={bien.videosurveillance_enregistrement === true ? 'Actif' : (bien.videosurveillance_enregistrement === false ? 'Inactif' : '')}
+              onChange={v => setB('videosurveillance_enregistrement', v === 'Actif')} options={['Actif','Inactif']}/>
+          )}
 
           {/* === BLOC 11 — PHOTOS === */}
           {sectionTitle(9, 'Photos')}
@@ -4359,15 +4414,30 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           )}
 
           {/* === BLOC 13 — PROXIMITÉS === */}
+          {/* M/2026/04/30/44 — liste enrichie + textarea notes proximités (compact). */}
           {sectionTitle(11, 'Proximités')}
-          <PillsMulti value={bien.proximites || []} onChange={v => setB('proximites', v)} options={V1_PROXIMITES}/>
+          <PillsMulti label="Proximités" value={bien.proximites || []} onChange={v => setB('proximites', v)} options={V1_PROXIMITES}/>
+          <textarea value={bien.proximites_notes || ''} onChange={e => setB('proximites_notes', e.target.value)}
+            placeholder="Distances précises (ex: Plage 5 min, École française 800m, Souk 2km)"
+            style={{width:'100%', boxSizing:'border-box', minHeight:60, padding:'9px 11px', borderRadius:8, fontSize:13, fontFamily:'inherit',
+                    border:'1.5px solid #E8DDD0', background:'#FDFAF7', color:'#2A2018', resize:'vertical', outline:'none', marginTop:6}}/>
 
           {/* === BLOC 14 — REMARQUES === */}
+          {/* M/2026/04/30/44 — compteur caractères X/2000 (limite douce, ocre clair >2000). */}
           {sectionTitle(12, 'Remarques')}
           <textarea value={bien.remarques_bien || ''} onChange={e => setB('remarques_bien', e.target.value)}
             placeholder="Particularités, défauts à signaler, points d'attention pour la visite, contraintes copro, etc."
             style={{width:'100%', boxSizing:'border-box', minHeight:90, padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit',
                     border:'1.5px solid #E8DDD0', background:'#FDFAF7', color:'#2A2018', resize:'vertical', outline:'none'}}/>
+          {(() => {
+            const _len = (bien.remarques_bien || '').length;
+            const _over = _len > 2000;
+            return (
+              <div style={{textAlign:'right', fontSize:11, fontStyle:'italic', color: _over ? '#C68A3F' : '#8B7F6E', marginTop:4, fontFamily:"'DM Sans', system-ui, sans-serif"}}>
+                {_len} / 2000
+              </div>
+            );
+          })()}
 
           {/* === BLOC 15 — DOCUMENTS (M/2026/04/30/43) === */}
           {sectionTitle(13, 'Documents')}
