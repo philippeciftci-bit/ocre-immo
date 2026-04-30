@@ -803,6 +803,74 @@ function CadastreButton({pays}) {
   return null;
 }
 
+// M/2026/04/30/20 — PhotosExifButton : declenche extraction EXIF GPS via /api/photo_exif_gps.php
+// puis askConfirm + onApply(lat, lng, address) au tap "Deplacer". Court-circuite la modale
+// confirmation drag pin (M/30/19) car action explicite.
+function PhotosExifButton({dossierId, bien, onApply, showToast}) {
+  const [loading, setLoading] = React.useState(false);
+  const photoCount = (bien && Array.isArray(bien.photos)) ? bien.photos.length : 0;
+  const enabled = !!dossierId && photoCount > 0;
+  const baseStyle = {
+    display:'inline-flex', alignItems:'center', gap:8,
+    padding:'8px 14px', borderRadius:8, fontSize:13,
+    fontFamily:"'DM Sans', -apple-system, sans-serif",
+    border:'1px solid #D9C9A8',
+  };
+  async function onClick() {
+    if (loading || !enabled) return;
+    setLoading(true);
+    try {
+      const tk = localStorage.getItem('ocre_token') || '';
+      const r = await fetch('/api/photo_exif_gps.php', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'X-Session-Token': tk},
+        body: JSON.stringify({dossier_id: dossierId}),
+      });
+      const j = await r.json();
+      if (!j) { showToast && showToast('Echec analyse photos'); setLoading(false); return; }
+      if (j.ok) {
+        const addrPart = j.address ? (' : ' + j.address) : '';
+        const ok = await askConfirm({
+          title: 'Position détectée dans les photos',
+          message: j.count + ' photos sur ' + j.total + ' indiquent cette zone' + addrPart + '.\n\nDéplacer l\'épingle ici et mettre à jour l\'adresse ?',
+          confirmLabel: 'Déplacer',
+          cancelLabel: 'Annuler',
+          danger: false,
+        });
+        if (ok) onApply(Number(j.lat), Number(j.lng), j.address || '');
+      } else {
+        const reason = j.reason || '';
+        const total = j.total || 0;
+        const withGps = j.with_gps || 0;
+        let msg = 'Analyse photos impossible';
+        if (reason === 'no_photos') msg = 'Aucune photo enregistrée dans le dossier.';
+        else if (reason === 'no_gps') msg = 'Les photos ne contiennent pas de coordonnées GPS.';
+        else if (reason === 'no_majority') msg = 'Trop peu de photos géolocalisées (' + withGps + '/' + total + ') pour proposer une position.';
+        else if (reason === 'dispersed') msg = 'Les photos sont prises à des endroits différents, impossible de proposer une position unique.';
+        else if (reason === 'exif_unavailable') msg = 'Extraction EXIF non disponible sur le serveur.';
+        showToast && showToast(msg);
+      }
+    } catch (e) { showToast && showToast('Réseau indisponible'); }
+    setLoading(false);
+  }
+  return (
+    <button type="button" onClick={onClick} disabled={!enabled || loading}
+      title={!enabled ? 'Aucune photo enregistrée dans le dossier' : 'Détecter la position depuis les photos GPS'}
+      style={{...baseStyle,
+              background: enabled ? '#FAF6EE' : '#F5EFE6',
+              color: enabled ? '#5C3B1E' : '#8B7F6E',
+              opacity: enabled ? 1 : 0.5,
+              cursor: enabled && !loading ? 'pointer' : 'not-allowed'}}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="6" width="18" height="13" rx="2"/>
+        <circle cx="12" cy="12.5" r="3.5"/>
+        <path d="M9 6l1.5-2h3L15 6"/>
+      </svg>
+      <span>{loading ? 'Analyse...' : 'Photos géolocalisées'}</span>
+    </button>
+  );
+}
+
 // M/2026/04/30/11 — helper unique pour formater l adresse du bien (Section II Bloc 01).
 // Source de verite : bien.* (jamais le c.ville top-level, qui represente la ville de
 // residence du contact). Utilise par ClientRow + DossierPdfView + shared.html + autres
@@ -3204,7 +3272,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
       </div>
       {/* M/2026/04/29/43 — Lat/Lng grid supprime franchement (state gps_lat/lng preserve, consomme par MapPicker, juste invisible UI). */}
-      <MapPicker bien={bien} setB={setB} setBMany={setBMany} showToast={showToast}/>
+      <MapPicker bien={bien} setB={setB} setBMany={setBMany} dossierId={dossierId} showToast={showToast}/>
       <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:8, marginBottom:10}}>
         <SelectPopup label="Confidentialité adresse" value={bien.confidentialite_adresse} onChange={v => setB('confidentialite_adresse', v)} options={V4_CONFIDENTIALITE}/>
         <Field label="Distance aéroport (km)" type="number" value={bien.distance_aeroport_km} onChange={v => setB('distance_aeroport_km', v)}/>
@@ -3995,7 +4063,7 @@ async function reverseGeocodeNominatim(lat, lng) {
 // V18.0 — Auto-centrage carte sur ville+quartier du bien via Nominatim, cache localStorage,
 // fallback hardcodé MA/FR. Respecte position manuelle (drag/clic/GPS) via gps_source.
 // V18.8 — Cascade flyTo (pays z6 → ville z12 → quartier z14 → adresse z17), rayon slider live (50-5000m), reverse-geocoding Ma position.
-function MapPicker({bien, setB, setBMany, showToast}) {
+function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
   const mapRef = React.useRef(null);
   // V17.8 : refs stables pour marker + circle, setRadius live sans recreate.
   // M/2026/04/30/6 : proximityCircle ref distinct (cercle rouge 500m permanent).
@@ -4400,7 +4468,32 @@ function MapPicker({bien, setB, setBMany, showToast}) {
       )}
       {/* M/2026/04/29/40 — carte deploiement via bouton Carte (toggle M/30/10). */}
       {/* M/2026/04/30/14 — bouton Cadastre Phase 1 : visible uniquement si carte ouverte ET pays defini. */}
-      {mapOpen && <CadastreButton pays={bien.pays}/>}
+      {/* M/2026/04/30/20 — bouton Photos geolocalisees a cote de Cadastre (extraction EXIF GPS centroide cluster). */}
+      {mapOpen && (
+        <div style={{display:'flex', gap:8, marginBottom:8, flexWrap:'wrap'}}>
+          <CadastreButton pays={bien.pays}/>
+          <PhotosExifButton dossierId={dossierId} bien={bien}
+            onApply={(lat, lng, address) => {
+              const patch = {gps_lat: lat.toFixed(6), gps_lng: lng.toFixed(6), gps_source: 'exif_photos'};
+              if (typeof setBMany === 'function') setBMany(patch); else Object.entries(patch).forEach(([k, v]) => setB(k, v));
+              const lr = leafletRef.current;
+              if (lr.map) lr.map.panTo([lat, lng], {duration: 0.8});
+              place(lat, lng);
+              // Reverse-geocode async pour ecraser adresse/ville/quartier/CP/pays.
+              reverseGeocodeNominatim(lat, lng).then(rev => {
+                if (!rev) return;
+                const adrPatch = {};
+                if (rev.adresse) adrPatch.adresse = rev.adresse;
+                if (rev.ville) adrPatch.ville = rev.ville;
+                if (rev.quartier) adrPatch.quartier = rev.quartier;
+                if (rev.code_postal) adrPatch.code_postal = rev.code_postal;
+                if (rev.pays) adrPatch.pays = rev.pays;
+                if (Object.keys(adrPatch).length && typeof setBMany === 'function') setBMany(adrPatch);
+              }).catch(() => {});
+            }}
+            showToast={showToast}/>
+        </div>
+      )}
       <div style={{maxHeight: mapOpen ? 360 : 0, overflow:'hidden', transition:'max-height 250ms ease-out'}}>
         <div ref={mapRef} style={{height:300, width:'100%', borderRadius:10, border:'1px solid #EDE6DC', overflow:'hidden'}}/>
       </div>
