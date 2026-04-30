@@ -800,12 +800,25 @@ const FIELD_FILLED = {border:'1.5px solid #BBA88B', background:'#FFFCF5'};
 const FIELD_EMPTY  = {border:'1.5px solid #E8DDD0', background:'#FDFAF7'};
 
 // M/2026/04/30/14 — Cadastre Phase 1 : Maroc lien externe ANCFCC.
-// Architecture extensible : Phase 2 ajoutera ES/IT (WMS) + autres pays.
+// M/2026/04/30/54 — Phase 2 : Espagne (Catastro) + Italie (Agenzia Entrate INSPIRE) WMS overlay.
+// FR : redirect cadastre.gouv.fr (Phase 1, fallback non bloquant). MA : ANCFCC link.
 const CADASTRE_PROVIDERS = {
   MA: {label: 'Cadastre ANCFCC', type: 'external_link', url: 'https://www.ancfcc.gov.ma/PlanCadastral'},
-  // Phase 2 : ES, IT (WMS publics gratuits) + autres a venir.
+  FR: {label: 'Cadastre.gouv.fr',  type: 'external_link', url: 'https://www.cadastre.gouv.fr/scpc/accueil.do'},
+  ES: {
+    label: 'Cadastro Espagne', type: 'wms',
+    wmsUrl: 'https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx',
+    layers: 'Catastro',
+    fallbackUrl: 'https://www.sedecatastro.gob.es/',
+  },
+  IT: {
+    label: 'Catasto Italie', type: 'wms',
+    wmsUrl: 'https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/ows01.php',
+    layers: 'CP.CadastralParcel',
+    fallbackUrl: 'https://wms.cartografia.agenziaentrate.gov.it/inspire/wms/ows01.php?service=WMS&request=GetCapabilities',
+  },
 };
-function CadastreButton({pays}) {
+function CadastreButton({pays, getMap}) {
   if (!pays) return null; // pays absent : bouton entierement masque (mission spec).
   const provider = CADASTRE_PROVIDERS[pays];
   // M/2026/04/30/35 — alignement style L3 : meme baseStyle que PhotosExifButton voisin
@@ -842,7 +855,78 @@ function CadastreButton({pays}) {
       </button>
     );
   }
-  // type 'wms' Phase 2 : pas implemente.
+  // M/2026/04/30/54 — type wms : toggle overlay Leaflet + GetFeatureInfo popup.
+  if (provider.type === 'wms') {
+    const [active, setActive] = React.useState(false);
+    const layerRef = React.useRef(null);
+    const handlerRef = React.useRef(null);
+
+    function deactivate() {
+      const map = typeof getMap === 'function' ? getMap() : null;
+      if (map) {
+        if (layerRef.current) { try { map.removeLayer(layerRef.current); } catch (e) {} }
+        if (handlerRef.current) { try { map.off('click', handlerRef.current); } catch (e) {} }
+      }
+      layerRef.current = null;
+      handlerRef.current = null;
+      setActive(false);
+    }
+    async function onMapClickFeatureInfo(e) {
+      const map = typeof getMap === 'function' ? getMap() : null;
+      if (!map || !window.L) return;
+      const L = window.L;
+      const size = map.getSize();
+      const point = map.latLngToContainerPoint(e.latlng, map.getZoom());
+      const bounds = map.getBounds();
+      const params = new URLSearchParams({
+        SERVICE:'WMS', VERSION:'1.1.1', REQUEST:'GetFeatureInfo',
+        LAYERS: provider.layers, QUERY_LAYERS: provider.layers,
+        INFO_FORMAT: 'text/html', FEATURE_COUNT: '1',
+        SRS: 'EPSG:4326',
+        BBOX: [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()].join(','),
+        WIDTH: String(size.x), HEIGHT: String(size.y),
+        X: String(Math.round(point.x)), Y: String(Math.round(point.y)),
+      });
+      const url = provider.wmsUrl + '?' + params.toString();
+      try {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('http ' + r.status);
+        const html = await r.text();
+        const trimmed = (html || '').trim();
+        const safeHtml = trimmed && trimmed.length > 30 ? trimmed : '<i>Aucune parcelle à cet emplacement.</i>';
+        L.popup({maxWidth: 320}).setLatLng(e.latlng).setContent(
+          '<div style="font-family:DM Sans,sans-serif;font-size:12px;max-height:240px;overflow:auto">' + safeHtml +
+          '<div style="margin-top:6px;text-align:right"><a href="' + provider.fallbackUrl + '" target="_blank" rel="noopener" style="color:#8B5E3C">Détails officiels →</a></div></div>'
+        ).openOn(map);
+      } catch (err) {
+        L.popup().setLatLng(e.latlng).setContent('<i>Service cadastre temporairement indisponible.</i><br><a href="' + provider.fallbackUrl + '" target="_blank" rel="noopener">Site officiel</a>').openOn(map);
+      }
+    }
+    function activate() {
+      const map = typeof getMap === 'function' ? getMap() : null;
+      if (!map || !window.L) { window.open(provider.fallbackUrl, '_blank', 'noopener,noreferrer'); return; }
+      const L = window.L;
+      const layer = L.tileLayer.wms(provider.wmsUrl, {
+        layers: provider.layers, format: 'image/png', transparent: true,
+        opacity: 0.65, version: '1.1.1', attribution: provider.label,
+      });
+      layer.addTo(map);
+      layerRef.current = layer;
+      handlerRef.current = onMapClickFeatureInfo;
+      map.on('click', onMapClickFeatureInfo);
+      setActive(true);
+    }
+    React.useEffect(() => () => { try { deactivate(); } catch (e) {} }, []);
+
+    return (
+      <button type="button"
+        onClick={() => active ? deactivate() : activate()}
+        title={active ? 'Masquer overlay cadastre' : 'Afficher overlay cadastre WMS'}
+        style={{...baseStyle, background: active ? '#8B5E3C' : '#FAF6EE', color: active ? '#fff' : '#5C3B1E', cursor:'pointer', border: '1px solid ' + (active ? '#8B5E3C' : '#D9C9A8')}}>
+        {Icon}<span>{active ? 'Cadastre actif' : provider.label}</span>
+      </button>
+    );
+  }
   return null;
 }
 
@@ -5506,7 +5590,7 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
       {/* M/2026/04/30/35 — wrapper grid auto-fit responsive : iPhone 1-2 col, iPad 3-4 col. */}
       {mapOpen && (
         <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8, marginTop:8, marginBottom:8}}>
-          <CadastreButton pays={bien.pays}/>
+          <CadastreButton pays={bien.pays} getMap={() => leafletRef.current && leafletRef.current.map}/>
           <PhotosExifButton dossierId={dossierId} bien={bien}
             onApply={(lat, lng, address) => {
               const patch = {gps_lat: lat.toFixed(6), gps_lng: lng.toFixed(6), gps_source: 'exif_photos'};
