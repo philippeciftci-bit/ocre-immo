@@ -901,6 +901,14 @@ function PhotosExifButton({dossierId, bien, onApply, showToast}) {
   );
 }
 
+// M/2026/04/30/28 — photoSrc helper hoiste au module scope (etait dans PhotoUpload local
+// scope, pas accessible depuis SheetView -> ReferenceError silencieux ecran blanc Vue tableau).
+function photoSrc(p) {
+  if (!p) return '';
+  if (typeof p === 'string') return p;
+  return p.url || '';
+}
+
 // M/2026/04/30/11 — helper unique pour formater l adresse du bien (Section II Bloc 01).
 // Source de verite : bien.* (jamais le c.ville top-level, qui represente la ville de
 // residence du contact). Utilise par ClientRow + DossierPdfView + shared.html + autres
@@ -2881,11 +2889,8 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
   const token = () => localStorage.getItem('ocre_token') || '';
 
   // Normalise : extrait l'URL affichable et la clé (name) pour delete.
-  function photoSrc(p) {
-    if (!p) return '';
-    if (typeof p === 'string') return p;
-    return p.url || '';
-  }
+  // M/2026/04/30/28 — photoSrc deplacee au module scope (helper global). Resolu via closure
+  // automatique JS pour les usages internes a PhotoUpload.
   function photoKey(p, idx) {
     if (!p) return 'idx-' + idx;
     if (typeof p === 'string') return p;
