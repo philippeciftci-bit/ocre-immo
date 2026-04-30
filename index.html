@@ -1875,6 +1875,112 @@ function CurrencyPicker({value, onChange, style={}}) {
     </div>
   );
 }
+// M/2026/04/30/29 — ConversionDisplay : affiche montant equivalents devises selon regles
+// pays (MA: MAD<->EUR, TR: TRY<->EUR, Eurozone: EUR/USD, autres: locale<->EUR).
+// Cache localStorage 24h pour eviter spam endpoint exchange_rates.php (lui-meme cache 24h).
+function _ratesCacheGet() {
+  try {
+    const raw = localStorage.getItem('ocre_exchange_rates');
+    if (!raw) return null;
+    const j = JSON.parse(raw);
+    if (!j || !j.date || !j.rates) return null;
+    const ageMs = Date.now() - new Date(j.fetched_at || 0).getTime();
+    if (ageMs > 86400000) return null;
+    return j;
+  } catch (e) { return null; }
+}
+function _ratesCacheSet(j) {
+  try { localStorage.setItem('ocre_exchange_rates', JSON.stringify({...j, fetched_at: new Date().toISOString()})); } catch (e) {}
+}
+function _ratesFetch() {
+  return fetch('/api/exchange_rates.php').then(r => r.ok ? r.json() : null).catch(() => null);
+}
+function _convertEUR(amount, from, to, rates) {
+  // rates est base EUR : rates[XXX] = montant XXX pour 1 EUR.
+  if (!rates || !amount) return null;
+  const a = Number(amount); if (!isFinite(a) || a <= 0) return null;
+  const fromRate = from === 'EUR' ? 1 : Number(rates[from] || 0);
+  const toRate = to === 'EUR' ? 1 : Number(rates[to] || 0);
+  if (!fromRate || !toRate) return null;
+  return (a / fromRate) * toRate;
+}
+function _roundMoney(v) {
+  if (!isFinite(v) || v <= 0) return 0;
+  if (v >= 10000) return Math.round(v / 1000) * 1000;
+  if (v >= 1000) return Math.round(v / 100) * 100;
+  return Math.round(v / 10) * 10;
+}
+function _fmtMoney(v) {
+  return Math.round(v).toLocaleString('fr-FR').replace(/ /g, ' ');
+}
+function targetsForCountry(pays, devise) {
+  // Retourne array de codes vers lesquels convertir (selon regles M/30/29).
+  const EUROZONE = ['FR','ES','IT','DE','NL','BE','PT','AT','IE','LU','FI','GR','SK','SI','EE','LV','LT','CY','MT','HR','AD','MC','SM','VA'];
+  if (pays === 'MA') {
+    if (devise === 'MAD') return ['EUR'];
+    if (devise === 'EUR') return ['MAD'];
+    return ['MAD', 'EUR'];
+  }
+  if (pays === 'TR') {
+    if (devise === 'TRY') return ['EUR'];
+    if (devise === 'EUR') return ['TRY'];
+    return ['TRY', 'EUR'];
+  }
+  if (EUROZONE.includes(pays)) {
+    if (devise === 'EUR') return ['USD'];
+    return ['EUR'];
+  }
+  // Autres pays
+  const local = (typeof currencyForCountry === 'function') ? currencyForCountry(pays) : 'EUR';
+  if (devise === local) return ['EUR'];
+  if (devise === 'EUR') return [local];
+  return [local, 'EUR'];
+}
+function ConversionDisplay({amount, devise, pays}) {
+  const [rates, setRates] = React.useState(null);
+  const [date, setDate] = React.useState('');
+  const [error, setError] = React.useState(false);
+  React.useEffect(() => {
+    const cached = _ratesCacheGet();
+    if (cached) { setRates(cached.rates); setDate(cached.date || ''); return; }
+    let cancelled = false;
+    _ratesFetch().then(j => {
+      if (cancelled) return;
+      if (j && j.ok && j.rates) {
+        setRates(j.rates); setDate(j.date || '');
+        _ratesCacheSet(j);
+      } else {
+        // Fallback : reessaie depuis localStorage meme si vieux.
+        try {
+          const stale = JSON.parse(localStorage.getItem('ocre_exchange_rates') || 'null');
+          if (stale && stale.rates) { setRates(stale.rates); setDate(stale.date || ''); }
+          else setError(true);
+        } catch (e) { setError(true); }
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+  const num = Number(amount);
+  if (!isFinite(num) || num <= 0) return null;
+  if (!rates && !error) return null; // chargement silencieux
+  if (error || !rates) return (
+    <div style={{fontSize:11, color:'#8B7F6E', opacity:.85, fontStyle:'italic', marginTop:2}}>Conversion indisponible</div>
+  );
+  const targets = targetsForCountry(pays || '', devise || 'MAD');
+  const lines = targets.map(t => {
+    const v = _convertEUR(num, devise || 'MAD', t, rates);
+    if (!v) return null;
+    return '≈ ' + _fmtMoney(_roundMoney(v)) + ' ' + t;
+  }).filter(Boolean);
+  if (!lines.length) return null;
+  return (
+    <div style={{fontSize:11, color:'#8B7F6E', opacity:.85, fontFamily:"'DM Sans', -apple-system, sans-serif", marginTop:2, animation:'fadeIn 200ms ease-out'}}>
+      {lines.join(' · ')}
+      {date && <div style={{fontSize:9, color:'#A07842', marginTop:1}}>Taux du {date}</div>}
+    </div>
+  );
+}
+
 // Frais de notaire par pays (% prix du bien, défaut). Override manuel possible
 // via clients.notaire_taux. Pour FR : 7.5% ancien / 2.5% VEFA selon statut bien.
 const NOTAIRE_RATES = {
@@ -5416,7 +5522,23 @@ function V62SubTitle({children}) {
 // détails (Capacité, Mandat, Co-courtage, Répartition, Stratégie, Performance) en bas.
 function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}) {
   const paysBien = (d.bien && d.bien.pays) || (d.pays_residence === 'Maroc' ? 'MA' : 'FR');
-  const devise = paysBien === 'MA' ? 'MAD' : 'EUR';
+  // M/2026/04/30/29 — devise resolue via d.devise utilisateur OU currencyForCountry(pays).
+  // Auto-suggestion : si devise vide ET devise_source != 'manual' -> set auto via currencyForCountry.
+  const devise = d.devise || (typeof currencyForCountry === 'function' ? currencyForCountry(paysBien) : (paysBien === 'MA' ? 'MAD' : 'EUR'));
+  React.useEffect(() => {
+    if (!paysBien) return;
+    if (d.devise_source === 'manual') return; // respect choix manuel
+    const auto = typeof currencyForCountry === 'function' ? currencyForCountry(paysBien) : (paysBien === 'MA' ? 'MAD' : 'EUR');
+    if (auto && auto !== d.devise) {
+      set('devise', auto);
+      set('devise_source', 'auto');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paysBien]);
+  function pickDevise(code) {
+    set('devise', code);
+    set('devise_source', 'manual');
+  }
   const neufAncien = (d.bien && d.bien.neuf_ancien) || 'ancien';
 
   // ─── ACHETEUR ─────────────────────────────────────────────────────────
@@ -5524,8 +5646,17 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
       <>
         {/* V62 — Bloc essentiels en haut */}
         <V55Bloc title="Prix">
-          <V55Field label="Prix affiché" type="number" value={d.prix_affiche} onChange={v => set('prix_affiche', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
-          <V55Field label="Prix plancher (confidentiel)" type="number" value={d.prix_plancher} onChange={v => set('prix_plancher', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint="Visible uniquement par l'agent"/>
+          {/* M/2026/04/30/29 — CurrencyPicker mondial + ConversionDisplay live sous Prix. */}
+          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+            <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise</span>
+            <CurrencyPicker value={devise} onChange={pickDevise}/>
+            {d.devise_source === 'manual' && (
+              <span style={{fontSize:10, color:'#A07842', fontStyle:'italic'}}>(choix manuel)</span>
+            )}
+          </div>
+          <V55Field label="Prix affiché" type="number" value={d.prix_affiche} onChange={v => set('prix_affiche', v)} suffix={devise}/>
+          <ConversionDisplay amount={d.prix_affiche} devise={devise} pays={paysBien}/>
+          <V55Field label="Prix plancher (confidentiel)" type="number" value={d.prix_plancher} onChange={v => set('prix_plancher', v)} suffix={devise} hint="Visible uniquement par l'agent"/>
           <V55Field label="Date de disponibilité" type="date_fr" value={d.date_disponibilite} onChange={v => set('date_disponibilite', v)}/>
         </V55Bloc>
 
