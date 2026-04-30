@@ -2905,6 +2905,46 @@ const SECTION_II_TYPE_MATRIX = {
 function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) {
   const bien = d.bien || {};
   function setB(k, v) { set('bien', {...bien, [k]: v}); }
+  // M/2026/04/30/15 — multi-field merge en un seul set (evite la course de setB sequentiels
+  // qui ecrasent le bien snapshot ferme dans la closure).
+  function setBMany(patch) { set('bien', {...bien, ...patch}); }
+  // Cascade descendante hierarchique : Pays > Ville > Quartier > Adresse rue.
+  // Changement d un niveau efface tous les niveaux inferieurs + reset gps. Skip cascade si
+  // gps_source === 'autocomplete' (auto-fill via AddressAutocomplete onPick - pas un change manuel).
+  function handlePaysChange(v) {
+    if (v === bien.pays) return;
+    setBMany({pays: v, ville: '', quartier: '', code_postal: '', adresse: '',
+              gps_lat: '', gps_lng: '', gps_source: ''});
+  }
+  function handleVilleChange(v) {
+    if (v === bien.ville) return;
+    if (bien.gps_source === 'autocomplete') { setB('ville', v); return; }
+    setBMany({ville: v, quartier: '', code_postal: '', adresse: '',
+              gps_lat: '', gps_lng: '', gps_source: ''});
+  }
+  function handleQuartierChange(v) {
+    if (v === bien.quartier) return;
+    if (bien.gps_source === 'autocomplete') { setB('quartier', v); return; }
+    setBMany({quartier: v, adresse: '', gps_lat: '', gps_lng: '', gps_source: ''});
+  }
+  function handleAdresseChange(v) {
+    setB('adresse', v);
+    // Champ vidé : reset gps + source pour permettre dezooming au niveau superieur.
+    if (!v || !v.trim()) setBMany({adresse: '', gps_lat: '', gps_lng: '', gps_source: ''});
+  }
+  function handleAdressePick(pick) {
+    // Multi-field merge atomique (sinon setB sequentiels racent et seul le dernier gagne).
+    const patch = {};
+    if (pick.adresse) patch.adresse = pick.adresse;
+    if (pick.ville) patch.ville = pick.ville;
+    if (pick.quartier) patch.quartier = pick.quartier;
+    if (pick.code_postal) patch.code_postal = pick.code_postal;
+    if (pick.pays) patch.pays = pick.pays;
+    if (pick.lat) patch.gps_lat = String(pick.lat);
+    if (pick.lng) patch.gps_lng = String(pick.lng);
+    patch.gps_source = 'autocomplete';
+    setBMany(patch);
+  }
   // M/2026/04/30/9 — auto-detection pays via IP gere une fois au niveau FormView (setD).
   // M/2026/04/28/44 — conditionnels Section II 22b. Calculé une seule fois
   // pour éviter la duplication dans le JSX et garder le rendu lisible.
@@ -2992,36 +3032,21 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           (L3 = ligne 5 boutons egaux dans MapPicker)
           Picker Quartier z-index >= 1000 (au-dessus carte Leaflet panes 200-700). */}
       <div style={{display:'grid', gridTemplateColumns:'100px 1fr', gap:8, marginBottom:10, alignItems:'flex-end'}}>
-        <PaysCompactButton value={bien.pays} onChange={v => setB('pays', v)}/>
-        <AddressAutocomplete label="Adresse" value={bien.adresse} onChange={v => {
-            setB('adresse', v);
-            // M/2026/04/30/11 — adresse vidée -> reset gps_source pour reactiver le zoom
-            // progressif (pays/ville/quartier) si l utilisateur efface une adresse pickee.
-            if (!v || !v.trim()) {
-              if (bien.gps_source === 'autocomplete') setB('gps_source', '');
-            }
-          }}
+        <PaysCompactButton value={bien.pays} onChange={handlePaysChange}/>
+        <AddressAutocomplete label="Adresse" value={bien.adresse}
+          onChange={handleAdresseChange}
           country={bien.pays}
           autoComplete="street-address" name="bien-street-address"
           style={{marginBottom:0}}
-          onPick={(pick) => {
-            if (pick.adresse) setB('adresse', pick.adresse);
-            if (pick.ville) setB('ville', pick.ville);
-            if (pick.quartier) setB('quartier', pick.quartier);
-            if (pick.code_postal) setB('code_postal', pick.code_postal);
-            if (pick.pays) setB('pays', pick.pays);
-            if (pick.lat) setB('gps_lat', String(pick.lat));
-            if (pick.lng) setB('gps_lng', String(pick.lng));
-            setB('gps_source', 'autocomplete');
-          }}/>
+          onPick={handleAdressePick}/>
       </div>
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:10}}>
         <Field label="Code postal" value={bien.code_postal} onChange={v => setB('code_postal', v)} style={{marginBottom:0}}
           autoComplete="postal-code" name="bien-postal-code" inputMode="text"/>
-        <CityPicker label="Ville" value={bien.ville} onChange={v => setB('ville', v)} country={bien.pays} showFlag={false} style={{marginBottom:0}}
+        <CityPicker label="Ville" value={bien.ville} onChange={handleVilleChange} country={bien.pays} showFlag={false} style={{marginBottom:0}}
           autoComplete="address-level2" name="bien-address-level2"/>
         <DistrictPicker ville={bien.ville} pays={bien.pays}
-          value={bien.quartier} onChange={v => setB('quartier', v)}
+          value={bien.quartier} onChange={handleQuartierChange}
           fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
       </div>
       {/* M/2026/04/29/43 — Lat/Lng grid supprime franchement (state gps_lat/lng preserve, consomme par MapPicker, juste invisible UI). */}
@@ -3897,6 +3922,17 @@ function MapPicker({bien, setB, showToast}) {
     if (modeRef.current === 'zone') ensureCircle(L, lat, lng, radiusRef.current);
     else removeCircle();
   }
+  function removeMarker() {
+    const lr = leafletRef.current;
+    if (lr.marker && lr.map) { lr.map.removeLayer(lr.marker); lr.marker = null; }
+    if (lr.proximityCircle && lr.map) { lr.map.removeLayer(lr.proximityCircle); lr.proximityCircle = null; }
+  }
+
+  // M/2026/04/30/15 — cascade descendante : si gps_lat/lng resets a vide -> retire marker + cercle.
+  React.useEffect(() => {
+    const lat = Number(bien.gps_lat), lng = Number(bien.gps_lng);
+    if (!lat || !lng) removeMarker();
+  }, [bien.gps_lat, bien.gps_lng]);
 
   React.useEffect(() => {
     if (!mapOpen) return; // M/2026/04/29/40 — lazy init guard
