@@ -3204,7 +3204,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
       </div>
       {/* M/2026/04/29/43 — Lat/Lng grid supprime franchement (state gps_lat/lng preserve, consomme par MapPicker, juste invisible UI). */}
-      <MapPicker bien={bien} setB={setB} showToast={showToast}/>
+      <MapPicker bien={bien} setB={setB} setBMany={setBMany} showToast={showToast}/>
       <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:8, marginBottom:10}}>
         <SelectPopup label="Confidentialité adresse" value={bien.confidentialite_adresse} onChange={v => setB('confidentialite_adresse', v)} options={V4_CONFIDENTIALITE}/>
         <Field label="Distance aéroport (km)" type="number" value={bien.distance_aeroport_km} onChange={v => setB('distance_aeroport_km', v)}/>
@@ -3995,11 +3995,64 @@ async function reverseGeocodeNominatim(lat, lng) {
 // V18.0 — Auto-centrage carte sur ville+quartier du bien via Nominatim, cache localStorage,
 // fallback hardcodé MA/FR. Respecte position manuelle (drag/clic/GPS) via gps_source.
 // V18.8 — Cascade flyTo (pays z6 → ville z12 → quartier z14 → adresse z17), rayon slider live (50-5000m), reverse-geocoding Ma position.
-function MapPicker({bien, setB, showToast}) {
+function MapPicker({bien, setB, setBMany, showToast}) {
   const mapRef = React.useRef(null);
   // V17.8 : refs stables pour marker + circle, setRadius live sans recreate.
   // M/2026/04/30/6 : proximityCircle ref distinct (cercle rouge 500m permanent).
   const leafletRef = React.useRef({map:null, marker:null, circle:null, proximityCircle:null});
+  // M/2026/04/30/19 — confirmation avant ecrasement adresse via drag pin/tap carte.
+  // bienRef stable pour les handlers Leaflet (closures gellent les props sinon).
+  const bienRef = React.useRef(bien);
+  React.useEffect(() => { bienRef.current = bien; }, [bien]);
+  function locFieldsHaveContent() {
+    const b = bienRef.current || {};
+    return !!(b.pays || b.ville || b.quartier || b.adresse || b.code_postal);
+  }
+  // Applique reverse-geocode + setBMany atomique (toutes les loc fields ecrasees + gps).
+  async function applyPin(lat, lng) {
+    const rev = await reverseGeocodeNominatim(lat, lng);
+    const patch = {
+      gps_lat: lat.toFixed(6),
+      gps_lng: lng.toFixed(6),
+      gps_source: 'manual',
+    };
+    if (rev) {
+      if (rev.adresse) patch.adresse = rev.adresse;
+      if (rev.ville) patch.ville = rev.ville;
+      if (rev.quartier) patch.quartier = rev.quartier;
+      if (rev.code_postal) patch.code_postal = rev.code_postal;
+      if (rev.pays) patch.pays = rev.pays;
+    }
+    if (typeof setBMany === 'function') setBMany(patch);
+    else { Object.entries(patch).forEach(([k, v]) => setB(k, v)); }
+    const lr = leafletRef.current;
+    if (lr.circle) lr.circle.setLatLng([lat, lng]);
+    if (lr.proximityCircle) lr.proximityCircle.setLatLng([lat, lng]);
+  }
+  // Wrapper avec confirmation : applique direct si tous champs vides, sinon askConfirm.
+  // prevPos peut etre null (premier drop) -> en cas d annulation, marker retire.
+  async function confirmAndApplyPin(newLat, newLng, prevPos) {
+    if (!locFieldsHaveContent()) { applyPin(newLat, newLng); return; }
+    const ok = await askConfirm({
+      title: 'Adopter cette nouvelle position ?',
+      message: "L'adresse saisie sera remplacée par la position détectée sur la carte. Vos saisies actuelles (pays, ville, quartier, adresse) seront mises à jour.",
+      confirmLabel: 'Mettre à jour',
+      cancelLabel: 'Garder mes saisies',
+      danger: false,
+    });
+    if (ok) { applyPin(newLat, newLng); return; }
+    // Annule : revert marker a la position precedente.
+    const lr = leafletRef.current;
+    if (prevPos && lr.marker) {
+      lr.marker.setLatLng([prevPos.lat, prevPos.lng]);
+      if (lr.circle) lr.circle.setLatLng([prevPos.lat, prevPos.lng]);
+      if (lr.proximityCircle) lr.proximityCircle.setLatLng([prevPos.lat, prevPos.lng]);
+    } else if (lr.marker && lr.map) {
+      // Pas de position precedente -> retire le marker (premier drop annule).
+      lr.map.removeLayer(lr.marker); lr.marker = null;
+      if (lr.proximityCircle) { lr.map.removeLayer(lr.proximityCircle); lr.proximityCircle = null; }
+    }
+  }
   const modeRef = React.useRef(bien.gps_mode || 'precis');
   const radiusRef = React.useRef(bien.gps_radius ? Number(bien.gps_radius) : 1000);
   const [mode, setMode] = React.useState(modeRef.current);
@@ -4033,13 +4086,15 @@ function MapPicker({bien, setB, showToast}) {
     const lr = leafletRef.current;
     if (!lr.marker) {
       lr.marker = L.marker([lat, lng], {draggable: true, icon: getGooglePinIcon(L)}).addTo(lr.map);
+      // M/2026/04/30/19 — capture position avant drag (dragstart) pour revert si annulation.
+      let prevPos = null;
+      lr.marker.on('dragstart', () => {
+        const p = lr.marker.getLatLng();
+        prevPos = {lat: p.lat, lng: p.lng};
+      });
       lr.marker.on('dragend', () => {
         const p = lr.marker.getLatLng();
-        setB('gps_lat', p.lat.toFixed(6));
-        setB('gps_lng', p.lng.toFixed(6));
-        setB('gps_source', 'manual'); // V18.0 : drag = manuel, n'est plus écrasable par geocode.
-        if (lr.circle) lr.circle.setLatLng(p);
-        if (lr.proximityCircle) lr.proximityCircle.setLatLng(p);
+        confirmAndApplyPin(p.lat, p.lng, prevPos);
       });
     } else {
       lr.marker.setLatLng([lat, lng]);
@@ -4119,11 +4174,14 @@ function MapPicker({bien, setB, showToast}) {
       }).addTo(map);
       leafletRef.current.map = map;
       map.on('click', e => {
+        // M/2026/04/30/19 — tap carte mode Precis : confirmation avant ecrasement adresse.
+        if (modeRef.current !== 'precis') return; // skip si mode Zone (toggle, pas drop pin)
         const {lat, lng} = e.latlng;
-        setB('gps_lat', lat.toFixed(6));
-        setB('gps_lng', lng.toFixed(6));
-        setB('gps_source', 'manual'); // V18.0 : clic = manuel.
+        const lr = leafletRef.current;
+        const prevPos = lr.marker ? (() => { const p = lr.marker.getLatLng(); return {lat: p.lat, lng: p.lng}; })() : null;
+        // Place le marker temporairement a la nouvelle position (previsualisation).
         place(lat, lng);
+        confirmAndApplyPin(lat, lng, prevPos);
       });
       if (bien.gps_lat && bien.gps_lng) place(lat, lng);
     }
