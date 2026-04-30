@@ -3672,6 +3672,37 @@ function NumericPicker({label, value, onChange, max=9, allowPlus=true, placehold
 }
 
 // M/2026/04/29/19 — Helpers pills inline (pattern dupliqué intentionnellement pour lisibilité 14 blocs).
+// M/2026/04/30/41 — DpePillRadio : variante PillRadio avec palette officielle DPE
+// par option (A vert -> G rouge + NC gris). Single-select, tap pill = onChange.
+const DPE_PALETTE = {
+  'A':  '#00A651', 'B':  '#50B848', 'C':  '#AED136', 'D':  '#FFF200',
+  'E':  '#FBB03B', 'F':  '#F37021', 'G':  '#ED1C24', 'NC': '#999999',
+};
+function DpePillRadio({label, value, onChange, options}) {
+  return (
+    <div style={{marginBottom:10}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+        {options.map(o => {
+          const v = typeof o === 'string' ? o : o.value;
+          const lbl = typeof o === 'string' ? o : o.label;
+          const color = DPE_PALETTE[v] || '#8B5E3C';
+          const active = value === v;
+          return (
+            <button key={v} type="button" onClick={() => onChange(active ? '' : v)}
+              title={'Classe ' + lbl}
+              style={{minWidth:36, padding:'7px 10px', borderRadius:18, fontSize:12.5, fontWeight:700, fontFamily:'inherit',
+                      border:'1.5px solid ' + color,
+                      background: active ? color : '#fff',
+                      color: active ? '#fff' : color,
+                      cursor:'pointer'}}>{lbl}</button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function PillRadio({label, value, onChange, options}) {
   return (
     <div style={{marginBottom:10}}>
@@ -4104,6 +4135,27 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             <SelectPopup label="Luminosité" value={bien.luminosite} onChange={v => setB('luminosite', v)} options={V4_LUMINOSITE}/>
           </div>
           <PillsMulti label="Vues" value={bien.vue || []} onChange={v => setB('vue', v)} options={V4_VUES}/>
+
+          {/* M/2026/04/30/41 — Sub-head 04c PERFORMANCE ENERGETIQUE (DPE/GES) conditionnel UE.
+              Audit M/30/39 priorite haute. Champs optionnels persistes via JSON dossier
+              (pas de whitelist serveur a modifier - clients.php?action=save serialise tout). */}
+          {(['FR','BE','NL','LU','IT','ES','PT','DE','AT','IE','GR','FI','SE','DK','PL','CZ','HU'].includes(bien.pays)) && (
+            <>
+              <div style={{borderLeft:'3px solid #8B5E3C', paddingLeft:10, marginTop:16, marginBottom:10}}>
+                <div style={{fontSize:12, fontWeight:700, color:'#8B5E3C', fontStyle:'italic', letterSpacing:.4}}>04c · Performance énergétique (DPE)</div>
+              </div>
+              <DpePillRadio label="Classe DPE (consommation)" value={bien.dpe_classe || ''}
+                onChange={v => setB('dpe_classe', v)}
+                options={['A','B','C','D','E','F','G','NC']}/>
+              <DpePillRadio label="Classe GES (gaz a effet de serre)" value={bien.ges_classe || ''}
+                onChange={v => setB('ges_classe', v)}
+                options={['A','B','C','D','E','F','G','NC']}/>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+                <Field label="Consommation (kWh/m²/an)" type="number" value={bien.dpe_consommation} onChange={v => setB('dpe_consommation', v)} placeholder="ex: 250"/>
+                <Field label="Émissions (kgCO₂/m²/an)" type="number" value={bien.dpe_emissions} onChange={v => setB('dpe_emissions', v)} placeholder="ex: 30"/>
+              </div>
+            </>
+          )}
 
           {/* M/2026/04/29/42 Vague A : suppression franche des blocs legacy 04 (Authenticite),
               05 (Surfaces simples), 07 (Vue Exposition) - integres dans nouveau 03/04/04b. */}
