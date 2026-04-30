@@ -1076,6 +1076,75 @@ function useInactivityLogout(logoutFn) {
   }, []);
 }
 
+// M/2026/04/30/31 — useAutoSaveStatus + DraftSaveIndicator visuel pour la sauvegarde
+// auto Section II (handleSaveLocal V17.7 instrumente avec events ocre-draft-*).
+function useAutoSaveStatus() {
+  const [state, setState] = React.useState({status: 'idle', lastSaveAt: null, errorMessage: null, tick: 0});
+  React.useEffect(() => {
+    function onSaving() { setState(s => ({...s, status: 'saving'})); }
+    function onSaved(e) {
+      const at = (e && e.detail && e.detail.at) || Date.now();
+      setState(s => ({...s, status: 'saved', lastSaveAt: at, errorMessage: null}));
+    }
+    function onError(e) {
+      const message = (e && e.detail && e.detail.message) || 'Echec sauvegarde';
+      setState(s => ({...s, status: 'error', errorMessage: message}));
+    }
+    window.addEventListener('ocre-draft-saving', onSaving);
+    window.addEventListener('ocre-draft-saved', onSaved);
+    window.addEventListener('ocre-draft-error', onError);
+    // Tick toutes les 5s pour rafraichir le compteur "il y a Xs".
+    const t = setInterval(() => setState(s => ({...s, tick: s.tick + 1})), 5000);
+    return () => {
+      window.removeEventListener('ocre-draft-saving', onSaving);
+      window.removeEventListener('ocre-draft-saved', onSaved);
+      window.removeEventListener('ocre-draft-error', onError);
+      clearInterval(t);
+    };
+  }, []);
+  return state;
+}
+function DraftSaveIndicator() {
+  const {status, lastSaveAt, errorMessage} = useAutoSaveStatus();
+  // Format compteur Xs depuis lastSaveAt.
+  function fmtAgo(at) {
+    if (!at) return '';
+    const sec = Math.max(0, Math.floor((Date.now() - at) / 1000));
+    if (sec < 10) return "à l'instant";
+    if (sec < 60) return 'il y a ' + sec + 's';
+    const min = Math.floor(sec / 60);
+    if (min < 5) return 'il y a ' + min + ' min';
+    return 'il y a longtemps';
+  }
+  let text = '', color = '#A07842', italic = true;
+  if (status === 'saving') {
+    text = 'Enregistrement…';
+    color = '#A07842';
+  } else if (status === 'saved' && lastSaveAt) {
+    text = 'Brouillon enregistré ' + fmtAgo(lastSaveAt);
+    color = '#A07842';
+  } else if (status === 'error') {
+    text = errorMessage ? ('Échec enregistrement : ' + errorMessage) : 'Échec enregistrement, retry…';
+    color = '#DC2626';
+  } else {
+    return null; // idle initial : pas d affichage
+  }
+  return (
+    <div aria-live="polite"
+      style={{fontSize:11, color, opacity:0.7, fontFamily:"'DM Sans', -apple-system, sans-serif",
+              fontStyle: italic ? 'italic' : 'normal', padding:'4px 14px', textAlign:'right',
+              display:'flex', alignItems:'center', justifyContent:'flex-end', gap:6}}>
+      {status === 'saving' && (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"
+          style={{animation:'ocreSpin 800ms linear infinite'}}>
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+      )}
+      <span>{text}</span>
+    </div>
+  );
+}
+
 // M/2026/04/30/16 — verrou global lightbox/modale plein ecran : empêche la propagation
 // d un swipe (ClientRow swipe-delete) quand une modale capture les gestures au-dessus.
 // Compteur via document.body.dataset.ocreLightboxCount + dispatch CustomEvent.
@@ -8165,11 +8234,17 @@ function App() {
     // V20 anti-doublon : sérialise les apiSaveClient pour éviter qu'un 2e blur
     // rapide ne déclenche un nouveau INSERT pendant qu'un 1er INSERT est en vol.
     const prevPromise = savePromiseRef.current;
+    // M/2026/04/30/31 — instrumentation events ocre-draft-saving/saved/error pour DraftSaveIndicator.
+    try { window.dispatchEvent(new CustomEvent('ocre-draft-saving')); } catch (e) {}
     const myPromise = (async () => {
       try { await prevPromise; } catch (e) {}
       // Refresh id depuis le ref si une promesse précédente vient de l'établir.
       if (!incoming.id && editingIdRef.current) incoming.id = editingIdRef.current;
-      const saved = await apiSaveClient(incoming);
+      let saved = null;
+      let saveError = null;
+      try {
+        saved = await apiSaveClient(incoming);
+      } catch (e) { saveError = e; }
       if (saved && saved.id) editingIdRef.current = saved.id;
       if (saved) {
         if (isStagedSave) {
@@ -8178,6 +8253,9 @@ function App() {
           setClients(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
         }
         setEditing(saved);
+        try { window.dispatchEvent(new CustomEvent('ocre-draft-saved', {detail: {at: Date.now()}})); } catch (e) {}
+      } else {
+        try { window.dispatchEvent(new CustomEvent('ocre-draft-error', {detail: {message: (saveError && saveError.message) || 'Echec sauvegarde'}})); } catch (e) {}
       }
       return saved;
     })();
@@ -17000,6 +17078,11 @@ function FormView(props) {
           )}
         </div>
       </div>
+
+      {/* M/2026/04/30/31 — DraftSaveIndicator visuel discret juste sous le header FormView,
+          au-dessus de la zone scrollable. Affiche 'Enregistrement…' / 'Brouillon enregistré il y a Xs' /
+          'Échec enregistrement'. Compteur rafraichi toutes les 5s (useAutoSaveStatus tick). */}
+      <DraftSaveIndicator/>
 
       {/* V18.17/V18.18 — banner mode staging. URL → lien origine. Image → thumbnail + contexte. */}
       {isStaged && (
