@@ -12858,6 +12858,8 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
     eye:     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
   };
 
+  // M/2026/04/30/38 — dossierCard enrichi cohérent ClientRow V40 :
+  // photo miniature + nom + badge profil + tel/mailto cliquables + bien associé.
   function dossierCard(d) {
     if (!d) return <div style={{padding:10, color:'#8B7F6E', fontSize:12}}>Dossier introuvable</div>;
     const data = (() => { try { return typeof d.data === 'string' ? JSON.parse(d.data) : (d.data || {}); } catch (e) { return {}; } })();
@@ -12866,21 +12868,52 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
     const titreType = bien.type || (Array.isArray(bien.types) ? bien.types[0] : '') || d.projet || '';
     const ville = bien.ville || '';
     const quartier = bien.quartier || '';
-    const surface = bien.surface ? bien.surface + ' m²' : '';
-    const chambres = bien.chambres ? bien.chambres + ' ch.' : '';
     const prix = data.prix_affiche ? (data.prix_affiche/1000000).toFixed(2) + ' M MAD'
                : data.budget_max   ? (data.budget_max/1000000).toFixed(2) + ' M MAD max'
                : data.loyer_demande ? data.loyer_demande + ' MAD/mois'
                : data.loyer_max ? data.loyer_max + ' MAD/mois max'
                : '';
+    // Photo cover : premiere photo bien.photos[] via photoSrc helper M/30/28.
+    const photoArr = Array.isArray(bien.photos) ? bien.photos : [];
+    const cover = photoArr.length > 0 ? photoSrc(photoArr[0]) : '';
+    // Tel/email primaires : tableau tels[]/emails[] (V17.7) ou legacy tel/email.
+    const primaryTel = (Array.isArray(d.tels) && d.tels[0] && d.tels[0].valeur) || d.tel || '';
+    const primaryEmail = (Array.isArray(d.emails) && d.emails[0] && d.emails[0].valeur) || d.email || '';
+    // Badge profil : palette PROFILS_LABEL existante.
+    const profilLbl = (typeof PROFILS_LABEL !== 'undefined' && PROFILS_LABEL[d.projet]) || (d.projet || '').toUpperCase();
+    const profilColor = (typeof PROFILS !== 'undefined' && PROFILS[d.projet]) || '#8B5E3C';
     return (
-      <div style={{padding:10, fontSize:12, lineHeight:1.45, color:'#2A2018'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'#8B5E3C', marginBottom:2}}>{nom}</div>
-        <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:6}}>{d.projet}</div>
-        <div><b>{titreType}</b> {chambres}</div>
-        <div>{ville}{quartier ? ' — ' + quartier : ''}</div>
-        {surface && <div>{surface}</div>}
-        {prix && <div style={{marginTop:4, fontWeight:700, color:'#8B5E3C'}}>{prix}</div>}
+      <div style={{padding:10, fontSize:12, lineHeight:1.4, color:'#2A2018', display:'flex', gap:10, alignItems:'flex-start'}}>
+        {/* Photo miniature 56x56 - placeholder ocre si absente. */}
+        <div style={{flexShrink:0, width:56, height:56, borderRadius:10, border:'1px solid #D9C9A8', background:'#FBF1E4', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', color:'#8B5E3C'}}>
+          {cover ? (
+            <img src={cover} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
+          )}
+        </div>
+        <div style={{flex:1, minWidth:0}}>
+          <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:2}}>
+            <span style={{fontFamily:"'Cormorant Garamond', serif", fontSize:17, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flex:1, minWidth:0}}>{nom}</span>
+            <span style={{flexShrink:0, padding:'2px 7px', background: profilColor + '22', color: profilColor, fontSize:9, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', borderRadius:8}}>{profilLbl}</span>
+          </div>
+          {(primaryTel || primaryEmail) && (
+            <div style={{display:'flex', flexWrap:'wrap', gap:8, fontSize:11, marginBottom:4}}>
+              {primaryTel && (
+                <a href={'tel:' + String(primaryTel).replace(/[^+0-9]/g, '')} onClick={e => e.stopPropagation()}
+                  style={{color:'#8B5E3C', textDecoration:'none', whiteSpace:'nowrap'}}>{primaryTel}</a>
+              )}
+              {primaryEmail && (
+                <a href={'mailto:' + primaryEmail} onClick={e => e.stopPropagation()}
+                  style={{color:'#8B5E3C', textDecoration:'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:140}}>{primaryEmail}</a>
+              )}
+            </div>
+          )}
+          {(titreType || ville) && (
+            <div style={{fontSize:11, color:'#8B7F6E'}}>{titreType}{ville ? ' · ' + ville : ''}{quartier ? ' — ' + quartier : ''}</div>
+          )}
+          {prix && <div style={{marginTop:3, fontSize:12, fontWeight:700, color:'#8B5E3C'}}>{prix}</div>}
+        </div>
       </div>
     );
   }
