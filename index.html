@@ -676,6 +676,29 @@ const DOC_TYPES = [
   {key:'autre',            label:'Autre document',      icon:'M14 3v4a1 1 0 0 0 1 1h4 M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z'},
 ];
 
+// M/2026/04/30 — EuroIcon + EuroOffIcon : remplace le glyphe unicode € dans les boutons
+// (Cormorant Garamond a un sidebearing negatif sur Safari iOS, 3 tentatives CSS ont echoue).
+// Style Lucide cohérent avec les autres icones SVG du projet.
+function EuroIcon({size=16, color='currentColor', strokeWidth=2.2}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-label="Euro">
+      <path d="M14 21.5c-3.5 0-7-2.5-7-9.5s3.5-9.5 7-9.5"/>
+      <path d="M3 10h11"/>
+      <path d="M3 14h9"/>
+    </svg>
+  );
+}
+function EuroOffIcon({size=16, color='currentColor', strokeWidth=2.2}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-label="Euro indisponible">
+      <path d="M14 21.5c-3.5 0-7-2.5-7-9.5s3.5-9.5 7-9.5"/>
+      <path d="M3 10h11"/>
+      <path d="M3 14h9"/>
+      <line x1="2" y1="2" x2="22" y2="22" stroke="#DC2626" strokeWidth="2.5"/>
+    </svg>
+  );
+}
+
 function DocIcon({path, size=18, color='#8B5E3C'}) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -13113,8 +13136,13 @@ function BillingSection({showToast}) {
       </div>
       {limits.plan === 'decouverte' && (
         <div style={{display:'flex', gap:6, marginTop:8}}>
-          <button onClick={() => checkout('pro')} disabled={busy} style={{flex:1, padding:'8px 10px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Passer en Pro 29€</button>
-          <button onClick={() => checkout('equipe')} disabled={busy} style={{flex:1, padding:'8px 10px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Passer en Équipe 79€</button>
+          {/* M/2026/04/30 — glyphe € remplace par EuroIcon SVG (fix radical Safari iOS). */}
+          <button onClick={() => checkout('pro')} disabled={busy} style={{flex:1, padding:'8px 10px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4}}>
+            <span>Passer en Pro 29</span><EuroIcon size={13} color="#fff"/>
+          </button>
+          <button onClick={() => checkout('equipe')} disabled={busy} style={{flex:1, padding:'8px 10px', background:'transparent', color:'#8B5E3C', border:'1.5px solid #B89968', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:4}}>
+            <span>Passer en Équipe 79</span><EuroIcon size={13} color="#8B5E3C"/>
+          </button>
         </div>
       )}
       {limits.plan !== 'decouverte' && (

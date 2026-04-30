@@ -50,7 +50,15 @@ $data = json_decode($dossier['data'] ?? '{}', true) ?: [];
 function fld($v) { return $v ? htmlspecialchars($v) : '—'; }
 
 // M/2026/04/29/38 — toggle Prix / Sur demande embedded URL.
-$shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
+// M/2026/04/30 — WYSIWYG fige : flags lus depuis URL signee par l agent au moment du
+// partage (PdfShareModal index.html). Le destinataire ne peut PLUS modifier l affichage
+// (suppression franche de la share-bar 4 boutons et du <script> mode toggle).
+$hidePrice    = !empty($_GET['hide_price']);
+$hideAddress  = !empty($_GET['hide_address']);
+$hideIdentity = !empty($_GET['hide_identity']);
+// Compat retro : ancien parametre mode=demand equivaut a hide_price=1.
+if (($_GET['mode'] ?? '') === 'demand') $hidePrice = true;
+$shareMode = $hidePrice ? 'demand' : 'price';
 $prixRaw = $data['prix_affiche'] ?? $data['prix'] ?? $data['budget_max'] ?? null;
 $deviseRaw = $data['devise'] ?? '€';
 function _fmtPrix($v, $d) {
@@ -119,17 +127,25 @@ function _fmtPrix($v, $d) {
   <div class="subtitle">Référence dossier : #<?php echo (int)$dossier['id']; ?></div>
 
   <h2>I. Identité</h2>
-  <div class="grid">
-    <div class="field"><div class="label">Profil</div><div class="value"><?php echo $projet; ?></div></div>
-    <div class="field"><div class="label">Téléphone</div><div class="value <?php echo empty($dossier['tel']) ? 'empty' : ''; ?>"><?php echo fld($dossier['tel']); ?></div></div>
-    <div class="field"><div class="label">Email</div><div class="value <?php echo empty($dossier['email']) ? 'empty' : ''; ?>"><?php echo fld($dossier['email']); ?></div></div>
-    <div class="field"><div class="label">Société</div><div class="value <?php echo empty($dossier['societe_nom']) ? 'empty' : ''; ?>"><?php echo fld($dossier['societe_nom']); ?></div></div>
-  </div>
+  <?php if ($hideIdentity): ?>
+    <div class="field"><div class="value" style="font-style:italic;color:#7A7167;">Coordonnées sur demande auprès de l'agent</div></div>
+  <?php else: ?>
+    <div class="grid">
+      <div class="field"><div class="label">Profil</div><div class="value"><?php echo $projet; ?></div></div>
+      <div class="field"><div class="label">Téléphone</div><div class="value <?php echo empty($dossier['tel']) ? 'empty' : ''; ?>"><?php echo fld($dossier['tel']); ?></div></div>
+      <div class="field"><div class="label">Email</div><div class="value <?php echo empty($dossier['email']) ? 'empty' : ''; ?>"><?php echo fld($dossier['email']); ?></div></div>
+      <div class="field"><div class="label">Société</div><div class="value <?php echo empty($dossier['societe_nom']) ? 'empty' : ''; ?>"><?php echo fld($dossier['societe_nom']); ?></div></div>
+    </div>
+  <?php endif; ?>
 
   <h2>II. Le Bien</h2>
   <div class="grid">
     <div class="field"><div class="label">Type</div><div class="value <?php echo empty($data['bien']['type']) ? 'empty' : ''; ?>"><?php echo fld($data['bien']['type'] ?? null); ?></div></div>
-    <div class="field"><div class="label">Ville</div><div class="value <?php echo empty($data['bien']['ville']) ? 'empty' : ''; ?>"><?php echo fld($data['bien']['ville'] ?? null); ?></div></div>
+    <?php if ($hideAddress): ?>
+      <div class="field"><div class="label">Localisation</div><div class="value" style="font-style:italic;color:#7A7167;">Adresse sur demande</div></div>
+    <?php else: ?>
+      <div class="field"><div class="label">Ville</div><div class="value <?php echo empty($data['bien']['ville']) ? 'empty' : ''; ?>"><?php echo fld($data['bien']['ville'] ?? null); ?></div></div>
+    <?php endif; ?>
     <div class="field"><div class="label">Surface</div><div class="value <?php echo empty($data['bien']['surface']) ? 'empty' : ''; ?>"><?php echo fld($data['bien']['surface'] ?? null); ?> m²</div></div>
     <div class="field"><div class="label">Chambres</div><div class="value <?php echo empty($data['bien']['chambres']) ? 'empty' : ''; ?>"><?php echo fld($data['bien']['chambres'] ?? null); ?></div></div>
   </div>
@@ -137,14 +153,9 @@ function _fmtPrix($v, $d) {
   <h2>III. Volet financier</h2>
   <div class="grid">
     <div class="field">
-      <div class="label">
-        Prix / Budget
-        <span class="prix-pill <?php echo $shareMode === 'demand' ? 'masque' : 'affiche'; ?>" id="prix-pill"><?php echo $shareMode === 'demand' ? 'Masqué' : 'Affiché'; ?></span>
-      </div>
-      <div class="value prix-value <?php echo $shareMode === 'demand' ? 'demand' : ''; ?>" id="prix-value"
-           data-prix-real="<?php echo htmlspecialchars(_fmtPrix($prixRaw, $deviseRaw)); ?>"
-           data-prix-demand="Sur demande">
-        <?php echo $shareMode === 'demand' ? 'Sur demande' : _fmtPrix($prixRaw, $deviseRaw); ?>
+      <div class="label">Prix / Budget</div>
+      <div class="value <?php echo $hidePrice ? '' : ''; ?>" style="<?php echo $hidePrice ? 'font-style:italic;color:#7A7167;' : ''; ?>">
+        <?php echo $hidePrice ? 'Sur demande' : _fmtPrix($prixRaw, $deviseRaw); ?>
       </div>
     </div>
     <div class="field"><div class="label">Financement</div><div class="value <?php echo empty($data['financement']) ? 'empty' : ''; ?>"><?php echo fld($data['financement']['mode'] ?? null); ?></div></div>
@@ -158,79 +169,25 @@ function _fmtPrix($v, $d) {
   </div>
 </div>
 
-<!-- M/2026/04/29/38 — bandeau footer 4 boutons toggle Prix / Sur demande -->
-<div class="share-bar" data-dossier-id="<?php echo (int) $dossier['id']; ?>">
-  <div class="share-bar-grid">
-    <button type="button" class="share-btn" id="btn-cancel" aria-label="Annuler">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      <span class="lbl-full">Annuler</span>
-    </button>
-    <button type="button" class="share-btn toggle <?php echo $shareMode === 'price' ? 'active' : ''; ?>" id="btn-price" aria-label="Afficher le prix">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7.5a4 4 0 0 0-7 0M5 12h9M5 16h9M14 16.5a4 4 0 0 1-7 0"/></svg>
-      <span class="lbl-mini">Prix</span>
-    </button>
-    <button type="button" class="share-btn toggle demand <?php echo $shareMode === 'demand' ? 'active' : ''; ?>" id="btn-demand" aria-label="Sur demande">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7.5a4 4 0 0 0-7 0M5 12h9M5 16h9M14 16.5a4 4 0 0 1-7 0"/><line x1="3" y1="3" x2="21" y2="21" stroke="#C4453B" stroke-width="2.5"/></svg>
-      <span class="lbl-mini">Sur demande</span>
-    </button>
-    <button type="button" class="share-btn" id="btn-share" aria-label="Partager">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-      <span class="lbl-full">Partager</span>
-    </button>
-  </div>
+<!-- M/2026/04/30 — share-bar 4 boutons toggle supprimee franchement (WYSIWYG fige).
+     Le destinataire ne peut plus modifier l affichage. Bouton 'Forwarder le lien' minimaliste
+     pour permettre le re-partage sans editer l affichage. -->
+<div style="position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #E8E0D2;padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 10px);z-index:100;text-align:center;">
+  <button type="button" id="btn-forward" style="height:44px;padding:0 18px;border-radius:10px;border:1.5px solid #D6C7A8;background:#fff;color:#8B5E3C;font-family:'DM Sans',sans-serif;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    <span>Transferer le lien</span>
+  </button>
 </div>
-
 <script>
 (function() {
-  var dossierId = document.querySelector('.share-bar').getAttribute('data-dossier-id');
-  var btnCancel = document.getElementById('btn-cancel');
-  var btnPrice = document.getElementById('btn-price');
-  var btnDemand = document.getElementById('btn-demand');
-  var btnShare = document.getElementById('btn-share');
-  var prixVal = document.getElementById('prix-value');
-  var prixPill = document.getElementById('prix-pill');
-  var currentMode = (new URLSearchParams(location.search).get('mode') === 'demand') ? 'demand' : 'price';
-  // Persist last chosen mode per dossier in localStorage.
-  var lsKey = 'ocre_share_mode_' + dossierId;
-  if (!new URLSearchParams(location.search).has('mode')) {
-    var stored = localStorage.getItem(lsKey);
-    if (stored === 'demand' || stored === 'price') currentMode = stored;
-  }
-  function applyMode(mode) {
-    currentMode = mode;
-    btnPrice.classList.toggle('active', mode === 'price');
-    btnDemand.classList.toggle('active', mode === 'demand');
-    if (prixVal) {
-      if (mode === 'demand') {
-        prixVal.textContent = prixVal.getAttribute('data-prix-demand');
-        prixVal.classList.add('demand');
-      } else {
-        prixVal.textContent = prixVal.getAttribute('data-prix-real');
-        prixVal.classList.remove('demand');
-      }
-    }
-    if (prixPill) {
-      prixPill.textContent = mode === 'demand' ? 'Masqué' : 'Affiché';
-      prixPill.classList.toggle('masque', mode === 'demand');
-      prixPill.classList.toggle('affiche', mode !== 'demand');
-    }
-    localStorage.setItem(lsKey, mode);
-    var u = new URL(location.href);
-    u.searchParams.set('mode', mode);
-    history.replaceState(null, '', u.toString());
-  }
-  applyMode(currentMode);
-  btnPrice.addEventListener('click', function() { applyMode('price'); });
-  btnDemand.addEventListener('click', function() { applyMode('demand'); });
-  btnCancel.addEventListener('click', function() { history.length > 1 ? history.back() : window.close(); });
-  btnShare.addEventListener('click', function() {
-    var u = new URL(location.href);
-    u.searchParams.set('mode', currentMode);
-    var url = u.toString();
+  var btn = document.getElementById('btn-forward');
+  if (!btn) return;
+  btn.addEventListener('click', function() {
+    var url = location.href;
     if (navigator.share) {
       navigator.share({url: url, title: document.title}).catch(function() {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(function() { alert('Lien copié dans le presse-papier'); });
+      navigator.clipboard.writeText(url).then(function() { alert('Lien copie dans le presse-papier'); });
     } else {
       prompt('Copier le lien :', url);
     }
