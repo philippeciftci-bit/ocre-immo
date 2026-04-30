@@ -119,13 +119,24 @@ case 'disconnect': {
 }
 
 case 'status': {
+    // M/2026/04/30/24 — exposer si l OAuth est configure cote serveur (secrets presents).
+    // Permet au frontend d afficher un tag 'Bientot disponible' si non configure
+    // au lieu d ouvrir une URL connect qui retourne 503.
+    $oauthConfigured = is_file(GOOGLE_OAUTH_CLIENT_ID_PATH)
+        && is_file(GOOGLE_OAUTH_CLIENT_SECRET_PATH)
+        && trim((string) @file_get_contents(GOOGLE_OAUTH_CLIENT_ID_PATH)) !== ''
+        && trim((string) @file_get_contents(GOOGLE_OAUTH_CLIENT_SECRET_PATH)) !== '';
     $st = db()->prepare("SELECT drive_email, last_sync_at, last_sync_status, last_sync_error FROM drive_tokens
                          WHERE user_id=? AND workspace_slug=? LIMIT 1");
     $st->execute([$uid, $slug]);
     $row = $st->fetch();
-    if (!$row) { jsonOk(['connected' => false]); break; }
+    if (!$row) {
+        jsonOk(['connected' => false, 'oauth_configured' => $oauthConfigured]);
+        break;
+    }
     jsonOk([
         'connected' => true,
+        'oauth_configured' => $oauthConfigured,
         'drive_email' => $row['drive_email'],
         'last_sync_at' => $row['last_sync_at'],
         'last_sync_status' => $row['last_sync_status'],

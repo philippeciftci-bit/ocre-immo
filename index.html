@@ -5860,7 +5860,26 @@ function DriveConnectCard({showToast}) {
     setBusy(false);
   }
   if (status.loading) return null;
+  // M/2026/04/30/24 — si l OAuth n est pas configure cote serveur (secrets absents),
+  // afficher le bouton en mode 'Bientot disponible' au lieu d ouvrir un connect qui 503.
   if (!status.connected) {
+    const oauthOk = status.oauth_configured !== false;
+    if (!oauthOk) {
+      return (
+        <div style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', marginBottom:10, borderRadius:10, border:'1.5px solid #E8DDD0', background:'#F5EFE6', color:'#8B7F6E', fontFamily:'inherit', textAlign:'left', cursor:'not-allowed', opacity:0.7}}
+          title="Intégration Google Drive en cours de configuration">
+          <span style={{width:32, height:32, background:'#C9B79A', color:'#fff', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07L11.76 5.24"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07L12.24 19"/></svg>
+          </span>
+          <div style={{flex:1, minWidth:0}}>
+            <div style={{fontSize:13, fontWeight:700}}>Connecter Google Drive
+              <span style={{marginLeft:6, padding:'1px 7px', borderRadius:8, background:'#E0CDAE', color:'#5C3B1E', fontSize:10, fontWeight:700, letterSpacing:.3}}>Bientôt</span>
+            </div>
+            <div style={{fontSize:11}}>Sync auto hebdo en cours de configuration</div>
+          </div>
+        </div>
+      );
+    }
     return (
       <button onClick={connect}
         style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', marginBottom:10, borderRadius:10, border:'1.5px solid #8B5E3C', background:'#FBF1E4', color:'#5C3B1E', cursor:'pointer', fontFamily:'inherit', textAlign:'left'}}>
@@ -15282,7 +15301,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               </span>
               <div style={{flex:1, minWidth:0}}>
-                <div style={{fontSize:13, fontWeight:700}}>Télécharger .csv / .xlsx</div>
+                <div style={{fontSize:13, fontWeight:700}}>Télécharger .csv (Excel-compatible)</div>
                 <div style={{fontSize:11, color:'#8B7F6E'}}>Sauvegarde manuelle dans Fichiers / iCloud Drive</div>
               </div>
             </button>
