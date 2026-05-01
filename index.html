@@ -8884,15 +8884,24 @@ function App() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2000); }
 
   async function apiSaveClient(data) {
+    // M/2026/05/01/11 — pattern draft-on-input : retry x3 avec backoff sur le tout premier
+    // commit (creation INSERT). Pour les UPDATE (id deja set), un seul appel : la
+    // sauvegarde debounced 800ms reessaiera spontanement au prochain change.
     const token = localStorage.getItem('ocre_token');
-    try {
-      const r = await fetch(API + '/clients.php?action=save', {
-        method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token},
-        body: JSON.stringify({client: data}),
-      });
-      const d = await r.json();
-      return (d && d.ok) ? d.client : null;
-    } catch (e) { return null; }
+    const isFirstCommit = !data.id;
+    const maxAttempts = isFirstCommit ? 3 : 1;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const r = await fetch(API + '/clients.php?action=save', {
+          method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token},
+          body: JSON.stringify({client: data}),
+        });
+        const d = await r.json();
+        if (d && d.ok) return d.client;
+      } catch (e) { /* fall-through to retry */ }
+      if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 500 * attempt));
+    }
+    return null;
   }
   // V20 — anti-doublon : id de la création en cours + sérialisation des saves
   // pour éviter race condition (2 blurs rapides → 2 INSERT au lieu de 1 INSERT+1 UPDATE).
@@ -8913,24 +8922,11 @@ function App() {
     // V20 anti-doublon : si pas d'id mais une création est déjà en cours/finie,
     // injecter l'id pour transformer ce save en UPDATE (et non INSERT).
     if (!incoming.id && editingIdRef.current) incoming.id = editingIdRef.current;
-    // V52.4.1 — GUARD ROOT : bloque CRÉATION (pas update) d'un dossier vide depuis
-    // n'importe quel chemin (commit, debounce 1.5s, pushNow, beaconSave, backToListFlushed,
-    // pagehide). Si pas d'id existant ET aucune donnée significative → skip save.
-    const hasRealId = !!(incoming && incoming.id && !String(incoming.id).startsWith('tmp-'));
-    if (!hasRealId) {
-      const hasIdentity = !!(incoming.prenom || incoming.nom || incoming.societe_nom
-                             || incoming.tel || incoming.email
-                             || (Array.isArray(incoming.tels) && incoming.tels.some(t => t && t.valeur))
-                             || (Array.isArray(incoming.emails) && incoming.emails.some(e => e && e.valeur)));
-      const hasContent = !!(incoming.bien && Object.keys(incoming.bien).filter(k => incoming.bien[k]).length)
-                      || !!(incoming.financement && Object.keys(incoming.financement).filter(k => incoming.financement[k]).length)
-                      || !!(Array.isArray(incoming.payment_plan) && incoming.payment_plan.some(l => l && Number(l.amount) > 0))
-                      || !!(incoming.notes && String(incoming.notes).trim());
-      if (!hasIdentity && !hasContent) {
-        // Pas d'INSERT, ni de toucher au clients[] state → quitte silencieusement.
-        return;
-      }
-    }
+    // M/2026/05/01/11 — V52.4.1 GUARD retire (pattern draft-on-input). La protection
+    // anti-pollution se fait desormais au niveau FormView via userInteractedRef : pas de
+    // POST tant qu aucune action utilisateur explicite n a ete enregistree (tap pill profil,
+    // toggle Investisseur, keystroke input, upload fichier). Au premier acte significatif,
+    // commitDraft() est appele une fois. Plus de fenetre ou un brouillon Sans nom peut leak.
     // V18.17 — si staged, mettre à jour le tableau staged (pas clients principaux).
     const isStagedSave = !!(editing && editing.is_staged);
     if (isStagedSave) {
@@ -17251,7 +17247,15 @@ function FormView(props) {
     return () => clearTimeout(t);
   }, [initialExpandedSection]);
 
+  // M/2026/05/01/11 — pattern draft-on-input : flag user-interacted. Le useEffect debounce
+  // ne planifie de save QUE si ce ref est true. Initial mount + changes programmatiques
+  // (detect_country, banner edit pending) ne creent JAMAIS de ligne brouillon en DB.
+  // Au premier acte explicite (keystroke set, tap pill, toggle invest, upload), on bascule
+  // a true et le commit (POST INSERT) part dans les 800 ms qui suivent.
+  const userInteractedRef = useRef(false);
+  function markUserAction() { userInteractedRef.current = true; }
   function set(k, v) {
+    markUserAction();
     setD(prev => ({...prev, [k]: v}));
   }
   // M/2026/04/30/9 — auto-detection pays via IP au mount en mode CREATION.
@@ -17305,23 +17309,13 @@ function FormView(props) {
     if (activeProfil === 'Investisseur' && !isInvestisseur) setIsInvestisseur(true);
   }, [activeProfil]);
   function commit(k, v) {
-    const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
+    // M/2026/05/01/11 — guard V52.4 retire (pattern draft-on-input). commit() est appele
+    // par les boutons "Enregistrer" sticky et commitAndNext, donc l acte est explicite par
+    // construction : on marque userInteracted et on save direct, sans gating de contenu.
+    // is_investisseur lu sur le state isInvestisseur (orthogonal aux 4 pills depuis M89/M90).
+    markUserAction();
+    const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
     setD(next);
-    // V52.4 — anti-create-on-empty : ne sauve PAS si dossier neuf (pas d'id) ET aucun
-    // champ essentiel rempli. Ouvrir une section ou commitAndNext ne crée plus de
-    // brouillon parasite tant que l'utilisateur n'a saisi aucune donnée significative.
-    const hasIdentity = !!(next.prenom || next.nom || next.societe_nom || next.tel || next.email
-                           || (Array.isArray(next.tels) && next.tels.some(t => t && t.valeur))
-                           || (Array.isArray(next.emails) && next.emails.some(e => e && e.valeur)));
-    const hasContent = !!(next.bien && Object.keys(next.bien).length)
-                    || !!(next.financement && Object.keys(next.financement).length)
-                    || !!(Array.isArray(next.payment_plan) && next.payment_plan.length)
-                    || !!next.notes;
-    const isExisting = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
-    if (!isExisting && !hasIdentity && !hasContent) {
-      // Touch sans données réelles → ignore. Pas d'INSERT côté DB.
-      return;
-    }
     handleSaveLocal(next);
   }
 
@@ -17357,41 +17351,38 @@ function FormView(props) {
 
   function pushNow() {
     if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
-    const payload = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
+    if (!userInteractedRef.current) return;
+    const payload = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
     handleSaveLocal(payload);
   }
   function beaconSave() {
+    // M/2026/05/01/11 — guard remplace : beaconSave fire UNIQUEMENT si l utilisateur a
+    // realise au moins un acte explicite. Sinon le pagehide / fermeture d onglet sur un
+    // FormView neuf jamais touche n envoie aucun beacon (zero brouillon vide en DB).
+    if (!userInteractedRef.current) return;
     try {
-      // V52.4.1 — GUARD : pas de beacon save si dossier neuf vide (sinon INSERT parasite
-      // au pagehide / fermeture d'onglet sans aucune donnée saisie).
-      const c = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
-      const hasRealId = !!(c.id && !String(c.id).startsWith('tmp-'));
-      if (!hasRealId) {
-        const hasIdentity = !!(c.prenom || c.nom || c.societe_nom || c.tel || c.email
-                               || (Array.isArray(c.tels) && c.tels.some(t => t && t.valeur))
-                               || (Array.isArray(c.emails) && c.emails.some(e => e && e.valeur)));
-        const hasContent = !!(c.bien && Object.keys(c.bien).filter(k => c.bien[k]).length)
-                        || !!(c.financement && Object.keys(c.financement).filter(k => c.financement[k]).length)
-                        || !!(Array.isArray(c.payment_plan) && c.payment_plan.some(l => l && Number(l.amount) > 0))
-                        || !!(c.notes && String(c.notes).trim());
-        if (!hasIdentity && !hasContent) return;
-      }
+      const c = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
       const token = localStorage.getItem('ocre_token') || '';
       const payload = {client: c};
       const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
       navigator.sendBeacon(API + '/clients.php?action=save&token=' + encodeURIComponent(token), blob);
     } catch (e) {}
   }
-  // Debounce 1.5s sur les changements de d/profilType/activeProfil.
+  // M/2026/05/01/11 — debounce 800ms sur les changements de d/profilType/activeProfil/isInvestisseur.
+  // Gate userInteractedRef : aucun POST tant qu aucun acte explicite. Couvre detect_country,
+  // banner edit pending, sync legacy tels/emails programmatiques (qui appellent set→markUserAction
+  // mais ne devraient pas creer de brouillon vide en mode creation : si le mount initial appelle
+  // set('tels', ...) c est qu il existe deja un d.tel legacy = donnees reelles).
   useEffect(() => {
+    if (!userInteractedRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      const payload = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
+      const payload = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
       handleSaveLocal(payload);
       saveTimerRef.current = null;
-    }, 1500);
+    }, 800);
     return () => { if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; } };
-  }, [d, profilType, activeProfil]);
+  }, [d, profilType, activeProfil, isInvestisseur]);
   // Flush immédiat au blur d'un input (focusout bubbles).
   useEffect(() => {
     function onFocusOut(e) {
@@ -17906,9 +17897,9 @@ function FormView(props) {
           Toujours visible (creation et changement profil dossier existant). Composant unique DRY. */}
       <ProfilSelectorBar
         activeProfil={activeProfil}
-        onChange={(p) => setActiveProfil(p)}
+        onChange={(p) => { markUserAction(); setActiveProfil(p); }}
         isInvestisseur={isInvestisseur}
-        onInvestChange={(v) => setIsInvestisseur(v)}/>
+        onInvestChange={(v) => { markUserAction(); setIsInvestisseur(v); }}/>
 
       {/* V18.17/V18.18 — banner mode staging. URL → lien origine. Image → thumbnail + contexte. */}
       {isStaged && (
