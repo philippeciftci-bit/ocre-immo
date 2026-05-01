@@ -24,8 +24,14 @@ $input = getInput();
 switch ($action) {
 
     case 'get_shared': {
+        // M/2026/05/01/4 — fallback V20 shared_links (multi-tenant, token 32 chars hex) si non
+        // trouve dans share_links V17 (single-tenant, token 16 chars hex). Retourne flags hide_*
+        // figes en DB (anti-contournement URL).
         $token = $_GET['token'] ?? ($input['token'] ?? '');
         if (!$token) jsonError('token requis');
+        $hide_price = 0; $hide_address = 0; $hide_identity = 0;
+        $r = null;
+        // Tentative V17 (legacy, table share_links sans 's', user_id propriétaire mono-tenant).
         $stmt = db()->prepare(
             "SELECT sl.*, c.data, c.projet, c.is_investisseur, c.is_draft, c.archived, c.updated_at AS client_updated
              FROM share_links sl
@@ -34,18 +40,64 @@ switch ($action) {
                AND (sl.expires_at IS NULL OR sl.expires_at > NOW())
              LIMIT 1"
         );
-        $stmt->execute([$token]);
-        $r = $stmt->fetch();
-        if (!$r) jsonError('Lien invalide, expiré ou révoqué', 404);
-        $d = json_decode($r['data'] ?? '{}', true) ?: [];
-        $d['id'] = (int)$r['dossier_id'];
-        $d['archived'] = (bool)(int)$r['archived'];
-        $d['is_draft'] = (bool)(int)$r['is_draft'];
-        $d['projet'] = $r['projet'];
-        $d['is_investisseur'] = (bool)(int)$r['is_investisseur'];
+        try { $stmt->execute([$token]); $r = $stmt->fetch(); } catch (Throwable $e) { $r = null; }
+        $dossier_id = $r ? (int)$r['dossier_id'] : 0;
+        $expires_at = $r['expires_at'] ?? null;
+        $created_at = $r['created_at'] ?? null;
+        $r_data = $r ? ($r['data'] ?? '{}') : null;
+        $r_projet = $r['projet'] ?? null;
+        $r_archived = $r ? (bool)(int)$r['archived'] : false;
+        $r_draft = $r ? (bool)(int)$r['is_draft'] : false;
+        $r_invest = $r ? (bool)(int)$r['is_investisseur'] : false;
+        // Fallback V20 : table shared_links (avec 's'), wsp_slug + flags hide_*.
+        if (!$r) {
+            require_once __DIR__ . '/lib/router.php';
+            try {
+                $st2 = pdo_meta()->prepare(
+                    "SELECT * FROM shared_links WHERE token = ? AND revoked_at IS NULL AND expires_at > NOW() LIMIT 1"
+                );
+                $st2->execute([$token]);
+                $row = $st2->fetch();
+                if (!$row) jsonError('Lien invalide, expiré ou révoqué', 404);
+                $hide_price    = (int)($row['hide_price'] ?? 0);
+                $hide_address  = (int)($row['hide_address'] ?? 0);
+                $hide_identity = (int)($row['hide_identity'] ?? 0);
+                $expires_at = $row['expires_at'];
+                $created_at = $row['created_at'];
+                $dossier_id = (int)$row['dossier_id'];
+                // Lecture du dossier dans la WSp source (mode agent puis mode test).
+                $slug_clean = preg_replace('/[^a-z0-9_-]/', '', $row['wsp_slug']);
+                $dossier = null;
+                foreach (['', '_test'] as $suffix) {
+                    try {
+                        $pdo = pdo_workspace('ocre_wsp_' . $slug_clean . $suffix);
+                        $d = $pdo->prepare("SELECT * FROM clients WHERE id = ? AND deleted_at IS NULL LIMIT 1");
+                        $d->execute([$dossier_id]);
+                        $dr = $d->fetch();
+                        if ($dr) { $dossier = $dr; break; }
+                    } catch (Throwable $e) {}
+                }
+                if (!$dossier) jsonError('Dossier introuvable', 404);
+                $r_data = $dossier['data'] ?? '{}';
+                $r_projet = $dossier['projet'] ?? '';
+                $r_archived = (bool)(int)($dossier['archived'] ?? 0);
+                $r_draft = (bool)(int)($dossier['is_draft'] ?? 0);
+                $r_invest = (bool)(int)($dossier['is_investisseur'] ?? 0);
+                // Increment viewed_count
+                pdo_meta()->prepare("UPDATE shared_links SET viewed_count = viewed_count + 1, last_viewed_at = NOW() WHERE id = ?")->execute([$row['id']]);
+            } catch (Throwable $e) {
+                jsonError('Lien invalide, expiré ou révoqué', 404);
+            }
+        }
+        $d = json_decode($r_data ?? '{}', true) ?: [];
+        $d['id'] = $dossier_id;
+        $d['archived'] = $r_archived;
+        $d['is_draft'] = $r_draft;
+        $d['projet'] = $r_projet;
+        $d['is_investisseur'] = $r_invest;
         // Photos du dossier (lecture seule — mêmes fichiers que /uploads/<id>/)
         $photos = [];
-        $dir = dirname(__DIR__) . '/uploads/' . (int)$r['dossier_id'];
+        $dir = dirname(__DIR__) . '/uploads/' . $dossier_id;
         if (is_dir($dir)) {
             $base = defined('APP_URL') ? rtrim(APP_URL, '/') : 'https://app.ocre.immo';
             foreach (glob($dir . '/*') ?: [] as $p) {
@@ -54,7 +106,7 @@ switch ($action) {
                 if (!preg_match('/\.(jpe?g|png|webp)$/i', $n)) continue;
                 $photos[] = [
                     'name' => $n,
-                    'url' => $base . '/uploads/' . (int)$r['dossier_id'] . '/' . $n,
+                    'url' => $base . '/uploads/' . $dossier_id . '/' . $n,
                     'size' => filesize($p),
                     'mtime' => filemtime($p),
                 ];
@@ -64,8 +116,11 @@ switch ($action) {
         jsonOk([
             'dossier' => $d,
             'photos' => $photos,
-            'expires_at' => $r['expires_at'],
-            'shared_at' => $r['created_at'],
+            'expires_at' => $expires_at,
+            'shared_at' => $created_at,
+            'hide_price' => (bool)$hide_price,
+            'hide_address' => (bool)$hide_address,
+            'hide_identity' => (bool)$hide_identity,
         ]);
     }
 

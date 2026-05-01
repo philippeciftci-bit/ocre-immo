@@ -44,9 +44,11 @@ const PATH_MATCH = location.pathname.match(/\/s\/([a-f0-9]{16,64})/i);
 const _SHARE_QS = new URLSearchParams(location.search);
 const TOKEN = PATH_MATCH ? PATH_MATCH[1] : (_SHARE_QS.get('t') || '');
 // M/2026/04/30/8 — masquages selectifs cote destinataire via query params.
-const HIDE_PRICE = _SHARE_QS.get('hide_price') === '1';
-const HIDE_ADDRESS = _SHARE_QS.get('hide_address') === '1';
-const HIDE_IDENTITY = _SHARE_QS.get('hide_identity') === '1';
+// M/2026/05/01/4 — flags lus depuis la reponse API (figes en DB row shared_links V20),
+// PAS depuis les URL params. URL fallback retro-compatible V17 (api/share.php legacy).
+let HIDE_PRICE = _SHARE_QS.get('hide_price') === '1';
+let HIDE_ADDRESS = _SHARE_QS.get('hide_address') === '1';
+let HIDE_IDENTITY = _SHARE_QS.get('hide_identity') === '1';
 const PROFIL_COLORS = {Acheteur:'#8B5E3C', Vendeur:'#2E4A7A', Locataire:'#2E7D5C', Bailleur:'#C96B2E'};
 const PAYS_LABEL = {MA:'🇲🇦 Maroc', FR:'🇫🇷 France', ES:'🇪🇸 Espagne'};
 const PRIORITE_LABEL = {redhibitoire:'Rédhibitoire', souhaite:'Souhaité', bonus:'Bonus', indifferent:'Indifférent'};
@@ -97,6 +99,10 @@ async function load() {
       root.appendChild(e('div', {class:'error'}, (data && data.error) || 'Lien invalide, expiré ou révoqué.'));
       return;
     }
+    // M/2026/05/01/4 — override flags depuis DB row (anti-contournement URL).
+    if (typeof data.hide_price === 'boolean') HIDE_PRICE = data.hide_price;
+    if (typeof data.hide_address === 'boolean') HIDE_ADDRESS = data.hide_address;
+    if (typeof data.hide_identity === 'boolean') HIDE_IDENTITY = data.hide_identity;
     render(data);
   } catch (err) {
     root.innerHTML = '';

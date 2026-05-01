@@ -12779,9 +12779,16 @@ function PdfShareModal({dossierId, showPrice, showAddress, showIdentity, profil,
   async function send() {
     setBusy(true);
     try {
+      // M/2026/05/01/4 — flags hide_* envoyes en body et stockes en DB row shared_links
+      // (anti-contournement URL). L append URL params reste pour fallback retro-compat.
       const r = await fetch('/api/share_links_v20.php?action=create_link', {
         method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
-        body: JSON.stringify({dossier_id: dossierId, type: 'public'}),
+        body: JSON.stringify({
+          dossier_id: dossierId, type: 'public',
+          hide_price: !showPrice,
+          hide_address: !showAddress,
+          hide_identity: !showIdentity,
+        }),
       }).then(r => r.json());
       if (r.ok && r.url) {
         const params = buildHideParams();
