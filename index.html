@@ -17214,14 +17214,15 @@ function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, 
 // padding et font-size adaptatifs selon viewport (3 breakpoints), max-width container pour
 // eviter pills geantes sur grand ecran. Tient sur 1 ligne ; iPhone SE = scroll horizontal
 // silencieux fallback si debordement marginal. Semantique preservee : 4 radio + 1 toggle.
-function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChange}) {
+function ProfilSelectorBar({activeProfil, onChange}) {
+  // M/2026/05/02/2 — M109.5 : ProfilSelectorBar ne contient PLUS que les 4 pills exclusives.
+  // Investisseur (toggle, casquette) deplace dans bloc Profil avance · optionnel Section I.
   const profils = [
     {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
     {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
     {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
     {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
   ];
-  const investColor = '#6B4E8B';
   // M/2026/05/01/20 — viewport tracking : mobile (<=480) / tablette (481-1024) / desktop (>1024).
   // Resize debounced 150ms. SSR-safe via typeof window check.
   const [vw, setVw] = React.useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
@@ -17277,35 +17278,10 @@ function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChan
               </button>
             );
           })}
-          {/* M/2026/05/01/19 — Pill Investisseur sur la meme ligne. Casquette additionnelle
-              (toggle, pas exclusif). Distinguer visuellement par un rond checkbox 14x14 SVG. */}
-          <button type="button" onClick={() => onInvestChange(!isInvestisseur)}
-            role="switch" aria-checked={isInvestisseur}
-            title="Bascule la Section III en mode rendement (cumulable avec le profil principal)"
-            style={{
-              flexShrink:0, display:'inline-flex', alignItems:'center', gap:6,
-              padding:pillPadding, borderRadius:999,
-              border:'1.5px solid '+investColor,
-              background: isInvestisseur ? investColor : '#fff',
-              color: isInvestisseur ? '#fff' : investColor,
-              fontWeight:700, fontSize:pillFontSize,
-              fontFamily:'inherit', cursor:'pointer', whiteSpace:'nowrap',
-              transition:'background .15s, color .15s',
-            }}>
-            <span aria-hidden="true" style={{
-              flexShrink:0, width:14, height:14, borderRadius:'50%',
-              border:'1.5px solid '+(isInvestisseur ? '#fff' : investColor),
-              background: isInvestisseur ? '#fff' : 'transparent',
-              display:'inline-flex', alignItems:'center', justifyContent:'center',
-            }}>
-              {isInvestisseur && (
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={investColor} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="5 12 10 17 19 7"/>
-                </svg>
-              )}
-            </span>
-            Investisseur
-          </button>
+          {/* M/2026/05/02/2 — M109.5 : pill Investisseur SUPPRIMEE FRANCHEMENT du selecteur du haut.
+              Le toggle Investisseur (et Promoteur, Marchand de biens) sont desormais dans le bloc
+              "Profil avancé · optionnel" en fin de Section I, conformement a la spec M109. La ligne
+              du haut ne contient PLUS que les 4 pills exclusives radio (Acheteur/Vendeur/Bailleur/Locataire). */}
         </div>
       </div>
     </div>
@@ -18190,11 +18166,11 @@ function FormView(props) {
       {/* M/2026/05/01/25 — M103 : tap pill profil principal ne markUserAction PLUS et ne
           declenche aucune ligne DB. Le state React local suffit jusqu au premier blur input
           avec valeur non vide (R1 strict spec Philippe revisee). */}
+      {/* M/2026/05/02/2 — M109.5 : props isInvestisseur/onInvestChange supprimes (toggle deplace
+          dans bloc Profil avance Section I). Sélecteur ne gere plus que le profil principal. */}
       <ProfilSelectorBar
         activeProfil={activeProfil}
-        onChange={(p) => setActiveProfil(p)}
-        isInvestisseur={isInvestisseur}
-        onInvestChange={(v) => setIsInvestisseur(v)}/>
+        onChange={(p) => setActiveProfil(p)}/>
 
       {/* V18.17/V18.18 — banner mode staging. URL → lien origine. Image → thumbnail + contexte. */}
       {isStaged && (
