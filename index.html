@@ -7924,7 +7924,7 @@ function CrossSearchFooter({d, dossierId, onMatchesUpdate, showToast}) {
       <button type="button" onClick={() => setConfirmOpen(true)} disabled={loading}
         title="Rechercher ce bien sur Internet"
         aria-label="Rechercher ce bien sur Internet"
-        style={{flexShrink:0, width:38, height:38, border:'1.5px solid #D97706', background:'#FFFBF2', borderRadius:8, cursor: loading ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, fontFamily:'inherit'}}>
+        style={{flex:'1 1 0', minWidth:0, height:40, border:'1.5px solid #D97706', background:'#FFFBF2', borderRadius:8, cursor: loading ? 'wait' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0, fontFamily:'inherit'}}>
         {loading ? <span style={{fontSize:11, color:'#D97706'}}>…</span> : <IconSearchAmber size={18}/>}
       </button>
       {/* V42 — Overlay radar plein écran pendant la recherche. */}
@@ -17127,23 +17127,24 @@ function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChan
   ];
   return (
     <div data-profil-selector style={{padding:'10px 14px 10px', background:'#FBF7EF', borderBottom:'1px solid #EDE6DC', display:'flex', flexDirection:'column', gap:10}}>
-      {/* Ligne 1 : 4 pills exclusives — sentence case (Acheteur, pas ACHETEUR), pleine largeur, padding compact pour iPhone SE 375px */}
+      {/* M/2026/05/01/14 — pills width:fit-content (largeur adaptee au mot, padding constant
+          10px 14px), gap 10px, flexWrap:nowrap. Si debordement marginal sur iPhone SE
+          375px, scroll horizontal silencieux (acceptable selon brief Philippe). */}
       <div role="radiogroup" aria-label="Profil principal du contact"
-        style={{display:'flex', gap:6, alignItems:'stretch'}}>
+        style={{display:'flex', gap:10, alignItems:'stretch', flexWrap:'nowrap', overflowX:'auto', WebkitOverflowScrolling:'touch'}}>
         {profils.map(p => {
           const active = activeProfil === p.k;
           return (
             <button key={p.k} type="button" onClick={() => onChange(p.k)}
               role="radio" aria-checked={active}
               style={{
-                flex:'1 1 0', minWidth:0, padding:'9px 4px',
+                flex:'0 0 auto', padding:'10px 14px',
                 borderRadius:999, border:'1.5px solid '+p.color,
                 background: active ? p.color : '#fff',
                 color: active ? '#fff' : p.color,
                 fontWeight:700, fontSize:13, letterSpacing:0,
                 fontFamily:'inherit',
                 cursor:'pointer', whiteSpace:'nowrap',
-                overflow:'hidden', textOverflow:'ellipsis',
                 transition:'background .15s, color .15s',
               }}>
               {p.l}
@@ -17185,52 +17186,16 @@ function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChan
       </button>
       {!activeProfil && (
         <div style={{marginTop:2, fontSize:11.5, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', lineHeight:1.4}}>
-          Choisis un profil pour activer les sections II, III et IV.
+          Choisis un profil pour personnaliser les sections.
         </div>
       )}
     </div>
   );
 }
 
-// M/2026/05/01/12 — LockedSections : sections II / III / IV verrouillees tant qu aucun profil
-// principal n est selectionne (la Section I Identite reste accessible — tronc commun pour tous
-// les profils). Click sur une section verrouillee = pulse + scroll vers le selecteur + toast.
-function LockedSections({onLockedClick}) {
-  const titles = ['II. Le bien', 'III. Budget', 'IV. Suivi & notes'];
-  const [pulseIdx, setPulseIdx] = React.useState(null);
-  function handleClick(i) {
-    setPulseIdx(i);
-    setTimeout(() => setPulseIdx(null), 350);
-    if (onLockedClick) onLockedClick();
-  }
-  return (
-    <>{titles.map((t, i) => {
-      const stageIdx = i + 1; // II=1, III=2, IV=3
-      const pulsing = pulseIdx === i;
-      return (
-        <button key={'lock-'+i} type="button" onClick={() => handleClick(i)}
-          data-stage-anchor={stageIdx}
-          aria-label={t + ' — verrouille, choisis un profil pour activer'}
-          style={{
-            display:'flex', alignItems:'center', gap:10, width:'100%',
-            background:'#FDFAF7', border:'1px solid #EDE6DC', borderRadius:10,
-            padding:'14px 16px', marginBottom:8, opacity: pulsing ? 0.85 : 0.6,
-            transform: pulsing ? 'scale(0.98)' : 'scale(1)',
-            transition:'transform .18s, opacity .18s',
-            cursor:'pointer', textAlign:'left', fontFamily:'inherit',
-          }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="#A89882" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:16, color:'#5C4A3A', fontWeight:600, flex:1}}>{t}</span>
-          <span style={{fontSize:10, color:'#A89882', fontWeight:600, textTransform:'uppercase', letterSpacing:.4, whiteSpace:'nowrap'}}>Verrouillé</span>
-        </button>
-      );
-    })}</>
-  );
-}
+// M/2026/05/01/14 — LockedSections supprime franchement (revert M91). Les 4 sections sont
+// toutes saisissables des l ouverture du nouveau dossier (le selecteur profil reste une aide
+// UX, pas un gate). Tronc commun en mode draft via fallback profil "Acheteur" cote rendu.
 
 function FormView(props) {
   const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
@@ -18190,19 +18155,16 @@ function FormView(props) {
         </Stage>
 
         </div>
-        {/* M/2026/05/01/12 — Sections II / III / IV verrouillees tant qu aucun profil principal.
-            Click sur une carte verrouillee = pulse + toast + scroll vers le selecteur en haut. */}
-        {!activeProfil ? (
-          <LockedSections onLockedClick={() => {
-            showToast && showToast("Choisis d'abord un profil");
-            const sel = document.querySelector('[data-profil-selector]');
-            if (sel && sel.scrollIntoView) sel.scrollIntoView({behavior:'smooth', block:'start'});
-          }}/>
-        ) : (<>
+        {/* M/2026/05/01/14 — verrouillage Sections II/III/IV M91 reverti franchement. Toutes les
+            4 sections sont saisissables des l ouverture du nouveau dossier. Le selecteur reste
+            une aide UX (champs conditionnels specifiques au profil apparaissent en plus des
+            champs communs au choix). Fallback profil "Acheteur" pour STAGES + composants enfants
+            tant qu aucun profil n est choisi (champs Acheteur sont les plus generiques). */}
+        {(() => { const _profil = activeProfil || 'Acheteur'; return (<>
         <div data-stage-anchor="1">
-        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
+        {_profil !== 'Curieux' && <Stage title={STAGES[_profil][1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
                status={stageStatus[1].status} summary={stageStatus[1].summary}>
-          <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
+          <BienForm activeProfil={_profil} isInvestisseur={isInvestisseur}
             d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
             showToast={showToast}/>
           <button onClick={() => commitAndNext(1)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
@@ -18214,14 +18176,14 @@ function FormView(props) {
         {/* V17.6 Section III : FinancementForm pour Acheteur/Investisseur, fields legacy pour Vendeur/Bailleur/Locataire, masqué pour Curieux. */}
         </div>
         <div data-stage-anchor="2">
-        {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
+        {_profil !== 'Curieux' && <Stage title={STAGES[_profil][2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
                status={stageStatus[2].status} summary={stageStatus[2].summary}>
           {/* V45 — Plan de paiement multi-lignes + Encaissements (toutes casquettes hors Curieux) */}
           <PaymentPlanModule d={d} set={set}/>
           {/* V55 — Section III pro : blocs adaptatifs Acheteur/Vendeur/Locataire/Bailleur + Investisseur. */}
-          <SectionFinanciereV55 activeProfil={activeProfil} isInvestisseur={isInvestisseur} profilType={profilType} d={d} set={set}/>
-          {(activeProfil === 'Acheteur' || activeProfil === 'Investisseur') && (
-            <FinancementForm activeProfil={activeProfil} d={d} set={set}
+          <SectionFinanciereV55 activeProfil={_profil} isInvestisseur={isInvestisseur} profilType={profilType} d={d} set={set}/>
+          {(_profil === 'Acheteur' || _profil === 'Investisseur') && (
+            <FinancementForm activeProfil={_profil} d={d} set={set}
               dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
               showToast={showToast}/>
           )}
@@ -18231,7 +18193,7 @@ function FormView(props) {
 
         </div>
         <div data-stage-anchor="3">
-        <Stage title={STAGES[activeProfil][3] || 'IV. Suivi & notes'} expanded={expanded[3] || isMatched(3)} onToggle={() => toggleStage(3)} highlighted={isMatched(3)}
+        <Stage title={STAGES[_profil][3] || 'IV. Suivi & notes'} expanded={expanded[3] || isMatched(3)} onToggle={() => toggleStage(3)} highlighted={isMatched(3)}
                status={stageStatus[3].status} summary={stageStatus[3].summary}>
           {/* V18.1 — Module Suivi (4 cards : prochain RDV, todos, agenda, journal). */}
           {/* M/2026/04/28/31 — Section IV refondue Activité & documents.
@@ -18246,7 +18208,7 @@ function FormView(props) {
           <button onClick={() => commitAndNext(3)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Fermer ✓</button>
         </Stage>
         </div>
-        </>)}
+        </>); })()}
 
         {/* V18.17 — boutons dédiés pour staged : Enregistrer dans mes dossiers + Supprimer téléchargement. */}
         {isStaged ? (
@@ -18284,7 +18246,7 @@ function FormView(props) {
                     if (!_hasRealId) { showToast && showToast("Enregistrez d'abord le dossier"); return; }
                     if (props.openDossierPdf) props.openDossierPdf(editing.id);
                   }}
-                  style={{flexShrink:0, width:44, height:38, padding:0, background: _hasRealId ? '#fff' : '#FDFAF7', color: _hasRealId ? '#8B5E3C' : '#A89882', border:'1.5px solid '+(_hasRealId ? '#C9B79A' : '#E8DDD0'), borderRadius:8, cursor: _hasRealId ? 'pointer' : 'not-allowed', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', opacity: _hasRealId ? 1 : 0.6}}>
+                  style={{flex:'1 1 0', minWidth:0, height:40, padding:0, background: _hasRealId ? '#fff' : '#FDFAF7', color: _hasRealId ? '#8B5E3C' : '#A89882', border:'1.5px solid '+(_hasRealId ? '#C9B79A' : '#E8DDD0'), borderRadius:8, cursor: _hasRealId ? 'pointer' : 'not-allowed', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', opacity: _hasRealId ? 1 : 0.6}}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                   </svg>
@@ -18313,7 +18275,7 @@ function FormView(props) {
               return (
                 <button type="button" disabled
                   title={!activeProfil ? "Choisis un profil pour activer la recherche Internet" : (!_isOffreProfil ? "Recherche Internet disponible pour Vendeur / Bailleur / Investisseur" : "Enregistre d'abord le dossier")}
-                  style={{flexShrink:0, width:44, height:38, padding:0, background:'#FDFAF7', color:'#A89882', border:'1.5px solid #E8DDD0', borderRadius:8, cursor:'not-allowed', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', opacity:0.6}}>
+                  style={{flex:'1 1 0', minWidth:0, height:40, padding:0, background:'#FDFAF7', color:'#A89882', border:'1.5px solid #E8DDD0', borderRadius:8, cursor:'not-allowed', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', opacity:0.6}}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                   </svg>
@@ -18340,16 +18302,22 @@ function FormView(props) {
                     setPublishOpen(true);
                   }}
                   title={tooltip}
-                  style={{flexShrink:0, width:68, height:36, padding:0, background:bg, color:'#fff', border:'1.5px solid '+bg, borderRadius:18, cursor: _publishEnabled ? 'pointer' : 'not-allowed', fontFamily:'inherit', fontSize:10, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center', opacity: _publishEnabled ? 1 : 0.7}}>
+                  style={{flex:'1 1 0', minWidth:0, height:40, padding:'0 4px', background:bg, color:'#fff', border:'1.5px solid '+bg, borderRadius:8, cursor: _publishEnabled ? 'pointer' : 'not-allowed', fontFamily:'inherit', fontSize:10, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center', opacity: _publishEnabled ? 1 : 0.7, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis'}}>
                   {label}
                 </button>
               );
             })()}
-            <button onClick={() => { if (!activeProfil) { showToast && showToast('Choisis un profil avant d\'enregistrer'); return; } commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
-              disabled={!activeProfil}
-              title={activeProfil ? 'Enregistrer le dossier' : 'Choisis un profil ci-dessus pour activer l\'enregistrement'}
-              style={{flex:1, height:40, padding:'0 12px', background: activeProfil ? '#8B5E3C' : '#C9B79A', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor: activeProfil ? 'pointer' : 'not-allowed', fontFamily:'inherit', opacity: activeProfil ? 1 : 0.7}}>
-              Enregistrer
+            {/* M/2026/05/01/14 — Enregistrer cesse de dominer (etait flex:1 + texte large).
+                Bouton flex:1 1 0 minWidth:0 height:40 borderRadius:8 comme les 5 autres. Texte
+                "Enregistrer" remplace par icone check (le tooltip + dispatch toast restent
+                explicites). M90 draft-on-input garantit l auto-save invisible : le bouton sticky
+                reste un trigger explicite mais la sauvegarde est deja debounced 800ms cote react. */}
+            <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
+              title="Enregistrer le dossier"
+              style={{flex:'1 1 0', minWidth:0, height:40, padding:0, background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
             </button>
             <button onClick={async () => {
                 // M/2026/05/01/12 — guard : si dossier neuf sans id, toast et return.
@@ -18400,7 +18368,7 @@ function FormView(props) {
                 } catch (e) { showToast && showToast('Erreur réseau'); }
               }}
               title={(editing && editing.id && !String(editing.id).startsWith('tmp-')) ? (d.archived ? 'Désarchiver' : 'Archiver') : "Saisis quelques champs pour activer l'archivage"}
-              style={{flexShrink:0, width:38, height:38, padding:0,
+              style={{flex:'1 1 0', minWidth:0, height:40, padding:0,
                 background: (editing && editing.id && !String(editing.id).startsWith('tmp-')) ? '#fff' : '#FDFAF7',
                 color: (editing && editing.id && !String(editing.id).startsWith('tmp-')) ? '#8B5E3C' : '#A89882',
                 border:'1.5px solid '+((editing && editing.id && !String(editing.id).startsWith('tmp-')) ? '#C9B79A' : '#E8DDD0'),
@@ -18419,7 +18387,7 @@ function FormView(props) {
                     handleDelete(editing.id);
                   }}
                   title={_hasRealId ? "Supprimer ce dossier" : "Pas encore de dossier a supprimer"}
-                  style={{flexShrink:0, width:38, height:38, padding:0,
+                  style={{flex:'1 1 0', minWidth:0, height:40, padding:0,
                     background: _hasRealId ? '#fff' : '#FDFAF7',
                     color: _hasRealId ? '#D64545' : '#A89882',
                     border:'1.5px solid '+(_hasRealId ? '#D64545' : '#E8DDD0'),
