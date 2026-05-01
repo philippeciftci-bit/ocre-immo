@@ -289,6 +289,20 @@ input, select, textarea, button { font-size:13px }
 const {useState, useEffect, useRef} = React;
 const API = '/api';
 
+// M/2026/05/01/15 — fetchWithTimeout : tous les fetchs critiques (auth, init App, login)
+// doivent passer par ce helper pour eviter le spinner infini sur Safari iOS (ITP latency,
+// reseau flaky, handshake bloque). Default 5s. AbortError catchable cote appelant.
+async function fetchWithTimeout(url, opts, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 5000);
+  try {
+    const r = await fetch(url, Object.assign({}, opts || {}, {signal: controller.signal}));
+    return r;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // V17.4 UX v3 : ordre strict Acheteur / Vendeur / Investisseur / Bailleur / Locataire / Curieux.
 const PROFILS_ORDER = ['Acheteur','Vendeur','Investisseur','Bailleur','Locataire','Curieux'];
 const PROFILS = {
@@ -8800,12 +8814,22 @@ function App() {
       try {
         await loadCountriesFromServer();
         setCountriesVersion(v => v + 1);
-        const me = await fetch(API + '/auth.php?action=me', {headers: {'X-Session-Token': token}}).then(r => r.json());
+        // M/2026/05/01/15 — timeout 6s sur l auth check (au-dela = bouclage iOS Safari ITP).
+        // Si timeout, on garde le token (peut-etre juste un network glitch) et on continue
+        // le boot avec setApiLoading(false) — l app render mais sans currentUser, le user pourra
+        // refresh ; le fetchwithtimeout des autres endpoints (clients list) va aussi reessayer.
+        let me;
+        try {
+          me = await fetchWithTimeout(API + '/auth.php?action=me', {headers: {'X-Session-Token': token}}, 6000).then(r => r.json());
+        } catch (e) {
+          if (e && e.name === 'AbortError') { setApiLoading(false); return; }
+          throw e;
+        }
         if (!me || !me.ok) { localStorage.removeItem('ocre_token'); window.location = '/login/'; return; }
         setCurrentUser(me.user);
-        const st = await fetch(API + '/auth.php?action=status').then(r => r.json()).catch(() => null);
+        const st = await fetchWithTimeout(API + '/auth.php?action=status', {}, 5000).then(r => r.json()).catch(() => null);
         if (st && st.ok) setAppSettings(st);
-        const cl = await fetch(API + '/clients.php?action=list', {headers: {'X-Session-Token': token}}).then(r => r.json());
+        const cl = await fetchWithTimeout(API + '/clients.php?action=list', {headers: {'X-Session-Token': token}}, 8000).then(r => r.json());
         if (cl && cl.ok) {
           // V17.4 UX v3 : migration douce — is_investisseur true devient profil "Investisseur".
           const migrated = (cl.clients || []).map(c =>
@@ -18438,8 +18462,71 @@ function FormView(props) {
   );
 }
 
+// M/2026/05/01/15 — ErrorBoundary React class : capture toute exception silencieuse render
+// ou useEffect d un sous-composant (Safari iOS WebKit a des comportements parfois divergents
+// non reproductibles localement). Sans ce filet, une exception unmount tout l arbre React
+// et donne une "page blanche" sans diagnostic. Avec ErrorBoundary : fallback recuperable
+// + log au serveur pour diagnostic.
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {hasError: false, errMsg: ''};
+  }
+  static getDerivedStateFromError(error) {
+    return {hasError: true, errMsg: String((error && error.message) || error || 'erreur inconnue').slice(0, 200)};
+  }
+  componentDidCatch(error, info) {
+    try {
+      const token = localStorage.getItem('ocre_token') || '';
+      const payload = {
+        message: String((error && error.message) || ''),
+        stack: String((error && error.stack) || '').slice(0, 4000),
+        component_stack: String((info && info.componentStack) || '').slice(0, 4000),
+        url: window.location.href,
+        ua: navigator.userAgent,
+        ts: new Date().toISOString(),
+      };
+      fetch(API + '/error_log.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Session-Token': token},
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{padding:'40px 24px', textAlign:'center', fontFamily:"'DM Sans', sans-serif", color:'#5C3B1E', maxWidth:480, margin:'40px auto', background:'#fff', borderRadius:14, border:'1px solid #EDE6DC'}}>
+          <h2 style={{fontFamily:"'Cormorant Garamond', Georgia, serif", color:'#8B5E3C', fontSize:26, fontWeight:700, marginBottom:10}}>Une erreur est survenue</h2>
+          <p style={{fontSize:13, color:'#8B7F6E', lineHeight:1.5, marginBottom:18}}>
+            L'app a rencontre un probleme inattendu. Tes donnees sont sauvegardees automatiquement.<br/>
+            Reviens a l accueil pour continuer.
+          </p>
+          {this.state.errMsg && (
+            <div style={{fontSize:11, color:'#A89882', fontStyle:'italic', marginBottom:18, wordBreak:'break-word'}}>
+              {this.state.errMsg}
+            </div>
+          )}
+          <div style={{display:'flex', gap:10, justifyContent:'center'}}>
+            <button onClick={() => { window.location.href = '/'; }}
+              style={{padding:'12px 24px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>
+              Retour a la liste
+            </button>
+            <button onClick={() => { window.location.reload(); }}
+              style={{padding:'12px 24px', background:'#fff', color:'#8B5E3C', border:'1.5px solid #C9B79A', borderRadius:8, fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>
+              Recharger
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App/>);
+root.render(<ErrorBoundary><App/></ErrorBoundary>);
 </script>
 <script src="/v20-bridge.js?v=20260501a" defer></script>
 </body>

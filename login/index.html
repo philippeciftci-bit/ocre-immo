@@ -143,6 +143,18 @@ function toast(msg, type) {
   setTimeout(() => t.remove(), 3000);
 }
 
+// M/2026/05/01/15 — fetchWithTimeout helper : evite spinner infini Safari iOS si le
+// reseau ou ITP bloque la requete sans erreur retournee. AbortController au-dela de timeoutMs.
+async function fetchWithTimeout(url, opts, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 5000);
+  try {
+    return await fetch(url, Object.assign({}, opts || {}, {signal: controller.signal}));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 $('form-login').addEventListener('submit', async ev => {
   ev.preventDefault();
   const email = $('f-email').value.trim();
@@ -154,18 +166,21 @@ $('form-login').addEventListener('submit', async ev => {
   const oldLabel = btn.textContent;
   btn.innerHTML = '<span class="spinner"></span>';
   ['f-email', 'f-code', 'cgu-cb'].forEach(id => $(id).disabled = true);
+  function resetBtn() {
+    ['f-email', 'f-code', 'cgu-cb'].forEach(id => $(id).disabled = false);
+    btn.disabled = false; btn.textContent = oldLabel;
+  }
   try {
-    const r = await fetch(API + '/auth.php?action=login', {
+    const r = await fetchWithTimeout(API + '/auth.php?action=login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password: code, accept_cgu })
-    });
+    }, 8000);
     const d = await r.json();
     if (!d.ok) {
       toast(d.error || 'Connexion refusée', 'error');
       $('f-email').classList.add('invalid'); $('f-code').classList.add('invalid');
-      ['f-email', 'f-code', 'cgu-cb'].forEach(id => $(id).disabled = false);
-      btn.disabled = false; btn.textContent = oldLabel;
+      resetBtn();
       return;
     }
     localStorage.setItem('ocre_token', d.token);
@@ -173,9 +188,12 @@ $('form-login').addEventListener('submit', async ev => {
     document.cookie = 'cgu_seen=1;path=/;max-age=' + (86400 * 365);
     setTimeout(() => { window.location = '/'; }, 200);
   } catch (e) {
-    toast('Erreur réseau', 'error');
-    ['f-email', 'f-code', 'cgu-cb'].forEach(id => $(id).disabled = false);
-    btn.disabled = false; btn.textContent = oldLabel;
+    if (e && e.name === 'AbortError') {
+      toast('Délai dépassé. Réessaie.', 'error');
+    } else {
+      toast('Erreur réseau', 'error');
+    }
+    resetBtn();
   }
 });
 
@@ -195,15 +213,20 @@ async function resend(reason) {
 $('link-forgot').addEventListener('click', e => { e.preventDefault(); resend('forgot'); });
 $('link-resend').addEventListener('click', e => { e.preventDefault(); resend('resend'); });
 
+// M/2026/05/01/15 — auto-redirect au load avec timeout 5s. Si timeout, on laisse le
+// formulaire de login visible (l utilisateur pourra retenter manuellement) au lieu de
+// rester sur un blank loading state.
 (async () => {
   const t = localStorage.getItem('ocre_token');
   if (!t) return;
   try {
-    const r = await fetch(API + '/auth.php?action=me', { headers: { 'X-Session-Token': t } });
+    const r = await fetchWithTimeout(API + '/auth.php?action=me', { headers: { 'X-Session-Token': t } }, 5000);
     const d = await r.json();
     if (d && d.ok) window.location = '/';
     else localStorage.removeItem('ocre_token');
-  } catch (e) {}
+  } catch (e) {
+    // AbortError ou reseau down : on n efface pas le token, l utilisateur peut retenter.
+  }
 })();
 </script>
 </body>
