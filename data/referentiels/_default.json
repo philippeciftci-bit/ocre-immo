@@ -1,0 +1,22 @@
+{
+  "country_code": "DEFAULT",
+  "version": "2026.01",
+  "validated_at": "2026-05-01",
+  "next_review_date": "2026-11-01",
+  "currency": "USD",
+  "language_default": "en",
+  "roles": {
+    "acheteur":  {"available_toggles": ["investisseur", "marchand_de_biens"]},
+    "vendeur":   {"available_toggles": ["promoteur", "marchand_de_biens"]},
+    "bailleur":  {"available_toggles": ["investisseur"]},
+    "locataire": {"available_toggles": []}
+  },
+  "fiscal_regimes": {
+    "investisseur": [],
+    "incentives": []
+  },
+  "diagnostics_required": [],
+  "vefa": {"applicable": false},
+  "marchand_de_biens": {"applicable": true, "tva_regimes": ["standard"], "engagement_period_years": null},
+  "bail_types": []
+}

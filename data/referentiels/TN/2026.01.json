@@ -1,0 +1,21 @@
+{
+  "country_code": "TN",
+  "version": "2026.01",
+  "validated_at": "2026-05-01",
+  "next_review_date": "2026-11-01",
+  "validated_partial": true,
+  "needs_local_agent_review": true,
+  "currency": "TND",
+  "language_default": "fr",
+  "roles": {
+    "acheteur":  {"available_toggles": ["investisseur", "marchand_de_biens"]},
+    "vendeur":   {"available_toggles": ["promoteur", "marchand_de_biens"]},
+    "bailleur":  {"available_toggles": ["investisseur"]},
+    "locataire": {"available_toggles": []}
+  },
+  "fiscal_regimes": {"investisseur": [], "incentives": []},
+  "diagnostics_required": [],
+  "vefa": {"applicable": true, "label_local": "VEFA Tunisie"},
+  "marchand_de_biens": {"applicable": true, "tva_regimes": ["standard"]},
+  "bail_types": []
+}

@@ -1,0 +1,42 @@
+{
+  "country_code": "MA",
+  "version": "2026.01",
+  "validated_at": "2026-05-01",
+  "next_review_date": "2026-11-01",
+  "currency": "MAD",
+  "language_default": "fr",
+  "roles": {
+    "acheteur":  {"available_toggles": ["investisseur", "marchand_de_biens"]},
+    "vendeur":   {"available_toggles": ["promoteur", "marchand_de_biens"]},
+    "bailleur":  {"available_toggles": ["investisseur"]},
+    "locataire": {"available_toggles": []}
+  },
+  "fiscal_regimes": {
+    "investisseur": [
+      {"code": "BENEFICES_FONCIERS", "label": "Bénéfices fonciers"},
+      {"code": "IS_SCI",             "label": "SCI à l'IS"}
+    ],
+    "incentives": []
+  },
+  "diagnostics_required": [],
+  "vefa": {
+    "applicable": true,
+    "label_local": "Vente sur plan (VEFA Maroc)",
+    "calls_for_funds": [],
+    "guarantee_required": null,
+    "withdrawal_period_days": null,
+    "notary_fees_reduced": null
+  },
+  "marchand_de_biens": {
+    "applicable": true,
+    "tva_regimes": ["standard"],
+    "tva_rate": 0.20,
+    "reduced_mutation_rights": null,
+    "engagement_period_years": null
+  },
+  "specific": {
+    "tax_enregistrement": 0.04,
+    "conservation_fonciere_required": true
+  },
+  "bail_types": ["habitation_3_ans", "commercial", "saisonnier"]
+}

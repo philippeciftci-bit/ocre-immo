@@ -1,0 +1,1388 @@
+{
+  "AD": {
+    "currency": "EUR",
+    "flag": "🇦🇩",
+    "iso2": "AD",
+    "name_fr": "Andorre",
+    "phone_code": "+376"
+  },
+  "AE": {
+    "currency": "AED",
+    "flag": "🇦🇪",
+    "iso2": "AE",
+    "name_fr": "Émirats arabes unis",
+    "phone_code": "+971"
+  },
+  "AF": {
+    "currency": "AFN",
+    "flag": "🇦🇫",
+    "iso2": "AF",
+    "name_fr": "Afghanistan",
+    "phone_code": "+93"
+  },
+  "AG": {
+    "currency": "XCD",
+    "flag": "🇦🇬",
+    "iso2": "AG",
+    "name_fr": "Antigua-et-Barbuda",
+    "phone_code": "+1268"
+  },
+  "AL": {
+    "currency": "ALL",
+    "flag": "🇦🇱",
+    "iso2": "AL",
+    "name_fr": "Albanie",
+    "phone_code": "+355"
+  },
+  "AM": {
+    "currency": "AMD",
+    "flag": "🇦🇲",
+    "iso2": "AM",
+    "name_fr": "Arménie",
+    "phone_code": "+374"
+  },
+  "AO": {
+    "currency": "AOA",
+    "flag": "🇦🇴",
+    "iso2": "AO",
+    "name_fr": "Angola",
+    "phone_code": "+244"
+  },
+  "AR": {
+    "currency": "ARS",
+    "flag": "🇦🇷",
+    "iso2": "AR",
+    "name_fr": "Argentine",
+    "phone_code": "+54"
+  },
+  "AT": {
+    "currency": "EUR",
+    "flag": "🇦🇹",
+    "iso2": "AT",
+    "name_fr": "Autriche",
+    "phone_code": "+43"
+  },
+  "AU": {
+    "currency": "AUD",
+    "flag": "🇦🇺",
+    "iso2": "AU",
+    "name_fr": "Australie",
+    "phone_code": "+61"
+  },
+  "AZ": {
+    "currency": "AZN",
+    "flag": "🇦🇿",
+    "iso2": "AZ",
+    "name_fr": "Azerbaïdjan",
+    "phone_code": "+994"
+  },
+  "BA": {
+    "currency": "BAM",
+    "flag": "🇧🇦",
+    "iso2": "BA",
+    "name_fr": "Bosnie-Herzégovine",
+    "phone_code": "+387"
+  },
+  "BB": {
+    "currency": "BBD",
+    "flag": "🇧🇧",
+    "iso2": "BB",
+    "name_fr": "Barbade",
+    "phone_code": "+1246"
+  },
+  "BD": {
+    "currency": "BDT",
+    "flag": "🇧🇩",
+    "iso2": "BD",
+    "name_fr": "Bangladesh",
+    "phone_code": "+880"
+  },
+  "BE": {
+    "currency": "EUR",
+    "flag": "🇧🇪",
+    "iso2": "BE",
+    "name_fr": "Belgique",
+    "phone_code": "+32"
+  },
+  "BF": {
+    "currency": "XOF",
+    "flag": "🇧🇫",
+    "iso2": "BF",
+    "name_fr": "Burkina Faso",
+    "phone_code": "+226"
+  },
+  "BG": {
+    "currency": "BGN",
+    "flag": "🇧🇬",
+    "iso2": "BG",
+    "name_fr": "Bulgarie",
+    "phone_code": "+359"
+  },
+  "BH": {
+    "currency": "BHD",
+    "flag": "🇧🇭",
+    "iso2": "BH",
+    "name_fr": "Bahreïn",
+    "phone_code": "+973"
+  },
+  "BI": {
+    "currency": "BIF",
+    "flag": "🇧🇮",
+    "iso2": "BI",
+    "name_fr": "Burundi",
+    "phone_code": "+257"
+  },
+  "BJ": {
+    "currency": "XOF",
+    "flag": "🇧🇯",
+    "iso2": "BJ",
+    "name_fr": "Bénin",
+    "phone_code": "+229"
+  },
+  "BN": {
+    "currency": "BND",
+    "flag": "🇧🇳",
+    "iso2": "BN",
+    "name_fr": "Brunei",
+    "phone_code": "+673"
+  },
+  "BO": {
+    "currency": "BOB",
+    "flag": "🇧🇴",
+    "iso2": "BO",
+    "name_fr": "Bolivie",
+    "phone_code": "+591"
+  },
+  "BR": {
+    "currency": "BRL",
+    "flag": "🇧🇷",
+    "iso2": "BR",
+    "name_fr": "Brésil",
+    "phone_code": "+55"
+  },
+  "BS": {
+    "currency": "BSD",
+    "flag": "🇧🇸",
+    "iso2": "BS",
+    "name_fr": "Bahamas",
+    "phone_code": "+1242"
+  },
+  "BT": {
+    "currency": "BTN",
+    "flag": "🇧🇹",
+    "iso2": "BT",
+    "name_fr": "Bhoutan",
+    "phone_code": "+975"
+  },
+  "BW": {
+    "currency": "BWP",
+    "flag": "🇧🇼",
+    "iso2": "BW",
+    "name_fr": "Botswana",
+    "phone_code": "+267"
+  },
+  "BY": {
+    "currency": "BYN",
+    "flag": "🇧🇾",
+    "iso2": "BY",
+    "name_fr": "Biélorussie",
+    "phone_code": "+375"
+  },
+  "BZ": {
+    "currency": "BZD",
+    "flag": "🇧🇿",
+    "iso2": "BZ",
+    "name_fr": "Belize",
+    "phone_code": "+501"
+  },
+  "CA": {
+    "currency": "CAD",
+    "flag": "🇨🇦",
+    "iso2": "CA",
+    "name_fr": "Canada",
+    "phone_code": "+1"
+  },
+  "CD": {
+    "currency": "CDF",
+    "flag": "🇨🇩",
+    "iso2": "CD",
+    "name_fr": "RD Congo",
+    "phone_code": "+243"
+  },
+  "CF": {
+    "currency": "XAF",
+    "flag": "🇨🇫",
+    "iso2": "CF",
+    "name_fr": "Centrafrique",
+    "phone_code": "+236"
+  },
+  "CG": {
+    "currency": "XAF",
+    "flag": "🇨🇬",
+    "iso2": "CG",
+    "name_fr": "Congo",
+    "phone_code": "+242"
+  },
+  "CH": {
+    "currency": "CHF",
+    "flag": "🇨🇭",
+    "iso2": "CH",
+    "name_fr": "Suisse",
+    "phone_code": "+41"
+  },
+  "CI": {
+    "currency": "XOF",
+    "flag": "🇨🇮",
+    "iso2": "CI",
+    "name_fr": "Côte d'Ivoire",
+    "phone_code": "+225"
+  },
+  "CL": {
+    "currency": "CLP",
+    "flag": "🇨🇱",
+    "iso2": "CL",
+    "name_fr": "Chili",
+    "phone_code": "+56"
+  },
+  "CM": {
+    "currency": "XAF",
+    "flag": "🇨🇲",
+    "iso2": "CM",
+    "name_fr": "Cameroun",
+    "phone_code": "+237"
+  },
+  "CN": {
+    "currency": "CNY",
+    "flag": "🇨🇳",
+    "iso2": "CN",
+    "name_fr": "Chine",
+    "phone_code": "+86"
+  },
+  "CO": {
+    "currency": "COP",
+    "flag": "🇨🇴",
+    "iso2": "CO",
+    "name_fr": "Colombie",
+    "phone_code": "+57"
+  },
+  "CR": {
+    "currency": "CRC",
+    "flag": "🇨🇷",
+    "iso2": "CR",
+    "name_fr": "Costa Rica",
+    "phone_code": "+506"
+  },
+  "CU": {
+    "currency": "CUP",
+    "flag": "🇨🇺",
+    "iso2": "CU",
+    "name_fr": "Cuba",
+    "phone_code": "+53"
+  },
+  "CV": {
+    "currency": "CVE",
+    "flag": "🇨🇻",
+    "iso2": "CV",
+    "name_fr": "Cap-Vert",
+    "phone_code": "+238"
+  },
+  "CY": {
+    "currency": "EUR",
+    "flag": "🇨🇾",
+    "iso2": "CY",
+    "name_fr": "Chypre",
+    "phone_code": "+357"
+  },
+  "CZ": {
+    "currency": "CZK",
+    "flag": "🇨🇿",
+    "iso2": "CZ",
+    "name_fr": "Tchéquie",
+    "phone_code": "+420"
+  },
+  "DE": {
+    "currency": "EUR",
+    "flag": "🇩🇪",
+    "iso2": "DE",
+    "name_fr": "Allemagne",
+    "phone_code": "+49"
+  },
+  "DJ": {
+    "currency": "DJF",
+    "flag": "🇩🇯",
+    "iso2": "DJ",
+    "name_fr": "Djibouti",
+    "phone_code": "+253"
+  },
+  "DK": {
+    "currency": "DKK",
+    "flag": "🇩🇰",
+    "iso2": "DK",
+    "name_fr": "Danemark",
+    "phone_code": "+45"
+  },
+  "DM": {
+    "currency": "XCD",
+    "flag": "🇩🇲",
+    "iso2": "DM",
+    "name_fr": "Dominique",
+    "phone_code": "+1767"
+  },
+  "DO": {
+    "currency": "DOP",
+    "flag": "🇩🇴",
+    "iso2": "DO",
+    "name_fr": "République dominicaine",
+    "phone_code": "+1809"
+  },
+  "DZ": {
+    "currency": "DZD",
+    "flag": "🇩🇿",
+    "iso2": "DZ",
+    "name_fr": "Algérie",
+    "phone_code": "+213"
+  },
+  "EC": {
+    "currency": "USD",
+    "flag": "🇪🇨",
+    "iso2": "EC",
+    "name_fr": "Équateur",
+    "phone_code": "+593"
+  },
+  "EE": {
+    "currency": "EUR",
+    "flag": "🇪🇪",
+    "iso2": "EE",
+    "name_fr": "Estonie",
+    "phone_code": "+372"
+  },
+  "EG": {
+    "currency": "EGP",
+    "flag": "🇪🇬",
+    "iso2": "EG",
+    "name_fr": "Égypte",
+    "phone_code": "+20"
+  },
+  "ER": {
+    "currency": "ERN",
+    "flag": "🇪🇷",
+    "iso2": "ER",
+    "name_fr": "Érythrée",
+    "phone_code": "+291"
+  },
+  "ES": {
+    "currency": "EUR",
+    "flag": "🇪🇸",
+    "iso2": "ES",
+    "name_fr": "Espagne",
+    "phone_code": "+34"
+  },
+  "ET": {
+    "currency": "ETB",
+    "flag": "🇪🇹",
+    "iso2": "ET",
+    "name_fr": "Éthiopie",
+    "phone_code": "+251"
+  },
+  "FI": {
+    "currency": "EUR",
+    "flag": "🇫🇮",
+    "iso2": "FI",
+    "name_fr": "Finlande",
+    "phone_code": "+358"
+  },
+  "FJ": {
+    "currency": "FJD",
+    "flag": "🇫🇯",
+    "iso2": "FJ",
+    "name_fr": "Fidji",
+    "phone_code": "+679"
+  },
+  "FM": {
+    "currency": "USD",
+    "flag": "🇫🇲",
+    "iso2": "FM",
+    "name_fr": "Micronésie",
+    "phone_code": "+691"
+  },
+  "FR": {
+    "currency": "EUR",
+    "flag": "🇫🇷",
+    "iso2": "FR",
+    "name_fr": "France",
+    "phone_code": "+33"
+  },
+  "GA": {
+    "currency": "XAF",
+    "flag": "🇬🇦",
+    "iso2": "GA",
+    "name_fr": "Gabon",
+    "phone_code": "+241"
+  },
+  "GB": {
+    "currency": "GBP",
+    "flag": "🇬🇧",
+    "iso2": "GB",
+    "name_fr": "Royaume-Uni",
+    "phone_code": "+44"
+  },
+  "GD": {
+    "currency": "XCD",
+    "flag": "🇬🇩",
+    "iso2": "GD",
+    "name_fr": "Grenade",
+    "phone_code": "+1473"
+  },
+  "GE": {
+    "currency": "GEL",
+    "flag": "🇬🇪",
+    "iso2": "GE",
+    "name_fr": "Géorgie",
+    "phone_code": "+995"
+  },
+  "GH": {
+    "currency": "GHS",
+    "flag": "🇬🇭",
+    "iso2": "GH",
+    "name_fr": "Ghana",
+    "phone_code": "+233"
+  },
+  "GM": {
+    "currency": "GMD",
+    "flag": "🇬🇲",
+    "iso2": "GM",
+    "name_fr": "Gambie",
+    "phone_code": "+220"
+  },
+  "GN": {
+    "currency": "GNF",
+    "flag": "🇬🇳",
+    "iso2": "GN",
+    "name_fr": "Guinée",
+    "phone_code": "+224"
+  },
+  "GQ": {
+    "currency": "XAF",
+    "flag": "🇬🇶",
+    "iso2": "GQ",
+    "name_fr": "Guinée équatoriale",
+    "phone_code": "+240"
+  },
+  "GR": {
+    "currency": "EUR",
+    "flag": "🇬🇷",
+    "iso2": "GR",
+    "name_fr": "Grèce",
+    "phone_code": "+30"
+  },
+  "GT": {
+    "currency": "GTQ",
+    "flag": "🇬🇹",
+    "iso2": "GT",
+    "name_fr": "Guatemala",
+    "phone_code": "+502"
+  },
+  "GW": {
+    "currency": "XOF",
+    "flag": "🇬🇼",
+    "iso2": "GW",
+    "name_fr": "Guinée-Bissau",
+    "phone_code": "+245"
+  },
+  "GY": {
+    "currency": "GYD",
+    "flag": "🇬🇾",
+    "iso2": "GY",
+    "name_fr": "Guyana",
+    "phone_code": "+592"
+  },
+  "HK": {
+    "currency": "HKD",
+    "flag": "🇭🇰",
+    "iso2": "HK",
+    "name_fr": "Hong Kong",
+    "phone_code": "+852"
+  },
+  "HN": {
+    "currency": "HNL",
+    "flag": "🇭🇳",
+    "iso2": "HN",
+    "name_fr": "Honduras",
+    "phone_code": "+504"
+  },
+  "HR": {
+    "currency": "EUR",
+    "flag": "🇭🇷",
+    "iso2": "HR",
+    "name_fr": "Croatie",
+    "phone_code": "+385"
+  },
+  "HT": {
+    "currency": "HTG",
+    "flag": "🇭🇹",
+    "iso2": "HT",
+    "name_fr": "Haïti",
+    "phone_code": "+509"
+  },
+  "HU": {
+    "currency": "HUF",
+    "flag": "🇭🇺",
+    "iso2": "HU",
+    "name_fr": "Hongrie",
+    "phone_code": "+36"
+  },
+  "ID": {
+    "currency": "IDR",
+    "flag": "🇮🇩",
+    "iso2": "ID",
+    "name_fr": "Indonésie",
+    "phone_code": "+62"
+  },
+  "IE": {
+    "currency": "EUR",
+    "flag": "🇮🇪",
+    "iso2": "IE",
+    "name_fr": "Irlande",
+    "phone_code": "+353"
+  },
+  "IL": {
+    "currency": "ILS",
+    "flag": "🇮🇱",
+    "iso2": "IL",
+    "name_fr": "Israël",
+    "phone_code": "+972"
+  },
+  "IN": {
+    "currency": "INR",
+    "flag": "🇮🇳",
+    "iso2": "IN",
+    "name_fr": "Inde",
+    "phone_code": "+91"
+  },
+  "IQ": {
+    "currency": "IQD",
+    "flag": "🇮🇶",
+    "iso2": "IQ",
+    "name_fr": "Irak",
+    "phone_code": "+964"
+  },
+  "IR": {
+    "currency": "IRR",
+    "flag": "🇮🇷",
+    "iso2": "IR",
+    "name_fr": "Iran",
+    "phone_code": "+98"
+  },
+  "IS": {
+    "currency": "ISK",
+    "flag": "🇮🇸",
+    "iso2": "IS",
+    "name_fr": "Islande",
+    "phone_code": "+354"
+  },
+  "IT": {
+    "currency": "EUR",
+    "flag": "🇮🇹",
+    "iso2": "IT",
+    "name_fr": "Italie",
+    "phone_code": "+39"
+  },
+  "JM": {
+    "currency": "JMD",
+    "flag": "🇯🇲",
+    "iso2": "JM",
+    "name_fr": "Jamaïque",
+    "phone_code": "+1876"
+  },
+  "JO": {
+    "currency": "JOD",
+    "flag": "🇯🇴",
+    "iso2": "JO",
+    "name_fr": "Jordanie",
+    "phone_code": "+962"
+  },
+  "JP": {
+    "currency": "JPY",
+    "flag": "🇯🇵",
+    "iso2": "JP",
+    "name_fr": "Japon",
+    "phone_code": "+81"
+  },
+  "KE": {
+    "currency": "KES",
+    "flag": "🇰🇪",
+    "iso2": "KE",
+    "name_fr": "Kenya",
+    "phone_code": "+254"
+  },
+  "KG": {
+    "currency": "KGS",
+    "flag": "🇰🇬",
+    "iso2": "KG",
+    "name_fr": "Kirghizistan",
+    "phone_code": "+996"
+  },
+  "KH": {
+    "currency": "KHR",
+    "flag": "🇰🇭",
+    "iso2": "KH",
+    "name_fr": "Cambodge",
+    "phone_code": "+855"
+  },
+  "KI": {
+    "currency": "AUD",
+    "flag": "🇰🇮",
+    "iso2": "KI",
+    "name_fr": "Kiribati",
+    "phone_code": "+686"
+  },
+  "KM": {
+    "currency": "KMF",
+    "flag": "🇰🇲",
+    "iso2": "KM",
+    "name_fr": "Comores",
+    "phone_code": "+269"
+  },
+  "KN": {
+    "currency": "XCD",
+    "flag": "🇰🇳",
+    "iso2": "KN",
+    "name_fr": "Saint-Kitts-et-Nevis",
+    "phone_code": "+1869"
+  },
+  "KP": {
+    "currency": "KPW",
+    "flag": "🇰🇵",
+    "iso2": "KP",
+    "name_fr": "Corée du Nord",
+    "phone_code": "+850"
+  },
+  "KR": {
+    "currency": "KRW",
+    "flag": "🇰🇷",
+    "iso2": "KR",
+    "name_fr": "Corée du Sud",
+    "phone_code": "+82"
+  },
+  "KS": {
+    "currency": "EUR",
+    "flag": "🇽🇰",
+    "iso2": "KS",
+    "name_fr": "Kosovo",
+    "phone_code": "+383"
+  },
+  "KW": {
+    "currency": "KWD",
+    "flag": "🇰🇼",
+    "iso2": "KW",
+    "name_fr": "Koweït",
+    "phone_code": "+965"
+  },
+  "KZ": {
+    "currency": "KZT",
+    "flag": "🇰🇿",
+    "iso2": "KZ",
+    "name_fr": "Kazakhstan",
+    "phone_code": "+7"
+  },
+  "LA": {
+    "currency": "LAK",
+    "flag": "🇱🇦",
+    "iso2": "LA",
+    "name_fr": "Laos",
+    "phone_code": "+856"
+  },
+  "LB": {
+    "currency": "LBP",
+    "flag": "🇱🇧",
+    "iso2": "LB",
+    "name_fr": "Liban",
+    "phone_code": "+961"
+  },
+  "LC": {
+    "currency": "XCD",
+    "flag": "🇱🇨",
+    "iso2": "LC",
+    "name_fr": "Sainte-Lucie",
+    "phone_code": "+1758"
+  },
+  "LI": {
+    "currency": "CHF",
+    "flag": "🇱🇮",
+    "iso2": "LI",
+    "name_fr": "Liechtenstein",
+    "phone_code": "+423"
+  },
+  "LK": {
+    "currency": "LKR",
+    "flag": "🇱🇰",
+    "iso2": "LK",
+    "name_fr": "Sri Lanka",
+    "phone_code": "+94"
+  },
+  "LR": {
+    "currency": "LRD",
+    "flag": "🇱🇷",
+    "iso2": "LR",
+    "name_fr": "Libéria",
+    "phone_code": "+231"
+  },
+  "LS": {
+    "currency": "LSL",
+    "flag": "🇱🇸",
+    "iso2": "LS",
+    "name_fr": "Lesotho",
+    "phone_code": "+266"
+  },
+  "LT": {
+    "currency": "EUR",
+    "flag": "🇱🇹",
+    "iso2": "LT",
+    "name_fr": "Lituanie",
+    "phone_code": "+370"
+  },
+  "LU": {
+    "currency": "EUR",
+    "flag": "🇱🇺",
+    "iso2": "LU",
+    "name_fr": "Luxembourg",
+    "phone_code": "+352"
+  },
+  "LV": {
+    "currency": "EUR",
+    "flag": "🇱🇻",
+    "iso2": "LV",
+    "name_fr": "Lettonie",
+    "phone_code": "+371"
+  },
+  "LY": {
+    "currency": "LYD",
+    "flag": "🇱🇾",
+    "iso2": "LY",
+    "name_fr": "Libye",
+    "phone_code": "+218"
+  },
+  "MA": {
+    "currency": "MAD",
+    "flag": "🇲🇦",
+    "iso2": "MA",
+    "name_fr": "Maroc",
+    "phone_code": "+212"
+  },
+  "MC": {
+    "currency": "EUR",
+    "flag": "🇲🇨",
+    "iso2": "MC",
+    "name_fr": "Monaco",
+    "phone_code": "+377"
+  },
+  "MD": {
+    "currency": "MDL",
+    "flag": "🇲🇩",
+    "iso2": "MD",
+    "name_fr": "Moldavie",
+    "phone_code": "+373"
+  },
+  "ME": {
+    "currency": "EUR",
+    "flag": "🇲🇪",
+    "iso2": "ME",
+    "name_fr": "Monténégro",
+    "phone_code": "+382"
+  },
+  "MG": {
+    "currency": "MGA",
+    "flag": "🇲🇬",
+    "iso2": "MG",
+    "name_fr": "Madagascar",
+    "phone_code": "+261"
+  },
+  "MH": {
+    "currency": "USD",
+    "flag": "🇲🇭",
+    "iso2": "MH",
+    "name_fr": "Marshall",
+    "phone_code": "+692"
+  },
+  "MK": {
+    "currency": "MKD",
+    "flag": "🇲🇰",
+    "iso2": "MK",
+    "name_fr": "Macédoine du Nord",
+    "phone_code": "+389"
+  },
+  "ML": {
+    "currency": "XOF",
+    "flag": "🇲🇱",
+    "iso2": "ML",
+    "name_fr": "Mali",
+    "phone_code": "+223"
+  },
+  "MM": {
+    "currency": "MMK",
+    "flag": "🇲🇲",
+    "iso2": "MM",
+    "name_fr": "Birmanie",
+    "phone_code": "+95"
+  },
+  "MN": {
+    "currency": "MNT",
+    "flag": "🇲🇳",
+    "iso2": "MN",
+    "name_fr": "Mongolie",
+    "phone_code": "+976"
+  },
+  "MO": {
+    "currency": "MOP",
+    "flag": "🇲🇴",
+    "iso2": "MO",
+    "name_fr": "Macao",
+    "phone_code": "+853"
+  },
+  "MR": {
+    "currency": "MRU",
+    "flag": "🇲🇷",
+    "iso2": "MR",
+    "name_fr": "Mauritanie",
+    "phone_code": "+222"
+  },
+  "MT": {
+    "currency": "EUR",
+    "flag": "🇲🇹",
+    "iso2": "MT",
+    "name_fr": "Malte",
+    "phone_code": "+356"
+  },
+  "MU": {
+    "currency": "MUR",
+    "flag": "🇲🇺",
+    "iso2": "MU",
+    "name_fr": "Maurice",
+    "phone_code": "+230"
+  },
+  "MV": {
+    "currency": "MVR",
+    "flag": "🇲🇻",
+    "iso2": "MV",
+    "name_fr": "Maldives",
+    "phone_code": "+960"
+  },
+  "MW": {
+    "currency": "MWK",
+    "flag": "🇲🇼",
+    "iso2": "MW",
+    "name_fr": "Malawi",
+    "phone_code": "+265"
+  },
+  "MX": {
+    "currency": "MXN",
+    "flag": "🇲🇽",
+    "iso2": "MX",
+    "name_fr": "Mexique",
+    "phone_code": "+52"
+  },
+  "MY": {
+    "currency": "MYR",
+    "flag": "🇲🇾",
+    "iso2": "MY",
+    "name_fr": "Malaisie",
+    "phone_code": "+60"
+  },
+  "MZ": {
+    "currency": "MZN",
+    "flag": "🇲🇿",
+    "iso2": "MZ",
+    "name_fr": "Mozambique",
+    "phone_code": "+258"
+  },
+  "NA": {
+    "currency": "NAD",
+    "flag": "🇳🇦",
+    "iso2": "NA",
+    "name_fr": "Namibie",
+    "phone_code": "+264"
+  },
+  "NE": {
+    "currency": "XOF",
+    "flag": "🇳🇪",
+    "iso2": "NE",
+    "name_fr": "Niger",
+    "phone_code": "+227"
+  },
+  "NG": {
+    "currency": "NGN",
+    "flag": "🇳🇬",
+    "iso2": "NG",
+    "name_fr": "Nigeria",
+    "phone_code": "+234"
+  },
+  "NI": {
+    "currency": "NIO",
+    "flag": "🇳🇮",
+    "iso2": "NI",
+    "name_fr": "Nicaragua",
+    "phone_code": "+505"
+  },
+  "NL": {
+    "currency": "EUR",
+    "flag": "🇳🇱",
+    "iso2": "NL",
+    "name_fr": "Pays-Bas",
+    "phone_code": "+31"
+  },
+  "NO": {
+    "currency": "NOK",
+    "flag": "🇳🇴",
+    "iso2": "NO",
+    "name_fr": "Norvège",
+    "phone_code": "+47"
+  },
+  "NP": {
+    "currency": "NPR",
+    "flag": "🇳🇵",
+    "iso2": "NP",
+    "name_fr": "Népal",
+    "phone_code": "+977"
+  },
+  "NR": {
+    "currency": "AUD",
+    "flag": "🇳🇷",
+    "iso2": "NR",
+    "name_fr": "Nauru",
+    "phone_code": "+674"
+  },
+  "NZ": {
+    "currency": "NZD",
+    "flag": "🇳🇿",
+    "iso2": "NZ",
+    "name_fr": "Nouvelle-Zélande",
+    "phone_code": "+64"
+  },
+  "OM": {
+    "currency": "OMR",
+    "flag": "🇴🇲",
+    "iso2": "OM",
+    "name_fr": "Oman",
+    "phone_code": "+968"
+  },
+  "PA": {
+    "currency": "PAB",
+    "flag": "🇵🇦",
+    "iso2": "PA",
+    "name_fr": "Panama",
+    "phone_code": "+507"
+  },
+  "PE": {
+    "currency": "PEN",
+    "flag": "🇵🇪",
+    "iso2": "PE",
+    "name_fr": "Pérou",
+    "phone_code": "+51"
+  },
+  "PG": {
+    "currency": "PGK",
+    "flag": "🇵🇬",
+    "iso2": "PG",
+    "name_fr": "Papouasie",
+    "phone_code": "+675"
+  },
+  "PH": {
+    "currency": "PHP",
+    "flag": "🇵🇭",
+    "iso2": "PH",
+    "name_fr": "Philippines",
+    "phone_code": "+63"
+  },
+  "PK": {
+    "currency": "PKR",
+    "flag": "🇵🇰",
+    "iso2": "PK",
+    "name_fr": "Pakistan",
+    "phone_code": "+92"
+  },
+  "PL": {
+    "currency": "PLN",
+    "flag": "🇵🇱",
+    "iso2": "PL",
+    "name_fr": "Pologne",
+    "phone_code": "+48"
+  },
+  "PS": {
+    "currency": "ILS",
+    "flag": "🇵🇸",
+    "iso2": "PS",
+    "name_fr": "Palestine",
+    "phone_code": "+970"
+  },
+  "PT": {
+    "currency": "EUR",
+    "flag": "🇵🇹",
+    "iso2": "PT",
+    "name_fr": "Portugal",
+    "phone_code": "+351"
+  },
+  "PW": {
+    "currency": "USD",
+    "flag": "🇵🇼",
+    "iso2": "PW",
+    "name_fr": "Palaos",
+    "phone_code": "+680"
+  },
+  "PY": {
+    "currency": "PYG",
+    "flag": "🇵🇾",
+    "iso2": "PY",
+    "name_fr": "Paraguay",
+    "phone_code": "+595"
+  },
+  "QA": {
+    "currency": "QAR",
+    "flag": "🇶🇦",
+    "iso2": "QA",
+    "name_fr": "Qatar",
+    "phone_code": "+974"
+  },
+  "RO": {
+    "currency": "RON",
+    "flag": "🇷🇴",
+    "iso2": "RO",
+    "name_fr": "Roumanie",
+    "phone_code": "+40"
+  },
+  "RS": {
+    "currency": "RSD",
+    "flag": "🇷🇸",
+    "iso2": "RS",
+    "name_fr": "Serbie",
+    "phone_code": "+381"
+  },
+  "RU": {
+    "currency": "RUB",
+    "flag": "🇷🇺",
+    "iso2": "RU",
+    "name_fr": "Russie",
+    "phone_code": "+7"
+  },
+  "RW": {
+    "currency": "RWF",
+    "flag": "🇷🇼",
+    "iso2": "RW",
+    "name_fr": "Rwanda",
+    "phone_code": "+250"
+  },
+  "SA": {
+    "currency": "SAR",
+    "flag": "🇸🇦",
+    "iso2": "SA",
+    "name_fr": "Arabie saoudite",
+    "phone_code": "+966"
+  },
+  "SB": {
+    "currency": "SBD",
+    "flag": "🇸🇧",
+    "iso2": "SB",
+    "name_fr": "Salomon",
+    "phone_code": "+677"
+  },
+  "SC": {
+    "currency": "SCR",
+    "flag": "🇸🇨",
+    "iso2": "SC",
+    "name_fr": "Seychelles",
+    "phone_code": "+248"
+  },
+  "SD": {
+    "currency": "SDG",
+    "flag": "🇸🇩",
+    "iso2": "SD",
+    "name_fr": "Soudan",
+    "phone_code": "+249"
+  },
+  "SE": {
+    "currency": "SEK",
+    "flag": "🇸🇪",
+    "iso2": "SE",
+    "name_fr": "Suède",
+    "phone_code": "+46"
+  },
+  "SG": {
+    "currency": "SGD",
+    "flag": "🇸🇬",
+    "iso2": "SG",
+    "name_fr": "Singapour",
+    "phone_code": "+65"
+  },
+  "SI": {
+    "currency": "EUR",
+    "flag": "🇸🇮",
+    "iso2": "SI",
+    "name_fr": "Slovénie",
+    "phone_code": "+386"
+  },
+  "SK": {
+    "currency": "EUR",
+    "flag": "🇸🇰",
+    "iso2": "SK",
+    "name_fr": "Slovaquie",
+    "phone_code": "+421"
+  },
+  "SL": {
+    "currency": "SLL",
+    "flag": "🇸🇱",
+    "iso2": "SL",
+    "name_fr": "Sierra Leone",
+    "phone_code": "+232"
+  },
+  "SM": {
+    "currency": "EUR",
+    "flag": "🇸🇲",
+    "iso2": "SM",
+    "name_fr": "Saint-Marin",
+    "phone_code": "+378"
+  },
+  "SN": {
+    "currency": "XOF",
+    "flag": "🇸🇳",
+    "iso2": "SN",
+    "name_fr": "Sénégal",
+    "phone_code": "+221"
+  },
+  "SO": {
+    "currency": "SOS",
+    "flag": "🇸🇴",
+    "iso2": "SO",
+    "name_fr": "Somalie",
+    "phone_code": "+252"
+  },
+  "SR": {
+    "currency": "SRD",
+    "flag": "🇸🇷",
+    "iso2": "SR",
+    "name_fr": "Suriname",
+    "phone_code": "+597"
+  },
+  "SS": {
+    "currency": "SSP",
+    "flag": "🇸🇸",
+    "iso2": "SS",
+    "name_fr": "Soudan du Sud",
+    "phone_code": "+211"
+  },
+  "ST": {
+    "currency": "STN",
+    "flag": "🇸🇹",
+    "iso2": "ST",
+    "name_fr": "São Tomé-et-Príncipe",
+    "phone_code": "+239"
+  },
+  "SV": {
+    "currency": "USD",
+    "flag": "🇸🇻",
+    "iso2": "SV",
+    "name_fr": "Salvador",
+    "phone_code": "+503"
+  },
+  "SY": {
+    "currency": "SYP",
+    "flag": "🇸🇾",
+    "iso2": "SY",
+    "name_fr": "Syrie",
+    "phone_code": "+963"
+  },
+  "TD": {
+    "currency": "XAF",
+    "flag": "🇹🇩",
+    "iso2": "TD",
+    "name_fr": "Tchad",
+    "phone_code": "+235"
+  },
+  "TG": {
+    "currency": "XOF",
+    "flag": "🇹🇬",
+    "iso2": "TG",
+    "name_fr": "Togo",
+    "phone_code": "+228"
+  },
+  "TH": {
+    "currency": "THB",
+    "flag": "🇹🇭",
+    "iso2": "TH",
+    "name_fr": "Thaïlande",
+    "phone_code": "+66"
+  },
+  "TJ": {
+    "currency": "TJS",
+    "flag": "🇹🇯",
+    "iso2": "TJ",
+    "name_fr": "Tadjikistan",
+    "phone_code": "+992"
+  },
+  "TL": {
+    "currency": "USD",
+    "flag": "🇹🇱",
+    "iso2": "TL",
+    "name_fr": "Timor oriental",
+    "phone_code": "+670"
+  },
+  "TM": {
+    "currency": "TMT",
+    "flag": "🇹🇲",
+    "iso2": "TM",
+    "name_fr": "Turkménistan",
+    "phone_code": "+993"
+  },
+  "TN": {
+    "currency": "TND",
+    "flag": "🇹🇳",
+    "iso2": "TN",
+    "name_fr": "Tunisie",
+    "phone_code": "+216"
+  },
+  "TO": {
+    "currency": "TOP",
+    "flag": "🇹🇴",
+    "iso2": "TO",
+    "name_fr": "Tonga",
+    "phone_code": "+676"
+  },
+  "TR": {
+    "currency": "TRY",
+    "flag": "🇹🇷",
+    "iso2": "TR",
+    "name_fr": "Turquie",
+    "phone_code": "+90"
+  },
+  "TT": {
+    "currency": "TTD",
+    "flag": "🇹🇹",
+    "iso2": "TT",
+    "name_fr": "Trinité-et-Tobago",
+    "phone_code": "+1868"
+  },
+  "TV": {
+    "currency": "AUD",
+    "flag": "🇹🇻",
+    "iso2": "TV",
+    "name_fr": "Tuvalu",
+    "phone_code": "+688"
+  },
+  "TW": {
+    "currency": "TWD",
+    "flag": "🇹🇼",
+    "iso2": "TW",
+    "name_fr": "Taïwan",
+    "phone_code": "+886"
+  },
+  "TZ": {
+    "currency": "TZS",
+    "flag": "🇹🇿",
+    "iso2": "TZ",
+    "name_fr": "Tanzanie",
+    "phone_code": "+255"
+  },
+  "UA": {
+    "currency": "UAH",
+    "flag": "🇺🇦",
+    "iso2": "UA",
+    "name_fr": "Ukraine",
+    "phone_code": "+380"
+  },
+  "UG": {
+    "currency": "UGX",
+    "flag": "🇺🇬",
+    "iso2": "UG",
+    "name_fr": "Ouganda",
+    "phone_code": "+256"
+  },
+  "US": {
+    "currency": "USD",
+    "flag": "🇺🇸",
+    "iso2": "US",
+    "name_fr": "États-Unis",
+    "phone_code": "+1"
+  },
+  "UY": {
+    "currency": "UYU",
+    "flag": "🇺🇾",
+    "iso2": "UY",
+    "name_fr": "Uruguay",
+    "phone_code": "+598"
+  },
+  "UZ": {
+    "currency": "UZS",
+    "flag": "🇺🇿",
+    "iso2": "UZ",
+    "name_fr": "Ouzbékistan",
+    "phone_code": "+998"
+  },
+  "VA": {
+    "currency": "EUR",
+    "flag": "🇻🇦",
+    "iso2": "VA",
+    "name_fr": "Vatican",
+    "phone_code": "+379"
+  },
+  "VC": {
+    "currency": "XCD",
+    "flag": "🇻🇨",
+    "iso2": "VC",
+    "name_fr": "Saint-Vincent",
+    "phone_code": "+1784"
+  },
+  "VE": {
+    "currency": "VES",
+    "flag": "🇻🇪",
+    "iso2": "VE",
+    "name_fr": "Venezuela",
+    "phone_code": "+58"
+  },
+  "VN": {
+    "currency": "VND",
+    "flag": "🇻🇳",
+    "iso2": "VN",
+    "name_fr": "Vietnam",
+    "phone_code": "+84"
+  },
+  "VU": {
+    "currency": "VUV",
+    "flag": "🇻🇺",
+    "iso2": "VU",
+    "name_fr": "Vanuatu",
+    "phone_code": "+678"
+  },
+  "WS": {
+    "currency": "WST",
+    "flag": "🇼🇸",
+    "iso2": "WS",
+    "name_fr": "Samoa",
+    "phone_code": "+685"
+  },
+  "YE": {
+    "currency": "YER",
+    "flag": "🇾🇪",
+    "iso2": "YE",
+    "name_fr": "Yémen",
+    "phone_code": "+967"
+  },
+  "ZA": {
+    "currency": "ZAR",
+    "flag": "🇿🇦",
+    "iso2": "ZA",
+    "name_fr": "Afrique du Sud",
+    "phone_code": "+27"
+  },
+  "ZM": {
+    "currency": "ZMW",
+    "flag": "🇿🇲",
+    "iso2": "ZM",
+    "name_fr": "Zambie",
+    "phone_code": "+260"
+  },
+  "ZW": {
+    "currency": "ZWL",
+    "flag": "🇿🇼",
+    "iso2": "ZW",
+    "name_fr": "Zimbabwe",
+    "phone_code": "+263"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "country_code": "FR",
+  "version": "2026.01",
+  "validated_at": "2026-05-01",
+  "next_review_date": "2026-11-01",
+  "currency": "EUR",
+  "language_default": "fr",
+  "roles": {
+    "acheteur":  {"available_toggles": ["investisseur", "marchand_de_biens"]},
+    "vendeur":   {"available_toggles": ["promoteur", "marchand_de_biens"]},
+    "bailleur":  {"available_toggles": ["investisseur"]},
+    "locataire": {"available_toggles": []}
+  },
+  "fiscal_regimes": {
+    "investisseur": [
+      {"code": "LMNP_REEL",     "label": "LMNP au réel",      "thresholds": {"revenue_max": 23000, "income_share_max": 50}},
+      {"code": "LMNP_MICRO_BIC","label": "LMNP micro-BIC",    "thresholds": {"revenue_max": 77700}},
+      {"code": "LMP",           "label": "Loueur Meublé Pro", "thresholds": {"revenue_min": 23000, "income_share_min": 50}},
+      {"code": "SCI_IR",        "label": "SCI à l'IR"},
+      {"code": "SCI_IS",        "label": "SCI à l'IS"}
+    ],
+    "incentives": [
+      {"code": "PINEL",        "label": "Pinel",        "active": false, "ended_at": "2024-12-31"},
+      {"code": "DENORMANDIE",  "label": "Denormandie",  "active": true,  "until": "2027-12-31"},
+      {"code": "CENSI_BOUVARD","label": "Censi-Bouvard","active": false, "ended_at": "2022-12-31"},
+      {"code": "MALRAUX",      "label": "Malraux",      "active": true}
+    ]
+  },
+  "diagnostics_required": ["DPE", "GES", "ERP", "Carrez", "Boutin", "Plomb", "Amiante", "Termites", "Gaz", "Électricité"],
+  "vefa": {
+    "applicable": true,
+    "label_local": "VEFA (Vente en l'État Futur d'Achèvement)",
+    "calls_for_funds": [5, 35, 70, 95, 100],
+    "guarantee_required": "GFA",
+    "withdrawal_period_days": 10,
+    "notary_fees_reduced": "2-3%"
+  },
+  "marchand_de_biens": {
+    "applicable": true,
+    "tva_regimes": ["exoneration", "tva_sur_marge", "tva_sur_prix_total"],
+    "reduced_mutation_rights": 0.715,
+    "engagement_period_years": 5
+  },
+  "bail_types": ["nu_3_ans", "meuble_1_an", "mobilite_1_10_mois", "saisonnier", "commercial_9_ans"],
+  "locataire_garanties": ["Visale", "GLI", "parents_caution", "employeur"]
+}

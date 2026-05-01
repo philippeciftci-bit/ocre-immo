@@ -8748,6 +8748,9 @@ function App() {
   const [formKey, setFormKey] = useState(0);
   const [activeProfil, setActiveProfil] = useState('Acheteur');
   const [isInvestisseur, setIsInvestisseur] = useState(false);
+  // M/2026/05/02/1 — M109 : nouveaux toggles profil avance.
+  const [isPromoteur, setIsPromoteur] = useState(false);
+  const [isMarchandDeBiens, setIsMarchandDeBiens] = useState(false);
   // V18.15 — filtre liste strict (radio). null = "Tous". Séparé de activeProfil (form).
   const [listFilter, setListFilter] = useState(null);
   // V18.15 — recherche dossiers (live debounce 150ms côté ListView).
@@ -8978,7 +8981,7 @@ function App() {
     // state clients (race) et meme si la DB restait propre (1 ligne via PATCH), le state local
     // se polluait. Doublons en DB observes 1er mai 21:25 (id=145 vide + id=146 saisi).
     try { await savePromiseRef.current; } catch (e) {}
-    const incoming = {...(editing || {}), ...data, projet: activeProfil, is_investisseur: isInvestisseur};
+    const incoming = {...(editing || {}), ...data, projet: activeProfil, is_investisseur: isInvestisseur, is_promoteur: isPromoteur, is_marchand_de_biens: isMarchandDeBiens};
     // V20 anti-doublon : si pas d'id mais une création est déjà en cours/finie,
     // injecter l'id pour transformer ce save en UPDATE (et non INSERT).
     if (!incoming.id && editingIdRef.current) incoming.id = editingIdRef.current;
@@ -9049,6 +9052,8 @@ function App() {
     const profil = c.projet || 'Acheteur';
     setActiveProfil(profil);
     setIsInvestisseur(profil === 'Investisseur' || !!c.is_investisseur);
+    setIsPromoteur(!!c.is_promoteur);
+    setIsMarchandDeBiens(!!c.is_marchand_de_biens);
     setInitialExpandedSection(null);
     setInitialFocus(null);
     setView('form');
@@ -9058,6 +9063,8 @@ function App() {
     const profil = c.projet || 'Acheteur';
     setActiveProfil(profil);
     setIsInvestisseur(profil === 'Investisseur' || !!c.is_investisseur);
+    setIsPromoteur(!!c.is_promoteur);
+    setIsMarchandDeBiens(!!c.is_marchand_de_biens);
     setInitialExpandedSection(sectionIdx);
     setInitialFocus(focus || null);
     setFormKey(k => k + 1); // force remount pour relancer l'init expanded
@@ -9071,6 +9078,8 @@ function App() {
     editingIdRef.current = null;
     setActiveProfil(null);
     setIsInvestisseur(false);
+    setIsPromoteur(false);
+    setIsMarchandDeBiens(false);
     setFormKey(k => k + 1);
     setView('form');
   }
@@ -9272,6 +9281,8 @@ function App() {
       editing={editing} setEditing={setEditing}
       activeProfil={activeProfil} setActiveProfil={setActiveProfil}
       isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
+      isPromoteur={isPromoteur} setIsPromoteur={setIsPromoteur}
+      isMarchandDeBiens={isMarchandDeBiens} setIsMarchandDeBiens={setIsMarchandDeBiens}
       handleSaveLocal={handleSaveLocal} handleDelete={handleDelete}
       backToList={() => { setView(editing && editing.is_staged ? 'downloads' : 'list'); setEditing(null); }}
       toast={toast} showToast={showToast}
@@ -17341,6 +17352,7 @@ function SectionLocked({title, sectionAnchor, onTap}) {
 
 function FormView(props) {
   const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
+         isPromoteur, setIsPromoteur, isMarchandDeBiens, setIsMarchandDeBiens,
          handleSaveLocal, handleDelete, backToList, toast, showToast,
          clients, openExistingDossier, initialExpandedSection, initialFocus,
          promoteStaged, deleteStaged} = props;
@@ -17514,8 +17526,25 @@ function FormView(props) {
   // M/2026/05/01/10 — sync uni-directionnel : ouvrir un dossier legacy projet=Investisseur force
   // isInvestisseur=true pour rester coherent. Mais ne JAMAIS desactiver le toggle quand l utilisateur
   // change le profil principal via le selecteur (le toggle est orthogonal aux 4 pills).
+  // M/2026/05/02/1 — M109 : enforce matrice compatibility cote frontend. Quand activeProfil
+  // change, decoche les toggles non autorises pour le nouveau role.
   useEffect(() => {
     if (activeProfil === 'Investisseur' && !isInvestisseur) setIsInvestisseur(true);
+    // Enforce matrice : Locataire = aucun, Acheteur = pas Promoteur, Vendeur = pas Investisseur,
+    // Bailleur = pas Promoteur ni Marchand.
+    if (activeProfil === 'Locataire') {
+      if (isInvestisseur) setIsInvestisseur(false);
+      if (isPromoteur) setIsPromoteur(false);
+      if (isMarchandDeBiens) setIsMarchandDeBiens(false);
+    } else if (activeProfil === 'Acheteur') {
+      if (isPromoteur) setIsPromoteur(false);
+    } else if (activeProfil === 'Vendeur') {
+      if (isInvestisseur) setIsInvestisseur(false);
+    } else if (activeProfil === 'Bailleur') {
+      if (isPromoteur) setIsPromoteur(false);
+      if (isMarchandDeBiens) setIsMarchandDeBiens(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProfil]);
   function commit(k, v) {
     // M/2026/05/01/26 — M104 GATE strict : bouton ✅ Valider et commitAndNext appellent
@@ -18378,7 +18407,74 @@ function FormView(props) {
             </>
           )}
           <CustomFieldList sectionKey="client" d={d} set={set}/>
-          <button onClick={() => commitAndNext(0)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
+          {/* M/2026/05/02/1 — M109 Bloc "Profil avancé" : toggles selon matrice de compatibilite
+              (acheteur: invest+marchand, vendeur: promoteur+marchand, bailleur: invest, locataire: rien).
+              Promoteur <-> Marchand mutex. Bloc entierement invisible si rôle = Locataire. */}
+          {(() => {
+            const _toggles = {
+              'Acheteur':  ['investisseur', 'marchand_de_biens'],
+              'Vendeur':   ['promoteur', 'marchand_de_biens'],
+              'Bailleur':  ['investisseur'],
+              'Locataire': [],
+              'Investisseur': ['investisseur', 'marchand_de_biens'], // legacy = traite comme acheteur
+            };
+            const visibles = _toggles[activeProfil] || [];
+            if (visibles.length === 0) return null;
+            const labels = {
+              investisseur:        {l: 'Investisseur',     desc: 'Achat / location avec objectif rendement'},
+              promoteur:           {l: 'Promoteur',        desc: 'Vente d un programme neuf (VEFA)'},
+              marchand_de_biens:   {l: 'Marchand de biens',desc: 'Achat / revente professionnel'},
+            };
+            const states = {investisseur: isInvestisseur, promoteur: isPromoteur, marchand_de_biens: isMarchandDeBiens};
+            const setters = {
+              investisseur: (v) => setIsInvestisseur(v),
+              promoteur:    (v) => { setIsPromoteur(v); if (v) setIsMarchandDeBiens(false); },
+              marchand_de_biens: (v) => { setIsMarchandDeBiens(v); if (v) setIsPromoteur(false); },
+            };
+            return (
+              <div style={{marginTop:14, padding:'12px 14px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:10}}>
+                <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginBottom:8}}>
+                  Profil avancé · optionnel
+                </div>
+                <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                  {visibles.map(k => {
+                    const checked = !!states[k];
+                    const lbl = labels[k];
+                    return (
+                      <button key={k} type="button" onClick={() => setters[k](!checked)}
+                        role="switch" aria-checked={checked}
+                        style={{
+                          display:'flex', alignItems:'center', gap:10,
+                          padding:'10px 12px', borderRadius:10,
+                          border:'1.5px solid '+(checked ? '#6B4E8B' : '#D9C9A8'),
+                          background: checked ? '#F4ECE3' : '#fff',
+                          color: '#2A2018', cursor:'pointer', textAlign:'left',
+                          fontFamily:'inherit', transition:'background .15s, border-color .15s',
+                        }}>
+                        <span aria-hidden="true" style={{
+                          flexShrink:0, width:18, height:18, borderRadius:4,
+                          border:'2px solid '+(checked ? '#6B4E8B' : '#C9B79A'),
+                          background: checked ? '#6B4E8B' : '#fff',
+                          display:'inline-flex', alignItems:'center', justifyContent:'center',
+                        }}>
+                          {checked && (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="5 12 10 17 19 7"/>
+                            </svg>
+                          )}
+                        </span>
+                        <span style={{flex:1, minWidth:0}}>
+                          <span style={{display:'block', fontSize:13, fontWeight:700, color:'#2A2018'}}>{lbl.l}</span>
+                          <span style={{display:'block', fontSize:11, color:'#8B7F6E', marginTop:1}}>{lbl.desc}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+          <button onClick={() => commitAndNext(0)} style={{marginTop:14, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
 
           {/* V28 — bouton "+ Ajouter une casquette" bas Stage I retiré. Accessible via le
               bouton "+" rond en ligne nom/prénom du header Stage I. */}

@@ -270,6 +270,37 @@ switch ($action) {
         $is_investisseur = !empty($c['is_investisseur']) ? 1 : 0;
         $archived = !empty($c['archived']) ? 1 : 0;
         $is_draft = computeIsDraft($c);
+        // M/2026/05/02/1 — M109 : nouveaux champs profil avancé + multi-pays.
+        // Validation matrice de compatibilité serveur (defense en profondeur, le frontend
+        // applique deja la matrice cote UI mais on revalide pour eviter toute injection).
+        $is_promoteur          = !empty($c['is_promoteur'])          ? 1 : 0;
+        $is_marchand_de_biens  = !empty($c['is_marchand_de_biens'])  ? 1 : 0;
+        $profil_lc = strtolower($projet);
+        // Locataire : aucun toggle avance autorise.
+        if ($profil_lc === 'locataire') { $is_investisseur = 0; $is_promoteur = 0; $is_marchand_de_biens = 0; }
+        // Acheteur : pas de Promoteur.
+        if ($profil_lc === 'acheteur') { $is_promoteur = 0; }
+        // Vendeur : pas d Investisseur.
+        if ($profil_lc === 'vendeur')  { $is_investisseur = 0; }
+        // Bailleur : pas de Promoteur ni Marchand.
+        if ($profil_lc === 'bailleur') { $is_promoteur = 0; $is_marchand_de_biens = 0; }
+        // Mutex Promoteur <-> Marchand de biens (le frontend devrait empecher mais double-guard).
+        if ($is_promoteur && $is_marchand_de_biens) {
+            // Garder le plus recent en priorite : si payload contient explicitement les deux,
+            // privilegier marchand (plus generique). Logique alternative possible si Philippe precise.
+            $is_promoteur = 0;
+        }
+        // Sanitize multi-pays (ISO2 alpha uppercase, max 2 chars). Null si vide.
+        $sanIso2 = function ($v) {
+            $v = strtoupper(preg_replace('/[^A-Za-z]/', '', (string)$v));
+            return (strlen($v) === 2) ? $v : null;
+        };
+        $phone_country = $sanIso2($c['phone_country'] ?? null);
+        $phone_e164    = isset($c['phone_e164']) && $c['phone_e164'] !== '' ? substr(preg_replace('/[^0-9+]/', '', (string)$c['phone_e164']), 0, 20) : null;
+        $id_country    = $sanIso2($c['id_country'] ?? null);
+        $id_type       = isset($c['id_type'])   && $c['id_type']   !== '' ? substr(trim((string)$c['id_type']),   0, 20)  : null;
+        $id_number     = isset($c['id_number']) && $c['id_number'] !== '' ? substr(trim((string)$c['id_number']), 0, 50)  : null;
+        $bien_country  = $sanIso2($c['bien_country'] ?? null);
         // V18.17 — is_staged respecté à l'INSERT (import URL/image crée staged).
         // En UPDATE : on conserve l'existant (promote est géré par action=promote dédié).
         $is_staged_new = !empty($c['is_staged']) ? 1 : 0;
@@ -336,24 +367,40 @@ switch ($action) {
                 "UPDATE clients SET data = ?, projet = ?, is_investisseur = ?, archived = ?,
                    is_draft = ?, prenom = ?, nom = ?, societe_nom = ?, tel = ?, email = ?,
                    payment_plan = ?, received_payments = ?,
+                   is_promoteur = ?, is_marchand_de_biens = ?,
+                   phone_country = ?, phone_e164 = ?,
+                   id_country = ?, id_type = ?, id_number = ?,
+                   bien_country = ?,
                    updated_at = NOW()
                  WHERE id = ? AND user_id = ?"
             );
             $stmt->execute([$data, $projet, $is_investisseur, $archived, $is_draft,
                             $prenom, $nom, $societe_nom, $tel, $email,
                             $payment_plan_json, $received_payments_json,
+                            $is_promoteur, $is_marchand_de_biens,
+                            $phone_country, $phone_e164,
+                            $id_country, $id_type, $id_number,
+                            $bien_country,
                             $id, $user['id']]);
         } else {
             $stmt = db()->prepare(
                 "INSERT INTO clients (user_id, data, projet, is_investisseur, archived,
                                       is_draft, is_staged, prenom, nom, societe_nom, tel, email,
                                       payment_plan, received_payments,
+                                      is_promoteur, is_marchand_de_biens,
+                                      phone_country, phone_e164,
+                                      id_country, id_type, id_number,
+                                      bien_country,
                                       created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
             );
             $stmt->execute([$user['id'], $data, $projet, $is_investisseur, $archived, $is_draft, $is_staged_new,
                             $prenom, $nom, $societe_nom, $tel, $email,
-                            $payment_plan_json, $received_payments_json]);
+                            $payment_plan_json, $received_payments_json,
+                            $is_promoteur, $is_marchand_de_biens,
+                            $phone_country, $phone_e164,
+                            $id_country, $id_type, $id_number,
+                            $bien_country]);
             $id = (int)db()->lastInsertId();
             $wasStaged = (bool)$is_staged_new;
         }

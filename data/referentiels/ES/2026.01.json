@@ -1,0 +1,44 @@
+{
+  "country_code": "ES",
+  "version": "2026.01",
+  "validated_at": "2026-05-01",
+  "next_review_date": "2026-11-01",
+  "currency": "EUR",
+  "language_default": "es",
+  "roles": {
+    "acheteur":  {"available_toggles": ["investisseur", "marchand_de_biens"]},
+    "vendeur":   {"available_toggles": ["promoteur", "marchand_de_biens"]},
+    "bailleur":  {"available_toggles": ["investisseur"]},
+    "locataire": {"available_toggles": []}
+  },
+  "fiscal_regimes": {
+    "investisseur": [
+      {"code": "ARRENDAMIENTO_VIVIENDA_HABITUAL", "label": "Arrendamiento vivienda habitual"},
+      {"code": "ARRENDAMIENTO_TURISTICO",         "label": "Arrendamiento turístico", "regional_restrictions": ["Catalunya", "Madrid", "Andalucía", "Baleares"]},
+      {"code": "SOCIMI",                          "label": "SOCIMI (REIT espagnol)"}
+    ],
+    "incentives": [
+      {"code": "DEDUCCION_VIVIENDA_HABITUAL_REGIONAL", "label": "Déduction vivienda habitual (régionale CCAA)", "active": true, "scope": "regional"}
+    ]
+  },
+  "diagnostics_required": ["CEE"],
+  "vefa": {
+    "applicable": true,
+    "label_local": "Compra sobre plano",
+    "calls_for_funds": [],
+    "guarantee_required": null
+  },
+  "marchand_de_biens": {
+    "applicable": true,
+    "tva_regimes": ["IVA_10_neuf", "ITP_ancien_6_a_10"],
+    "iva_rate_neuf": 0.10,
+    "itp_rate_ancien_min": 0.06,
+    "itp_rate_ancien_max": 0.10
+  },
+  "specific": {
+    "NIE_required_for_non_residents": true,
+    "notary_required": true,
+    "notary_fees": "~1%"
+  },
+  "bail_types": ["LAU_5_ans", "habitacion", "temporal", "vacacional"]
+}
