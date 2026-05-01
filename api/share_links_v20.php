@@ -24,6 +24,8 @@ case 'create_link': {
     $hide_price    = !empty($input['hide_price'])    ? 1 : 0;
     $hide_address  = !empty($input['hide_address'])  ? 1 : 0;
     $hide_identity = !empty($input['hide_identity']) ? 1 : 0;
+    // M/2026/05/01/13 — single_use : lien a usage unique (consommé au 1er hit du destinataire).
+    $single_use    = !empty($input['single_use'])    ? 1 : 0;
     $expires_in = (string)($input['expires_in'] ?? '30d');
     $intervalMap = [
         '1h'  => 'INTERVAL 1 HOUR',
@@ -42,11 +44,11 @@ case 'create_link': {
     }
     $token = bin2hex(random_bytes(32));
     pdo_meta()->prepare(
-        "INSERT INTO shared_links (dossier_id, wsp_slug, type, token, created_by_user_id, expires_at, hide_price, hide_address, hide_identity)
-         VALUES (?, ?, 'client', ?, ?, $expires_clause, ?, ?, ?)"
-    )->execute([$dossier_id, $ctx['workspace']['slug'], $token, $ctx['user']['id'], $hide_price, $hide_address, $hide_identity]);
+        "INSERT INTO shared_links (dossier_id, wsp_slug, type, token, created_by_user_id, expires_at, hide_price, hide_address, hide_identity, single_use)
+         VALUES (?, ?, 'client', ?, ?, $expires_clause, ?, ?, ?, ?)"
+    )->execute([$dossier_id, $ctx['workspace']['slug'], $token, $ctx['user']['id'], $hide_price, $hide_address, $hide_identity, $single_use]);
     $url = 'https://' . $ctx['workspace']['slug'] . '.ocre.immo/share/' . $token;
-    jout(['ok' => true, 'token' => $token, 'url' => $url, 'expires_in' => $expires_in]);
+    jout(['ok' => true, 'token' => $token, 'url' => $url, 'expires_in' => $expires_in, 'single_use' => $single_use]);
 }
 
 case 'create_internal': {

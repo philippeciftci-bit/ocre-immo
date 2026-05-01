@@ -21,12 +21,17 @@ if ($shareToken && strlen($shareToken) >= 32) {
         $st->execute([$shareToken]);
         $linkRow = $st->fetch();
     } catch (Throwable $e) { $linkRow = null; }
-    if (!$linkRow) {
+    // M/2026/05/01/13 — single_use : si lien marque usage unique ET deja consomme, refuser.
+    $isSingleUseConsumed = $linkRow && (int)($linkRow['single_use'] ?? 0) === 1 && !empty($linkRow['consumed_at']);
+    if (!$linkRow || $isSingleUseConsumed) {
         http_response_code(410);
+        $reason = $isSingleUseConsumed
+            ? "Ce lien a usage unique a deja ete ouvert. Demandez un nouveau lien a l'agent."
+            : "Ce lien n'est plus valide. Demandez un nouveau lien a l'agent.";
         echo "<!DOCTYPE html><html lang='fr'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Lien expiré</title><link href='https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;600&display=swap' rel='stylesheet'></head>";
         echo "<body style='font-family:DM Sans,sans-serif;padding:60px 20px;text-align:center;background:#F0E8D8;color:#5C3B1E;margin:0;min-height:100vh'>";
         echo "<h1 style=\"font-family:'Cormorant Garamond',serif;font-size:36px;color:#8B5E3C;margin:0 0 12px;font-weight:700\">Lien expiré</h1>";
-        echo "<p style='color:#8B7F6E;font-size:14px'>Ce lien n'est plus valide. Demandez un nouveau lien à l'agent.</p>";
+        echo "<p style='color:#8B7F6E;font-size:14px'>" . htmlspecialchars($reason, ENT_QUOTES, 'UTF-8') . "</p>";
         echo "</body></html>";
         exit;
     }
@@ -50,8 +55,17 @@ if ($shareToken && strlen($shareToken) >= 32) {
         'hide_address'  => (int)($linkRow['hide_address'] ?? 0),
         'hide_identity' => (int)($linkRow['hide_identity'] ?? 0),
     ];
-    // Increment viewed_count.
-    try { pdo_meta()->prepare("UPDATE shared_links SET viewed_count = viewed_count + 1, last_viewed_at = NOW() WHERE id = ?")->execute([$linkRow['id']]); } catch (Throwable $e) {}
+    // Increment viewed_count + marque consumed_at au premier hit si single_use.
+    try {
+        if ((int)($linkRow['single_use'] ?? 0) === 1 && empty($linkRow['consumed_at'])) {
+            pdo_meta()->prepare("UPDATE shared_links SET viewed_count = viewed_count + 1, last_viewed_at = NOW(), consumed_at = NOW() WHERE id = ?")->execute([$linkRow['id']]);
+        } else {
+            pdo_meta()->prepare("UPDATE shared_links SET viewed_count = viewed_count + 1, last_viewed_at = NOW() WHERE id = ?")->execute([$linkRow['id']]);
+        }
+    } catch (Throwable $e) {}
+    // M/2026/05/01/13 — token court (8 premiers chars) pour watermark dynamique anti-fuite.
+    $_shareTokenShort = substr($shareToken, 0, 8);
+    $_shareCreatedAt = $linkRow['created_at'] ?? '';
     // Identite agent par defaut (lookup createur du lien).
     try {
         $au = pdo_meta()->prepare("SELECT email, display_name, telephone FROM users WHERE id = ? LIMIT 1");
@@ -445,6 +459,68 @@ header('Content-Type: text/html; charset=utf-8');
   .contact-block .col .price-final { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; overflow: visible; white-space: nowrap; padding-right: 4px; }
   .contact-block .col .price-final b { font-weight: 700; }
   .contact-block .col .price-final .hon { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+<?php if ($_isShareView): ?>
+  /* M/2026/05/01/13 — protections anti-fuite vue partagee : no-copy CSS, watermark calque, bandeau legal. */
+  .pages, .pages * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pages a { -webkit-touch-callout: default; }
+  .ocre-watermark {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+    background-image: repeating-linear-gradient(
+      -20deg,
+      transparent 0,
+      transparent 90px,
+      rgba(102, 78, 55, 0.04) 90px,
+      rgba(102, 78, 55, 0.04) 91px
+    );
+  }
+  .ocre-watermark .wm-grid {
+    position: absolute;
+    inset: -50%;
+    transform: rotate(-20deg);
+    transform-origin: center;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 200px);
+    grid-auto-rows: 120px;
+    align-items: center;
+    justify-content: start;
+  }
+  .ocre-watermark .wm-cell {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    font-size: 13px;
+    color: rgba(102, 78, 55, 0.085);
+    text-align: center;
+    line-height: 1.4;
+    padding: 0 14px;
+    user-select: none;
+    white-space: nowrap;
+  }
+  @media print {
+    .ocre-watermark { display: block !important; }
+  }
+  .ocre-confidential-banner {
+    max-width: 720px;
+    margin: 24px auto 32px;
+    padding: 0 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-style: italic;
+    color: #8B7F6E;
+    text-align: center;
+    line-height: 1.5;
+  }
+<?php endif; ?>
 </style>
 </head>
 <body>
@@ -703,5 +779,48 @@ header('Content-Type: text/html; charset=utf-8');
   </section>
 
 </div>
+<?php if ($_isShareView): ?>
+<!-- M/2026/05/01/13 — bandeau confidentialite legal (vue partagee uniquement). -->
+<div class="ocre-confidential-banner">
+  Ce dossier vous est transmis a titre confidentiel.<br>
+  Toute reproduction ou redistribution est interdite.
+</div>
+<!-- M/2026/05/01/13 — watermark dynamique anti-fuite : token court + timestamp creation lien.
+     CSS print conserve le calque. Capture d'ecran iOS/Android non bloquable cote web — limitation
+     systeme OS. Le watermark trace l'origine en cas de fuite. -->
+<div class="ocre-watermark" aria-hidden="true">
+  <div class="wm-grid">
+    <?php
+    $_wmText = htmlspecialchars(
+      'OCRE immo · ' . $_shareTokenShort . ' · ' . substr($_shareCreatedAt, 0, 16) . ' · ne pas redistribuer',
+      ENT_QUOTES, 'UTF-8'
+    );
+    // Grille de 60 cellules (10 col x 6 ligne) — couvre l'inset:-50% en tous sens.
+    for ($_i = 0; $_i < 60; $_i++) {
+        echo '<div class="wm-cell">' . $_wmText . '</div>';
+    }
+    ?>
+  </div>
+</div>
+<script>
+// M/2026/05/01/13 — desactive copier-coller / glisser / clic droit / impression-export rapide.
+// Limites assumees : capture ecran iOS/Android non bloquable cote web, mais watermark trace l'origine.
+(function () {
+  function block(e) { if (e && e.preventDefault) e.preventDefault(); return false; }
+  ['contextmenu','dragstart','copy','cut','selectstart'].forEach(function (ev) {
+    document.addEventListener(ev, block, {capture: true});
+  });
+  // Empeche Cmd/Ctrl+S, Cmd/Ctrl+P (raccourci save/print) — impression A4 reste accessible
+  // via menu navigateur si l'utilisateur insiste, mais le watermark s'imprime avec.
+  document.addEventListener('keydown', function (e) {
+    var k = (e.key || '').toLowerCase();
+    if ((e.metaKey || e.ctrlKey) && (k === 's' || k === 'c' || k === 'x' || k === 'a')) {
+      // Permettre Cmd/Ctrl+P (print) car le watermark CSS @media print s'applique.
+      if (k !== 'p') block(e);
+    }
+  }, {capture: true});
+})();
+</script>
+<?php endif; ?>
 </body>
 </html>

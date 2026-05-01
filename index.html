@@ -12749,10 +12749,12 @@ function PdfShareModal({dossierId, showPrice: initShowPrice = true, showAddress:
   // M/2026/04/30/16 — verrou lightbox.
   useLightboxLock(true);
   // M/2026/05/01/5 — toggles internes cliquables + pills Validite du lien.
+  // M/2026/05/01/13 — checkbox single_use + pills 2 lignes flexWrap + typo "de l'acheteur".
   const [showPrice, setShowPrice] = React.useState(initShowPrice);
   const [showAddress, setShowAddress] = React.useState(initShowAddress);
   const [showIdentity, setShowIdentity] = React.useState(initShowIdentity);
   const [expiresIn, setExpiresIn] = React.useState('30d'); // default 1 mois
+  const [singleUse, setSingleUse] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const token = () => localStorage.getItem('ocre_token') || '';
   const VALIDITES = [
@@ -12762,6 +12764,13 @@ function PdfShareModal({dossierId, showPrice: initShowPrice = true, showAddress:
     {k:'30d',       l:'1 mois'},
     {k:'permanent', l:'Permanent'},
   ];
+  // M/2026/05/01/13 — article correct selon profil (de l'acheteur, du vendeur, etc.).
+  function genitiveProfil(p) {
+    if (!p) return 'du contact';
+    const lower = String(p).toLowerCase();
+    const startsVowel = /^[aeiouy]/.test(lower);
+    return (startsVowel ? "de l'" : 'du ') + lower;
+  }
   function ToggleBadge({visible, onClick}) {
     return (
       <button type="button" onClick={onClick}
@@ -12790,6 +12799,7 @@ function PdfShareModal({dossierId, showPrice: initShowPrice = true, showAddress:
           hide_address: !showAddress,
           hide_identity: !showIdentity,
           expires_in: expiresIn,
+          single_use: singleUse,
         }),
       }).then(r => r.json());
       if (r.ok && r.url) {
@@ -12847,14 +12857,16 @@ function PdfShareModal({dossierId, showPrice: initShowPrice = true, showAddress:
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5C3B1E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Identité" style={{flexShrink:0}}>
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
-            <span style={{flex:1, fontSize:14, color:'#2D2018'}}>Identité du {profil}</span>
+            <span style={{flex:1, fontSize:14, color:'#2D2018'}}>Identité {genitiveProfil(profil)}</span>
             <ToggleBadge visible={showIdentity} onClick={(e) => { e.stopPropagation(); setShowIdentity(v => !v); }}/>
           </div>
         </div>
-        {/* M/2026/05/01/5 — Validite du lien : 5 pills (1h/1j/1sem/1mois/permanent). */}
-        <div style={{marginBottom:18}}>
+        {/* M/2026/05/01/5 — Validite du lien : 5 pills (1h/1j/1sem/1mois/permanent).
+            M/2026/05/01/13 — flexWrap:wrap : 2 lignes auto sur iPhone SE 375px (plus de scroll horizontal
+            ni de mots tronques). + checkbox "Lien a usage unique" sous les pills. */}
+        <div style={{marginBottom:14}}>
           <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginBottom:8}}>Validité du lien</div>
-          <div style={{display:'flex', gap:6, overflowX:'auto', paddingBottom:2, WebkitOverflowScrolling:'touch'}}>
+          <div style={{display:'flex', flexWrap:'wrap', gap:6, paddingBottom:2}}>
             {VALIDITES.map(v => {
               const sel = expiresIn === v.k;
               return (
@@ -12864,6 +12876,31 @@ function PdfShareModal({dossierId, showPrice: initShowPrice = true, showAddress:
                 </button>
               );
             })}
+          </div>
+        </div>
+        {/* M/2026/05/01/13 — Lien a usage unique (single_use). Coche = consomme au 1er hit. */}
+        <div onClick={() => setSingleUse(v => !v)} style={{
+            marginBottom:18, padding:'12px 14px', borderRadius:12,
+            background: singleUse ? '#F4ECE3' : '#FBF7EF',
+            border:'1.5px solid '+(singleUse ? '#8B5E3C' : '#E8DDC9'),
+            cursor:'pointer', display:'flex', alignItems:'center', gap:12,
+            transition:'background .15s, border-color .15s'}}>
+          <span aria-hidden="true" style={{
+            flexShrink:0, width:22, height:22, borderRadius:6,
+            border:'2px solid '+(singleUse ? '#8B5E3C' : '#C9B79A'),
+            background: singleUse ? '#8B5E3C' : '#fff',
+            display:'inline-flex', alignItems:'center', justifyContent:'center'}}>
+            {singleUse && (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="5 12 10 17 19 7"/>
+              </svg>
+            )}
+          </span>
+          <div style={{flex:1, minWidth:0}}>
+            <div style={{fontSize:13, fontWeight:700, color:'#2D2018'}}>Lien à usage unique</div>
+            <div style={{fontSize:11, color:'#8B7F6E', marginTop:2, lineHeight:1.35}}>
+              Le lien expire automatiquement à la première ouverture. Aucun rechargement possible côté destinataire.
+            </div>
           </div>
         </div>
         <div style={{display:'flex', gap:10}}>
