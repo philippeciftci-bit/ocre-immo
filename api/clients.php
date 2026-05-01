@@ -104,16 +104,15 @@ function tableExists($name) {
 }
 
 function computeIsDraft($d) {
-    $tel = trim((string)($d['tel'] ?? ''));
-    $email = trim((string)($d['email'] ?? ''));
-    $hasContact = ($tel !== '' || $email !== '');
-    if (!$hasContact) return 1;
-    if (($d['profil_type'] ?? '') === 'Société') {
-        return (trim((string)($d['societe_nom'] ?? '')) === '') ? 1 : 0;
+    // M/2026/05/01/30 — M108 : promotion brouillon -> dossier UNIQUEMENT par tap ✓ Valider
+    // explicit du frontend (envoi is_draft: 0 dans le payload). Default = 1 (brouillon).
+    // Plus de promotion auto basee sur prenom+nom+tel : le backend respecte la volonte user
+    // explicite. La logique ancienne (basee sur contenu suffisant) est devenue obsolete avec
+    // le pattern draft-on-blur M103+M104 + bouton Valider explicite.
+    if (isset($d['is_draft']) && $d['is_draft'] !== null && $d['is_draft'] !== '') {
+        return ((int)$d['is_draft']) === 0 ? 0 : 1;
     }
-    $prenom = trim((string)($d['prenom'] ?? ''));
-    $nom = trim((string)($d['nom'] ?? ''));
-    return ($prenom === '' || $nom === '') ? 1 : 0;
+    return 1;
 }
 
 switch ($action) {
