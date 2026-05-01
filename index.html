@@ -1470,15 +1470,43 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
 // pour Section II Bloc 01 v2 (cohabite avec AddressAutocomplete sur la meme ligne).
 // Tap -> BottomSheet listant les 245 PAYS (cf liste M/30/2). Fallback alpha-2 si la
 // table alpha-3 n est pas disponible (la majorite des cas usuels).
+// M/2026/05/02/2 — M111 : PaysCompactButton refondu pour M109. Split en 2 sections :
+// "Pays gérés" (5 référentiels métier complets FR/MA/ES/DZ/TN, ordre fixe) en haut,
+// puis "Tous les pays" (193 autres ISO 3166) en alphabétique. Format ligne enrichi
+// flag + nom + dial + currency. Recherche filtre les deux sections en live.
+const M111_MANAGED = ['FR', 'MA', 'ES', 'DZ', 'TN'];
 function PaysCompactButton({value, onChange}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const ent = value ? (PAYS.find(p => p.c === value) || PAYS.find(p => p.n === value)) : null;
   const flag = ent ? ent.f : '🌍';
   const code = ent ? ent.c : 'Pays';
-  const filtered = query.trim()
-    ? PAYS.filter(p => normalizeAccent(p.n).includes(normalizeAccent(query)) || p.c.toLowerCase().startsWith(query.toLowerCase()))
-    : PAYS;
+  const _q = normalizeAccent(query.trim());
+  const _filterFn = (p) => !_q || normalizeAccent(p.n).includes(_q) || p.c.toLowerCase().startsWith(query.toLowerCase());
+  // Section 1 : pays gérés (ordre fixe selon M111_MANAGED).
+  const managed = M111_MANAGED
+    .map(cc => PAYS.find(p => p.c === cc))
+    .filter(p => p && _filterFn(p));
+  // Section 2 : tous les autres pays, alphabétique (PAYS est deja trie alpha).
+  const others = PAYS.filter(p => !M111_MANAGED.includes(p.c) && _filterFn(p));
+  const fmtLine = (p) => {
+    const dial = p.dial ? '+' + String(p.dial).replace(/^\+/, '') : '';
+    const cur = p.d || '';
+    const tail = [dial, cur].filter(Boolean).join(' · ');
+    return tail;
+  };
+  const renderItem = (p) => (
+    <div key={p.c} className={'bsheet-item ' + (p.c === value ? 'selected' : '')}
+      onClick={() => { onChange(p.c); setOpen(false); setQuery(''); }}
+      style={{display:'flex', alignItems:'center', gap:10}}>
+      <span style={{fontSize:20, flexShrink:0}}>{p.f}</span>
+      <span style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:1}}>
+        <span style={{fontWeight:600, color:'#2A2018'}}>{p.n}</span>
+        <span style={{fontSize:11, color:'#8B7F6E'}}>{fmtLine(p)}</span>
+      </span>
+      {p.c === value && <span style={{color:'#B26D3A', fontWeight:700, flexShrink:0}}>✓</span>}
+    </div>
+  );
   return (
     <div style={{minWidth:0}}>
       <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays</label>
@@ -1497,23 +1525,31 @@ function PaysCompactButton({value, onChange}) {
           <div className="bsheet" onClick={e => e.stopPropagation()}>
             <div className="bsheet-handle"/>
             <div className="bsheet-head">
-              <div className="bsheet-title">Pays</div>
+              <div className="bsheet-title">Pays du bien</div>
               <button type="button" className="bsheet-close" onClick={() => { setOpen(false); setQuery(''); }}>×</button>
             </div>
             <div className="bsheet-search">
               <input type="text" value={query} onChange={e => setQuery(e.target.value)}
-                placeholder="Rechercher..." autoCapitalize="off" autoCorrect="off"/>
+                placeholder="Rechercher un pays..." autoCapitalize="off" autoCorrect="off"/>
             </div>
             <div className="bsheet-list">
-              {filtered.length === 0 ? <div className="bsheet-empty">Aucun pays</div>
-                : filtered.map(p => (
-                  <div key={p.c} className={'bsheet-item ' + (p.c === value ? 'selected' : '')}
-                    onClick={() => { onChange(p.c); setOpen(false); setQuery(''); }}>
-                    <span style={{fontSize:18}}>{p.f}</span>
-                    <span style={{flex:1}}>{p.n}</span>
-                    {p.c === value && <span style={{color:'#B26D3A', fontWeight:700}}>✓</span>}
+              {managed.length === 0 && others.length === 0 && <div className="bsheet-empty">Aucun pays</div>}
+              {managed.length > 0 && (
+                <>
+                  <div style={{padding:'10px 14px 6px', fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, background:'#FBF7EF'}}>
+                    Pays gérés
                   </div>
-                ))}
+                  {managed.map(renderItem)}
+                </>
+              )}
+              {others.length > 0 && (
+                <>
+                  <div style={{padding:'10px 14px 6px', fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, background:'#FBF7EF', borderTop:'1px solid #EDE6DC'}}>
+                    Tous les pays
+                  </div>
+                  {others.map(renderItem)}
+                </>
+              )}
             </div>
           </div>
         </div>
