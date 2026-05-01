@@ -1674,12 +1674,19 @@ function CityMultiPicker({value = '', onChange, selectedCountries = [], placehol
   function close() { setOpen(false); setSearch(''); }
   function pickAndClose(v) { onChange(v); close(); }
   const cities = getCitiesForCountries(selectedCountries);
+  // M/2026/05/01/16 — guard defensif : SectionFinanciereV55 "Recherche bien" passe villesList
+  // (array) a ce composant single-select. Pre-M93 les sections II/III/IV etaient verrouillees
+  // donc ce path n etait jamais hit ; M93 deverouille -> ErrorBoundary M95 a capture
+  // "value.trim is not a function". Fix : coerce value en string pour les appels internes
+  // (.trim() / equality / display). Si array passe, on prend le 1er element ou ''.
+  const _vStr = (typeof value === 'string') ? value
+              : (Array.isArray(value) ? (value[0] || '') : '');
   const filtered = search.trim()
     ? cities.filter(c => normalizeAccent(c).includes(normalizeAccent(search)))
     : cities;
   const hasCountry = selectedCountries.length > 0;
   const customMatch = search.trim() && !cities.some(c => normalizeAccent(c) === normalizeAccent(search));
-  const filled = !!(value && value.trim());
+  const filled = !!_vStr.trim();
   return (
     <div ref={wrapperRef} style={{position:'relative', minWidth:0, ...style}}>
       <button type="button" onClick={() => setOpen(o => !o)}
@@ -1688,7 +1695,7 @@ function CityMultiPicker({value = '', onChange, selectedCountries = [], placehol
                 background: filled ? '#FBF1E4' : '#FFFCF5',
                 color:'#5C3B1E', borderRadius:8, cursor:'pointer',
                 display:'flex', alignItems:'center', justifyContent:'space-between', minWidth:0, minHeight:38}}>
-        <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{value || placeholder}</span>
+        <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{_vStr || placeholder}</span>
         <span style={{color:'#8B5E3C', flexShrink:0, marginLeft:4}}>▾</span>
       </button>
       {open && (
@@ -1709,7 +1716,7 @@ function CityMultiPicker({value = '', onChange, selectedCountries = [], placehol
             ) : (
               <>
                 {filtered.map(c => {
-                  const sel = (value === c);
+                  const sel = (_vStr === c);
                   return (
                     <div key={c} onClick={() => pickAndClose(c)}
                       style={{display:'flex', alignItems:'center', gap:8,
