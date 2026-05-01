@@ -2883,7 +2883,7 @@ function TelephoneMulti({value, onChange, residenceCountry, showToast}) {
   const [editingMap, setEditingMap] = React.useState({});
   function update(i, patch) { onChange(list.map((x, j) => j === i ? {...x, ...patch} : x)); }
   async function removeEntry(i) {
-    const v = (list[i] && list[i].valeur) || '';
+    const v = String((list[i] && list[i].valeur) || '');
     if (v.trim() && !(await askConfirm({title:'Supprimer ce numéro ?', message: v, danger:true}))) return;
     onChange(list.filter((_, j) => j !== i));
     setEditingMap(prev => { const n = {...prev}; delete n[i]; return n; });
@@ -2903,7 +2903,7 @@ function TelephoneMulti({value, onChange, residenceCountry, showToast}) {
     // OU sans valeur actuelle rendent en input. Jamais de retour en édition depuis
     // un chip verrouillé — l'utilisateur doit supprimer et recréer.
     if (editingMap[i]) return true;
-    return !entry.valeur || !entry.valeur.trim();
+    return !entry.valeur || !String(entry.valeur).trim();
   }
   function handleBlur(i, val) {
     const clean = String(val || '').replace(/[^+0-9]/g, '');
@@ -2963,7 +2963,7 @@ function EmailMulti({value, onChange, showToast}) {
   const [editingMap, setEditingMap] = React.useState({});
   function update(i, patch) { onChange(list.map((x, j) => j === i ? {...x, ...patch} : x)); }
   async function removeEntry(i) {
-    const v = (list[i] && list[i].valeur) || '';
+    const v = String((list[i] && list[i].valeur) || '');
     if (v.trim() && !(await askConfirm({title:'Supprimer cet email ?', message: v, danger:true}))) return;
     onChange(list.filter((_, j) => j !== i));
     setEditingMap(prev => { const n = {...prev}; delete n[i]; return n; });
@@ -2980,7 +2980,7 @@ function EmailMulti({value, onChange, showToast}) {
   }
   function isEditing(i, entry) {
     if (editingMap[i]) return true;
-    return !entry.valeur || !entry.valeur.trim();
+    return !entry.valeur || !String(entry.valeur).trim();
   }
   function handleBlur(i, val) {
     const v = (val || '').trim();
@@ -5947,7 +5947,7 @@ function PaymentRow({line, onChange, onRemove, withDate}) {
           onBlur={() => {
             const iso = ppParseDateFR(dateText);
             if (iso) onChange({...line, date: iso});
-            else if (!dateText.trim()) onChange({...line, date: null});
+            else if (!String(dateText || '').trim()) onChange({...line, date: null});
             else setDateText(line.date ? ppFmtDateFR(line.date) : '');
           }}
           style={{
@@ -6255,7 +6255,7 @@ function V55Field({label, value, onChange, type='text', options, suffix, placeho
           onBlur={() => {
             const iso = parseDateFRV55(localText);
             if (iso) onChange(iso);
-            else if (!localText.trim()) onChange(null);
+            else if (!String(localText || '').trim()) onChange(null);
             else setLocalText(value ? fmtDateFRV55(value) : '');
           }}
           disabled={disabled}
@@ -6274,7 +6274,7 @@ function V55Field({label, value, onChange, type='text', options, suffix, placeho
                 onChange(isFinite(n) ? n : null);
                 setLocalText(isFinite(n) ? String(n) : '');
               } else {
-                onChange(localText.trim() || null);
+                onChange(String(localText || '').trim() || null);
               }
             }}
             placeholder={placeholder || ''}
@@ -6407,6 +6407,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
   // Auto-suggestion : si devise vide ET devise_source != 'manual' -> set auto via currencyForCountry.
   const devise = d.devise || (typeof currencyForCountry === 'function' ? currencyForCountry(paysBien) : (paysBien === 'MA' ? 'MAD' : 'EUR'));
   React.useEffect(() => {
+    // M/2026/05/01/17 — gate : pas de set() programmatique tant que aucun profil principal
+    // n est choisi par l utilisateur. Sinon le set() declenche markUserAction (M90) ->
+    // userInteractedRef=true -> debounce save -> POST brouillon vide en DB (visible
+    // sur la home comme "Sans nom"). Au choix profil, la useEffect re-fire et fait son job.
+    if (!activeProfil) return;
     if (!paysBien) return;
     if (d.devise_source === 'manual') return; // respect choix manuel
     const auto = typeof currencyForCountry === 'function' ? currencyForCountry(paysBien) : (paysBien === 'MA' ? 'MAD' : 'EUR');
@@ -6415,7 +6420,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
       set('devise_source', 'auto');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paysBien]);
+  }, [paysBien, activeProfil]);
   function pickDevise(code) {
     set('devise', code);
     set('devise_source', 'manual');
@@ -7105,7 +7110,7 @@ function DossierPicker({clients, value, onChange, placeholder = '(Aucun dossier)
   }, [open, query, list]);
   function norm(s) { return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
   function filterList(q) {
-    const nq = norm(q.trim());
+    const nq = norm(String(q || '').trim());
     if (!nq) return list;
     return list.filter(c => {
       const bien = c.bien || {};
@@ -11905,11 +11910,19 @@ function CalendarView({onBack, showToast, toast}) {
 // Legacy SuiviPanel laissé orphelin en bas de fichier (non appelé), à supprimer
 // dans une mission cleanup ultérieure.
 function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
+  // M/2026/05/01/17 — ROOT CAUSE React error #310 : avant ce fix, les hooks useState
+  // (typeFilter) + useMemo (counts/nextAction/filteredEvents) etaient declares APRES
+  // le early return `if (!clientId) return <div>...`. Quand clientId passait de null a
+  // un id reel (M93 monte le composant en mode draft, puis user save -> editing.id set
+  // -> clientId=id), le nombre de hooks rendus changeait (7 -> 11) -> #310 -> unmount
+  // arbre React -> page blanche. Fix : TOUS les hooks au top, AVANT le early return.
   const [events, setEvents] = React.useState([]);
   const [docs, setDocs] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const fileRef = React.useRef(null);
+  const [modal, setModal] = React.useState(null);
+  const [typeFilter, setTypeFilter] = React.useState('all');
   const token = () => localStorage.getItem('ocre_token') || '';
   const ICONS = {
     appel:    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
@@ -11949,6 +11962,36 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
   }
   React.useEffect(() => { refresh(); }, [clientId]);
 
+  // M/2026/05/01/17 — useMemo deplaces depuis post-return vers ici (top, avant tout return).
+  // Un component instance doit toujours appeler exactement le meme nombre de hooks dans le
+  // meme ordre, peu importe la valeur des props (regle React #310).
+  const counts = React.useMemo(() => {
+    const c = {all:0, appel:0, rdv:0, document:0, note:0, prevu:0, fait:0, annule:0};
+    (events || []).forEach(ev => {
+      c.all += 1;
+      if (c[ev.type] !== undefined) c[ev.type] += 1;
+      if (ev.status === 'prevu') c.prevu += 1;
+      else if (ev.status === 'fait') c.fait += 1;
+      else if (ev.status === 'annule') c.annule += 1;
+    });
+    return c;
+  }, [events]);
+  const nextAction = React.useMemo(() => {
+    const now = Date.now();
+    const futurs = (events || []).filter(ev =>
+      ev.status === 'prevu' && ev.scheduled_at &&
+      new Date(String(ev.scheduled_at).replace(' ', 'T')).getTime() >= now
+    );
+    futurs.sort((a, b) =>
+      new Date(String(a.scheduled_at).replace(' ', 'T')).getTime() -
+      new Date(String(b.scheduled_at).replace(' ', 'T')).getTime()
+    );
+    return futurs[0] || null;
+  }, [events]);
+  const filteredEvents = React.useMemo(() =>
+    typeFilter === 'all' ? events : (events || []).filter(ev => ev.type === typeFilter),
+  [events, typeFilter]);
+
   function fmtDateRel(iso) {
     if (!iso) return '';
     const t = new Date(String(iso).replace(' ', 'T'));
@@ -11969,7 +12012,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
   // M/2026/04/30/46 — refonte UX : suppression franche window.prompt + window.confirm.
   // Modal stylee EventModal pour create + DocCategoryModal pour upload categorie.
   // askConfirm M/14 pour confirmations destructives.
-  const [modal, setModal] = React.useState(null);
+  // M/2026/05/01/17 — `modal` useState deplace au top du composant (regle React #310).
 
   function openCreateEvent(type) {
     if (!clientId) { showToast && showToast('Enregistre le dossier d\'abord'); return; }
@@ -12075,38 +12118,14 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
     await refresh();
   }
 
+  // M/2026/05/01/17 — early return APRES tous les hooks declares en haut. React #310 fix.
   if (!clientId) {
     return <div style={{padding:14, fontSize:13, color:'#8B7F6E', textAlign:'center'}}>Enregistre d'abord le dossier pour activer Activité &amp; documents.</div>;
   }
 
   // M/2026/04/30/50 — Section IV UX : NextActionHeader + filtres type + compteur total.
-  const [typeFilter, setTypeFilter] = React.useState('all');
-  const counts = React.useMemo(() => {
-    const c = {all:0, appel:0, rdv:0, document:0, note:0, prevu:0, fait:0, annule:0};
-    (events || []).forEach(ev => {
-      c.all += 1;
-      if (c[ev.type] !== undefined) c[ev.type] += 1;
-      if (ev.status === 'prevu') c.prevu += 1;
-      else if (ev.status === 'fait') c.fait += 1;
-      else if (ev.status === 'annule') c.annule += 1;
-    });
-    return c;
-  }, [events]);
-  const nextAction = React.useMemo(() => {
-    const now = Date.now();
-    const futurs = (events || []).filter(ev =>
-      ev.status === 'prevu' && ev.scheduled_at &&
-      new Date(String(ev.scheduled_at).replace(' ', 'T')).getTime() >= now
-    );
-    futurs.sort((a, b) =>
-      new Date(String(a.scheduled_at).replace(' ', 'T')).getTime() -
-      new Date(String(b.scheduled_at).replace(' ', 'T')).getTime()
-    );
-    return futurs[0] || null;
-  }, [events]);
-  const filteredEvents = React.useMemo(() =>
-    typeFilter === 'all' ? events : (events || []).filter(ev => ev.type === typeFilter),
-  [events, typeFilter]);
+  // M/2026/05/01/17 — useMemo (counts/nextAction/filteredEvents) + useState (typeFilter)
+  // deplaces au top (regle React hooks). Reste ici uniquement le const non-hook FILTER_PILLS.
   const FILTER_PILLS = [
     {k:'all',      l:'Tous',      n: counts.all},
     {k:'appel',    l:'Appels',    n: counts.appel},
@@ -18186,16 +18205,19 @@ function FormView(props) {
         </Stage>
 
         </div>
-        {/* M/2026/05/01/14 — verrouillage Sections II/III/IV M91 reverti franchement. Toutes les
-            4 sections sont saisissables des l ouverture du nouveau dossier. Le selecteur reste
-            une aide UX (champs conditionnels specifiques au profil apparaissent en plus des
-            champs communs au choix). Fallback profil "Acheteur" pour STAGES + composants enfants
-            tant qu aucun profil n est choisi (champs Acheteur sont les plus generiques). */}
-        {(() => { const _profil = activeProfil || 'Acheteur'; return (<>
+        {/* M/2026/05/01/17 — Suppression franche du fallback IIFE _profil = activeProfil || 'Acheteur'.
+            Cause : sub-composants montes avec activeProfil='Acheteur' fallback declenchent leur
+            useEffect (SectionFinanciereV55 set('devise', 'EUR')) qui appelle markUserAction (M90)
+            -> userInteractedRef=true -> save debounce -> POST brouillon vide en DB.
+            Sections II/III/IV restent saisissables (M93 conserve). Si activeProfil null :
+            BienForm rend en mode descriptif neutre, SectionFinanciereV55 retourne null,
+            FinancementForm pas monte, ActiviteDocuments rend son placeholder "Enregistre d abord
+            le dossier". Title fallback : (STAGES[activeProfil] || STAGES.Acheteur)[i] (lookup
+            string only, no side effect). */}
         <div data-stage-anchor="1">
-        {_profil !== 'Curieux' && <Stage title={STAGES[_profil][1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
+        {activeProfil !== 'Curieux' && <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
                status={stageStatus[1].status} summary={stageStatus[1].summary}>
-          <BienForm activeProfil={_profil} isInvestisseur={isInvestisseur}
+          <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
             d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
             showToast={showToast}/>
           <button onClick={() => commitAndNext(1)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
@@ -18207,14 +18229,14 @@ function FormView(props) {
         {/* V17.6 Section III : FinancementForm pour Acheteur/Investisseur, fields legacy pour Vendeur/Bailleur/Locataire, masqué pour Curieux. */}
         </div>
         <div data-stage-anchor="2">
-        {_profil !== 'Curieux' && <Stage title={STAGES[_profil][2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
+        {activeProfil !== 'Curieux' && <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
                status={stageStatus[2].status} summary={stageStatus[2].summary}>
           {/* V45 — Plan de paiement multi-lignes + Encaissements (toutes casquettes hors Curieux) */}
           <PaymentPlanModule d={d} set={set}/>
           {/* V55 — Section III pro : blocs adaptatifs Acheteur/Vendeur/Locataire/Bailleur + Investisseur. */}
-          <SectionFinanciereV55 activeProfil={_profil} isInvestisseur={isInvestisseur} profilType={profilType} d={d} set={set}/>
-          {(_profil === 'Acheteur' || _profil === 'Investisseur') && (
-            <FinancementForm activeProfil={_profil} d={d} set={set}
+          <SectionFinanciereV55 activeProfil={activeProfil} isInvestisseur={isInvestisseur} profilType={profilType} d={d} set={set}/>
+          {(activeProfil === 'Acheteur' || activeProfil === 'Investisseur') && (
+            <FinancementForm activeProfil={activeProfil} d={d} set={set}
               dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
               showToast={showToast}/>
           )}
@@ -18224,7 +18246,7 @@ function FormView(props) {
 
         </div>
         <div data-stage-anchor="3">
-        <Stage title={STAGES[_profil][3] || 'IV. Suivi & notes'} expanded={expanded[3] || isMatched(3)} onToggle={() => toggleStage(3)} highlighted={isMatched(3)}
+        <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[3] || 'IV. Suivi & notes'} expanded={expanded[3] || isMatched(3)} onToggle={() => toggleStage(3)} highlighted={isMatched(3)}
                status={stageStatus[3].status} summary={stageStatus[3].summary}>
           {/* V18.1 — Module Suivi (4 cards : prochain RDV, todos, agenda, journal). */}
           {/* M/2026/04/28/31 — Section IV refondue Activité & documents.
@@ -18239,7 +18261,6 @@ function FormView(props) {
           <button onClick={() => commitAndNext(3)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Fermer ✓</button>
         </Stage>
         </div>
-        </>); })()}
 
         {/* V18.17 — boutons dédiés pour staged : Enregistrer dans mes dossiers + Supprimer téléchargement. */}
         {isStaged ? (
