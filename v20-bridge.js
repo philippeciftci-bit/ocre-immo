@@ -38,11 +38,14 @@
     .v20-overlay h2{font-family:'Cormorant Garamond',serif;color:#8B5E3C;font-size:22px;margin:0 0 4px}
     .v20-overlay h3{font-size:11px;font-weight:700;color:#8B7F6E;text-transform:uppercase;letter-spacing:.6px;margin:18px 0 8px}
     .v20-overlay p.v20-sub{color:#6B5E4A;font-size:13px;margin:0 0 14px}
-    .v20-row{display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:8px;cursor:pointer}
+    .v20-row{display:flex;align-items:center;gap:10px;padding:14px 12px;border-radius:8px;cursor:pointer;min-height:48px}
     .v20-row:hover{background:#F0E8D8}
+    /* M/2026/05/01/3 — typographie switcher : DM Sans 17px font-weight 700 (lisibilite). */
+    .v20-ws-row strong{color:#2A2018;font-size:17px;font-weight:700;font-family:'DM Sans',system-ui,sans-serif;letter-spacing:0;line-height:1.4}
     .v20-row strong{color:#2A2018;font-size:14px}
     .v20-row small{color:#8B7F6E;font-size:12px;display:block}
     .v20-row.active{background:#F0E8D8}
+    .v20-ws-test strong{color:#DC2626 !important}
     .v20-input{width:100%;padding:10px 12px;border:1px solid #B89968;border-radius:6px;font-family:inherit;font-size:14px;margin-bottom:6px;background:#fff;color:#2A2018}
     .v20-helper{font-size:12px;color:#8B7F6E;margin:0 0 12px}
     .v20-cta{padding:12px 20px;background:#8B5E3C;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600}
@@ -147,7 +150,12 @@
     const cur = state.ctx ? state.ctx.workspace.slug : '';
     const curMode = state.ctx ? state.ctx.mode : 'agent';
     const u = state.ctx && state.ctx.user ? state.ctx.user : {};
-    const userFirstname = (u.display_name || u.email || '').split(' ')[0] || 'mon';
+    // M/2026/05/01/3 — fallback robuste prenom user (bug "WS mon" hardcode regression M56).
+    // Ordre : firstname / first_name / prenom / display_name (split first word) / email avant @ / 'Mon espace' italic.
+    let userFirstname = u.firstname || u.first_name || u.prenom || '';
+    if (!userFirstname && u.display_name) userFirstname = String(u.display_name).split(' ')[0];
+    if (!userFirstname && u.email) userFirstname = String(u.email).split('@')[0];
+    if (!userFirstname) userFirstname = '';
 
     const goto = (slug, mode) => {
       if (mode) document.cookie = `OCRE_MODE_${slug.toUpperCase()}=${mode};path=/;max-age=31536000`;
@@ -159,12 +167,18 @@
     // Section 1 : WS perso mode agent par defaut. Pas de "Mode agent" libelle.
     wsp.forEach(w => {
       const active = (w.slug === cur && curMode === 'agent');
-      const label = 'WS ' + userFirstname;
+      // M/2026/05/01/3 — si pas de prenom, fallback italique "Mon espace" (signal pas hardcode "mon").
+      let labelNode;
+      if (userFirstname) {
+        labelNode = el('strong', {}, 'WS ' + userFirstname);
+      } else {
+        labelNode = el('strong', { style: 'font-style:italic;color:#8B7F6E' }, 'Mon espace');
+      }
       children.push(
         el('div', {
           class: 'v20-row v20-ws-row' + (active ? ' active' : ''),
           onclick: () => goto(w.slug, 'agent'),
-        }, el('strong', {}, label))
+        }, labelNode)
       );
     });
     // Section 2 : WSc (uniquement si > 0). Pas de label "Partenariats".
