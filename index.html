@@ -4186,10 +4186,11 @@ const SECTION_II_TYPE_MATRIX = {
 
 function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) {
   const bien = d.bien || {};
-  function setB(k, v) { set('bien', {...bien, [k]: v}); }
+  // M/2026/05/01/18 — propage opts (notamment fromUser:false) au wrapper set parent.
+  function setB(k, v, opts) { set('bien', {...bien, [k]: v}, opts); }
   // M/2026/04/30/15 — multi-field merge en un seul set (evite la course de setB sequentiels
   // qui ecrasent le bien snapshot ferme dans la closure).
-  function setBMany(patch) { set('bien', {...bien, ...patch}); }
+  function setBMany(patch, opts) { set('bien', {...bien, ...patch}, opts); }
   // Cascade descendante hierarchique : Pays > Ville > Quartier > Adresse rue.
   // Changement d un niveau efface tous les niveaux inferieurs + reset gps. Skip cascade si
   // gps_source === 'autocomplete' (auto-fill via AddressAutocomplete onPick - pas un change manuel).
@@ -4818,7 +4819,8 @@ function MaisonFields({bien, setB, askingMode}) {
 // V17.3 Phase 2b — Terrain (constructible / agricole / activité / loisir).
 function TerrainFields({bien, setB, askingMode, forceNature}) {
   React.useEffect(() => {
-    if (forceNature && bien.terrain_nature !== forceNature) setB('terrain_nature', forceNature);
+    // M/2026/05/01/18 — programmatique : pas de markUserAction (sinon brouillon vide cree au mount).
+    if (forceNature && bien.terrain_nature !== forceNature) setB('terrain_nature', forceNature, {fromUser: false});
   }, [forceNature]);
   const isConstructible = bien.terrain_nature === 'Constructible';
   return (
@@ -5423,11 +5425,14 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
   }, [mapOpen]);
 
   // V17.8 : bascule mode (add/removeLayer circle) + setRadius live au changement slider.
+  // M/2026/05/01/18 — programmatique au mount + au change slider. Le slider est user-action
+  // mais l initialisation au mount n en est pas une. On opte pour fromUser:false : si user
+  // bouge effectivement le slider, l onChange du slider lui-meme markUserAction via setMode.
   React.useEffect(() => {
     modeRef.current = mode;
     radiusRef.current = radius;
-    setB('gps_mode', mode);
-    setB('gps_radius', mode === 'zone' ? radius : '');
+    setB('gps_mode', mode, {fromUser: false});
+    setB('gps_radius', mode === 'zone' ? radius : '', {fromUser: false});
     const L = window.L;
     const lr = leafletRef.current;
     if (!L || !lr.map) return;
@@ -5465,7 +5470,7 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
         if (r) {
           const lat = Number(r.lat.toFixed(6)), lng = Number(r.lng.toFixed(6));
           if (!bien.gps_source || bien.gps_source === 'geocode') {
-            setB('gps_lat', lat.toFixed(6)); setB('gps_lng', lng.toFixed(6)); setB('gps_source', 'geocode');
+            setB('gps_lat', lat.toFixed(6), {fromUser: false}); setB('gps_lng', lng.toFixed(6), {fromUser: false}); setB('gps_source', 'geocode', {fromUser: false});
           }
           lr.map.flyTo([lat, lng], 14, {duration: 1.0});
           if (window.L) place(lat, lng);
@@ -5478,7 +5483,7 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
         if (r) {
           const lat = Number(r.lat.toFixed(6)), lng = Number(r.lng.toFixed(6));
           if (!bien.gps_source || bien.gps_source === 'geocode') {
-            setB('gps_lat', lat.toFixed(6)); setB('gps_lng', lng.toFixed(6)); setB('gps_source', 'geocode');
+            setB('gps_lat', lat.toFixed(6), {fromUser: false}); setB('gps_lng', lng.toFixed(6), {fromUser: false}); setB('gps_source', 'geocode', {fromUser: false});
           }
           lr.map.flyTo([lat, lng], 12, {duration: 1.0});
           if (window.L) place(lat, lng);
@@ -6408,16 +6413,16 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
   const devise = d.devise || (typeof currencyForCountry === 'function' ? currencyForCountry(paysBien) : (paysBien === 'MA' ? 'MAD' : 'EUR'));
   React.useEffect(() => {
     // M/2026/05/01/17 — gate : pas de set() programmatique tant que aucun profil principal
-    // n est choisi par l utilisateur. Sinon le set() declenche markUserAction (M90) ->
-    // userInteractedRef=true -> debounce save -> POST brouillon vide en DB (visible
-    // sur la home comme "Sans nom"). Au choix profil, la useEffect re-fire et fait son job.
+    // n est choisi par l utilisateur (defense en profondeur).
+    // M/2026/05/01/18 — fromUser:false : eviter markUserAction si l auto-devise se declenche
+    // post-choix profil pour un dossier neuf (ne doit pas creer de brouillon DB tout seul).
     if (!activeProfil) return;
     if (!paysBien) return;
     if (d.devise_source === 'manual') return; // respect choix manuel
     const auto = typeof currencyForCountry === 'function' ? currencyForCountry(paysBien) : (paysBien === 'MA' ? 'MAD' : 'EUR');
     if (auto && auto !== d.devise) {
-      set('devise', auto);
-      set('devise_source', 'auto');
+      set('devise', auto, {fromUser: false});
+      set('devise_source', 'auto', {fromUser: false});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paysBien, activeProfil]);
@@ -17336,12 +17341,14 @@ function FormView(props) {
   // M/2026/05/01/11 — pattern draft-on-input : flag user-interacted. Le useEffect debounce
   // ne planifie de save QUE si ce ref est true. Initial mount + changes programmatiques
   // (detect_country, banner edit pending) ne creent JAMAIS de ligne brouillon en DB.
-  // Au premier acte explicite (keystroke set, tap pill, toggle invest, upload), on bascule
-  // a true et le commit (POST INSERT) part dans les 800 ms qui suivent.
+  // M/2026/05/01/18 — wrapper set() avec opts.fromUser. Default = user-initiated (markUserAction).
+  // useEffects programmatiques doivent passer { fromUser: false } pour ne pas marquer user
+  // action. Pattern Notion/Linear/Stripe : seules les vraies saisies utilisateur creent
+  // l enregistrement DB initial. Les setB/setBMany (BienForm) propagent opts.
   const userInteractedRef = useRef(false);
   function markUserAction() { userInteractedRef.current = true; }
-  function set(k, v) {
-    markUserAction();
+  function set(k, v, opts) {
+    if (!opts || opts.fromUser !== false) markUserAction();
     setD(prev => ({...prev, [k]: v}));
   }
   // M/2026/04/30/9 — auto-detection pays via IP au mount en mode CREATION.
@@ -17410,28 +17417,32 @@ function FormView(props) {
   const latestRef = useRef(d);
   useEffect(() => { latestRef.current = d; }, [d]);
   // V17.7 migration auto : d.tel/d.email legacy → d.tels[]/d.emails[] multi.
+  // M/2026/05/01/18 — programmatique au mount d un dossier existant legacy. fromUser:false
+  // pour ne pas markUserAction (sinon save fire au mount sans saisie reelle).
   useEffect(() => {
-    if (!Array.isArray(d.tels) && d.tel) set('tels', [{label:'Perso', valeur: d.tel, primary: true}]);
-    if (!Array.isArray(d.emails) && d.email) set('emails', [{label:'Perso', valeur: d.email, primary: true}]);
+    if (!Array.isArray(d.tels) && d.tel) set('tels', [{label:'Perso', valeur: d.tel, primary: true}], {fromUser: false});
+    if (!Array.isArray(d.emails) && d.email) set('emails', [{label:'Perso', valeur: d.email, primary: true}], {fromUser: false});
     // V17.9 migration auto : bien.type (string) → bien.types[] multi
     const b = d.bien || {};
     if (!Array.isArray(b.types) && b.type) {
-      set('bien', {...b, types: [b.type]});
+      set('bien', {...b, types: [b.type]}, {fromUser: false});
     }
   }, []);
   // V17.7 : sync d.tel/d.email = primary de d.tels/d.emails (pour compat Sheet + ClientRow legacy).
+  // M/2026/05/01/18 — sync programmatique : fromUser:false. Les vraies saisies utilisateur
+  // dans TelephoneMulti/EmailMulti passent par leur propre onChange qui markUserAction.
   useEffect(() => {
     if (Array.isArray(d.tels)) {
       const p = d.tels.find(x => x.primary) || d.tels[0];
       const legacy = p ? p.valeur : '';
-      if ((d.tel || '') !== legacy) set('tel', legacy);
+      if ((d.tel || '') !== legacy) set('tel', legacy, {fromUser: false});
     }
   }, [d.tels]);
   useEffect(() => {
     if (Array.isArray(d.emails)) {
       const p = d.emails.find(x => x.primary) || d.emails[0];
       const legacy = p ? p.valeur : '';
-      if ((d.email || '') !== legacy) set('email', legacy);
+      if ((d.email || '') !== legacy) set('email', legacy, {fromUser: false});
     }
   }, [d.emails]);
 
