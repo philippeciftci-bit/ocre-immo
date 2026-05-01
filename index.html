@@ -1470,47 +1470,113 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
 // pour Section II Bloc 01 v2 (cohabite avec AddressAutocomplete sur la meme ligne).
 // Tap -> BottomSheet listant les 245 PAYS (cf liste M/30/2). Fallback alpha-2 si la
 // table alpha-3 n est pas disponible (la majorite des cas usuels).
-// M/2026/05/02/2 — M111 : PaysCompactButton refondu pour M109. Split en 2 sections :
-// "Pays gérés" (5 référentiels métier complets FR/MA/ES/DZ/TN, ordre fixe) en haut,
-// puis "Tous les pays" (193 autres ISO 3166) en alphabétique. Format ligne enrichi
-// flag + nom + dial + currency. Recherche filtre les deux sections en live.
+// M/2026/05/02/3 — M111.5 : PaysCompactButton fix racine. Cause de "ES/DZ/TN absents" :
+// /api/countries.php?action=list override PAYS runtime avec seulement {MA, FR} (table
+// countries_config DB pas peuplee pour les 5 referentiels). Solution : charger _countries.json
+// (198 pays ISO 3166 livre M109) via /api/referentiels.php?action=countries comme source
+// de verite, fallback sur PAYS si fetch echoue. Aussi : popover etroit absolute positioned
+// sous le bouton (au lieu de modale plein ecran .bsheet) - spec corrigee Philippe.
 const M111_MANAGED = ['FR', 'MA', 'ES', 'DZ', 'TN'];
+const M111_COUNTRIES_CACHE = {data: null, promise: null};
+function fetchAllCountries() {
+  if (M111_COUNTRIES_CACHE.data) return Promise.resolve(M111_COUNTRIES_CACHE.data);
+  if (M111_COUNTRIES_CACHE.promise) return M111_COUNTRIES_CACHE.promise;
+  M111_COUNTRIES_CACHE.promise = fetch(API + '/referentiels.php?action=countries')
+    .then(r => r.json())
+    .then(j => {
+      if (j && j.ok && j.countries) {
+        // Convert _countries.json {ISO2: {name_fr, flag, phone_code, currency, iso2}} -> array {c, f, dial, d, n}
+        const arr = Object.values(j.countries).map(c => ({
+          c: c.iso2,
+          f: c.flag || '🌍',
+          dial: String(c.phone_code || '').replace(/^\+/, ''),
+          d: c.currency || '',
+          n: c.name_fr || c.iso2,
+        }));
+        // Tri alphabetique francais sur le nom.
+        arr.sort((a, b) => a.n.localeCompare(b.n, 'fr'));
+        M111_COUNTRIES_CACHE.data = arr;
+        return arr;
+      }
+      throw new Error('countries fetch failed');
+    })
+    .catch(() => {
+      // Fallback : PAYS array existant (couvre la plupart des pays mais override countries.php
+      // peut le reduire a 2 entrees). On retourne ce qu il y a.
+      M111_COUNTRIES_CACHE.data = Array.isArray(PAYS) ? PAYS.slice() : [];
+      return M111_COUNTRIES_CACHE.data;
+    });
+  return M111_COUNTRIES_CACHE.promise;
+}
 function PaysCompactButton({value, onChange}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
-  const ent = value ? (PAYS.find(p => p.c === value) || PAYS.find(p => p.n === value)) : null;
+  const [allCountries, setAllCountries] = React.useState(() => M111_COUNTRIES_CACHE.data || []);
+  const wrapperRef = React.useRef(null);
+  React.useEffect(() => {
+    if (open && allCountries.length === 0) {
+      fetchAllCountries().then(arr => setAllCountries(arr));
+    }
+  }, [open]);
+  // M111.5 — fermeture popover : tap en dehors.
+  React.useEffect(() => {
+    if (!open) return;
+    function onDoc(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false); setQuery('');
+      }
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('touchstart', onDoc);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('touchstart', onDoc);
+    };
+  }, [open]);
+  const ent = value ? (allCountries.find(p => p.c === value) || PAYS.find(p => p.c === value)) : null;
   const flag = ent ? ent.f : '🌍';
   const code = ent ? ent.c : 'Pays';
   const _q = normalizeAccent(query.trim());
   const _filterFn = (p) => !_q || normalizeAccent(p.n).includes(_q) || p.c.toLowerCase().startsWith(query.toLowerCase());
   // Section 1 : pays gérés (ordre fixe selon M111_MANAGED).
   const managed = M111_MANAGED
-    .map(cc => PAYS.find(p => p.c === cc))
+    .map(cc => allCountries.find(p => p.c === cc))
     .filter(p => p && _filterFn(p));
-  // Section 2 : tous les autres pays, alphabétique (PAYS est deja trie alpha).
-  const others = PAYS.filter(p => !M111_MANAGED.includes(p.c) && _filterFn(p));
+  // Section 2 : tous les autres pays, alphabétique.
+  const others = allCountries.filter(p => !M111_MANAGED.includes(p.c) && _filterFn(p));
   const fmtLine = (p) => {
     const dial = p.dial ? '+' + String(p.dial).replace(/^\+/, '') : '';
     const cur = p.d || '';
     const tail = [dial, cur].filter(Boolean).join(' · ');
     return tail;
   };
-  const renderItem = (p) => (
-    <div key={p.c} className={'bsheet-item ' + (p.c === value ? 'selected' : '')}
-      onClick={() => { onChange(p.c); setOpen(false); setQuery(''); }}
-      style={{display:'flex', alignItems:'center', gap:10}}>
-      <span style={{fontSize:20, flexShrink:0}}>{p.f}</span>
-      <span style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:1}}>
-        <span style={{fontWeight:600, color:'#2A2018'}}>{p.n}</span>
-        <span style={{fontSize:11, color:'#8B7F6E'}}>{fmtLine(p)}</span>
-      </span>
-      {p.c === value && <span style={{color:'#B26D3A', fontWeight:700, flexShrink:0}}>✓</span>}
-    </div>
-  );
+  const renderItem = (p) => {
+    const sel = p.c === value;
+    return (
+      <div key={p.c}
+        onClick={() => { onChange(p.c); setOpen(false); setQuery(''); }}
+        style={{
+          display:'flex', alignItems:'center', gap:10,
+          padding:'8px 12px', cursor:'pointer', fontSize:13,
+          background: sel ? '#FBF1E4' : 'transparent',
+          borderBottom:'1px solid #F4EEE6',
+          transition:'background .15s ease',
+        }}
+        onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'rgba(107,79,53,0.04)'; }}
+        onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'transparent'; }}>
+        <span style={{fontSize:18, flexShrink:0, lineHeight:1}}>{p.f}</span>
+        <span style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:1, lineHeight:1.25}}>
+          <span style={{fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{p.n}</span>
+          <span style={{fontSize:11, color:'#8B7F6E'}}>{fmtLine(p)}</span>
+        </span>
+        {sel && <span style={{color:'#B26D3A', fontWeight:700, flexShrink:0}}>✓</span>}
+      </div>
+    );
+  };
   return (
-    <div style={{minWidth:0}}>
+    <div ref={wrapperRef} style={{minWidth:0, position:'relative'}}>
       <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays</label>
-      <button type="button" onClick={() => setOpen(true)}
+      <button type="button" onClick={() => setOpen(o => !o)}
         title={ent ? ent.n : 'Choisir le pays'}
         style={{width:'100%', boxSizing:'border-box', height:40, padding:'0 8px', borderRadius:8,
                 border:'1.5px solid '+(value ? '#BBA88B' : '#E8DDD0'),
@@ -1521,36 +1587,42 @@ function PaysCompactButton({value, onChange}) {
         <span>{code}</span>
       </button>
       {open && (
-        <div className="bsheet-overlay" onClick={() => { setOpen(false); setQuery(''); }}>
-          <div className="bsheet" onClick={e => e.stopPropagation()}>
-            <div className="bsheet-handle"/>
-            <div className="bsheet-head">
-              <div className="bsheet-title">Pays du bien</div>
-              <button type="button" className="bsheet-close" onClick={() => { setOpen(false); setQuery(''); }}>×</button>
-            </div>
-            <div className="bsheet-search">
-              <input type="text" value={query} onChange={e => setQuery(e.target.value)}
-                placeholder="Rechercher un pays..." autoCapitalize="off" autoCorrect="off"/>
-            </div>
-            <div className="bsheet-list">
-              {managed.length === 0 && others.length === 0 && <div className="bsheet-empty">Aucun pays</div>}
-              {managed.length > 0 && (
-                <>
-                  <div style={{padding:'10px 14px 6px', fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, background:'#FBF7EF'}}>
-                    Pays gérés
-                  </div>
-                  {managed.map(renderItem)}
-                </>
-              )}
-              {others.length > 0 && (
-                <>
-                  <div style={{padding:'10px 14px 6px', fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, background:'#FBF7EF', borderTop:'1px solid #EDE6DC'}}>
-                    Tous les pays
-                  </div>
-                  {others.map(renderItem)}
-                </>
-              )}
-            </div>
+        <div style={{
+          position:'absolute', top:'calc(100% + 4px)', left:0,
+          width:'min(320px, calc(100vw - 24px))', maxHeight:400,
+          background:'#fff', border:'1px solid #D9C9A8', borderRadius:12,
+          boxShadow:'0 8px 32px rgba(107,79,53,0.12)',
+          display:'flex', flexDirection:'column', zIndex:1000,
+          animation:'fadeIn .15s ease-out',
+          overflow:'hidden',
+        }}>
+          <div style={{padding:'10px 12px', borderBottom:'1px solid #EDE6DC'}}>
+            <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+              placeholder="🔍 Rechercher un pays..." autoCapitalize="off" autoCorrect="off"
+              style={{width:'100%', boxSizing:'border-box', padding:'7px 10px', border:'1px solid #D9C9A8', borderRadius:6, fontSize:13, fontFamily:'inherit', outline:'none'}}/>
+          </div>
+          <div style={{flex:1, overflowY:'auto'}}>
+            {managed.length === 0 && others.length === 0 && (
+              <div style={{padding:'18px 14px', fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center'}}>
+                {allCountries.length === 0 ? 'Chargement…' : 'Aucun pays'}
+              </div>
+            )}
+            {managed.length > 0 && (
+              <>
+                <div style={{padding:'10px 12px 6px', fontSize:10, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, background:'#FBF7EF', borderBottom:'1px solid #EDE6DC'}}>
+                  Pays gérés
+                </div>
+                {managed.map(renderItem)}
+              </>
+            )}
+            {others.length > 0 && (
+              <>
+                <div style={{padding:'10px 12px 6px', fontSize:10, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, background:'#FBF7EF', borderTop:'1px solid #EDE6DC', borderBottom:'1px solid #EDE6DC'}}>
+                  Tous les pays
+                </div>
+                {others.map(renderItem)}
+              </>
+            )}
           </div>
         </div>
       )}
