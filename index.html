@@ -17395,18 +17395,43 @@ function FormView(props) {
     return () => clearTimeout(t);
   }, [initialExpandedSection]);
 
-  // M/2026/05/01/11 — pattern draft-on-input : flag user-interacted. Le useEffect debounce
-  // ne planifie de save QUE si ce ref est true. Initial mount + changes programmatiques
-  // (detect_country, banner edit pending) ne creent JAMAIS de ligne brouillon en DB.
-  // M/2026/05/01/18 — wrapper set() avec opts.fromUser. Default = user-initiated (markUserAction).
-  // useEffects programmatiques doivent passer { fromUser: false } pour ne pas marquer user
-  // action. Pattern Notion/Linear/Stripe : seules les vraies saisies utilisateur creent
-  // l enregistrement DB initial. Les setB/setBMany (BienForm) propagent opts.
+  // M/2026/05/01/11 — pattern draft-on-input : flag user-interacted (userInteractedRef).
+  // M/2026/05/01/18 — wrapper set() avec opts.fromUser pour distinguer user vs programmatic.
+  // M/2026/05/01/25 — pattern revise draft-on-BLUR strict (M103). Le tap pill profil ne cree
+  // PLUS aucune ligne DB. Seul un input avec valeur non vide qui blur cree/PATCH la ligne.
+  // userBlurredRef est le NOUVEAU gate pour pushNow / beaconSave / debounce save.
+  // userInteractedRef (M97) reste calcule pour compat backward mais n est plus le gate primaire.
   const userInteractedRef = useRef(false);
+  const userBlurredRef = useRef(false);  // M103 — true uniquement apres un blur input avec valeur non vide
   function markUserAction() { userInteractedRef.current = true; }
+  function markBlurCommit() { userBlurredRef.current = true; }
   function set(k, v, opts) {
     if (!opts || opts.fromUser !== false) markUserAction();
     setD(prev => ({...prev, [k]: v}));
+  }
+  // M/2026/05/01/25 — allFieldsEmpty (R4) : helper qui retourne true si TOUS les champs
+  // significatifs du dossier sont vides apres trim. Le profil principal seul ne compte pas
+  // (peut etre defini sans saisie user). bien.pays auto-detect IP non plus (programmatique).
+  function _isEmptyStr(v) { return v == null || String(v).trim() === ''; }
+  function allFieldsEmpty(data) {
+    if (!data) return true;
+    const txt = [data.prenom, data.nom, data.societe_nom, data.tel, data.email,
+      data.adresse, data.ville, data.code_postal, data.pays_residence, data.notes,
+      data.date_naissance, data.nationalite, data.siret, data.numero_societe,
+      data.representant_prenom, data.representant_nom, data.representant_fonction];
+    if (txt.some(v => !_isEmptyStr(v))) return false;
+    if (Array.isArray(data.tels) && data.tels.some(t => t && !_isEmptyStr(t.valeur))) return false;
+    if (Array.isArray(data.emails) && data.emails.some(e => e && !_isEmptyStr(e.valeur))) return false;
+    const bien = data.bien || {};
+    // bien.pays auto-detect IP -> ignore. Tout autre champ bien rempli = non vide.
+    const bienTxt = [bien.titre, bien.description, bien.quartier, bien.surface, bien.surface_habitable,
+      bien.surface_terrain, bien.prix_affiche, bien.loyer_demande, bien.code_postal, bien.adresse, bien.notes];
+    if (bienTxt.some(v => !_isEmptyStr(v))) return false;
+    if (bien.ville && !_isEmptyStr(bien.ville) && bien.ville !== bien.pays) return false;
+    if (Array.isArray(bien.types) && bien.types.length > 0) return false;
+    if (Array.isArray(bien.photos) && bien.photos.length > 0) return false;
+    if (Array.isArray(data.payment_plan) && data.payment_plan.some(l => l && Number(l.amount) > 0)) return false;
+    return true;
   }
   // M/2026/04/30/9 — auto-detection pays via IP au mount en mode CREATION.
   // N ecrase JAMAIS un pays deja saisi par l utilisateur (verification fraiche dans setD).
@@ -17505,15 +17530,17 @@ function FormView(props) {
 
   function pushNow() {
     if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
-    if (!userInteractedRef.current) return;
+    // M/2026/05/01/25 — gate userBlurredRef (au lieu de userInteractedRef M97) : pas de save
+    // tant qu aucun input n a blur avec valeur non vide. Le tap pill profil ne suffit plus.
+    if (!userBlurredRef.current) return;
     const payload = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
     handleSaveLocal(payload);
   }
   function beaconSave() {
     // M/2026/05/01/11 — guard remplace : beaconSave fire UNIQUEMENT si l utilisateur a
-    // realise au moins un acte explicite. Sinon le pagehide / fermeture d onglet sur un
-    // FormView neuf jamais touche n envoie aucun beacon (zero brouillon vide en DB).
-    if (!userInteractedRef.current) return;
+    // realise au moins un acte explicite. M/2026/05/01/25 — durci a userBlurredRef :
+    // pagehide d un FormView avec uniquement un tap pill profil ne envoie PAS de beacon.
+    if (!userBlurredRef.current) return;
     try {
       const c = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
       const token = localStorage.getItem('ocre_token') || '';
@@ -17523,12 +17550,11 @@ function FormView(props) {
     } catch (e) {}
   }
   // M/2026/05/01/11 — debounce 800ms sur les changements de d/profilType/activeProfil/isInvestisseur.
-  // Gate userInteractedRef : aucun POST tant qu aucun acte explicite. Couvre detect_country,
-  // banner edit pending, sync legacy tels/emails programmatiques (qui appellent set→markUserAction
-  // mais ne devraient pas creer de brouillon vide en mode creation : si le mount initial appelle
-  // set('tels', ...) c est qu il existe deja un d.tel legacy = donnees reelles).
+  // M/2026/05/01/25 — gate durci userBlurredRef. Tap pill profil + onChange typing dans un input
+  // ne planifient PLUS de save (state local seulement). Seul un blur sur input avec valeur non
+  // vide bascule userBlurredRef=true + pushNow immediat (commit on blur strict).
   useEffect(() => {
-    if (!userInteractedRef.current) return;
+    if (!userBlurredRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       const payload = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
@@ -17537,11 +17563,26 @@ function FormView(props) {
     }, 800);
     return () => { if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; } };
   }, [d, profilType, activeProfil, isInvestisseur]);
-  // Flush immédiat au blur d'un input (focusout bubbles).
+  // M/2026/05/01/25 — Flush + commit au blur d'un input avec valeur trimmee non vide.
+  // R2 strict : c est ICI qu une ligne DB est creee (POST insert) ou patchee (UPDATE) sur la
+  // base d un signal user-action explicite. Un blur sur champ vide ne fait rien (R3).
   useEffect(() => {
     function onFocusOut(e) {
-      if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)) return;
-      if (saveTimerRef.current) { pushNow(); }
+      const t = e.target;
+      if (!(t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement)) return;
+      const val = String(t.value == null ? '' : t.value).trim();
+      if (val === '') return; // R3 : valeur vide au blur -> pas de commit
+      // M103 — premier blur valeur non vide : autorise les saves DB. Trigger pushNow direct
+      // pour creer la ligne POST ou la PATCH selon presence d id (handleSaveLocal route).
+      if (!userBlurredRef.current) {
+        userBlurredRef.current = true;
+        pushNow();
+      } else if (saveTimerRef.current) {
+        pushNow();
+      } else {
+        // userBlurredRef deja true mais pas de timer pending : trigger pushNow pour PATCH.
+        pushNow();
+      }
     }
     document.addEventListener('focusout', onFocusOut);
     return () => document.removeEventListener('focusout', onFocusOut);
@@ -17555,6 +17596,32 @@ function FormView(props) {
       window.removeEventListener('pagehide', beaconSave);
     };
   }, [profilType, activeProfil]);
+  // M/2026/05/01/25 — R4 ROLLBACK : au unmount FormView, si une ligne DB existe et que tous
+  // les champs significatifs sont vides (= utilisateur a tout efface puis tap retour), DELETE
+  // la ligne pour aucune trace residuelle. Hard-delete via clients.php?action=delete.
+  // Cleanup empty deps -> ne fire qu au unmount du FormView (pas au re-render).
+  useEffect(() => {
+    return () => {
+      try {
+        const did = editingIdRef.current;
+        if (!did || String(did).startsWith('tmp-')) return;
+        const data = latestRef.current || {};
+        if (!allFieldsEmpty(data)) return;
+        const token = localStorage.getItem('ocre_token') || '';
+        const blob = new Blob([JSON.stringify({id: did})], {type:'application/json'});
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(API + '/clients.php?action=delete&token=' + encodeURIComponent(token), blob);
+        } else {
+          fetch(API + '/clients.php?action=delete', {
+            method:'POST', keepalive:true,
+            headers:{'Content-Type':'application/json', 'X-Session-Token': token},
+            body: JSON.stringify({id: did}),
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Flush avant navigation retour (flèche ←).
   function backToListFlushed() {
     pushNow();
@@ -18049,11 +18116,14 @@ function FormView(props) {
 
       {/* M/2026/05/01/10 — ProfilSelectorBar : selecteur 4 pills + toggle investisseur en haut.
           Toujours visible (creation et changement profil dossier existant). Composant unique DRY. */}
+      {/* M/2026/05/01/25 — M103 : tap pill profil principal ne markUserAction PLUS et ne
+          declenche aucune ligne DB. Le state React local suffit jusqu au premier blur input
+          avec valeur non vide (R1 strict spec Philippe revisee). */}
       <ProfilSelectorBar
         activeProfil={activeProfil}
-        onChange={(p) => { markUserAction(); setActiveProfil(p); }}
+        onChange={(p) => setActiveProfil(p)}
         isInvestisseur={isInvestisseur}
-        onInvestChange={(v) => { markUserAction(); setIsInvestisseur(v); }}/>
+        onInvestChange={(v) => setIsInvestisseur(v)}/>
 
       {/* V18.17/V18.18 — banner mode staging. URL → lien origine. Image → thumbnail + contexte. */}
       {isStaged && (
