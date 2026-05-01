@@ -17445,8 +17445,12 @@ function FormView(props) {
   function _isEmptyStr(v) { return v == null || String(v).trim() === ''; }
   function allFieldsEmpty(data) {
     if (!data) return true;
+    // M/2026/05/01/29 — M107 : pays_residence EXCLU (geoIP detect_country.php auto-set au mount,
+    // jamais saisi par user). Coherent avec bien.pays deja exclu (M103). Sans ce fix, dossier
+    // neuf vide avait pays_residence='FR' immediat -> allFieldsEmpty=false -> M105 footer + M106
+    // search desactivation + M104 commit gate + M103 rollback unmount tous cassés.
     const txt = [data.prenom, data.nom, data.societe_nom, data.tel, data.email,
-      data.adresse, data.ville, data.code_postal, data.pays_residence, data.notes,
+      data.adresse, data.ville, data.code_postal, data.notes,
       data.date_naissance, data.nationalite, data.siret, data.numero_societe,
       data.representant_prenom, data.representant_nom, data.representant_fonction];
     if (txt.some(v => !_isEmptyStr(v))) return false;
