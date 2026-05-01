@@ -9008,17 +9008,13 @@ function App() {
     setView('form');
   }
   function openNew() {
-    // V52.6 — restaure le sélecteur de profil v17 avant le formulaire.
+    // M/2026/05/01/10 — suppression franche ecran intermediaire ProfilPickerView.
+    // Tap + ouvre directement FormView avec selecteur 4 pills + toggle investisseur en haut.
+    // Aucun profil pre-selectionne : sections en placeholder gris jusqu au choix utilisateur.
     setEditing(null);
     editingIdRef.current = null;
-    setFormKey(k => k + 1);
-    setView('profil_picker');
-  }
-  function pickProfilAndOpenForm(profil, isInvest) {
-    setActiveProfil(profil);
-    setIsInvestisseur(!!isInvest);
-    setEditing(null);
-    editingIdRef.current = null;
+    setActiveProfil(null);
+    setIsInvestisseur(false);
     setFormKey(k => k + 1);
     setView('form');
   }
@@ -9137,9 +9133,6 @@ function App() {
   if (view === 'sheet') {
     return <SheetView onBack={() => setView('list')}
       clients={clients} openClient={openClient} showToast={showToast} toast={toast}/>;
-  }
-  if (view === 'profil_picker') {
-    return <ProfilPickerView onBack={() => setView('list')} onPick={pickProfilAndOpenForm}/>;
   }
   if (view === 'calendrier') {
     return <CalendarView onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
@@ -10332,7 +10325,7 @@ function HelpPage({onBack}) {
       {q: 'Comment basculer entre mes espaces ?', a: 'Tap sur le logo OCRE en haut à gauche pour ouvrir le sélecteur. Tu y trouves tes workspaces (mode agent et mode test) ainsi que les partenariats actifs.'},
     ]},
     {section: 'Dossiers', items: [
-      {q: 'Quel est le profil "Investisseur" ?', a: 'Profil hybride : intérêt acheteur (recherche un bien) + critères de rendement locatif. Permet matching croisé Vendeur+Bailleur.'},
+      {q: 'A quoi sert le toggle Investisseur ?', a: 'Le toggle Investisseur (orthogonal aux 4 profils principaux) bascule la Section III en mode rendement (rentabilite locative, dispositifs fiscaux). Active-le si le contact achete pour investir / louer.'},
       {q: 'Puis-je avoir plusieurs casquettes ?', a: 'Oui. Un même client peut avoir N dossiers liés (Acheteur + Vendeur + Bailleur). Utilise + Ajouter une casquette dans le menu dossier.'},
       {q: 'Que devient un dossier supprimé ?', a: 'Soft-delete : il va dans la corbeille pendant 90 jours, restaurable par toi ou un super-admin. Après 90j, purge définitive.'},
     ]},
@@ -16106,82 +16099,9 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
 // V18.21 — DownloadsView : textarea URL directement prête (pas de page intermédiaire),
 // bouton Document image en dessous, liste staged en bas. Fusion de l'ancien ImportUrlView
 // qui est désormais retiré (logique analyse + createDraft inline ici).
-// V52.6 — ProfilPickerView : écran de sélection de profil avant création d'un nouveau
-// dossier. Restaure le flow v17 cassé entre v17 et v52.x. 4 tuiles principales
-// (Acheteur / Vendeur / Locataire / Bailleur) + toggle Investisseur séparé. iPhone-first.
-function ProfilPickerView({onBack, onPick}) {
-  const [isInvest, setIsInvest] = React.useState(false);
-  const profils = [
-    {k:'Acheteur',  l:'Acheteur',  desc:'Cherche un bien à acquérir',     color:'#8B5E3C', tint:'#F4ECE3'},
-    {k:'Vendeur',   l:'Vendeur',   desc:'Met un bien en vente',           color:'#1E3A5F', tint:'#E8EBEF'},
-    {k:'Locataire', l:'Locataire', desc:'Recherche un logement à louer',  color:'#8B6B1E', tint:'#F4EFE5'},
-    {k:'Bailleur',  l:'Bailleur',  desc:'Met un bien en location',        color:'#2D6B3F', tint:'#E8EFE9'},
-  ];
-  return (
-    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#FBF7EF'}}>
-      <div style={{background:'#fff', borderBottom:'1.5px solid #E8DDD0', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
-        <BackButton onClick={onBack}/>
-        <OcreLogoButton/>
-      </div>
-      <div style={{flex:1, overflowY:'auto', padding:'18px 16px 24px'}}>
-        <div style={{maxWidth:480, margin:'0 auto'}}>
-          <p style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'#5C3B1E', textAlign:'center', margin:'4px 0 18px', lineHeight:1.4}}>
-            Quel est le profil de ce contact ?
-          </p>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-            {profils.map(p => (
-              <button key={p.k} type="button" onClick={() => onPick(p.k, isInvest)}
-                style={{
-                  minHeight:120, padding:'18px 14px', border:'1.5px solid ' + p.color, borderRadius:14,
-                  background:'#fff', cursor:'pointer', display:'flex', flexDirection:'column',
-                  alignItems:'flex-start', justifyContent:'flex-start', gap:6, textAlign:'left',
-                  boxShadow:'0 1px 3px rgba(60,40,20,.06)', fontFamily:'inherit',
-                  transition:'transform .15s, box-shadow .15s',
-                }}
-                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
-                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-                <span style={{display:'inline-block', padding:'3px 10px', borderRadius:12, background:p.tint, color:p.color, fontSize:10.5, fontWeight:700, letterSpacing:.6, textTransform:'uppercase'}}>
-                  {p.l}
-                </span>
-                <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:600, color:'#2A2018', marginTop:2}}>
-                  {p.l}
-                </span>
-                <span style={{fontSize:12.5, color:'#5C3B1E', lineHeight:1.4}}>
-                  {p.desc}
-                </span>
-              </button>
-            ))}
-          </div>
-          <div style={{marginTop:22, padding:'14px 16px', background:'#fff', border:'1.5px solid #E8DDD0', borderRadius:12, display:'flex', alignItems:'center', gap:10}}>
-            <div style={{flex:1, minWidth:0}}>
-              <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:600, color:'#6B4E8B'}}>Profil investisseur ?</div>
-              <div style={{fontSize:11.5, color:'#5C3B1E', marginTop:2, lineHeight:1.4}}>
-                Active si le contact achète pour investir / louer (rendement, dispositif fiscal). Bascule la Section III en mode rendement.
-              </div>
-            </div>
-            <button type="button" onClick={() => setIsInvest(v => !v)}
-              role="switch" aria-checked={isInvest}
-              style={{
-                flexShrink:0, width:52, height:30, borderRadius:15, border:'none',
-                background: isInvest ? '#6B4E8B' : '#E8DDD0', position:'relative', cursor:'pointer',
-                transition:'background .2s',
-              }}>
-              <span style={{
-                position:'absolute', top:3, left: isInvest ? 25 : 3, width:24, height:24,
-                borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.25)',
-                transition:'left .2s',
-              }}/>
-            </button>
-          </div>
-          <div style={{marginTop:18, fontSize:11, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', lineHeight:1.5}}>
-            Tu peux changer de profil plus tard depuis le dossier ouvert (entête).
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// M/2026/05/01/10 — ProfilPickerView supprime franchement (ecran intermediaire elimine).
+// Le selecteur 4 pills + toggle investisseur est desormais integre en haut de FormView
+// via ProfilSelectorBar (composant unique reutilise pour creation et changement profil entete).
 
 // V47 — SheetView : 22 colonnes regroupées en 4 sections colorées (I Contact / II Bien
 // / III Finance / IV Suivi). Sticky thead 2 rangées, sticky col 1 (Client), densité
@@ -17158,6 +17078,93 @@ function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, 
   );
 }
 
+// M/2026/05/01/10 — ProfilSelectorBar : barre 4 pills exclusives (Acheteur/Vendeur/Bailleur/Locataire)
+// + toggle investisseur (orthogonal). Affichee en haut de FormView, au-dessus de la Section I.
+// Composant unique reutilise pour la creation nouveau dossier et le changement profil sur dossier
+// existant (DRY strict). Couleurs alignees sur les filtres home (ocre/bleu/vert/jaune).
+function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChange}) {
+  const profils = [
+    {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
+    {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
+    {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
+    {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
+  ];
+  return (
+    <div data-profil-selector style={{padding:'10px 14px 8px', background:'#FBF7EF', borderBottom:'1px solid #EDE6DC'}}>
+      <div role="radiogroup" aria-label="Profil du contact"
+        style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap'}}>
+        {profils.map(p => {
+          const active = activeProfil === p.k;
+          return (
+            <button key={p.k} type="button" onClick={() => onChange(p.k)}
+              role="radio" aria-checked={active}
+              style={{
+                flex:'1 1 0', minWidth:0, padding:'8px 6px',
+                borderRadius:18, border:'1.5px solid '+p.color,
+                background: active ? p.color : '#fff',
+                color: active ? '#fff' : p.color,
+                fontWeight:700, fontSize:11.5, letterSpacing:.4,
+                textTransform:'uppercase', fontFamily:'inherit',
+                cursor:'pointer', whiteSpace:'nowrap',
+                transition:'background .15s, color .15s',
+              }}>
+              {p.l}
+            </button>
+          );
+        })}
+        <button type="button" onClick={() => onInvestChange(!isInvestisseur)}
+          role="switch" aria-checked={isInvestisseur}
+          title="Profil investisseur (bascule Section III en mode rendement)"
+          style={{
+            flexShrink:0, display:'inline-flex', alignItems:'center', gap:6,
+            padding:'8px 10px', borderRadius:18,
+            border:'1.5px solid '+(isInvestisseur ? '#6B4E8B' : '#C9B79A'),
+            background: isInvestisseur ? '#6B4E8B' : '#fff',
+            color: isInvestisseur ? '#fff' : '#6B4E8B',
+            fontWeight:700, fontSize:11, letterSpacing:.3,
+            textTransform:'uppercase', fontFamily:'inherit', cursor:'pointer',
+            transition:'background .15s, color .15s',
+          }}>
+          <span style={{width:12, height:12, borderRadius:'50%',
+            border:'1.5px solid '+(isInvestisseur ? '#fff' : '#6B4E8B'),
+            background: isInvestisseur ? '#fff' : 'transparent',
+            display:'inline-block'}}/>
+          Investisseur
+        </button>
+      </div>
+      {!activeProfil && (
+        <div style={{marginTop:8, fontSize:11.5, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', lineHeight:1.4}}>
+          Choisis un profil ci-dessus pour activer les sections.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// M/2026/05/01/10 — SectionsPlaceholder : 4 cartes grisees affichees tant qu aucun profil
+// principal n est selectionne. Empeche le crash silencieux ancien (acces STAGES[null]) et
+// donne un visuel clair "verrouille tant que le profil n est pas defini".
+function SectionsPlaceholder() {
+  const titles = ['I. Identité', 'II. Bien', 'III. Budget', 'IV. Suivi & notes'];
+  return (
+    <>{titles.map((t, i) => (
+      <div key={'ph-'+i} data-stage-anchor={i}
+        style={{
+          background:'#FDFAF7', border:'1px solid #EDE6DC', borderRadius:10,
+          padding:'14px 16px', marginBottom:8, opacity:.6,
+          display:'flex', alignItems:'center', gap:10,
+        }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="#A89882" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:16, color:'#5C4A3A', fontWeight:600}}>{t}</span>
+      </div>
+    ))}</>
+  );
+}
+
 function FormView(props) {
   const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          handleSaveLocal, handleDelete, backToList, toast, showToast,
@@ -17291,10 +17298,11 @@ function FormView(props) {
     })();
     return () => { cancelled = true; };
   }, [editing && editing.id]);
-  // V17.4 UX v3 : Investisseur est désormais un profil à part entière — on sync le bool legacy.
+  // M/2026/05/01/10 — sync uni-directionnel : ouvrir un dossier legacy projet=Investisseur force
+  // isInvestisseur=true pour rester coherent. Mais ne JAMAIS desactiver le toggle quand l utilisateur
+  // change le profil principal via le selecteur (le toggle est orthogonal aux 4 pills).
   useEffect(() => {
-    const wantInvest = activeProfil === 'Investisseur';
-    if (wantInvest !== isInvestisseur) setIsInvestisseur(wantInvest);
+    if (activeProfil === 'Investisseur' && !isInvestisseur) setIsInvestisseur(true);
   }, [activeProfil]);
   function commit(k, v) {
     const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: activeProfil === 'Investisseur'};
@@ -17894,6 +17902,14 @@ function FormView(props) {
           'Échec enregistrement'. Compteur rafraichi toutes les 5s (useAutoSaveStatus tick). */}
       <DraftSaveIndicator/>
 
+      {/* M/2026/05/01/10 — ProfilSelectorBar : selecteur 4 pills + toggle investisseur en haut.
+          Toujours visible (creation et changement profil dossier existant). Composant unique DRY. */}
+      <ProfilSelectorBar
+        activeProfil={activeProfil}
+        onChange={(p) => setActiveProfil(p)}
+        isInvestisseur={isInvestisseur}
+        onInvestChange={(v) => setIsInvestisseur(v)}/>
+
       {/* V18.17/V18.18 — banner mode staging. URL → lien origine. Image → thumbnail + contexte. */}
       {isStaged && (
         <div style={{background:'#FFF3EC', border:'1px solid #BBA88B', borderLeft:'4px solid #8B5E3C', padding:'10px 14px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
@@ -17934,6 +17950,10 @@ function FormView(props) {
       {/* V28 — Header dossier : pills v27 supprimées, déplacées dans Section I ligne nom. */}
 
       <div style={{flex:1, overflowY:'auto', padding:12}}>
+        {/* M/2026/05/01/10 — sections rendues uniquement si profil principal selectionne ;
+            sinon SectionsPlaceholder (4 cartes verrouillees grisees). Empeche tout crash
+            d acces STAGES[null][i] et tout flash + page blanche heritage de l ancien path picker. */}
+        {!activeProfil ? <SectionsPlaceholder/> : (<>
         <div data-stage-anchor="0">
         <Stage title={STAGES[activeProfil][0]}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
@@ -18153,6 +18173,7 @@ function FormView(props) {
           <button onClick={() => commitAndNext(3)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Fermer ✓</button>
         </Stage>
         </div>
+        </>)}
 
         {/* V18.17 — boutons dédiés pour staged : Enregistrer dans mes dossiers + Supprimer téléchargement. */}
         {isStaged ? (
@@ -18215,8 +18236,10 @@ function FormView(props) {
                 </button>
               );
             })()}
-            <button onClick={() => { commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
-              style={{flex:1, height:40, padding:'0 12px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+            <button onClick={() => { if (!activeProfil) { showToast && showToast('Choisis un profil avant d\'enregistrer'); return; } commit('_touch', Date.now()); showToast && showToast('Enregistré'); }}
+              disabled={!activeProfil}
+              title={activeProfil ? 'Enregistrer le dossier' : 'Choisis un profil ci-dessus pour activer l\'enregistrement'}
+              style={{flex:1, height:40, padding:'0 12px', background: activeProfil ? '#8B5E3C' : '#C9B79A', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor: activeProfil ? 'pointer' : 'not-allowed', fontFamily:'inherit', opacity: activeProfil ? 1 : 0.7}}>
               Enregistrer
             </button>
             <button onClick={async () => {
