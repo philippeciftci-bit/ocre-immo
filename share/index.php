@@ -19,8 +19,9 @@ if (!$token || strlen($token) < 32) {
 // Validation row + expiration (incrementation viewed_count est faite par api/share.php?action=get_shared
 // quand shared.html fait son fetch initial).
 try {
+    // M/2026/05/01/5 — accepte expires_at NULL (liens permanents).
     $st = pdo_meta()->prepare(
-        "SELECT id FROM shared_links WHERE token = ? AND revoked_at IS NULL AND expires_at > NOW() LIMIT 1"
+        "SELECT id FROM shared_links WHERE token = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1"
     );
     $st->execute([$token]);
     $row = $st->fetch();

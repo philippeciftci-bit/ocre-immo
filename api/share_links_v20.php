@@ -16,20 +16,37 @@ require_write_access($ctx);
 
 switch ($action) {
 case 'create_link': {
-    // type=client : génère lien public lecture seule, expire 7j
+    // type=client : génère lien public lecture seule.
     // M/2026/05/01/4 — flags hide_* stockes en DB (defense en profondeur, anti-contournement URL).
+    // M/2026/05/01/5 — expires_in pilote la duree (1h/1d/7d/30d/permanent). Default 30d (1 mois).
     $dossier_id = (int)($input['dossier_id'] ?? 0);
     if (!$dossier_id) jout(['ok' => false, 'error' => 'dossier_id requis'], 400);
     $hide_price    = !empty($input['hide_price'])    ? 1 : 0;
     $hide_address  = !empty($input['hide_address'])  ? 1 : 0;
     $hide_identity = !empty($input['hide_identity']) ? 1 : 0;
+    $expires_in = (string)($input['expires_in'] ?? '30d');
+    $intervalMap = [
+        '1h'  => 'INTERVAL 1 HOUR',
+        '1d'  => 'INTERVAL 1 DAY',
+        '7d'  => 'INTERVAL 7 DAY',
+        '30d' => 'INTERVAL 30 DAY',
+    ];
+    if ($expires_in === 'permanent') {
+        $expires_clause = 'NULL';
+    } elseif (isset($intervalMap[$expires_in])) {
+        $expires_clause = 'DATE_ADD(NOW(), ' . $intervalMap[$expires_in] . ')';
+    } else {
+        // Fallback robuste : 30 jours par defaut.
+        $expires_clause = 'DATE_ADD(NOW(), INTERVAL 30 DAY)';
+        $expires_in = '30d';
+    }
     $token = bin2hex(random_bytes(32));
     pdo_meta()->prepare(
         "INSERT INTO shared_links (dossier_id, wsp_slug, type, token, created_by_user_id, expires_at, hide_price, hide_address, hide_identity)
-         VALUES (?, ?, 'client', ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY), ?, ?, ?)"
+         VALUES (?, ?, 'client', ?, ?, $expires_clause, ?, ?, ?)"
     )->execute([$dossier_id, $ctx['workspace']['slug'], $token, $ctx['user']['id'], $hide_price, $hide_address, $hide_identity]);
     $url = 'https://' . $ctx['workspace']['slug'] . '.ocre.immo/share/' . $token;
-    jout(['ok' => true, 'token' => $token, 'url' => $url, 'expires_in_days' => 7]);
+    jout(['ok' => true, 'token' => $token, 'url' => $url, 'expires_in' => $expires_in]);
 }
 
 case 'create_internal': {

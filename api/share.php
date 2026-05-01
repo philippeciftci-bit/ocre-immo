@@ -53,8 +53,9 @@ switch ($action) {
         if (!$r) {
             require_once __DIR__ . '/lib/router.php';
             try {
+                // M/2026/05/01/5 — accepte expires_at NULL (liens permanents).
                 $st2 = pdo_meta()->prepare(
-                    "SELECT * FROM shared_links WHERE token = ? AND revoked_at IS NULL AND expires_at > NOW() LIMIT 1"
+                    "SELECT * FROM shared_links WHERE token = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1"
                 );
                 $st2->execute([$token]);
                 $row = $st2->fetch();
