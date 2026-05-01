@@ -37,7 +37,10 @@ if (!$row) {
     exit;
 }
 
-// Redirect 302 vers /s/<token> qui sert shared.html (rendu visuel via fetch /api/share.php).
+// M/2026/05/01/7 — Redirect 302 vers /api/dossier_pdf_html.php?token=<token> qui rend
+// le MEME template A4 luxe que la preview agent (DossierPdfView). Conformite absolue
+// preview agent ↔ destinataire : meme rendu, meme typo, meme flags hide_* appliques
+// depuis DB row shared_links V20 (anti-contournement URL).
 $host = $_SERVER['HTTP_HOST'] ?? 'app.ocre.immo';
-header('Location: https://' . $host . '/s/' . $token, true, 302);
+header('Location: https://' . $host . '/api/dossier_pdf_html.php?token=' . urlencode($token), true, 302);
 exit;

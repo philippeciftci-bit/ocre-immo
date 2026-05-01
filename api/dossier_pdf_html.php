@@ -6,15 +6,70 @@
 require_once __DIR__ . '/db.php';
 $_isTestMode = (isset($_v20_mode) && $_v20_mode === 'test');
 
-$user = requireAuth();
-$uid = (int) $user['id'];
-$dossierId = (int) ($_GET['dossier_id'] ?? 0);
-if (!$dossierId) { http_response_code(400); echo 'dossier_id requis'; exit; }
+// M/2026/05/01/7 — Mode public via ?token=<32hex> : bypass auth, lookup shared_links V20,
+// flags hide_* lus depuis DB (anti-contournement URL). Sinon flow agent authentifie standard.
+$shareToken = preg_replace('/[^a-f0-9]/', '', $_GET['token'] ?? '');
+$_isShareView = false;
+$_dbShareFlags = ['hide_price' => 0, 'hide_address' => 0, 'hide_identity' => 0];
 
-$st = db()->prepare("SELECT * FROM clients WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1");
-$st->execute([$dossierId, $uid]);
-$dossier = $st->fetch();
-if (!$dossier) { http_response_code(404); echo 'Dossier introuvable'; exit; }
+if ($shareToken && strlen($shareToken) >= 32) {
+    require_once __DIR__ . '/lib/router.php';
+    try {
+        $st = pdo_meta()->prepare(
+            "SELECT * FROM shared_links WHERE token = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1"
+        );
+        $st->execute([$shareToken]);
+        $linkRow = $st->fetch();
+    } catch (Throwable $e) { $linkRow = null; }
+    if (!$linkRow) {
+        http_response_code(410);
+        echo "<!DOCTYPE html><html lang='fr'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Lien expiré</title><link href='https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;600&display=swap' rel='stylesheet'></head>";
+        echo "<body style='font-family:DM Sans,sans-serif;padding:60px 20px;text-align:center;background:#F0E8D8;color:#5C3B1E;margin:0;min-height:100vh'>";
+        echo "<h1 style=\"font-family:'Cormorant Garamond',serif;font-size:36px;color:#8B5E3C;margin:0 0 12px;font-weight:700\">Lien expiré</h1>";
+        echo "<p style='color:#8B7F6E;font-size:14px'>Ce lien n'est plus valide. Demandez un nouveau lien à l'agent.</p>";
+        echo "</body></html>";
+        exit;
+    }
+    // Charge dossier dans la WSp source (mode agent puis fallback test).
+    $slug_clean = preg_replace('/[^a-z0-9_-]/', '', $linkRow['wsp_slug']);
+    $dossier = null;
+    foreach (['', '_test'] as $suffix) {
+        try {
+            $pdoWsp = pdo_workspace('ocre_wsp_' . $slug_clean . $suffix);
+            $d = $pdoWsp->prepare("SELECT * FROM clients WHERE id = ? AND deleted_at IS NULL LIMIT 1");
+            $d->execute([(int)$linkRow['dossier_id']]);
+            $r = $d->fetch();
+            if ($r) { $dossier = $r; if ($suffix === '_test') $_isTestMode = true; break; }
+        } catch (Throwable $e) {}
+    }
+    if (!$dossier) { http_response_code(404); echo 'Dossier introuvable'; exit; }
+    $dossierId = (int)$linkRow['dossier_id'];
+    $_isShareView = true;
+    $_dbShareFlags = [
+        'hide_price'    => (int)($linkRow['hide_price'] ?? 0),
+        'hide_address'  => (int)($linkRow['hide_address'] ?? 0),
+        'hide_identity' => (int)($linkRow['hide_identity'] ?? 0),
+    ];
+    // Increment viewed_count.
+    try { pdo_meta()->prepare("UPDATE shared_links SET viewed_count = viewed_count + 1, last_viewed_at = NOW() WHERE id = ?")->execute([$linkRow['id']]); } catch (Throwable $e) {}
+    // Identite agent par defaut (lookup createur du lien).
+    try {
+        $au = pdo_meta()->prepare("SELECT email, display_name, telephone FROM users WHERE id = ? LIMIT 1");
+        $au->execute([(int)$linkRow['created_by_user_id']]);
+        $user = $au->fetch() ?: ['display_name' => '', 'email' => '', 'telephone' => ''];
+    } catch (Throwable $e) {
+        $user = ['display_name' => '', 'email' => '', 'telephone' => ''];
+    }
+} else {
+    $user = requireAuth();
+    $uid = (int) $user['id'];
+    $dossierId = (int) ($_GET['dossier_id'] ?? 0);
+    if (!$dossierId) { http_response_code(400); echo 'dossier_id requis'; exit; }
+    $st = db()->prepare("SELECT * FROM clients WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1");
+    $st->execute([$dossierId, $uid]);
+    $dossier = $st->fetch();
+    if (!$dossier) { http_response_code(404); echo 'Dossier introuvable'; exit; }
+}
 
 $data = json_decode($dossier['data'] ?? '{}', true) ?: [];
 $bien = $data['bien'] ?? [];
@@ -110,9 +165,17 @@ $honoraires = $data['honoraires_inclus'] ?? true;
 $shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
 $prixDemand = ($shareMode === 'demand');
 // M/2026/04/30/8 — masquages selectifs partage : prix / adresse / identite agent referent.
-$hidePrice = !empty($_GET['hide_price']);
-$hideAddress = !empty($_GET['hide_address']);
-$hideIdentity = !empty($_GET['hide_identity']);
+// M/2026/05/01/7 — en mode share view (?token=), les flags viennent de DB row (anti-contournement
+// URL). Sinon mode preview agent : URL params autorises.
+if ($_isShareView) {
+    $hidePrice    = !empty($_dbShareFlags['hide_price']);
+    $hideAddress  = !empty($_dbShareFlags['hide_address']);
+    $hideIdentity = !empty($_dbShareFlags['hide_identity']);
+} else {
+    $hidePrice    = !empty($_GET['hide_price']);
+    $hideAddress  = !empty($_GET['hide_address']);
+    $hideIdentity = !empty($_GET['hide_identity']);
+}
 if ($hidePrice) $prixDemand = true;
 
 $ref = sprintf('OCR-%06d', (int) $dossier['id']);
