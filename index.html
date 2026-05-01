@@ -17166,13 +17166,14 @@ function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, 
   );
 }
 
-// M/2026/05/01/10 — ProfilSelectorBar : barre 4 pills exclusives (Acheteur/Vendeur/Bailleur/Locataire)
-// + toggle investisseur (orthogonal). Affichee en haut de FormView, au-dessus de la Section I.
-// Composant unique reutilise pour la creation nouveau dossier et le changement profil sur dossier
-// existant (DRY strict). Couleurs alignees sur les filtres home (ocre/bleu/vert/jaune).
-// M/2026/05/01/12 — ProfilSelectorBar 2 lignes : 4 pills exclusives sentence case en ligne 1,
-// toggle Investisseur sur ligne 2 separee. Aucune lettre coupee a 375px (iPhone SE) ni 390px
-// (iPhone 14). Padding adaptatif pour resister aux ecrans etroits.
+// M/2026/05/01/10 — ProfilSelectorBar : barre selecteur profil principal + casquette investisseur.
+// M/2026/05/01/12 — variante 2 lignes (M91, supprimee).
+// M/2026/05/01/19 — refonte 5 pills sur 1 ligne (M98) demande explicite Philippe.
+// Semantique preservee : 4 pills Acheteur/Vendeur/Bailleur/Locataire = exclusives radio (un
+// seul profil principal). 5e pill Investisseur = toggle/casquette additionnelle, cumulable
+// avec un profil principal (typiquement Acheteur+Investisseur), reconnaissable par un rond
+// checkbox SVG inline. Tap Investisseur ne deselectionne JAMAIS le profil principal en cours.
+// flex-wrap:nowrap + overflowX:auto -> scroll horizontal silencieux iPhone SE 375px si debordement.
 function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChange}) {
   const profils = [
     {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
@@ -17180,24 +17181,22 @@ function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChan
     {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
     {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
   ];
+  const investColor = '#6B4E8B';
   return (
-    <div data-profil-selector style={{padding:'10px 14px 10px', background:'#FBF7EF', borderBottom:'1px solid #EDE6DC', display:'flex', flexDirection:'column', gap:10}}>
-      {/* M/2026/05/01/14 — pills width:fit-content (largeur adaptee au mot, padding constant
-          10px 14px), gap 10px, flexWrap:nowrap. Si debordement marginal sur iPhone SE
-          375px, scroll horizontal silencieux (acceptable selon brief Philippe). */}
-      <div role="radiogroup" aria-label="Profil principal du contact"
-        style={{display:'flex', gap:10, alignItems:'stretch', flexWrap:'nowrap', overflowX:'auto', WebkitOverflowScrolling:'touch'}}>
+    <div data-profil-selector style={{padding:'10px 12px', background:'#FBF7EF', borderBottom:'1px solid #EDE6DC'}}>
+      <div role="group" aria-label="Profil et casquettes du contact"
+        style={{display:'flex', gap:6, alignItems:'center', flexWrap:'nowrap', overflowX:'auto', WebkitOverflowScrolling:'touch'}}>
         {profils.map(p => {
           const active = activeProfil === p.k;
           return (
             <button key={p.k} type="button" onClick={() => onChange(p.k)}
               role="radio" aria-checked={active}
               style={{
-                flex:'0 0 auto', padding:'10px 14px',
+                flexShrink:0, padding:'6px 10px',
                 borderRadius:999, border:'1.5px solid '+p.color,
                 background: active ? p.color : '#fff',
                 color: active ? '#fff' : p.color,
-                fontWeight:700, fontSize:13, letterSpacing:0,
+                fontWeight:700, fontSize:13,
                 fontFamily:'inherit',
                 cursor:'pointer', whiteSpace:'nowrap',
                 transition:'background .15s, color .15s',
@@ -17206,41 +17205,38 @@ function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChan
             </button>
           );
         })}
-      </div>
-      {/* Ligne 2 : toggle Investisseur seul, alignement gauche, label + sous-texte explicite */}
-      <button type="button" onClick={() => onInvestChange(!isInvestisseur)}
-        role="switch" aria-checked={isInvestisseur}
-        style={{
-          alignSelf:'flex-start', display:'inline-flex', alignItems:'center', gap:10,
-          padding:'8px 14px 8px 10px', borderRadius:999,
-          border:'1.5px solid '+(isInvestisseur ? '#6B4E8B' : '#C9B79A'),
-          background: isInvestisseur ? '#6B4E8B' : '#fff',
-          color: isInvestisseur ? '#fff' : '#5C4A3A',
-          fontFamily:'inherit', cursor:'pointer',
-          transition:'background .15s, color .15s, border-color .15s',
-          textAlign:'left',
-        }}>
-        <span aria-hidden="true" style={{
-          flexShrink:0, width:20, height:20, borderRadius:'50%',
-          border:'2px solid '+(isInvestisseur ? '#fff' : '#6B4E8B'),
-          background: isInvestisseur ? '#fff' : 'transparent',
-          display:'inline-flex', alignItems:'center', justifyContent:'center',
-        }}>
-          {isInvestisseur && (
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6B4E8B" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="5 12 10 17 19 7"/>
-            </svg>
-          )}
-        </span>
-        <span style={{display:'flex', flexDirection:'column', gap:1, lineHeight:1.25}}>
-          <span style={{fontSize:13, fontWeight:700}}>Profil investisseur</span>
-          <span style={{fontSize:11, fontWeight:500, opacity: isInvestisseur ? 0.85 : 0.7}}>
-            Bascule la Section III en mode rendement
+        {/* M/2026/05/01/19 — Pill Investisseur sur la meme ligne. Casquette additionnelle
+            (toggle, pas exclusif). Distinguer visuellement par un rond checkbox 14x14 SVG. */}
+        <button type="button" onClick={() => onInvestChange(!isInvestisseur)}
+          role="switch" aria-checked={isInvestisseur}
+          title="Bascule la Section III en mode rendement (cumulable avec le profil principal)"
+          style={{
+            flexShrink:0, display:'inline-flex', alignItems:'center', gap:6,
+            padding:'6px 10px 6px 8px', borderRadius:999,
+            border:'1.5px solid '+investColor,
+            background: isInvestisseur ? investColor : '#fff',
+            color: isInvestisseur ? '#fff' : investColor,
+            fontWeight:700, fontSize:13,
+            fontFamily:'inherit', cursor:'pointer', whiteSpace:'nowrap',
+            transition:'background .15s, color .15s',
+          }}>
+          <span aria-hidden="true" style={{
+            flexShrink:0, width:14, height:14, borderRadius:'50%',
+            border:'1.5px solid '+(isInvestisseur ? '#fff' : investColor),
+            background: isInvestisseur ? '#fff' : 'transparent',
+            display:'inline-flex', alignItems:'center', justifyContent:'center',
+          }}>
+            {isInvestisseur && (
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={investColor} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="5 12 10 17 19 7"/>
+              </svg>
+            )}
           </span>
-        </span>
-      </button>
+          Investisseur
+        </button>
+      </div>
       {!activeProfil && (
-        <div style={{marginTop:2, fontSize:11.5, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', lineHeight:1.4}}>
+        <div style={{marginTop:8, fontSize:11.5, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', lineHeight:1.4}}>
           Choisis un profil pour personnaliser les sections.
         </div>
       )}
