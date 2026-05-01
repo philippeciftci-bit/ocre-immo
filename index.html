@@ -8922,15 +8922,17 @@ function App() {
     return () => navigator.serviceWorker.removeEventListener('message', onMsg);
   }, [clients]);
 
-  // M/2026/05/01/27 — M105 dedup strict : si le meme msg est deja affiche, ne pas re-afficher
-  // (eviter les doublons stackes sur les events keyup+input rapides). 3 sec au lieu de 2 sec
-  // pour donner le temps de lire le bandeau rouge.
+  // M/2026/05/01/27 — M105 dedup strict.
+  // M/2026/05/01/28 — M106 : si meme msg, RESET le timer au lieu de skip (toast prolonge sa
+  // visibilite sans creer un 2e dom). Plus de doublons stackes possibles.
   const _lastToastRef = useRef('');
   const _toastTimerRef = useRef(null);
   function showToast(msg) {
-    if (msg && msg === _lastToastRef.current) return; // dedup strict
-    _lastToastRef.current = msg;
-    setToast(msg);
+    const isSameAsCurrent = msg && msg === _lastToastRef.current;
+    if (!isSameAsCurrent) {
+      _lastToastRef.current = msg;
+      setToast(msg);
+    }
     if (_toastTimerRef.current) clearTimeout(_toastTimerRef.current);
     _toastTimerRef.current = setTimeout(() => { setToast(''); _lastToastRef.current = ''; }, 3000);
   }
@@ -15832,19 +15834,20 @@ async function askConfirm(opts) {
   return window.confirm((opts && opts.message) || (opts && opts.title) || 'Confirmer ?');
 }
 
-// M/2026/05/01/27 — M105 Toast visuel rouge encadre. Lisibilite + cohesion palette
-// (texte rouge M101 #B73E3E). Backdrop transparent leger pour modernite, pas d ombre lourde.
+// M/2026/05/01/27 — M105 Toast visuel rouge encadre. Lisibilite + cohesion palette.
+// M/2026/05/01/28 — M106 : rouge plus clair (220,110,110 / #C97070) + position centree
+// strict (left:50% transform:translateX(-50%)) + ombre douce pour profondeur.
 function Toast({msg}) {
   return (
     <div style={{position:'fixed', top:80, left:'50%', transform:'translateX(-50%)',
                  padding:'12px 18px', borderRadius:12,
-                 background:'rgba(183, 62, 62, 0.92)',
-                 border:'1.5px solid #B73E3E',
+                 background:'rgba(220, 110, 110, 0.85)',
+                 border:'1.5px solid #C97070',
                  color:'#fff', fontSize:14, fontWeight:600,
                  maxWidth:'min(90vw, 420px)',
-                 textAlign:'center',
+                 textAlign:'center', whiteSpace:'normal',
                  animation:'fadeIn .2s ease', zIndex:9999,
-                 boxShadow:'0 4px 12px rgba(183, 62, 62, 0.18)'}}>{msg}</div>
+                 boxShadow:'0 4px 12px rgba(0, 0, 0, 0.08)'}}>{msg}</div>
   );
 }
 
@@ -18114,8 +18117,14 @@ function FormView(props) {
         <OcreLogoButton/>
       </div>
       {_peBanner}
-      {/* M/2026/05/01/5 — bloc recherche inline toujours visible (suppression toggle open/closed). */}
-      <div style={{padding:'10px 14px 8px', background:'#FBF7EF', borderBottom:'1px solid #EDE6DC'}}>
+      {/* M/2026/05/01/5 — bloc recherche inline toujours visible (suppression toggle open/closed).
+          M/2026/05/01/28 — M106 : champ recherche desactive si dossier vide (allFieldsEmpty).
+          Pattern Stripe coherent avec barre du bas M105 : opacity 0.45 + pointerEvents none.
+          Saisie sur un dossier vide n a aucun sens metier (rien a chercher). */}
+      <div style={Object.assign(
+          {padding:'10px 14px 8px', background:'#FBF7EF', borderBottom:'1px solid #EDE6DC', transition:'opacity .2s ease-in-out'},
+          allFieldsEmpty(d) ? {opacity:0.45, pointerEvents:'none'} : {opacity:1, pointerEvents:'auto'}
+        )}>
         <div style={{position:'relative', display:'flex', alignItems:'center', background:'#fff', border:'1px solid #D9C9A8', borderRadius:10, padding:'10px 14px 10px 38px'}}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B7F6E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{position:'absolute', left:14, top:'50%', transform:'translateY(-50%)'}}>
             <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
