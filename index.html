@@ -8922,7 +8922,18 @@ function App() {
     return () => navigator.serviceWorker.removeEventListener('message', onMsg);
   }, [clients]);
 
-  function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2000); }
+  // M/2026/05/01/27 — M105 dedup strict : si le meme msg est deja affiche, ne pas re-afficher
+  // (eviter les doublons stackes sur les events keyup+input rapides). 3 sec au lieu de 2 sec
+  // pour donner le temps de lire le bandeau rouge.
+  const _lastToastRef = useRef('');
+  const _toastTimerRef = useRef(null);
+  function showToast(msg) {
+    if (msg && msg === _lastToastRef.current) return; // dedup strict
+    _lastToastRef.current = msg;
+    setToast(msg);
+    if (_toastTimerRef.current) clearTimeout(_toastTimerRef.current);
+    _toastTimerRef.current = setTimeout(() => { setToast(''); _lastToastRef.current = ''; }, 3000);
+  }
 
   async function apiSaveClient(data) {
     // M/2026/05/01/11 — pattern draft-on-input : retry x3 avec backoff sur le tout premier
@@ -15508,7 +15519,9 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   }
   async function doDelete(e) {
     if (e) e.stopPropagation();
-    if (!c.id) return;
+    // M/2026/05/01/27 — M105 : skip API call si tmp-id (brouillon non-encore-commit en DB).
+    // Empeche l alert "id requis" du backend sur swipe-delete d un dossier neuf vide pas encore POST.
+    if (!c.id || String(c.id).startsWith('tmp-')) { setSwipeX(0); return; }
     const nameLabel = (c.prenom || c.nom) ? ((c.prenom || '') + ' ' + (c.nom || '')).trim() : (c.raison_sociale || 'ce dossier');
     if (!(await askConfirm({
       title: 'Supprimer ce dossier ?',
@@ -15819,11 +15832,19 @@ async function askConfirm(opts) {
   return window.confirm((opts && opts.message) || (opts && opts.title) || 'Confirmer ?');
 }
 
+// M/2026/05/01/27 — M105 Toast visuel rouge encadre. Lisibilite + cohesion palette
+// (texte rouge M101 #B73E3E). Backdrop transparent leger pour modernite, pas d ombre lourde.
 function Toast({msg}) {
   return (
-    <div style={{position:'fixed', top:18, left:'50%', transform:'translateX(-50%)',
-                 padding:'10px 20px', borderRadius:22, background:'#2A2018', color:'#fff',
-                 fontSize:13, fontWeight:700, animation:'fadeIn .2s ease', zIndex:100}}>{msg}</div>
+    <div style={{position:'fixed', top:80, left:'50%', transform:'translateX(-50%)',
+                 padding:'12px 18px', borderRadius:12,
+                 background:'rgba(183, 62, 62, 0.92)',
+                 border:'1.5px solid #B73E3E',
+                 color:'#fff', fontSize:14, fontWeight:600,
+                 maxWidth:'min(90vw, 420px)',
+                 textAlign:'center',
+                 animation:'fadeIn .2s ease', zIndex:9999,
+                 boxShadow:'0 4px 12px rgba(183, 62, 62, 0.18)'}}>{msg}</div>
   );
 }
 
@@ -18452,8 +18473,14 @@ function FormView(props) {
              footer entre la loupe ambre et Enregistrer (offres uniquement). */
           <>
           {/* V32 — Footer dossier : [Loupe] [Chip PUBLIER offres] [Enregistrer flex:1] [Archiver] [Supprimer].
-              paddingBottom = safe-area only, marginBottom 0 → collé au bas. */}
-          <div style={{position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:6, alignItems:'center', padding:'2px 10px calc(2px + env(safe-area-inset-bottom, 0px))', background:'rgba(255,255,255,0.96)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', borderTop:'1px solid #D9C9A8'}}>
+              paddingBottom = safe-area only, marginBottom 0 → collé au bas.
+              M/2026/05/01/27 — M105 : 4 boutons listes (CrossSearch, Chip PUBLIER, Enregistrer, Archiver, Supprimer)
+              passent en mode disabled visuel (opacity 0.35 + pointerEvents none) si dossier vide
+              (allFieldsEmpty). PDF reste avec sa logique disabled propre. Stripe pattern. */}
+          <div style={Object.assign(
+              {position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:6, alignItems:'center', padding:'2px 10px calc(2px + env(safe-area-inset-bottom, 0px))', background:'rgba(255,255,255,0.96)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', borderTop:'1px solid #D9C9A8', transition:'opacity .2s ease-in-out'},
+              allFieldsEmpty(d) ? {opacity:0.45, pointerEvents:'none'} : {opacity:1, pointerEvents:'auto'}
+            )}>
             {/* M/2026/05/01/5 + M/2026/05/01/6 — bouton PDF seul rapatrie du header.
                 Bouton Partager retire franchement (logique : on previsualise PDF d abord puis
                 partage depuis bottom bar de la fiche preview). */}
