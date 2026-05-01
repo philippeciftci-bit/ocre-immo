@@ -13569,64 +13569,61 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
     eye:     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
   };
 
-  // M/2026/04/30/38 — dossierCard enrichi cohérent ClientRow V40 :
-  // photo miniature + nom + badge profil + tel/mailto cliquables + bien associé.
-  function dossierCard(d) {
-    if (!d) return <div style={{padding:10, color:'#8B7F6E', fontSize:12}}>Dossier introuvable</div>;
+  // M/2026/05/01 — Maquette A : photo hero + score top-right + tableau comparatif 2 cols 5 rows.
+  // Suppression franche dossierCard 56x56 (M/30/38) remplace par layout enrichi.
+  const PROFIL_PALETTE = {
+    Vendeur:      {badge:'#1F3A5F', row:'#FFF6E1'},
+    Bailleur:     {badge:'#7B9D5D', row:'#E8F1E0'},
+    Acheteur:     {badge:'#7B5E3C', row:'#FFE9D9'},
+    Locataire:    {badge:'#8A7B3C', row:'#F0E8DC'},
+    Investisseur: {badge:'#6B4F8B', row:'#EDE5F5'},
+    Curieux:      {badge:'#888888', row:'#F0F0F0'},
+  };
+  function isOwnerProfile(p) { return p === 'Vendeur' || p === 'Bailleur'; }
+
+  function extractSide(d) {
+    if (!d) return null;
     const data = (() => { try { return typeof d.data === 'string' ? JSON.parse(d.data) : (d.data || {}); } catch (e) { return {}; } })();
     const bien = data.bien || {};
     const nom = d.societe_nom || ((d.prenom || '') + ' ' + (d.nom || '')).trim() || '—';
-    const titreType = bien.type || (Array.isArray(bien.types) ? bien.types[0] : '') || d.projet || '';
+    const projet = d.projet || '';
+    const photoArr = Array.isArray(bien.photos) ? bien.photos : [];
+    const photo = photoArr.length > 0 ? photoSrc(photoArr[0]) : '';
+    const tel = (Array.isArray(d.tels) && d.tels[0] && d.tels[0].valeur) || d.tel || '';
+    const email = (Array.isArray(d.emails) && d.emails[0] && d.emails[0].valeur) || d.email || '';
+    const bienType = bien.type || (Array.isArray(bien.types) ? bien.types[0] : '') || '';
     const ville = bien.ville || '';
     const quartier = bien.quartier || '';
-    const prix = data.prix_affiche ? (data.prix_affiche/1000000).toFixed(2) + ' M MAD'
-               : data.budget_max   ? (data.budget_max/1000000).toFixed(2) + ' M MAD max'
-               : data.loyer_demande ? data.loyer_demande + ' MAD/mois'
-               : data.loyer_max ? data.loyer_max + ' MAD/mois max'
-               : '';
-    // Photo cover : premiere photo bien.photos[] via photoSrc helper M/30/28.
-    const photoArr = Array.isArray(bien.photos) ? bien.photos : [];
-    const cover = photoArr.length > 0 ? photoSrc(photoArr[0]) : '';
-    // Tel/email primaires : tableau tels[]/emails[] (V17.7) ou legacy tel/email.
-    const primaryTel = (Array.isArray(d.tels) && d.tels[0] && d.tels[0].valeur) || d.tel || '';
-    const primaryEmail = (Array.isArray(d.emails) && d.emails[0] && d.emails[0].valeur) || d.email || '';
-    // Badge profil : palette PROFILS_LABEL existante.
-    const profilLbl = (typeof PROFILS_LABEL !== 'undefined' && PROFILS_LABEL[d.projet]) || (d.projet || '').toUpperCase();
-    const profilColor = (typeof PROFILS !== 'undefined' && PROFILS[d.projet]) || '#8B5E3C';
-    return (
-      <div style={{padding:10, fontSize:12, lineHeight:1.4, color:'#2A2018', display:'flex', gap:10, alignItems:'flex-start'}}>
-        {/* Photo miniature 56x56 - placeholder ocre si absente. */}
-        <div style={{flexShrink:0, width:56, height:56, borderRadius:10, border:'1px solid #D9C9A8', background:'#FBF1E4', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', color:'#8B5E3C'}}>
-          {cover ? (
-            <img src={cover} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
-          ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
-          )}
-        </div>
-        <div style={{flex:1, minWidth:0}}>
-          <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:2}}>
-            <span style={{fontFamily:"'Cormorant Garamond', serif", fontSize:17, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flex:1, minWidth:0}}>{nom}</span>
-            <span style={{flexShrink:0, padding:'2px 7px', background: profilColor + '22', color: profilColor, fontSize:9, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', borderRadius:8}}>{profilLbl}</span>
-          </div>
-          {(primaryTel || primaryEmail) && (
-            <div style={{display:'flex', flexWrap:'wrap', gap:8, fontSize:11, marginBottom:4}}>
-              {primaryTel && (
-                <a href={'tel:' + String(primaryTel).replace(/[^+0-9]/g, '')} onClick={e => e.stopPropagation()}
-                  style={{color:'#8B5E3C', textDecoration:'none', whiteSpace:'nowrap'}}>{primaryTel}</a>
-              )}
-              {primaryEmail && (
-                <a href={'mailto:' + primaryEmail} onClick={e => e.stopPropagation()}
-                  style={{color:'#8B5E3C', textDecoration:'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:140}}>{primaryEmail}</a>
-              )}
-            </div>
-          )}
-          {(titreType || ville) && (
-            <div style={{fontSize:11, color:'#8B7F6E'}}>{titreType}{ville ? ' · ' + ville : ''}{quartier ? ' — ' + quartier : ''}</div>
-          )}
-          {prix && <div style={{marginTop:3, fontSize:12, fontWeight:700, color:'#8B5E3C'}}>{prix}</div>}
-        </div>
-      </div>
-    );
+    const isOwner = isOwnerProfile(projet);
+    // Surface : owner = absolu, seeker = min souhaite.
+    const surface = isOwner
+      ? (bien.surface_hab || bien.surface || bien.surface_v2 || '')
+      : (data.recherche_surface_hab_min || bien.surface_min || '');
+    const surfaceLbl = isOwner
+      ? (surface ? surface + ' m²' : '—')
+      : (surface ? surface + ' m² min' : '—');
+    // Chambres : owner = absolu, seeker = min.
+    const chambres = isOwner
+      ? (bien.chambres_v2 || bien.chambres || '')
+      : (data.recherche_chambres_min || bien.chambres_min || '');
+    const chambresLbl = chambres
+      ? (chambres + (chambres > 1 ? ' chambres' : ' chambre') + (isOwner ? '' : ' min'))
+      : '—';
+    // Prix : owner = affiche/loyer, seeker = max budget/loyer.
+    const devise = data.devise || (bien.pays === 'MA' ? 'MAD' : 'EUR');
+    function fmtPrice(n) { return Number(n || 0).toLocaleString('fr-FR'); }
+    let prixLbl = '—';
+    if (projet === 'Vendeur' && data.prix_affiche) prixLbl = fmtPrice(data.prix_affiche) + ' ' + devise;
+    else if (projet === 'Bailleur' && data.loyer_demande) prixLbl = fmtPrice(data.loyer_demande) + ' ' + devise + '/mois';
+    else if (projet === 'Acheteur' && data.budget_max) prixLbl = fmtPrice(data.budget_max) + ' ' + devise + ' max';
+    else if (projet === 'Locataire' && data.loyer_max) prixLbl = fmtPrice(data.loyer_max) + ' ' + devise + '/mois max';
+    else if (projet === 'Investisseur' && data.budget_max) prixLbl = fmtPrice(data.budget_max) + ' ' + devise + ' max';
+    return {
+      projet, nom, tel, email, photo, isOwner,
+      bienLbl: bienType || '—',
+      locationLbl: [ville, quartier].filter(Boolean).join(' · ') || '—',
+      surfaceLbl, chambresLbl, prixLbl,
+    };
   }
 
   return (
@@ -13689,34 +13686,95 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
           const inATraiter = (tab === 'a_traiter');
           const isVu = (m.status === 'vu');
           const isNonVu = (m.status === 'non_vu');
+          const sa = extractSide(m.dossier_a);
+          const sb = extractSide(m.dossier_b);
+          if (!sa || !sb) return null;
+          // Owner = celui qui propose (Vendeur/Bailleur). Seeker = celui qui cherche.
+          const owner = sa.isOwner ? sa : (sb.isOwner ? sb : sa);
+          const seeker = (owner === sa) ? sb : sa;
+          const ownerPalette = PROFIL_PALETTE[owner.projet] || PROFIL_PALETTE.Curieux;
+          const seekerPalette = PROFIL_PALETTE[seeker.projet] || PROFIL_PALETTE.Curieux;
+          const rows = [
+            ['BIEN',         owner.bienLbl,     seeker.bienLbl,     false],
+            ['LOCALISATION', owner.locationLbl, seeker.locationLbl, false],
+            ['SURFACE',      owner.surfaceLbl,  seeker.surfaceLbl,  false],
+            ['CHAMBRES',     owner.chambresLbl, seeker.chambresLbl, false],
+            ['PRIX',         owner.prixLbl,     seeker.prixLbl,     true],
+          ];
+          const scoreColor = m.score_pct >= 80 ? '#C0392B' : m.score_pct >= 60 ? '#B26D3A' : '#8B7F6E';
           return (
             <div key={m.id} onClick={() => openMatchDetail && openMatchDetail(m.id)}
               className="ocre-card"
-              style={{marginBottom:12, padding:0, background:'#fff', borderRadius:10, border:'1px solid #E5DDC8', overflow:'hidden', cursor:'pointer', opacity: (inATraiter && isVu) ? 0.85 : 1, position:'relative'}}>
+              style={{marginBottom:14, padding:14, background:'#fff', borderRadius:14, border:'1px solid #D9C9A8', cursor:'pointer', opacity: (inATraiter && isVu) ? 0.85 : 1, position:'relative'}}>
               {inATraiter && isVu && (
-                <span style={{position:'absolute', top:8, right:10, padding:'4px 10px', background:'#E8DFCD', color:'#8B6F47', fontSize:11, fontWeight:700, borderRadius:12, textTransform:'uppercase', letterSpacing:.5, border:'1.5px solid #C9A87A', boxShadow:'0 1px 2px rgba(60,40,20,.08)', zIndex:2}}>VU</span>
+                <span style={{position:'absolute', top:8, right:10, padding:'4px 10px', background:'#E8DFCD', color:'#8B6F47', fontSize:11, fontWeight:700, borderRadius:12, textTransform:'uppercase', letterSpacing:.5, border:'1.5px solid #C9A87A', zIndex:2}}>VU</span>
               )}
               {inATraiter && isNonVu && (
                 <span aria-label="non vu"
                   style={{position:'absolute', top:10, right:12, width:8, height:8, borderRadius:4, background:'#DC2626', boxShadow:'0 0 0 2px #fff', zIndex:2}}/>
               )}
-              <div style={{display:'grid', gridTemplateColumns:'56px 1fr 1fr', borderBottom:(matched.length + divergent.length > 0) ? '1px solid #F0E8D8' : 'none'}}>
-                <div style={{background: m.score_pct >= 80 ? '#FBE9E7' : m.score_pct >= 60 ? '#FFF4E0' : '#F0E8D8',
-                             color: m.score_pct >= 80 ? '#C0392B' : m.score_pct >= 60 ? '#B26D3A' : '#8B7F6E',
-                             display:'flex', alignItems:'center', justifyContent:'center',
-                             fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700}}>
-                  {m.score_pct}<span style={{fontSize:13}}>%</span>
+              {/* Photo hero + score top-right */}
+              <div style={{display:'flex', gap:12, alignItems:'flex-start', marginBottom:10}}>
+                <div style={{flex:1, height:120, borderRadius:10, border:'1px solid #E8DDD0', background:'#FBF1E4', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', color:'#8B5E3C'}}>
+                  {owner.photo ? (
+                    <img src={owner.photo} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+                  ) : (
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
+                  )}
                 </div>
-                <div style={{borderRight:'1px solid #F0E8D8'}}>{dossierCard(m.dossier_a)}</div>
-                <div>{dossierCard(m.dossier_b)}</div>
+                <div style={{flexShrink:0, textAlign:'right', minWidth:80}}>
+                  <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:42, fontWeight:700, color: scoreColor, lineHeight:1}}>
+                    {m.score_pct}<span style={{fontSize:21}}>%</span>
+                  </div>
+                  <div style={{fontSize:9, fontWeight:700, letterSpacing:'0.14em', color:'#8B7F6E', textTransform:'uppercase', marginTop:2}}>MATCH</div>
+                </div>
               </div>
+              {/* Sous-titre photo */}
+              <div style={{marginBottom:10}}>
+                <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:15, color:'#5C3B1E', fontWeight:600, lineHeight:1.2}}>
+                  {[owner.bienLbl, owner.locationLbl].filter(x => x && x !== '—').join(' · ')}
+                </div>
+                <div style={{fontFamily:"'DM Sans', sans-serif", fontSize:11, color:'#8B7F6E', marginTop:2}}>
+                  {[owner.surfaceLbl, owner.chambresLbl].filter(x => x && x !== '—').join(' · ')}
+                </div>
+              </div>
+              {/* Tableau comparatif 2 cols */}
+              <div style={{border:'1px solid #D9C9A8', borderRadius:8, overflow:'hidden'}}>
+                {/* Header row 2 cols : profil + nom + tel */}
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', borderBottom:'1px solid #D9C9A8'}}>
+                  <div style={{padding:'10px 12px', background: ownerPalette.row, borderRight:'1px solid #D9C9A8'}}>
+                    <div style={{fontSize:10, fontWeight:700, color: ownerPalette.badge, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:4}}>{owner.projet || '—'}</div>
+                    <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:16, fontWeight:600, color:'#2D2018', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{owner.nom}</div>
+                    {owner.tel && <div style={{fontSize:10, color:'#7A6E5D', marginTop:2}}>{owner.tel}</div>}
+                  </div>
+                  <div style={{padding:'10px 12px', background: seekerPalette.row}}>
+                    <div style={{fontSize:10, fontWeight:700, color: seekerPalette.badge, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:4}}>{seeker.projet || '—'}</div>
+                    <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:16, fontWeight:600, color:'#2D2018', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{seeker.nom}</div>
+                    {seeker.tel && <div style={{fontSize:10, color:'#7A6E5D', marginTop:2}}>{seeker.tel}</div>}
+                  </div>
+                </div>
+                {/* 5 rows : Bien / Localisation / Surface / Chambres / Prix */}
+                {rows.map(([label, vOwner, vSeeker, isPrix], i) => (
+                  <div key={label} style={{display:'grid', gridTemplateColumns:'1fr 1fr', borderBottom: i < rows.length - 1 ? '1px solid #EDE6DC' : 'none', background: i % 2 === 0 ? '#FAF6EC' : '#fff'}}>
+                    <div style={{padding:'8px 12px', borderRight:'1px solid #EDE6DC'}}>
+                      <div style={{fontSize:9, fontWeight:700, color:'#8B7F6E', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:2}}>{label}</div>
+                      <div style={{fontSize:12, color:'#2D2018', fontWeight: isPrix ? 600 : 400}}>{vOwner}</div>
+                    </div>
+                    <div style={{padding:'8px 12px'}}>
+                      <div style={{fontSize:9, fontWeight:700, color:'#8B7F6E', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:2}}>{label}</div>
+                      <div style={{fontSize:12, color:'#2D2018', fontWeight: isPrix ? 600 : 400}}>{vSeeker}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Pills critères ✓/✗ */}
               {(matched.length + divergent.length > 0) && (
-                <div style={{padding:'8px 10px', background:'#FAF8F2', fontSize:11, color:'#5A4E3D', display:'flex', flexWrap:'wrap', gap:4}}>
+                <div style={{marginTop:10, fontSize:11, color:'#5A4E3D', display:'flex', flexWrap:'wrap', gap:4}}>
                   {matched.map((c,i) => (
-                    <span key={'m'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'2px 7px', background:'#E6F3E1', color:'#2F7D32', borderRadius:10, fontSize:11, fontWeight:600}}>{ICONS.check}{c}</span>
+                    <span key={'m'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', background:'#E6F3E1', color:'#2F7D32', borderRadius:10, fontSize:11, fontWeight:600}}>{ICONS.check}{c}</span>
                   ))}
                   {divergent.map((c,i) => (
-                    <span key={'d'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'2px 7px', background:'#FBE9E7', color:'#C0392B', borderRadius:10, fontSize:11, fontWeight:600}}>{ICONS.cross}{c}</span>
+                    <span key={'d'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', background:'#FBE9E7', color:'#C0392B', borderRadius:10, fontSize:11, fontWeight:600}}>{ICONS.cross}{c}</span>
                   ))}
                 </div>
               )}
