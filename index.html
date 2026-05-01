@@ -17078,6 +17078,9 @@ function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, 
 // + toggle investisseur (orthogonal). Affichee en haut de FormView, au-dessus de la Section I.
 // Composant unique reutilise pour la creation nouveau dossier et le changement profil sur dossier
 // existant (DRY strict). Couleurs alignees sur les filtres home (ocre/bleu/vert/jaune).
+// M/2026/05/01/12 — ProfilSelectorBar 2 lignes : 4 pills exclusives sentence case en ligne 1,
+// toggle Investisseur sur ligne 2 separee. Aucune lettre coupee a 375px (iPhone SE) ni 390px
+// (iPhone 14). Padding adaptatif pour resister aux ecrans etroits.
 function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChange}) {
   const profils = [
     {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
@@ -17086,78 +17089,109 @@ function ProfilSelectorBar({activeProfil, onChange, isInvestisseur, onInvestChan
     {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
   ];
   return (
-    <div data-profil-selector style={{padding:'10px 14px 8px', background:'#FBF7EF', borderBottom:'1px solid #EDE6DC'}}>
-      <div role="radiogroup" aria-label="Profil du contact"
-        style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap'}}>
+    <div data-profil-selector style={{padding:'10px 14px 10px', background:'#FBF7EF', borderBottom:'1px solid #EDE6DC', display:'flex', flexDirection:'column', gap:10}}>
+      {/* Ligne 1 : 4 pills exclusives — sentence case (Acheteur, pas ACHETEUR), pleine largeur, padding compact pour iPhone SE 375px */}
+      <div role="radiogroup" aria-label="Profil principal du contact"
+        style={{display:'flex', gap:6, alignItems:'stretch'}}>
         {profils.map(p => {
           const active = activeProfil === p.k;
           return (
             <button key={p.k} type="button" onClick={() => onChange(p.k)}
               role="radio" aria-checked={active}
               style={{
-                flex:'1 1 0', minWidth:0, padding:'8px 6px',
-                borderRadius:18, border:'1.5px solid '+p.color,
+                flex:'1 1 0', minWidth:0, padding:'9px 4px',
+                borderRadius:999, border:'1.5px solid '+p.color,
                 background: active ? p.color : '#fff',
                 color: active ? '#fff' : p.color,
-                fontWeight:700, fontSize:11.5, letterSpacing:.4,
-                textTransform:'uppercase', fontFamily:'inherit',
+                fontWeight:700, fontSize:13, letterSpacing:0,
+                fontFamily:'inherit',
                 cursor:'pointer', whiteSpace:'nowrap',
+                overflow:'hidden', textOverflow:'ellipsis',
                 transition:'background .15s, color .15s',
               }}>
               {p.l}
             </button>
           );
         })}
-        <button type="button" onClick={() => onInvestChange(!isInvestisseur)}
-          role="switch" aria-checked={isInvestisseur}
-          title="Profil investisseur (bascule Section III en mode rendement)"
-          style={{
-            flexShrink:0, display:'inline-flex', alignItems:'center', gap:6,
-            padding:'8px 10px', borderRadius:18,
-            border:'1.5px solid '+(isInvestisseur ? '#6B4E8B' : '#C9B79A'),
-            background: isInvestisseur ? '#6B4E8B' : '#fff',
-            color: isInvestisseur ? '#fff' : '#6B4E8B',
-            fontWeight:700, fontSize:11, letterSpacing:.3,
-            textTransform:'uppercase', fontFamily:'inherit', cursor:'pointer',
-            transition:'background .15s, color .15s',
-          }}>
-          <span style={{width:12, height:12, borderRadius:'50%',
-            border:'1.5px solid '+(isInvestisseur ? '#fff' : '#6B4E8B'),
-            background: isInvestisseur ? '#fff' : 'transparent',
-            display:'inline-block'}}/>
-          Investisseur
-        </button>
       </div>
+      {/* Ligne 2 : toggle Investisseur seul, alignement gauche, label + sous-texte explicite */}
+      <button type="button" onClick={() => onInvestChange(!isInvestisseur)}
+        role="switch" aria-checked={isInvestisseur}
+        style={{
+          alignSelf:'flex-start', display:'inline-flex', alignItems:'center', gap:10,
+          padding:'8px 14px 8px 10px', borderRadius:999,
+          border:'1.5px solid '+(isInvestisseur ? '#6B4E8B' : '#C9B79A'),
+          background: isInvestisseur ? '#6B4E8B' : '#fff',
+          color: isInvestisseur ? '#fff' : '#5C4A3A',
+          fontFamily:'inherit', cursor:'pointer',
+          transition:'background .15s, color .15s, border-color .15s',
+          textAlign:'left',
+        }}>
+        <span aria-hidden="true" style={{
+          flexShrink:0, width:20, height:20, borderRadius:'50%',
+          border:'2px solid '+(isInvestisseur ? '#fff' : '#6B4E8B'),
+          background: isInvestisseur ? '#fff' : 'transparent',
+          display:'inline-flex', alignItems:'center', justifyContent:'center',
+        }}>
+          {isInvestisseur && (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6B4E8B" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="5 12 10 17 19 7"/>
+            </svg>
+          )}
+        </span>
+        <span style={{display:'flex', flexDirection:'column', gap:1, lineHeight:1.25}}>
+          <span style={{fontSize:13, fontWeight:700}}>Profil investisseur</span>
+          <span style={{fontSize:11, fontWeight:500, opacity: isInvestisseur ? 0.85 : 0.7}}>
+            Bascule la Section III en mode rendement
+          </span>
+        </span>
+      </button>
       {!activeProfil && (
-        <div style={{marginTop:8, fontSize:11.5, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', lineHeight:1.4}}>
-          Choisis un profil ci-dessus pour activer les sections.
+        <div style={{marginTop:2, fontSize:11.5, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', lineHeight:1.4}}>
+          Choisis un profil pour activer les sections II, III et IV.
         </div>
       )}
     </div>
   );
 }
 
-// M/2026/05/01/10 — SectionsPlaceholder : 4 cartes grisees affichees tant qu aucun profil
-// principal n est selectionne. Empeche le crash silencieux ancien (acces STAGES[null]) et
-// donne un visuel clair "verrouille tant que le profil n est pas defini".
-function SectionsPlaceholder() {
-  const titles = ['I. Identité', 'II. Bien', 'III. Budget', 'IV. Suivi & notes'];
+// M/2026/05/01/12 — LockedSections : sections II / III / IV verrouillees tant qu aucun profil
+// principal n est selectionne (la Section I Identite reste accessible — tronc commun pour tous
+// les profils). Click sur une section verrouillee = pulse + scroll vers le selecteur + toast.
+function LockedSections({onLockedClick}) {
+  const titles = ['II. Le bien', 'III. Budget', 'IV. Suivi & notes'];
+  const [pulseIdx, setPulseIdx] = React.useState(null);
+  function handleClick(i) {
+    setPulseIdx(i);
+    setTimeout(() => setPulseIdx(null), 350);
+    if (onLockedClick) onLockedClick();
+  }
   return (
-    <>{titles.map((t, i) => (
-      <div key={'ph-'+i} data-stage-anchor={i}
-        style={{
-          background:'#FDFAF7', border:'1px solid #EDE6DC', borderRadius:10,
-          padding:'14px 16px', marginBottom:8, opacity:.6,
-          display:'flex', alignItems:'center', gap:10,
-        }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="#A89882" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:16, color:'#5C4A3A', fontWeight:600}}>{t}</span>
-      </div>
-    ))}</>
+    <>{titles.map((t, i) => {
+      const stageIdx = i + 1; // II=1, III=2, IV=3
+      const pulsing = pulseIdx === i;
+      return (
+        <button key={'lock-'+i} type="button" onClick={() => handleClick(i)}
+          data-stage-anchor={stageIdx}
+          aria-label={t + ' — verrouille, choisis un profil pour activer'}
+          style={{
+            display:'flex', alignItems:'center', gap:10, width:'100%',
+            background:'#FDFAF7', border:'1px solid #EDE6DC', borderRadius:10,
+            padding:'14px 16px', marginBottom:8, opacity: pulsing ? 0.85 : 0.6,
+            transform: pulsing ? 'scale(0.98)' : 'scale(1)',
+            transition:'transform .18s, opacity .18s',
+            cursor:'pointer', textAlign:'left', fontFamily:'inherit',
+          }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="#A89882" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:16, color:'#5C4A3A', fontWeight:600, flex:1}}>{t}</span>
+          <span style={{fontSize:10, color:'#A89882', fontWeight:600, textTransform:'uppercase', letterSpacing:.4, whiteSpace:'nowrap'}}>Verrouillé</span>
+        </button>
+      );
+    })}</>
   );
 }
 
@@ -17941,12 +17975,12 @@ function FormView(props) {
       {/* V28 — Header dossier : pills v27 supprimées, déplacées dans Section I ligne nom. */}
 
       <div style={{flex:1, overflowY:'auto', padding:12}}>
-        {/* M/2026/05/01/10 — sections rendues uniquement si profil principal selectionne ;
-            sinon SectionsPlaceholder (4 cartes verrouillees grisees). Empeche tout crash
-            d acces STAGES[null][i] et tout flash + page blanche heritage de l ancien path picker. */}
-        {!activeProfil ? <SectionsPlaceholder/> : (<>
+        {/* M/2026/05/01/12 — Section I Identite TOUJOURS rendue (tronc commun pour tous
+            les profils : prenom / nom / tel / email / adresse). Saisie ici avant choix
+            profil = trigger commit DB avec projet=null (coherent draft-on-input M90).
+            Sections II / III / IV : conditionnelles, verrouillees via LockedSections. */}
         <div data-stage-anchor="0">
-        <Stage title={STAGES[activeProfil][0]}
+        <Stage title={(STAGES[activeProfil] || [])[0] || 'I. Identité'}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status} summary={stageStatus[0].summary}
                hideChevron={hasHeadName}>
@@ -17962,12 +17996,14 @@ function FormView(props) {
                 const tb = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
                 return (ta || a.id || 0) - (tb || b.id || 0);
               });
-            const activeColorOpen = PROFILS[activeProfil] || '#8B5E3C';
+            const activeColorOpen = activeProfil ? (PROFILS[activeProfil] || '#8B5E3C') : '#A89882';
             const canAdd = editing && editing.id && !String(editing.id).startsWith('tmp-');
+            // M/2026/05/01/12 — pill activeProfil tolere null : affiche "BROUILLON" gris si pas
+            // encore de profil principal selectionne (Section I accessible avant choix profil).
             return (
               <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:10, padding:'2px 0'}}>
                 <span style={{padding:'2px 6px', borderRadius:6, background:activeColorOpen, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', opacity:1}}>
-                  {PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()}
+                  {activeProfil ? (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()) : 'BROUILLON'}
                 </span>
                 {linkedOpen.map(lc => {
                   const lp = lc.projet || 'Acheteur';
@@ -18117,6 +18153,15 @@ function FormView(props) {
         </Stage>
 
         </div>
+        {/* M/2026/05/01/12 — Sections II / III / IV verrouillees tant qu aucun profil principal.
+            Click sur une carte verrouillee = pulse + toast + scroll vers le selecteur en haut. */}
+        {!activeProfil ? (
+          <LockedSections onLockedClick={() => {
+            showToast && showToast("Choisis d'abord un profil");
+            const sel = document.querySelector('[data-profil-selector]');
+            if (sel && sel.scrollIntoView) sel.scrollIntoView({behavior:'smooth', block:'start'});
+          }}/>
+        ) : (<>
         <div data-stage-anchor="1">
         {activeProfil !== 'Curieux' && <Stage title={STAGES[activeProfil][1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
                status={stageStatus[1].status} summary={stageStatus[1].summary}>
@@ -18193,36 +18238,72 @@ function FormView(props) {
             {/* M/2026/05/01/5 + M/2026/05/01/6 — bouton PDF seul rapatrie du header.
                 Bouton Partager retire franchement (logique : on previsualise PDF d abord puis
                 partage depuis bottom bar de la fiche preview). */}
-            <button type="button" title="Visualiser le dossier (PDF)"
-              onClick={() => {
-                const id = editing && editing.id;
-                if (!id || String(id).startsWith('tmp-')) { showToast && showToast('Enregistrez d\'abord le dossier'); return; }
-                if (props.openDossierPdf) props.openDossierPdf(id);
-              }}
-              style={{flexShrink:0, width:44, height:38, padding:0, background:'#fff', color:'#8B5E3C', border:'1.5px solid #C9B79A', borderRadius:8, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-              </svg>
-            </button>
-            {['Vendeur','Bailleur','Investisseur'].includes(activeProfil) && editing && editing.id && !String(editing.id).startsWith('tmp-') && (
-              <CrossSearchFooter d={d} dossierId={editing.id}
-                showToast={showToast}
-                onMatchesUpdate={(matches, searchedAt) => {
-                  const next = {...d, cross_matches: matches, cross_search_last_at: searchedAt};
-                  setD(next);
-                  handleSaveLocal(next);
-                }}/>
-            )}
-            {/* V32 — Chip PUBLIER (Vendeur/Bailleur/Investisseur uniquement) */}
-            {['Vendeur','Bailleur','Investisseur'].includes(activeProfil) && editing && editing.id && !String(editing.id).startsWith('tmp-') && (() => {
-              const disabled = !!d.is_draft;
-              const published = !!d.is_published;
-              const label = published ? 'EN LIGNE' : 'PUBLIER';
-              const bg = disabled ? '#C9B79A' : (published ? '#2E7D32' : '#8B5E3C');
+            {(() => {
+              const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
               return (
-                <button onClick={() => disabled ? (showToast && showToast('Complète le dossier avant publication')) : setPublishOpen(true)}
-                  title={published ? 'Publication active — gérer' : 'Publier sur ocre.immo'}
-                  style={{flexShrink:0, width:68, height:36, padding:0, background:bg, color:'#fff', border:'1.5px solid '+bg, borderRadius:18, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily:'inherit', fontSize:10, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                <button type="button"
+                  title={_hasRealId ? "Visualiser le dossier (PDF)" : "Saisis quelques champs pour activer le PDF"}
+                  onClick={() => {
+                    if (!_hasRealId) { showToast && showToast("Enregistrez d'abord le dossier"); return; }
+                    if (props.openDossierPdf) props.openDossierPdf(editing.id);
+                  }}
+                  style={{flexShrink:0, width:44, height:38, padding:0, background: _hasRealId ? '#fff' : '#FDFAF7', color: _hasRealId ? '#8B5E3C' : '#A89882', border:'1.5px solid '+(_hasRealId ? '#C9B79A' : '#E8DDD0'), borderRadius:8, cursor: _hasRealId ? 'pointer' : 'not-allowed', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', opacity: _hasRealId ? 1 : 0.6}}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </button>
+              );
+            })()}
+            {/* M/2026/05/01/12 — barre du bas conforme convention : CrossSearchFooter, Chip PUBLIER,
+                Enregistrer, Archiver, Supprimer toujours presents. Boutons inadaptes au contexte
+                (dossier neuf sans id, profil non offre, absence de profil) en etat desactive grise.
+                DRY strict : 1 seul rendu de footer pour creation et edition. */}
+            {(() => {
+              const _isOffreProfil = ['Vendeur','Bailleur','Investisseur'].includes(activeProfil);
+              const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+              const _crossEnabled = _isOffreProfil && _hasRealId;
+              if (_crossEnabled) {
+                return (
+                  <CrossSearchFooter d={d} dossierId={editing.id}
+                    showToast={showToast}
+                    onMatchesUpdate={(matches, searchedAt) => {
+                      const next = {...d, cross_matches: matches, cross_search_last_at: searchedAt};
+                      setD(next);
+                      handleSaveLocal(next);
+                    }}/>
+                );
+              }
+              return (
+                <button type="button" disabled
+                  title={!activeProfil ? "Choisis un profil pour activer la recherche Internet" : (!_isOffreProfil ? "Recherche Internet disponible pour Vendeur / Bailleur / Investisseur" : "Enregistre d'abord le dossier")}
+                  style={{flexShrink:0, width:44, height:38, padding:0, background:'#FDFAF7', color:'#A89882', border:'1.5px solid #E8DDD0', borderRadius:8, cursor:'not-allowed', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', opacity:0.6}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                </button>
+              );
+            })()}
+            {/* V32 — Chip PUBLIER (Vendeur/Bailleur/Investisseur uniquement). M/2026/05/01/12 :
+                toujours rendu, etat grise quand profil non offre ou dossier non commit. */}
+            {(() => {
+              const _isOffreProfil = ['Vendeur','Bailleur','Investisseur'].includes(activeProfil);
+              const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+              const _publishEnabled = _isOffreProfil && _hasRealId && !d.is_draft;
+              const _published = !!d.is_published;
+              const label = _published ? 'EN LIGNE' : 'PUBLIER';
+              const bg = !_publishEnabled ? '#C9B79A' : (_published ? '#2E7D32' : '#8B5E3C');
+              const tooltip = !activeProfil ? 'Choisis un profil pour activer la publication'
+                : (!_isOffreProfil ? 'Publication reservee Vendeur / Bailleur / Investisseur'
+                : (!_hasRealId ? "Saisis quelques champs pour commencer le dossier" :
+                  (d.is_draft ? 'Complete le dossier avant publication'
+                  : (_published ? 'Publication active — gerer' : 'Publier sur ocre.immo'))));
+              return (
+                <button onClick={() => {
+                    if (!_publishEnabled) { showToast && showToast(tooltip); return; }
+                    setPublishOpen(true);
+                  }}
+                  title={tooltip}
+                  style={{flexShrink:0, width:68, height:36, padding:0, background:bg, color:'#fff', border:'1.5px solid '+bg, borderRadius:18, cursor: _publishEnabled ? 'pointer' : 'not-allowed', fontFamily:'inherit', fontSize:10, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', display:'flex', alignItems:'center', justifyContent:'center', opacity: _publishEnabled ? 1 : 0.7}}>
                   {label}
                 </button>
               );
@@ -18234,6 +18315,9 @@ function FormView(props) {
               Enregistrer
             </button>
             <button onClick={async () => {
+                // M/2026/05/01/12 — guard : si dossier neuf sans id, toast et return.
+                const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+                if (!_hasRealId) { showToast && showToast("Saisis d'abord quelques champs"); return; }
                 // V41 — Archivage via confirm modal + API clients.php?action=archive + navigation.
                 const targetState = !d.archived;
                 if (!targetState) {
@@ -18278,17 +18362,38 @@ function FormView(props) {
                   }
                 } catch (e) { showToast && showToast('Erreur réseau'); }
               }}
-              title={d.archived ? 'Désarchiver' : 'Archiver'}
-              style={{flexShrink:0, width:38, height:38, padding:0, background:'#fff', color:'#8B5E3C', border:'1.5px solid #C9B79A', borderRadius:8, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14}}>
+              title={(editing && editing.id && !String(editing.id).startsWith('tmp-')) ? (d.archived ? 'Désarchiver' : 'Archiver') : "Saisis quelques champs pour activer l'archivage"}
+              style={{flexShrink:0, width:38, height:38, padding:0,
+                background: (editing && editing.id && !String(editing.id).startsWith('tmp-')) ? '#fff' : '#FDFAF7',
+                color: (editing && editing.id && !String(editing.id).startsWith('tmp-')) ? '#8B5E3C' : '#A89882',
+                border:'1.5px solid '+((editing && editing.id && !String(editing.id).startsWith('tmp-')) ? '#C9B79A' : '#E8DDD0'),
+                borderRadius:8,
+                cursor: (editing && editing.id && !String(editing.id).startsWith('tmp-')) ? 'pointer' : 'not-allowed',
+                fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14,
+                opacity: (editing && editing.id && !String(editing.id).startsWith('tmp-')) ? 1 : 0.6}}>
               <span style={{fontSize:14, lineHeight:1}}>📦</span>
             </button>
-            {editing && editing.id && (
-              <button onClick={() => handleDelete(editing.id)}
-                title="Supprimer ce dossier"
-                style={{flexShrink:0, width:38, height:38, padding:0, background:'#fff', color:'#D64545', border:'1.5px solid #D64545', borderRadius:8, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14}}>
-                <span style={{fontSize:14, lineHeight:1}}>🗑</span>
-              </button>
-            )}
+            {/* M/2026/05/01/12 — Supprimer toujours rendu, etat grise quand pas de dossier commit. */}
+            {(() => {
+              const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+              return (
+                <button onClick={() => {
+                    if (!_hasRealId) { showToast && showToast("Aucun dossier a supprimer"); return; }
+                    handleDelete(editing.id);
+                  }}
+                  title={_hasRealId ? "Supprimer ce dossier" : "Pas encore de dossier a supprimer"}
+                  style={{flexShrink:0, width:38, height:38, padding:0,
+                    background: _hasRealId ? '#fff' : '#FDFAF7',
+                    color: _hasRealId ? '#D64545' : '#A89882',
+                    border:'1.5px solid '+(_hasRealId ? '#D64545' : '#E8DDD0'),
+                    borderRadius:8,
+                    cursor: _hasRealId ? 'pointer' : 'not-allowed',
+                    fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14,
+                    opacity: _hasRealId ? 1 : 0.6}}>
+                  <span style={{fontSize:14, lineHeight:1}}>🗑</span>
+                </button>
+              );
+            })()}
           </div>
           {/* V23 — Note discrète pour profils demande (Acheteur/Locataire/Curieux). */}
           {['Acheteur','Locataire','Curieux'].includes(activeProfil) && (
