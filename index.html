@@ -7297,7 +7297,10 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/04/30/47 — CurrencyPicker + ConversionDisplay live cote Acheteur/Investisseur
             (etend M/30/29 cote Vendeur). Suffixe dynamique {devise} partout (suppression franche
             ternaire MAD/€ binaire). */}
-        <V55Bloc title="Prix">
+        <V55Bloc title="Prix" theme="prix">
+          {/* M/2026/05/02/33 — M144.B : Bloc Prix Acheteur 3 cols (Min / Max / Liquide).
+              Validation min<max au blur via _budgetMinMaxWarn calculé live (si max < min → warn rouge).
+              Liquide dispo = capacité cash hors crédit. */}
           <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
             <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise</span>
             <CurrencyPicker value={devise} onChange={pickDevise}/>
@@ -7305,9 +7308,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
               <span style={{fontSize:10, color:'#A07842', fontStyle:'italic'}}>(choix manuel)</span>
             )}
           </div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <V55Field label="Budget min" type="number" value={d.budget_min} onChange={v => set('budget_min', v)} suffix={devise}/>
-            <V55Field label="Budget max" type="number" value={d.budget_max} onChange={v => set('budget_max', v)} suffix={devise}/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
+            <V55Field label="Budget min" type="number" value={d.budget_min} onChange={v => set('budget_min', v)} suffix={devise} style={{marginBottom:0}}/>
+            <V55Field label="Budget max" type="number" value={d.budget_max} onChange={v => set('budget_max', v)} suffix={devise} style={{marginBottom:0}}
+              hint={(Number(d.budget_min) > 0 && Number(d.budget_max) > 0 && Number(d.budget_max) < Number(d.budget_min)) ? '⚠ Max < Min' : ''}/>
+            <V55Field label="Liquide dispo" type="number" value={d.prix_liquide} onChange={v => set('prix_liquide', v)} suffix={devise} hint="Cash hors crédit" style={{marginBottom:0}}/>
           </div>
           <ConversionDisplay amount={d.budget_max} devise={devise} pays={paysBien}/>
         </V55Bloc>
@@ -7415,28 +7420,6 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           </div>
           <ConversionDisplay amount={d.prix_affiche} devise={devise} pays={paysBien}/>
           <V55Field label="Date de disponibilité" type="date_fr" value={d.date_disponibilite} onChange={v => set('date_disponibilite', v)}/>
-          {/* M/2026/05/02/22 — M134 Bloc Synthèse : Prix de vente affiché = Prix affiché + Liquide + Commission.
-              Sans frais notaire (charge acheteur, hors prix annoncé vendeur). Calculé live. */}
-          {(() => {
-            const _prixAff = Number(d.prix_affiche) || 0;
-            const _liq = Number(d.prix_liquide) || 0;
-            const _comm = Number(commCalc) || 0;
-            const _total = _prixAff + _liq + _comm;
-            if (_total <= 0) return null;
-            return (
-              <div style={{marginTop:10, padding:'10px 12px', background:'linear-gradient(135deg,#FBF1E4,#F5EAD8)', border:'1.5px solid #BBA88B', borderRadius:10}}>
-                <div style={{fontSize:11, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4, marginBottom:4}}>
-                  Prix de vente affiché
-                </div>
-                <div style={{fontSize:16, fontWeight:700, color:'#2A2018'}}>
-                  {fmtMoneyV55(_total, devise)}
-                </div>
-                <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:3, fontStyle:'italic'}}>
-                  Prix {fmtMoneyV55(_prixAff, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Commission {fmtMoneyV55(_comm, devise)} (hors notaire à charge acheteur)
-                </div>
-              </div>
-            );
-          })()}
         </V55Bloc>
 
         <V55Bloc title="Honoraires (commission)" theme="agence">
@@ -7465,6 +7448,30 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
                 : ''}/>
           <V55ReadOnly label="Commission calculée" value={fmtMoneyV55(commCalc, devise)} hint={commMode === 'Pourcentage' ? `${prix.toLocaleString('fr-FR')} × ${commTaux}%` : 'Forfait'}/>
         </V55Bloc>
+
+        {/* M/2026/05/02/33 — M144.B : Bloc Synthèse Vendeur SÉPARÉ (extrait du Bloc Prix M134).
+            Prix de vente affiché = Prix + Liquide + Commission (HORS notaire = charge acheteur).
+            Bloc principal V55Bloc theme=synthese (ocre fort marqué). Calcul live. */}
+        {(() => {
+          const _prixAff = Number(d.prix_affiche) || 0;
+          const _liq = Number(d.prix_liquide) || 0;
+          const _comm = Number(commCalc) || 0;
+          const _total = _prixAff + _liq + _comm;
+          if (_total <= 0) return null;
+          return (
+            <V55Bloc title="📊 Prix de vente affiché" theme="synthese">
+              <div style={{fontSize:20, fontWeight:800, color:'#2A2018', marginBottom:4}}>
+                {fmtMoneyV55(_total, devise)}
+              </div>
+              <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', lineHeight:1.4}}>
+                Prix {fmtMoneyV55(_prixAff, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Commission {fmtMoneyV55(_comm, devise)} (hors notaire à charge acheteur)
+              </div>
+              <div style={{fontSize:10, color:'#A07842', fontStyle:'italic', marginTop:6}}>
+                Visible sur fiche dossier et PDF
+              </div>
+            </V55Bloc>
+          );
+        })()}
 
         {/* V62 — Frais notaire (info à charge acheteur) */}
         <V55Bloc title="Frais de notaire (à la charge de l'acheteur)" theme="notaire">
@@ -7530,8 +7537,15 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
       <>
         {/* M/2026/04/30/49 — Sous-bloc Recherche bien aussi pour Locataire. */}
         <RechercheBienBloc d={d} set={set}/>
-        <V55Bloc title="Loyer" theme="prix">
-          <V55Field label="Loyer max charges comprises" type="number" value={d.loyer_max} onChange={v => set('loyer_max', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
+        <V55Bloc title="Loyer recherché" theme="prix">
+          {/* M/2026/05/02/33 — M144.B : Bloc Prix Locataire 3 cols Loyer min / max / Caution dispo.
+              Validation min<max via hint conditionnel. */}
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
+            <V55Field label="Loyer min" type="number" value={d.loyer_min} onChange={v => set('loyer_min', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} style={{marginBottom:0}}/>
+            <V55Field label="Loyer max" type="number" value={d.loyer_max} onChange={v => set('loyer_max', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} style={{marginBottom:0}}
+              hint={(Number(d.loyer_min) > 0 && Number(d.loyer_max) > 0 && Number(d.loyer_max) < Number(d.loyer_min)) ? '⚠ Max < Min' : 'Charges comprises'}/>
+            <V55Field label="Caution dispo" type="number" value={d.caution_dispo} onChange={v => set('caution_dispo', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint="Cash dépôt" style={{marginBottom:0}}/>
+          </div>
         </V55Bloc>
 
         <V55Bloc title="Honoraires location (estimation)" theme="agence">
@@ -7572,13 +7586,16 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     return (
       <>
         <V55Bloc title="Loyer & charges" theme="prix">
-          <V55Field label="Loyer demandé (hors charges)" type="number" value={d.loyer_demande} onChange={v => set('loyer_demande', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
-          <V55Field label="Loyer plancher (confidentiel)" type="number" value={d.loyer_plancher} onChange={v => set('loyer_plancher', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <V55Field label="Charges récupérables" type="number" value={d.charges_recuperables != null ? d.charges_recuperables : d.charges} onChange={v => set('charges_recuperables', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
-            <V55Field label="Charges non récupérables" type="number" value={d.charges_non_recuperables} onChange={v => set('charges_non_recuperables', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} hint="À la charge propriétaire"/>
+          {/* M/2026/05/02/33 — M144.B : Bloc Prix Bailleur 3 cols Loyer / Charges / Caution.
+              Champs secondaires (Loyer plancher confidentiel, charges non récupérables) restent
+              en dessous pour garder la donnée mais hiérarchie visuelle 3 cols principaux iPhone-first. */}
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:6}}>
+            <V55Field label="Loyer demandé" type="number" value={d.loyer_demande} onChange={v => set('loyer_demande', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} hint="Hors charges" style={{marginBottom:0}}/>
+            <V55Field label="Charges" type="number" value={d.charges_recuperables != null ? d.charges_recuperables : d.charges} onChange={v => set('charges_recuperables', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} hint="Récupérables" style={{marginBottom:0}}/>
+            <V55Field label="Caution" type="number" value={d.depot_garantie_demande != null ? d.depot_garantie_demande : d.depot} onChange={v => set('depot_garantie_demande', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? '1-2 mois loyer' : '2-3 mois loyer'} style={{marginBottom:0}}/>
           </div>
-          <V55Field label="Dépôt de garantie demandé" type="number" value={d.depot_garantie_demande != null ? d.depot_garantie_demande : d.depot} onChange={v => set('depot_garantie_demande', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? 'France : 1 mois nu / 2 mois meublé' : ''}/>
+          <V55Field label="Loyer plancher (confidentiel)" type="number" value={d.loyer_plancher} onChange={v => set('loyer_plancher', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} hint="Visible uniquement par l'agent"/>
+          <V55Field label="Charges non récupérables (propriétaire)" type="number" value={d.charges_non_recuperables} onChange={v => set('charges_non_recuperables', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
         </V55Bloc>
 
         <V55Bloc title="Honoraires de location" theme="agence">
