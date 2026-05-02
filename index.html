@@ -9497,6 +9497,58 @@ function UpdateBanner() {
   );
 }
 
+// M/2026/05/02/29 — M141 livrable C : indicateur connexion online/offline.
+// Mode read-only Phase 1 : juste affichage de l'état + toast au changement. Pas de
+// désactivation des inputs ni de cache LocalStorage des dossiers (reporté M141.B/M142).
+// Le SW killswitch v196 reste actif (refonte cache-first SW reportée M141.B en session
+// fraîche pour éviter de casser la stratégie d'invalidation iOS Safari).
+function OnlineIndicator() {
+  const [isOnline, setIsOnline] = React.useState(typeof navigator !== 'undefined' ? navigator.onLine !== false : true);
+  const [showFlash, setShowFlash] = React.useState(false);
+  const [flashType, setFlashType] = React.useState('online');
+  React.useEffect(() => {
+    const onUp = () => {
+      setIsOnline(true);
+      setFlashType('online');
+      setShowFlash(true);
+      setTimeout(() => setShowFlash(false), 2500);
+    };
+    const onDown = () => {
+      setIsOnline(false);
+      setFlashType('offline');
+      setShowFlash(true);
+      setTimeout(() => setShowFlash(false), 4000);
+    };
+    window.addEventListener('online', onUp);
+    window.addEventListener('offline', onDown);
+    return () => {
+      window.removeEventListener('online', onUp);
+      window.removeEventListener('offline', onDown);
+    };
+  }, []);
+  if (isOnline && !showFlash) return null;
+  // Badge offline persistant ou flash transition online/offline.
+  const isOfflineBadge = !isOnline;
+  const isFlashOnline = showFlash && flashType === 'online' && isOnline;
+  if (!isOfflineBadge && !isFlashOnline) return null;
+  return (
+    <div style={{
+      position:'fixed', top: 4, right: 8, zIndex: 250,
+      padding:'4px 10px', borderRadius: 12,
+      background: isOfflineBadge ? '#C73E3E' : '#2D6B3F',
+      color:'#fff', fontSize:11, fontWeight:700,
+      fontFamily:'inherit', display:'flex', alignItems:'center', gap:5,
+      boxShadow:'0 2px 8px rgba(0,0,0,0.18)',
+      pointerEvents:'none',
+      opacity: showFlash || isOfflineBadge ? 1 : 0,
+      transition:'opacity .25s ease',
+    }}>
+      <span aria-hidden="true">{isOfflineBadge ? '🔴' : '🟢'}</span>
+      <span>{isOfflineBadge ? 'Hors ligne' : 'Connexion rétablie'}</span>
+    </div>
+  );
+}
+
 function App() {
   const [apiLoading, setApiLoading] = useState(true);
   // V18.30 — PWAInstallOverlay iOS + beforeinstallprompt Android conservés pour un bouton
@@ -10048,7 +10100,7 @@ function App() {
       openClient={(c) => { openClient(c); }}/>;
   }
   const pwaOverlay = pwaOverlayOpen ? <PWAInstallOverlay onClose={() => setPwaOverlayOpen(false)}/> : null;
-  return (<>{impersonation && (
+  return (<><OnlineIndicator/>{impersonation && (
     <div style={{position:'fixed', top:0, left:0, right:0, zIndex:300, background:'#8B5E3C', color:'#fff', padding:'8px 14px', display:'flex', alignItems:'center', gap:10, fontSize:12.5, fontFamily:'inherit', fontWeight:600, boxShadow:'0 2px 8px rgba(0,0,0,.2)'}}>
       <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
         ⚠ Mode admin · en tant que <b>{impersonation.target_email}</b>
