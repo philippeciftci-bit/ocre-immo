@@ -297,6 +297,24 @@ body {
   color: var(--text);
   min-width: 0;
 }
+/* M-PAN-MAQ2-FIX1 : input texte + datalist (saisie libre type ou prénom). */
+.act-input-type {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 6px;
+  font-size: 10.5px;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+  width: 100%;
+  outline: none;
+  height: 22px;
+  box-sizing: border-box;
+}
+.act-input-type:focus { border-color: var(--mid); background: var(--soft2); }
+.act-input-type::placeholder { color: var(--grey); font-weight: 400; font-style: italic; }
 .act-toggle {
   display: flex;
   background: #fff;
@@ -365,11 +383,25 @@ body {
 }
 
 /* === Notaire === */
+/* M-PAN-MAQ2-FIX1 : 3 cols (Pourcentage 80px + Frais dossier EUR 1fr + MAD 1fr).
+   Le Pourcentage compact accueille jusqu'à "12,5 %" dans 80px. Total estimé suit la même
+   grille 3 cols pour aligner les colonnes EUR / MAD sous les inputs Frais dossier. */
 .not-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  grid-template-columns: 80px minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   margin-bottom: 8px;
+}
+.not-row > .col-label {
+  font-size: 11px;
+  color: #5C5550;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.not-row .not-pct-cell .hint,
+.not-row .not-cell .hint {
+  text-align: left;
+  margin-top: 3px;
 }
 .not-pct {
   background: #fff;
@@ -393,21 +425,23 @@ body {
   color: var(--text);
 }
 .not-pct .pct { font-size: 12px; color: var(--grey); font-weight: 600; flex-shrink: 0; }
+/* Total estimé : 3 cols 80px + 1fr + 1fr alignées avec Frais dossier au-dessus.
+   Col 1 : label "Total estimé" (font compact), Col 2 : EUR, Col 3 : MAD. */
 .not-total {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
   background: rgba(127,175,211,.18);
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 12px;
   font-weight: 700;
   color: var(--blue-text);
-  display: flex;
-  justify-content: space-between;
   align-items: center;
 }
-.not-total .label { font-weight: 600; }
-.not-total .totals-2col { display: flex; gap: 10px; }
-.not-total .t-eur { color: #B26D3A; font-weight: 700; }
-.not-total .t-mad { color: var(--blue-text); font-weight: 700; }
+.not-total .label { font-weight: 700; font-size: 11px; line-height: 1.15; }
+.not-total .t-eur { color: #B26D3A; font-weight: 700; text-align: right; }
+.not-total .t-mad { color: var(--blue-text); font-weight: 700; text-align: right; }
 
 /* === CurrencyPicker popover === */
 .cur-overlay {
@@ -484,6 +518,16 @@ body {
 </div>
 
 <div class="cur-overlay" id="curOverlay"></div>
+
+<!-- M-PAN-MAQ2-FIX1 : datalist global pour suggestions Type acteur Frais d'agence.
+     Permet saisie libre (prénom "Mustafa", note "Karim — apporteur") ET sélection rapide
+     des types prédéfinis Mandat/Contrepartie/Co-agence/Apporteur via auto-complete navigateur. -->
+<datalist id="acteur-types-list">
+  <option value="Agent mandat"></option>
+  <option value="Agent contrepartie"></option>
+  <option value="Co-agence"></option>
+  <option value="Apporteur"></option>
+</datalist>
 
 <div id="root"></div>
 
@@ -571,8 +615,8 @@ const MOCK = {
     notaireDossier: 0,
     notaireLabel: 'MA 6%',
     acteurs: [
-      {nom:'mandat', mode:'pct', val:5},
-      {nom:'contrepartie', mode:'pct', val:2.5},
+      {nom:'Agent mandat', mode:'pct', val:5},
+      {nom:'Mustafa', mode:'pct', val:2.5},
     ],
     baseEUR: 534562, baseMAD: 5800000,
   },
@@ -590,7 +634,7 @@ const MOCK = {
     notaireDossier: 0,
     notaireLabel: 'MA 6%',
     acteurs: [
-      {nom:'contrepartie', mode:'pct', val:2.5},
+      {nom:'Agent contrepartie', mode:'pct', val:2.5},
     ],
     baseEUR: 294930, baseMAD: 3200000,
   },
@@ -606,7 +650,7 @@ const MOCK = {
     addLabel:'+ Ajouter',
     showNotaire: false,
     acteurs: [
-      {nom:'mandat', mode:'forfait', val:14000},
+      {nom:'Agent mandat', mode:'forfait', val:14000},
     ],
     baseEUR: 1290, baseMAD: 14000,
   },
@@ -914,7 +958,7 @@ function blocAgence(p, repaint) {
   const add = el('button', {className: 'add-btn', type: 'button'}, '+ Ajouter (' + p.acteurs.length + '/4)');
   add.addEventListener('click', () => {
     if (p.acteurs.length >= 4) return;
-    p.acteurs.push({nom:'autre', mode:'pct', val:1});
+    p.acteurs.push({nom:'', mode:'pct', val:1});
     repaint();
   });
   wrap.appendChild(add);
@@ -944,15 +988,16 @@ function computeAgenceTotals(p) {
 function buildActeurRow(p, a, repaint) {
   const row = el('div', {className: 'act-row'});
 
-  // Type select
-  const sel = el('select', {className: 'act-select'});
-  for (const t of ACTEUR_TYPES) {
-    const opt = el('option', {value: t.v}, t.l);
-    if (t.v === a.nom) opt.setAttribute('selected', 'selected');
-    sel.appendChild(opt);
-  }
-  sel.addEventListener('change', () => { a.nom = sel.value; });
-  row.appendChild(sel);
+  // M-PAN-MAQ2-FIX1 : input éditable + datalist pour saisie libre (prénom Mustafa, etc.)
+  // OU sélection rapide depuis suggestions navigateur (Mandat/Contrepartie/Co-agence/Apporteur).
+  const inp = el('input', {
+    type: 'text', list: 'acteur-types-list',
+    className: 'act-input-type', placeholder: 'Type ou nom',
+    value: a.nom || '',
+  });
+  inp.addEventListener('input', () => { a.nom = inp.value; });
+  inp.addEventListener('change', () => { a.nom = inp.value; });
+  row.appendChild(inp);
 
   // Mode toggle
   const tog = el('div', {className: 'act-toggle'});
@@ -1009,10 +1054,24 @@ function blocNotaire(p, repaint) {
   const wrap = el('div', {className: 'bloc bloc-notaire'});
   wrap.appendChild(el('h4', null, el('span', null, '🏛 FRAIS NOTAIRE')));
 
-  // Row : pourcentage + frais dossier
+  // M-PAN-MAQ2-FIX1 : 3 cols 80px / 1fr / 1fr — Pourcentage compact + Frais dossier EUR + Frais dossier MAD.
+  // Labels au-dessus des 3 colonnes ; hints en-dessous des inputs.
+  const labels = el('div', {className: 'not-row'},
+    el('div', {className: 'col-label'}, '%'),
+    el('div', {className: 'col-label'}, 'Frais dossier (EUR)'),
+    el('div', {className: 'col-label'}, 'Frais dossier (MAD)')
+  );
+  // Override : la 2e/3e cellule label devraient afficher la devise active (leftCur/rightCur)
+  // pour cohérence si user change de monnaies. Reconstruit ci-dessous.
+  labels.innerHTML = '';
+  labels.appendChild(el('div', {className: 'col-label'}, 'Pourcentage'));
+  labels.appendChild(el('div', {className: 'col-label'}, 'Dossier (' + p.leftCur + ')'));
+  labels.appendChild(el('div', {className: 'col-label'}, 'Dossier (' + p.rightCur + ')'));
+  wrap.appendChild(labels);
+
+  // Row inputs : 80px Pct + 1fr EUR + 1fr MAD.
   const row = el('div', {className: 'not-row'});
-  const pctBox = el('div', null);
-  pctBox.appendChild(el('div', {className: 'row-label'}, 'Pourcentage'));
+
   const pctIw = el('div', {className: 'not-pct'});
   const pctIn = el('input', {type:'text', inputmode:'decimal', value: String(p.notairePct)});
   pctIn.addEventListener('input', () => {
@@ -1021,41 +1080,39 @@ function blocNotaire(p, repaint) {
   });
   pctIw.appendChild(pctIn);
   pctIw.appendChild(el('span', {className: 'pct'}, '%'));
-  pctBox.appendChild(pctIw);
-  pctBox.appendChild(el('div', {className: 'hint'}, p.notaireLabel || ''));
-  row.appendChild(pctBox);
+  row.appendChild(pctIw);
 
-  const dosBox = el('div', null);
-  dosBox.appendChild(el('div', {className: 'row-label'}, 'Frais de dossier (optionnel)'));
-  const dosInputs = el('div', {className: 'row-pair-inputs'});
-  // 2 cols : EUR (leftCur) + MAD (rightCur)
+  // 2 colonnes Frais dossier EUR + MAD (chacune dans la grille parent, pas un sous-grid).
   const dosLeft = buildSimpleIw(p, 'left', p.notaireDossier || 0, (v) => {
     p.notaireDossier = v;
     p._notaireDossierRight = v ? convert(v, p.leftCur, p.rightCur) : 0;
-    syncOppositeSimpleInput(dosInputs, 'left', p);
+    const inputs = row.querySelectorAll('.iw input');
+    if (inputs.length >= 2) inputs[1].value = fmt(p._notaireDossierRight || 0);
     updateNotaireTotals(wrap, p);
   });
   const dosRight = buildSimpleIw(p, 'right', p._notaireDossierRight || convert(p.notaireDossier || 0, p.leftCur, p.rightCur), (v) => {
     p._notaireDossierRight = v;
     p.notaireDossier = v ? convert(v, p.rightCur, p.leftCur) : 0;
-    syncOppositeSimpleInput(dosInputs, 'right', p);
+    const inputs = row.querySelectorAll('.iw input');
+    if (inputs.length >= 2) inputs[0].value = fmt(p.notaireDossier || 0);
     updateNotaireTotals(wrap, p);
   });
-  dosInputs.appendChild(dosLeft);
-  dosInputs.appendChild(dosRight);
-  dosBox.appendChild(dosInputs);
-  row.appendChild(dosBox);
+  row.appendChild(dosLeft);
+  row.appendChild(dosRight);
   wrap.appendChild(row);
 
-  // Total estimé
+  // Hint sous Pourcentage
+  const hints = el('div', {className: 'not-row'});
+  hints.appendChild(el('div', {className: 'hint', style:{textAlign:'left', margin:0}}, p.notaireLabel || ''));
+  hints.appendChild(el('div', {className: 'hint', style:{textAlign:'left', margin:0, gridColumn:'2 / 4'}}, 'Optionnel'));
+  wrap.appendChild(hints);
+
+  // Total estimé : 3 cols même grille (label 80px + EUR + MAD).
   const totals = computeNotaireTotals(p);
   const total = el('div', {className: 'not-total'},
     el('span', {className: 'label'}, 'Total estimé'),
-    el('div', {className: 'totals-2col'},
-      el('span', {className: 't-eur'}, fmt(totals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur)),
-      el('span', {style:{color:'#7FAFD3'}}, '|'),
-      el('span', {className: 't-mad'}, fmt(totals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur))
-    )
+    el('span', {className: 't-eur'}, fmt(totals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur)),
+    el('span', {className: 't-mad'}, fmt(totals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur))
   );
   wrap.appendChild(total);
   wrap.appendChild(el('div', {className: 'hint', style:{marginTop:6}}, 'Pré-rempli selon pays — modifiable'));
@@ -1098,11 +1155,11 @@ function computeNotaireTotals(p) {
 
 function updateNotaireTotals(blocNotaireEl, p) {
   const totals = computeNotaireTotals(p);
-  const ts = blocNotaireEl.querySelectorAll('.not-total .totals-2col span');
-  if (ts.length >= 3) {
-    ts[0].textContent = fmt(totals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur);
-    ts[2].textContent = fmt(totals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur);
-  }
+  // M-PAN-MAQ2-FIX1 : .not-total est désormais une grille 3-cols directe (label + EUR + MAD).
+  const tEur = blocNotaireEl.querySelector('.not-total .t-eur');
+  const tMad = blocNotaireEl.querySelector('.not-total .t-mad');
+  if (tEur) tEur.textContent = fmt(totals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur);
+  if (tMad) tMad.textContent = fmt(totals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur);
 }
 
 function updateAllTotals(screenEl, p) {
