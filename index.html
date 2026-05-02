@@ -7111,65 +7111,67 @@ function V55Field({label, value, onChange, type='text', options, suffix, placeho
   );
 }
 
-// M/2026/05/02/32 — M144 : V55Bloc enrichi avec prop theme pour design L8 colorisé
-// (validé Philippe via maquettes M142 + hybride M143). Chaque sous-bloc Section III a une teinte
-// thématique distincte : Prix=ocre, Agence=vert d'eau, Notaire=bleu poudre, Synthèse=ocre fort,
-// Mandat=taupe, Paiement=vert sage, Financement=bleu marine, Répartition=mauve poudre.
-// Fallback theme=undefined : design original blanc préservé (anti-régression call sites legacy).
+// M/2026/05/02/32 — M144 : V55Bloc enrichi avec prop theme pour design L8 colorisé.
+// M/2026/05/02/37 — M144.F : refonte complète du rendu V55Bloc pour matcher EXACTEMENT le
+// Layout 8 du fichier maquettes/section3-budget-v2.html (validé Philippe). Cards thématiques
+// compactes : background teinté, border 1.2px solid teinte, padding 8x10, marginBottom 6,
+// borderRadius 8. Titre h4 fontSize 11 fontWeight 700 marginBottom 5. Synthèse principale
+// gradient ocre fort #8B5E3C -> #A06B45 fond, color blanc, valeur font 22 fontWeight 800.
+// Pas de borderLeft 3px (était l'ancien design V55 colorisé M144). Compactage iPhone-first.
 const V55_THEMES = {
-  prix:        {bg:'#FBF1E4', bord:'#C97B3F', lbl:'#C97B3F'},
-  agence:      {bg:'#EEF4F2', bord:'#5C8A82', lbl:'#5C8A82'},
-  notaire:     {bg:'#EDF0F7', bord:'#6B7FB5', lbl:'#6B7FB5'},
-  synthese:    {bg:'#F5E1C9', bord:'#B26D3A', lbl:'#B26D3A'},
-  mandat:      {bg:'#F2EEE9', bord:'#8A7A6E', lbl:'#8A7A6E'},
-  paiement:    {bg:'#EEF1ED', bord:'#7A9277', lbl:'#7A9277'},
-  financement: {bg:'#ECEFF4', bord:'#4A5C7A', lbl:'#4A5C7A'},
-  repartition: {bg:'#F1ECF1', bord:'#8B6B8C', lbl:'#8B6B8C'},
+  prix:        {bg:'#FBF1E4', bord:'#C9B79A', lbl:'#5C3B1E'},
+  agence:      {bg:'#E5F4F0', bord:'#7FCBB7', lbl:'#1F7765'},
+  notaire:     {bg:'#E5F0F9', bord:'#7FAFD3', lbl:'#1F5784'},
+  synthese:    {bg:'gradient', bord:'transparent', lbl:'#fff'},
+  mandat:      {bg:'#F2EEE9', bord:'#A89A8C', lbl:'#5F4F40'},
+  paiement:    {bg:'#EEF1ED', bord:'#9DCB94', lbl:'#2D6B3F'},
+  financement: {bg:'#ECEFF4', bord:'#7FAFD3', lbl:'#1F5784'},
+  repartition: {bg:'#F1ECF1', bord:'#B79DD3', lbl:'#5F3F8B'},
 };
 function V55Bloc({title, children, theme, collapsible, expanded, onToggle}) {
   const t = theme && V55_THEMES[theme];
   if (t) {
     const isMain = theme === 'synthese';
+    // M/2026/05/02/37 — M144.F : style L8 maquette EXACT.
+    // Card compact : padding 8x10, marginBottom 6, borderRadius 8, border 1.2px solid teinte.
+    // Titre h4 inline : fontSize 11 fontWeight 700 marginBottom 5 color teinte.
+    // Synthèse : background gradient ocre fort, color blanc, padding 10x12 marginBottom 8.
+    const cardStyle = isMain ? {
+      borderRadius: 8,
+      padding: '10px 12px',
+      marginBottom: 8,
+      background: 'linear-gradient(135deg,#8B5E3C,#A06B45)',
+      border: 'none',
+      color: '#fff',
+    } : {
+      borderRadius: 8,
+      padding: collapsible && !expanded ? '8px 10px' : '8px 10px',
+      marginBottom: 6,
+      background: t.bg,
+      border: '1.2px solid ' + t.bord,
+    };
+    const titleStyle = {
+      margin: '0 0 5px',
+      fontSize: 11,
+      fontWeight: 700,
+      color: isMain ? '#fff' : t.lbl,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      ...(collapsible ? {cursor: 'pointer', userSelect: 'none', justifyContent: 'space-between', marginBottom: expanded ? 5 : 0} : {}),
+    };
     const titleEl = collapsible ? (
-      <div onClick={onToggle} style={{
-        fontFamily: 'Cormorant Garamond,serif',
-        fontSize: isMain ? 17 : 15,
-        fontWeight: isMain ? 700 : 600,
-        color: t.lbl,
-        marginBottom: expanded ? 8 : 0,
-        paddingBottom: expanded ? 4 : 0,
-        borderBottom: expanded ? '1px solid ' + t.bord + '40' : 'none',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        userSelect: 'none',
-      }}>
-        <span style={{fontSize: 12, transition: 'transform .15s'}}>{expanded ? '▾' : '▸'}</span>
+      <h4 onClick={onToggle} style={titleStyle}>
         <span>{title}</span>
-      </div>
+        <span style={{fontSize: 11, opacity: 0.7}}>{expanded ? '▾' : '▸'}</span>
+      </h4>
     ) : (
-      <div style={{
-        fontFamily: 'Cormorant Garamond,serif',
-        fontSize: isMain ? 17 : 15,
-        fontWeight: isMain ? 700 : 600,
-        color: t.lbl,
-        marginBottom: 8,
-        paddingBottom: 4,
-        borderBottom: '1px solid ' + t.bord + '40',
-      }}>{title}</div>
+      <h4 style={titleStyle}>{title}</h4>
     );
     return (
-      <div style={{
-        background: t.bg,
-        borderLeft: '3px solid ' + t.bord,
-        borderRadius: '0 10px 10px 0',
-        padding: collapsible && !expanded ? '10px 14px' : (isMain ? '14px 14px 4px' : '12px 14px 4px'),
-        marginBottom: 10,
-        boxShadow: isMain
-          ? '0 0 0 1px ' + t.bord + '40, 0 2px 4px rgba(178,109,58,.08)'
-          : '0 0 0 1px rgba(139,94,60,.06)',
-      }}>
+      <div style={cardStyle}>
         {titleEl}
         {(!collapsible || expanded) && children}
       </div>
@@ -7480,16 +7482,16 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
             const _liq = Number(d.prix_liquide) || 0;
             const _notaire = Number(fraisNotEst) || 0;
             const _total = _bMax + _liq + _notaire;
-            if (_total <= 0) return <V55ReadOnly label="—" value="Saisir budget pour calcul" hint="Budget max + Liquide + Notaire estimé"/>;
+            if (_total <= 0) return <div style={{color:'rgba(255,255,255,0.85)', fontSize:12, fontStyle:'italic'}}>Saisir budget pour calcul (Budget max + Liquide + Notaire estimé)</div>;
             return (
               <>
-                <div style={{fontSize:20, fontWeight:800, color:'#2A2018', marginBottom:4}}>
+                <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>
                   {fmtMoneyV55(_total, devise)}
                 </div>
-                <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', lineHeight:1.4}}>
+                <div style={{fontSize:11, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
                   Budget max {fmtMoneyV55(_bMax, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Notaire estimé {fmtMoneyV55(_notaire, devise)}
                 </div>
-                <div style={{fontSize:10, color:'#A07842', fontStyle:'italic', marginTop:6}}>
+                <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>
                   Visible sur fiche dossier et PDF
                 </div>
               </>
@@ -7655,13 +7657,13 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           if (_total <= 0) return null;
           return (
             <V55Bloc title="📊 Prix de vente affiché" theme="synthese">
-              <div style={{fontSize:20, fontWeight:800, color:'#2A2018', marginBottom:4}}>
+              <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>
                 {fmtMoneyV55(_total, devise)}
               </div>
-              <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', lineHeight:1.4}}>
+              <div style={{fontSize:11, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
                 Prix {fmtMoneyV55(_prixAff, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Frais agence {fmtMoneyV55(_comm, devise)} (hors notaire à charge acheteur)
               </div>
-              <div style={{fontSize:10, color:'#A07842', fontStyle:'italic', marginTop:6}}>
+              <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>
                 Visible sur fiche dossier et PDF
               </div>
             </V55Bloc>
@@ -7780,16 +7782,16 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
             const _hono = Number(d.honoraires_locataire_estimes) || 0;
             const _chargesEst = _lMax > 0 ? Math.round(_lMax * 0.07) : 0;
             const _total = _lMax + _chargesEst;
-            if (_total <= 0) return <V55ReadOnly label="—" value="Saisir loyer max pour calcul" hint="Loyer max + Charges estimées (~7%)"/>;
+            if (_total <= 0) return <div style={{color:'rgba(255,255,255,0.85)', fontSize:12, fontStyle:'italic'}}>Saisir loyer max pour calcul (Loyer max + Charges estimées ~7%)</div>;
             return (
               <>
-                <div style={{fontSize:20, fontWeight:800, color:'#2A2018', marginBottom:4}}>
-                  {fmtMoneyV55(_total, devise)}{devise === 'MAD' ? '/mois' : '/mois'}
+                <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>
+                  {fmtMoneyV55(_total, devise)}/mois
                 </div>
-                <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', lineHeight:1.4}}>
+                <div style={{fontSize:11, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
                   Loyer max {fmtMoneyV55(_lMax, devise)}/mois + Charges estimées {fmtMoneyV55(_chargesEst, devise)} (~7%){_hono > 0 ? '. Honoraires location ' + fmtMoneyV55(_hono, devise) + ' (1 fois)' : ''}
                 </div>
-                <div style={{fontSize:10, color:'#A07842', fontStyle:'italic', marginTop:6}}>
+                <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>
                   Visible sur fiche dossier et PDF
                 </div>
               </>
@@ -7868,16 +7870,16 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
             const _loyer = Number(d.loyer_demande) || 0;
             const _charges = Number(d.charges_recuperables != null ? d.charges_recuperables : d.charges) || 0;
             const _total = _loyer + _charges;
-            if (_total <= 0) return <V55ReadOnly label="—" value="Saisir loyer pour calcul" hint="Loyer demandé + Charges récupérables"/>;
+            if (_total <= 0) return <div style={{color:'rgba(255,255,255,0.85)', fontSize:12, fontStyle:'italic'}}>Saisir loyer pour calcul (Loyer demandé + Charges récupérables)</div>;
             return (
               <>
-                <div style={{fontSize:20, fontWeight:800, color:'#2A2018', marginBottom:4}}>
-                  {fmtMoneyV55(_total, devise)}{devise === 'MAD' ? '/mois' : '/mois'}
+                <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>
+                  {fmtMoneyV55(_total, devise)}/mois
                 </div>
-                <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', lineHeight:1.4}}>
+                <div style={{fontSize:11, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
                   Loyer demandé {fmtMoneyV55(_loyer, devise)}/mois{_charges > 0 ? ' + Charges ' + fmtMoneyV55(_charges, devise) + '/mois (charges comprises)' : ''}
                 </div>
-                <div style={{fontSize:10, color:'#A07842', fontStyle:'italic', marginTop:6}}>
+                <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>
                   Visible sur fiche dossier et PDF
                 </div>
               </>
