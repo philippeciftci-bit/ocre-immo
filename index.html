@@ -7056,6 +7056,68 @@ function V55ReadOnly({label, value, hint}) {
   );
 }
 
+// M/2026/05/02/43 — M-PAN-INT : ConversionPair composant EUR/MAD pair input bi-directionnel.
+// Layout 2 maquette (Cards thématiques colorées). TAUX placeholder 10.85 (à wirer rates API).
+// Migration douce : si les nouveaux keys (eurKey/madKey) sont absents et legacyKey présent,
+// affiche depuis legacyKey converti selon devise dossier. Sur edit, écrit les 3 keys (eur, mad, legacy).
+const TAUX_EUR_MAD_PAIR = 10.85;
+function ConversionPair({label, eurKey, madKey, legacyKey, set, d, hint, warn, devise}) {
+  const TAUX = TAUX_EUR_MAD_PAIR;
+  const curEur = d[eurKey];
+  const curMad = d[madKey];
+  const legacyVal = legacyKey ? Number(d[legacyKey]) || 0 : 0;
+  let displayEur = 0, displayMad = 0;
+  const hasNew = (curEur != null && curEur !== '') || (curMad != null && curMad !== '');
+  if (hasNew) {
+    displayEur = Number(curEur) || 0;
+    displayMad = Number(curMad) || 0;
+  } else if (legacyVal > 0) {
+    if (devise === 'EUR') {
+      displayEur = legacyVal;
+      displayMad = Math.round(legacyVal * TAUX);
+    } else {
+      displayMad = legacyVal;
+      displayEur = Math.round(legacyVal / TAUX);
+    }
+  }
+  const fmt = (v) => v ? Number(v).toLocaleString('fr-FR') : '';
+  const parse = (s) => parseFloat(String(s).replace(/\s/g, '').replace(',', '.')) || 0;
+  const writeBoth = (newEur, newMad) => {
+    set(eurKey, newEur, {commit: true});
+    set(madKey, newMad, {commit: true});
+    if (legacyKey) set(legacyKey, devise === 'EUR' ? newEur : newMad, {commit: true});
+  };
+  const handleEur = (e) => {
+    const v = parse(e.target.value);
+    writeBoth(v, v ? Math.round(v * TAUX) : 0);
+  };
+  const handleMad = (e) => {
+    const v = parse(e.target.value);
+    writeBoth(v ? Math.round(v / TAUX) : 0, v);
+  };
+  const iwBase = {display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 6, padding: '6px 8px', height: 38, gap: 5, boxSizing: 'border-box'};
+  const iwBorder = warn ? '1px solid #C73E3E' : '1px solid #D6C7AC';
+  const inputStyle = {flex: 1, border: 'none', outline: 'none', fontSize: 13, background: 'transparent', minWidth: 0, padding: 0, fontFamily: 'inherit', color: '#2A2018'};
+  return (
+    <div style={{marginBottom: 8}}>
+      <div style={{fontSize: 11, color: '#5C5550', fontWeight: 600, marginBottom: 4}}>{label}</div>
+      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6}}>
+        <div style={{...iwBase, border: iwBorder, background: warn ? '#FEF6F6' : '#fff'}}>
+          <input type="text" inputMode="numeric" value={fmt(displayEur)} onChange={handleEur} placeholder="0" style={inputStyle}/>
+          <span style={{fontSize: 11, color: '#8B7F6E', fontWeight: 600}}>€</span>
+          <span style={{fontSize: 14, lineHeight: 1}} aria-hidden="true">🇪🇺</span>
+        </div>
+        <div style={{...iwBase, border: iwBorder, background: warn ? '#FEF6F6' : '#fff'}}>
+          <input type="text" inputMode="numeric" value={fmt(displayMad)} onChange={handleMad} placeholder="0" style={inputStyle}/>
+          <span style={{fontSize: 11, color: '#8B7F6E', fontWeight: 600}}>Dhs</span>
+          <span style={{fontSize: 14, lineHeight: 1}} aria-hidden="true">🇲🇦</span>
+        </div>
+      </div>
+      {hint && <div style={{fontSize: 10, color: warn ? '#C73E3E' : '#8B7F6E', fontStyle: 'italic', textAlign: 'center', marginTop: 3, fontWeight: warn ? 600 : 400}}>{hint}</div>}
+    </div>
+  );
+}
+
 // V62 — sous-titre regroupant pour les blocs "détails" en bas de section.
 // M/2026/05/02/35 — M144.D livrable 1 : FraisAgenceMultiActeurs composant autonome.
 // Data model array : bien.frais_agence_acteurs = [{id, label, mode, valeur, total_calcule}].
@@ -7288,23 +7350,27 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
             (etend M/30/29 cote Vendeur). Suffixe dynamique {devise} partout (suppression franche
             ternaire MAD/€ binaire). */}
         <V55Bloc title="Prix" theme="prix">
-          {/* M/2026/05/02/33 — M144.B : Bloc Prix Acheteur 3 cols (Min / Max / Liquide).
-              Validation min<max au blur via _budgetMinMaxWarn calculé live (si max < min → warn rouge).
-              Liquide dispo = capacité cash hors crédit. */}
-          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
-            <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise</span>
+          {/* M/2026/05/02/43 — M-PAN-INT : Layout 2 — 3 lignes fourchette EUR/MAD pair.
+              Validation Prix max < Prix min : warn rouge live sur la 2e ligne. Liquide dispo = cash hors crédit.
+              Migration : legacy budget_min/budget_max/prix_liquide vers nouveaux keys EUR+MAD. */}
+          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+            <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise dossier</span>
             <CurrencyPicker value={devise} onChange={pickDevise}/>
             {d.devise_source === 'manual' && (
               <span style={{fontSize:10, color:'#A07842', fontStyle:'italic'}}>(choix manuel)</span>
             )}
           </div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
-            <V55Field label="Budget min" type="number" value={d.budget_min} onChange={v => set('budget_min', v)} suffix={devise} style={{marginBottom:0}}/>
-            <V55Field label="Budget max" type="number" value={d.budget_max} onChange={v => set('budget_max', v)} suffix={devise} style={{marginBottom:0}}
-              hint={(Number(d.budget_min) > 0 && Number(d.budget_max) > 0 && Number(d.budget_max) < Number(d.budget_min)) ? '⚠ Max < Min' : ''}/>
-            <V55Field label="Liquide dispo" type="number" value={d.prix_liquide} onChange={v => set('prix_liquide', v)} suffix={devise} hint="Cash hors crédit" style={{marginBottom:0}}/>
-          </div>
-          <ConversionDisplay amount={d.budget_max} devise={devise} pays={paysBien}/>
+          <ConversionPair label="Prix min" eurKey="prix_min_eur" madKey="prix_min_mad" legacyKey="budget_min" set={set} d={d} devise={devise} hint="Conversion auto au taux du jour"/>
+          {(() => {
+            const _minRef = Number(d.prix_min_eur) || (Number(d.budget_min) || 0);
+            const _maxRef = Number(d.prix_max_eur) || (Number(d.budget_max) || 0);
+            const warn = _minRef > 0 && _maxRef > 0 && _maxRef < _minRef;
+            return (
+              <ConversionPair label="Prix max" eurKey="prix_max_eur" madKey="prix_max_mad" legacyKey="budget_max" set={set} d={d} devise={devise}
+                hint={warn ? '⚠ Prix max < Prix min' : ''} warn={warn}/>
+            );
+          })()}
+          <ConversionPair label="Liquide dispo" eurKey="liquide_dispo_eur" madKey="liquide_dispo_mad" legacyKey="prix_liquide" set={set} d={d} devise={devise} hint="Cash hors crédit"/>
         </V55Bloc>
 
         <V55Bloc title="Frais d'agence" theme="agence">
@@ -7448,23 +7514,21 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
       <>
         {/* V62 — Bloc essentiels en haut */}
         <V55Bloc title="Prix" theme="prix">
-          {/* M/2026/04/30/29 — CurrencyPicker mondial + ConversionDisplay live sous Prix. */}
-          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
-            <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise</span>
+          {/* M/2026/05/02/43 — M-PAN-INT : Layout 2 (Cards thématiques colorées) — 3 lignes EUR/MAD pair.
+              Devise dossier reste choisissable pour synthèse/PDF/share. ConversionPair gère affichage live
+              EUR + MAD côte à côte avec bi-directional auto-conversion (TAUX 10.85). Migration douce :
+              les anciens dossiers (prix_affiche/prix_plancher/prix_liquide en devise dossier) restent
+              affichés correctement. Sur edit les 3 keys (eur, mad, legacy) sont écrites en cohérence. */}
+          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+            <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise dossier</span>
             <CurrencyPicker value={devise} onChange={pickDevise}/>
             {d.devise_source === 'manual' && (
               <span style={{fontSize:10, color:'#A07842', fontStyle:'italic'}}>(choix manuel)</span>
             )}
           </div>
-          {/* M/2026/05/02/22 — M134 : Bloc Prix Vendeur restructuré 3 cols 1 ligne (iPhone first).
-              Prix affiché + Prix plancher (confidentiel agent) + Liquide (cash hors compta MA notamment).
-              Sur mobile <500px le grid responsive s'empile. Date de disponibilité reste en dessous. */}
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:6}}>
-            <V55Field label="Prix affiché" type="number" value={d.prix_affiche} onChange={v => set('prix_affiche', v)} suffix={devise} style={{marginBottom:0}}/>
-            <V55Field label="Prix plancher" type="number" value={d.prix_plancher} onChange={v => set('prix_plancher', v)} suffix={devise} hint="Confidentiel agent" style={{marginBottom:0}}/>
-            <V55Field label="Liquide (cash)" type="number" value={d.prix_liquide} onChange={v => set('prix_liquide', v)} suffix={devise} hint="Partie cash hors compta" style={{marginBottom:0}}/>
-          </div>
-          <ConversionDisplay amount={d.prix_affiche} devise={devise} pays={paysBien}/>
+          <ConversionPair label="Prix" eurKey="prix_eur" madKey="prix_mad" legacyKey="prix_affiche" set={set} d={d} devise={devise} hint="Conversion auto au taux du jour"/>
+          <ConversionPair label="Prix plancher" eurKey="prix_plancher_eur" madKey="prix_plancher_mad" legacyKey="prix_plancher" set={set} d={d} devise={devise} hint="🔒 Visible agent uniquement (masqué sur PDF partagé)"/>
+          <ConversionPair label="Liquide" eurKey="liquide_eur" madKey="liquide_mad" legacyKey="prix_liquide" set={set} d={d} devise={devise} hint="Partie cash hors compta"/>
           <V55Field label="Date de disponibilité" type="date_fr" value={d.date_disponibilite} onChange={v => set('date_disponibilite', v)}/>
         </V55Bloc>
 
@@ -7579,14 +7643,19 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/04/30/49 — Sous-bloc Recherche bien aussi pour Locataire. */}
         <RechercheBienBloc d={d} set={set}/>
         <V55Bloc title="Loyer recherché" theme="prix">
-          {/* M/2026/05/02/33 — M144.B : Bloc Prix Locataire 3 cols Loyer min / max / Caution dispo.
-              Validation min<max via hint conditionnel. */}
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
-            <V55Field label="Loyer min" type="number" value={d.loyer_min} onChange={v => set('loyer_min', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} style={{marginBottom:0}}/>
-            <V55Field label="Loyer max" type="number" value={d.loyer_max} onChange={v => set('loyer_max', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} style={{marginBottom:0}}
-              hint={(Number(d.loyer_min) > 0 && Number(d.loyer_max) > 0 && Number(d.loyer_max) < Number(d.loyer_min)) ? '⚠ Max < Min' : 'Charges comprises'}/>
-            <V55Field label="Caution dispo" type="number" value={d.caution_dispo} onChange={v => set('caution_dispo', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint="Cash dépôt" style={{marginBottom:0}}/>
-          </div>
+          {/* M/2026/05/02/43 — M-PAN-INT : Layout 2 — 3 lignes fourchette EUR/MAD pair.
+              Loyer min / Loyer max (validation min<max warn rouge live) / Caution dispo. */}
+          <ConversionPair label="Loyer min" eurKey="loyer_min_eur" madKey="loyer_min_mad" legacyKey="loyer_min" set={set} d={d} devise={devise} hint="Conversion auto"/>
+          {(() => {
+            const _minRef = Number(d.loyer_min_eur) || (Number(d.loyer_min) || 0);
+            const _maxRef = Number(d.loyer_max_eur) || (Number(d.loyer_max) || 0);
+            const warn = _minRef > 0 && _maxRef > 0 && _maxRef < _minRef;
+            return (
+              <ConversionPair label="Loyer max" eurKey="loyer_max_eur" madKey="loyer_max_mad" legacyKey="loyer_max" set={set} d={d} devise={devise}
+                hint={warn ? '⚠ Loyer max < Loyer min' : 'Charges comprises'} warn={warn}/>
+            );
+          })()}
+          <ConversionPair label="Caution dispo" eurKey="caution_dispo_eur" madKey="caution_dispo_mad" legacyKey="caution_dispo" set={set} d={d} devise={devise} hint="Cash dépôt"/>
         </V55Bloc>
 
         <V55Bloc title="Honoraires location (estimation)" theme="agence">
@@ -7655,16 +7724,14 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const rendementBrutAuto = acquisitionPrix > 0 && loyer > 0 ? Math.round((loyer * 12) / acquisitionPrix * 1000) / 10 : null;
     return (
       <>
-        <V55Bloc title="Loyer & charges" theme="prix">
-          {/* M/2026/05/02/33 — M144.B : Bloc Prix Bailleur 3 cols Loyer / Charges / Caution.
-              Champs secondaires (Loyer plancher confidentiel, charges non récupérables) restent
-              en dessous pour garder la donnée mais hiérarchie visuelle 3 cols principaux iPhone-first. */}
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:6}}>
-            <V55Field label="Loyer demandé" type="number" value={d.loyer_demande} onChange={v => set('loyer_demande', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} hint="Hors charges" style={{marginBottom:0}}/>
-            <V55Field label="Charges" type="number" value={d.charges_recuperables != null ? d.charges_recuperables : d.charges} onChange={v => set('charges_recuperables', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} hint="Récupérables" style={{marginBottom:0}}/>
-            <V55Field label="Caution" type="number" value={d.depot_garantie_demande != null ? d.depot_garantie_demande : d.depot} onChange={v => set('depot_garantie_demande', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? '1-2 mois loyer' : '2-3 mois loyer'} style={{marginBottom:0}}/>
-          </div>
-          <V55Field label="Loyer plancher (confidentiel)" type="number" value={d.loyer_plancher} onChange={v => set('loyer_plancher', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'} hint="Visible uniquement par l'agent"/>
+        <V55Bloc title="Loyer & conditions" theme="prix">
+          {/* M/2026/05/02/43 — M-PAN-INT : Layout 2 — 4 lignes EUR/MAD pair.
+              Loyer / Loyer plancher (confidentiel agent) / Charges récupérables / Caution.
+              Charges non récupérables (côté propriétaire) reste en bas en saisie simple devise dossier. */}
+          <ConversionPair label="Loyer demandé" eurKey="loyer_eur" madKey="loyer_mad" legacyKey="loyer_demande" set={set} d={d} devise={devise} hint="Conversion auto"/>
+          <ConversionPair label="Loyer plancher" eurKey="loyer_plancher_eur" madKey="loyer_plancher_mad" legacyKey="loyer_plancher" set={set} d={d} devise={devise} hint="🔒 Visible agent uniquement"/>
+          <ConversionPair label="Charges" eurKey="charges_eur" madKey="charges_mad" legacyKey="charges_recuperables" set={set} d={d} devise={devise} hint="Mensuelles récupérables"/>
+          <ConversionPair label="Caution" eurKey="caution_eur" madKey="caution_mad" legacyKey="depot_garantie_demande" set={set} d={d} devise={devise} hint={paysBien === 'FR' ? '1-2 mois loyer' : '2-3 mois loyer'}/>
           <V55Field label="Charges non récupérables (propriétaire)" type="number" value={d.charges_non_recuperables} onChange={v => set('charges_non_recuperables', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
         </V55Bloc>
 
