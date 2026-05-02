@@ -1479,7 +1479,10 @@ function CountryAutocomplete({label, value, onChange, style={}, placeholder='Tap
 // (198 pays ISO 3166 livre M109) via /api/referentiels.php?action=countries comme source
 // de verite, fallback sur PAYS si fetch echoue. Aussi : popover etroit absolute positioned
 // sous le bouton (au lieu de modale plein ecran .bsheet) - spec corrigee Philippe.
-const M111_MANAGED = ['FR', 'MA', 'ES', 'DZ', 'TN'];
+// M/2026/05/02/7 — M120 : favoris UI MA/FR/ES/IT/BE (Italie + Belgique entrent, Algerie + Tunisie
+// sortent UI mais restent disponibles dans "Tous les pays"). Les referentiels metier complets restent
+// FR/MA/ES (DZ/TN structure preparee). IT/BE en fallback _default.json jusqu'a creation referentiels.
+const M111_MANAGED = ['MA', 'FR', 'ES', 'IT', 'BE'];
 const M111_COUNTRIES_CACHE = {data: null, promise: null};
 function fetchAllCountries() {
   if (M111_COUNTRIES_CACHE.data) return Promise.resolve(M111_COUNTRIES_CACHE.data);
@@ -1511,7 +1514,7 @@ function fetchAllCountries() {
     });
   return M111_COUNTRIES_CACHE.promise;
 }
-function PaysCompactButton({value, onChange}) {
+function PaysCompactButton({value, onChange, label = 'Pays'}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [allCountries, setAllCountries] = React.useState(() => M111_COUNTRIES_CACHE.data || []);
@@ -1553,32 +1556,33 @@ function PaysCompactButton({value, onChange}) {
     const tail = [dial, cur].filter(Boolean).join(' · ');
     return tail;
   };
+  // M/2026/05/02/7 — M120 livrable A : compactage items 6x10 + drapeau 16px + name 13px medium.
   const renderItem = (p) => {
     const sel = p.c === value;
     return (
       <div key={p.c}
         onClick={() => { onChange(p.c); setOpen(false); setQuery(''); }}
         style={{
-          display:'flex', alignItems:'center', gap:10,
-          padding:'8px 12px', cursor:'pointer', fontSize:13,
+          display:'flex', alignItems:'center', gap:8,
+          padding:'6px 10px', cursor:'pointer', fontSize:13,
           background: sel ? '#FBF1E4' : 'transparent',
           borderBottom:'1px solid #F4EEE6',
           transition:'background .15s ease',
         }}
         onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'rgba(107,79,53,0.04)'; }}
         onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'transparent'; }}>
-        <span style={{fontSize:18, flexShrink:0, lineHeight:1}}>{p.f}</span>
-        <span style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:1, lineHeight:1.25}}>
-          <span style={{fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{p.n}</span>
+        <span style={{fontSize:16, flexShrink:0, lineHeight:1}}>{p.f}</span>
+        <span style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:0, lineHeight:1.25}}>
+          <span style={{fontSize:13, fontWeight:500, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{p.n}</span>
           <span style={{fontSize:11, color:'#8B7F6E'}}>{fmtLine(p)}</span>
         </span>
-        {sel && <span style={{color:'#B26D3A', fontWeight:700, flexShrink:0}}>✓</span>}
+        {sel && <span style={{color:'#B26D3A', fontWeight:700, flexShrink:0, fontSize:12}}>✓</span>}
       </div>
     );
   };
   return (
     <div ref={wrapperRef} style={{minWidth:0, position:'relative'}}>
-      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays</label>
+      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>
       <button type="button" onClick={() => setOpen(o => !o)}
         title={ent ? ent.n : 'Choisir le pays'}
         style={{width:'100%', boxSizing:'border-box', height:40, padding:'0 8px', borderRadius:8,
@@ -1592,17 +1596,17 @@ function PaysCompactButton({value, onChange}) {
       {open && (
         <div style={{
           position:'absolute', top:'calc(100% + 4px)', left:0,
-          width:'min(320px, calc(100vw - 24px))', maxHeight:400,
-          background:'#fff', border:'1px solid #D9C9A8', borderRadius:12,
+          width:'min(220px, calc(100vw - 24px))', maxHeight:280,
+          background:'#fff', border:'1px solid #D9C9A8', borderRadius:10,
           boxShadow:'0 8px 32px rgba(107,79,53,0.12)',
           display:'flex', flexDirection:'column', zIndex:1000,
           animation:'fadeIn .15s ease-out',
           overflow:'hidden',
         }}>
-          <div style={{padding:'10px 12px', borderBottom:'1px solid #EDE6DC'}}>
+          <div style={{padding:'8px 10px', borderBottom:'1px solid #EDE6DC'}}>
             <input type="text" value={query} onChange={e => setQuery(e.target.value)}
-              placeholder="🔍 Rechercher un pays..." autoCapitalize="off" autoCorrect="off"
-              style={{width:'100%', boxSizing:'border-box', padding:'7px 10px', border:'1px solid #D9C9A8', borderRadius:6, fontSize:13, fontFamily:'inherit', outline:'none'}}/>
+              placeholder="Rechercher..." autoCapitalize="off" autoCorrect="off"
+              style={{width:'100%', boxSizing:'border-box', padding:'6px 8px', border:'1px solid #D9C9A8', borderRadius:6, fontSize:12, fontFamily:'inherit', outline:'none'}}/>
           </div>
           <div style={{flex:1, overflowY:'auto'}}>
             {managed.length === 0 && others.length === 0 && (
@@ -1610,22 +1614,13 @@ function PaysCompactButton({value, onChange}) {
                 {allCountries.length === 0 ? 'Chargement…' : 'Aucun pays'}
               </div>
             )}
-            {managed.length > 0 && (
-              <>
-                <div style={{padding:'10px 12px 6px', fontSize:10, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, background:'#FBF7EF', borderBottom:'1px solid #EDE6DC'}}>
-                  Pays gérés
-                </div>
-                {managed.map(renderItem)}
-              </>
+            {/* M/2026/05/02/7 — M120 livrable A : separateurs minimaux ocre soft (pas de headers
+                texte gros). Section managed (favoris) directe en haut, separateur entre les 2. */}
+            {managed.length > 0 && managed.map(renderItem)}
+            {managed.length > 0 && others.length > 0 && (
+              <div style={{height:1, background:'#E5D9C2', margin:'2px 0'}}/>
             )}
-            {others.length > 0 && (
-              <>
-                <div style={{padding:'10px 12px 6px', fontSize:10, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, background:'#FBF7EF', borderTop:'1px solid #EDE6DC', borderBottom:'1px solid #EDE6DC'}}>
-                  Tous les pays
-                </div>
-                {others.map(renderItem)}
-              </>
-            )}
+            {others.length > 0 && others.map(renderItem)}
           </div>
         </div>
       )}
@@ -3335,9 +3330,11 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
   return (
     <div style={{borderLeft:'3px solid #8B5E3C', paddingLeft:10, marginTop:14, marginBottom:10}}>
       <div style={{fontSize:12, fontWeight:700, color:'#8B5E3C', fontStyle:'italic', letterSpacing:.4, marginBottom:8}}>Pièce d'identité</div>
-      <div className="row-pair">
-        <Select label="Type pièce" value={d.identite_type || ''} onChange={v => set('identite_type', v)} options={V8_TYPES_PIECE} style={{flex:1}}/>
-        <Field label="N° du document" value={d.identite_numero || ''} onChange={v => set('identite_numero', v)} style={{flex:1}}/>
+      {/* M/2026/05/02/7 — M120 livrable C : 3 colonnes PAYS / TYPE / N° (CountryPicker partage). */}
+      <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)', gap:6, marginBottom:6}}>
+        <PaysCompactButton label="Pays" value={d.id_country || ''} onChange={v => set('id_country', v)}/>
+        <Select label="Type pièce" value={d.identite_type || ''} onChange={v => set('identite_type', v)} options={V8_TYPES_PIECE} style={{marginBottom:0}}/>
+        <Field label="N° du document" value={d.identite_numero || ''} onChange={v => set('identite_numero', v)} style={{marginBottom:0}}/>
       </div>
       <div className="row-pair">
         <Field label="Délivré par" value={d.identite_delivre_par || ''} onChange={v => set('identite_delivre_par', v)} style={{flex:1}}/>
@@ -18548,13 +18545,15 @@ function FormView(props) {
                   autoComplete="postal-code" name="postal-code" inputMode="text"/>
                 <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
                   autoComplete="address-level2" name="address-level2"/>
-                <CountryAutocomplete label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{marginBottom:0}}
-                  autoComplete="country-name" name="country-name"/>
+                {/* M/2026/05/02/7 — M120 livrable C : CountryPicker partage Section I/II (coherence). */}
+                <PaysCompactButton label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
               </div>
               {/* M/2026/04/29/44 v8 — L3 Date naissance / Pays de naissance. */}
               <div className="row-pair">
                 <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1}}/>
-                <CountryAutocomplete label="Pays de naissance" value={d.pays_naissance} onChange={v => set('pays_naissance', v)} style={{flex:1}}/>
+                <div style={{flex:1, minWidth:0}}>
+                  <PaysCompactButton label="Pays de naissance" value={d.pays_naissance} onChange={v => set('pays_naissance', v)}/>
+                </div>
               </div>
               {/* M/2026/04/29/44 v8 — Sub-bloc Piece d'identite. */}
               <PieceIdentiteBlock d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null} showToast={showToast}/>
@@ -18603,8 +18602,8 @@ function FormView(props) {
                   autoComplete="section-societe postal-code" name="societe-postal-code"/>
                 <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
                   autoComplete="section-societe address-level2" name="societe-address-level2"/>
-                <CountryAutocomplete label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)} style={{marginBottom:0}}
-                  autoComplete="section-societe country-name" name="societe-country-name"/>
+                {/* M/2026/05/02/7 — M120 livrable C : Section I Société pays = CountryPicker. */}
+                <PaysCompactButton label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
               </div>
               {/* L6 Tel | Email (harmonise Particulier : Tel a gauche, Email a droite). */}
               <div className="row-pair">

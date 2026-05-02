@@ -301,6 +301,12 @@ switch ($action) {
         $id_type       = isset($c['id_type'])   && $c['id_type']   !== '' ? substr(trim((string)$c['id_type']),   0, 20)  : null;
         $id_number     = isset($c['id_number']) && $c['id_number'] !== '' ? substr(trim((string)$c['id_number']), 0, 50)  : null;
         $bien_country  = $sanIso2($c['bien_country'] ?? null);
+        // M/2026/05/02/7 — M120 livrable D : fallback bien_country = bien.pays (geoIP detect_country
+        // pre-remplit bien.pays au mount FormView via M107). Garantit que bien_country DB col
+        // reflete toujours le pays du bien sans necessiter une mise a jour manuelle frontend.
+        if (!$bien_country && isset($c['bien']) && is_array($c['bien']) && !empty($c['bien']['pays'])) {
+            $bien_country = $sanIso2($c['bien']['pays']);
+        }
         // V18.17 — is_staged respecté à l'INSERT (import URL/image crée staged).
         // En UPDATE : on conserve l'existant (promote est géré par action=promote dédié).
         $is_staged_new = !empty($c['is_staged']) ? 1 : 0;
