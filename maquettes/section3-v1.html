@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Maquettes Section III — Ocre Immo</title>
+<style>
+:root {
+  --ocre-bg: #FAF6EE;
+  --ocre-soft: #FBF1E4;
+  --ocre-border: #E8DDC9;
+  --ocre-mid: #C9B79A;
+  --ocre-strong: #8B5E3C;
+  --ocre-deep: #5C3B1E;
+  --ocre-text: #2A2018;
+  --ocre-grey: #8B7F6E;
+  --ocre-input-empty: #FDFAF7;
+  --ocre-input-filled: #FFFCF5;
+  --red-warn: #C73E3E;
+  --green-ok: #2D6B3F;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(180deg, #F4ECE0 0%, #EAD7B8 100%);
+  margin: 0;
+  padding: 24px 12px;
+  color: var(--ocre-text);
+}
+.page-header {
+  max-width: 1200px;
+  margin: 0 auto 24px;
+  padding: 16px 20px;
+  background: white;
+  border: 1px solid var(--ocre-border);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(139,94,60,.08);
+}
+.page-header h1 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ocre-deep);
+}
+.page-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ocre-grey);
+  line-height: 1.5;
+}
+.profil-section {
+  max-width: 1400px;
+  margin: 0 auto 32px;
+}
+.profil-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--ocre-strong);
+  color: white;
+  border-radius: 12px 12px 0 0;
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.profil-banner .badge {
+  background: rgba(255,255,255,.18);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.maquettes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(390px, 1fr));
+  gap: 18px;
+  padding: 18px;
+  background: white;
+  border: 1px solid var(--ocre-border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+@media (min-width: 1280px) {
+  .maquettes-grid { grid-template-columns: repeat(5, 1fr); }
+}
+.iphone-frame {
+  width: 390px;
+  max-width: 100%;
+  margin: 0 auto;
+  background: #1d1d1f;
+  border-radius: 38px;
+  padding: 8px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+}
+.iphone-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 18px 4px;
+  font-size: 11px;
+  color: white;
+  font-weight: 600;
+}
+.iphone-screen {
+  background: var(--ocre-bg);
+  border-radius: 30px;
+  overflow: hidden;
+  min-height: 720px;
+}
+.variant-label {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ocre-deep);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+  padding: 6px 12px;
+  background: var(--ocre-soft);
+  border: 1px solid var(--ocre-mid);
+  border-radius: 16px;
+  display: inline-block;
+}
+.variant-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* CARD page d'accueil */
+.card {
+  background: white;
+  border: 1px solid var(--ocre-strong);
+  border-radius: 14px;
+  margin: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(139,94,60,.10);
+}
+.card-head {
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  align-items: flex-start;
+}
+.card-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #D4B895 0%, #B58D5C 100%);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 22px;
+}
+.card-info { flex: 1; min-width: 0; }
+.card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ocre-text);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.profil-pill {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--ocre-strong);
+  color: white;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+.profil-pill.acheteur { background: #2C5F8B; }
+.profil-pill.vendeur { background: #2C3F8B; }
+.profil-pill.bailleur { background: #5F8B2C; }
+.profil-pill.locataire { background: #8B5F2C; }
+.pills-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  background: #FDF8F0;
+  border: 1px solid var(--ocre-mid);
+  border-radius: 14px;
+  font-size: 11px;
+  color: var(--ocre-deep);
+  font-weight: 500;
+  text-decoration: none;
+}
+.pill svg { width: 11px; height: 11px; }
+
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid var(--ocre-border);
+}
+.card-sector {
+  padding: 8px 10px;
+  border-right: 1px solid var(--ocre-border);
+}
+.card-sector:last-child { border-right: none; }
+.card-sector-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--ocre-grey);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.card-sector-l1 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ocre-text);
+}
+.card-sector-l2 {
+  font-size: 11px;
+  color: var(--ocre-grey);
+  margin-top: 2px;
+}
+.card-pill-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  background: #FDF8F0;
+  border: 1px solid var(--ocre-mid);
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--ocre-deep);
+  font-weight: 600;
+  margin-top: 4px;
+}
+.card-prix-resume {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ocre-deep);
+  margin-top: 4px;
+}
+
+/* SECTION III */
+.section3 {
+  background: var(--ocre-bg);
+  padding: 14px 12px;
+  border-top: 4px solid var(--ocre-strong);
+}
+.section3-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ocre-deep);
+  display: inline-block;
+  border-bottom: 2px solid #A07842;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+}
+.s3-bloc {
+  background: white;
+  border: 1px solid var(--ocre-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.s3-bloc-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ocre-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.s3-row {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.s3-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+.s3-row-2 { grid-template-columns: 1fr 1fr; }
+.s3-field { min-width: 0; }
+.s3-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ocre-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 3px;
+  display: block;
+}
+.s3-input {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1.5px solid var(--ocre-mid);
+  border-radius: 7px;
+  font-size: 13px;
+  background: var(--ocre-input-filled);
+  color: var(--ocre-text);
+  font-weight: 500;
+}
+.s3-input.empty { background: var(--ocre-input-empty); border-color: var(--ocre-border); }
+.s3-input.warn { border-color: var(--red-warn); background: #FEF6F6; }
+.s3-input.confidential {
+  background: linear-gradient(135deg, #FFF5E6 0%, #FBE8C8 100%);
+  border-style: dashed;
+}
+.s3-suffix {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.s3-suffix .s3-input { padding-right: 38px; }
+.s3-suffix-text {
+  position: absolute;
+  right: 9px;
+  font-size: 11px;
+  color: var(--ocre-grey);
+  font-weight: 600;
+}
+.s3-hint {
+  font-size: 9.5px;
+  color: var(--ocre-grey);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.s3-acteur-row {
+  display: grid;
+  grid-template-columns: 1.5fr 0.7fr 0.8fr 1.1fr 24px;
+  gap: 4px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--ocre-border);
+  font-size: 11.5px;
+}
+.s3-acteur-row:last-child { border-bottom: none; }
+.s3-acteur-pill {
+  background: var(--ocre-soft);
+  padding: 3px 7px;
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--ocre-deep);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.s3-toggle-pill {
+  display: flex;
+  background: var(--ocre-input-empty);
+  border: 1px solid var(--ocre-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.s3-toggle-btn {
+  flex: 1;
+  text-align: center;
+  padding: 4px 0;
+  font-size: 10px;
+  cursor: pointer;
+  color: var(--ocre-grey);
+  font-weight: 600;
+}
+.s3-toggle-btn.active {
+  background: var(--ocre-strong);
+  color: white;
+}
+.s3-add-btn {
+  display: block;
+  width: 100%;
+  padding: 6px;
+  background: white;
+  border: 1.5px dashed var(--ocre-mid);
+  border-radius: 6px;
+  color: var(--ocre-strong);
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+  margin-top: 6px;
+}
+.s3-total-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 4px 0;
+  border-top: 1.5px solid var(--ocre-mid);
+  margin-top: 6px;
+  font-weight: 700;
+  color: var(--ocre-deep);
+  font-size: 13px;
+}
+.s3-readonly {
+  background: #F4ECE0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ocre-deep);
+}
+
+.s3-synthese {
+  background: linear-gradient(135deg, #FBF1E4 0%, #F5EAD8 100%);
+  border: 1.5px solid var(--ocre-mid);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.s3-synthese-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ocre-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.s3-synthese-value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ocre-text);
+}
+.s3-synthese-detail {
+  font-size: 10.5px;
+  color: var(--ocre-grey);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.s3-collapsed {
+  background: white;
+  border: 1px solid var(--ocre-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--ocre-grey);
+  font-weight: 600;
+  cursor: pointer;
+}
+.s3-collapsed .chev { color: var(--ocre-mid); }
+
+/* Variante B — Synthèse top */
+.s3-synthese-big {
+  background: linear-gradient(135deg, var(--ocre-strong) 0%, #A06B45 100%);
+  color: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.s3-synthese-big .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; opacity: 0.9; }
+.s3-synthese-big .num { font-size: 26px; font-weight: 800; margin-top: 4px; }
+.s3-synthese-big .sub { font-size: 11px; opacity: 0.85; margin-top: 4px; }
+
+/* Variante C — stepper */
+.s3-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding-bottom: 4px;
+}
+.s3-tab {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  background: white;
+  border: 1px solid var(--ocre-border);
+  border-radius: 14px;
+  font-size: 11px;
+  color: var(--ocre-grey);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.s3-tab.active {
+  background: var(--ocre-strong);
+  color: white;
+  border-color: var(--ocre-strong);
+}
+.s3-progress {
+  height: 3px;
+  background: var(--ocre-border);
+  border-radius: 2px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.s3-progress-fill {
+  height: 100%;
+  background: var(--ocre-strong);
+}
+.s3-stepper-info {
+  text-align: center;
+  font-size: 10px;
+  color: var(--ocre-grey);
+  margin-bottom: 8px;
+}
+.s3-stepper-next {
+  background: var(--ocre-strong);
+  color: white;
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 700;
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+/* Variante D — Cards groupées */
+.s3-card-theme {
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1.5px solid;
+}
+.s3-card-theme.green { background: #EAF7E8; border-color: #9DCB94; }
+.s3-card-theme.ocre { background: var(--ocre-soft); border-color: var(--ocre-mid); }
+.s3-card-theme.blue { background: #E5F0F9; border-color: #7FAFD3; }
+.s3-card-theme.purple { background: #F0E8F7; border-color: #B79DD3; }
+.s3-card-theme h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.s3-card-theme.green h4 { color: #2D6B3F; }
+.s3-card-theme.ocre h4 { color: var(--ocre-deep); }
+.s3-card-theme.blue h4 { color: #1F5784; }
+.s3-card-theme.purple h4 { color: #5F3F8B; }
+
+/* Variante E — tableau */
+.s3-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.s3-table th, .s3-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--ocre-border);
+}
+.s3-table th {
+  background: var(--ocre-soft);
+  color: var(--ocre-deep);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 9.5px;
+  letter-spacing: 0.4px;
+}
+.s3-table tr.total td {
+  background: var(--ocre-soft);
+  font-weight: 700;
+  border-top: 2px solid var(--ocre-strong);
+  border-bottom: none;
+}
+.s3-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>20 maquettes Section III — Choisis-en 1 et envoie-moi le numéro</h1>
+  <p>5 variantes de layout × 4 profils (Vendeur, Acheteur, Bailleur, Locataire). Cadre iPhone 390px largeur. Ordre fixe haut → Prix → Frais agence → Frais notaire → Synthèse → sous-blocs collapsed (sauf variantes alternatives).</p>
+</div>
+
+<script>
+// Helper inline pour générer les 20 maquettes via templating JS pur (pas de framework).
+// Chaque maquette = card accueil + Section III complète, dans un frame iPhone simulé.
+const MOCK = {
+  vendeur: {
+    nom: "Hassan EL FASSI",
+    profil: "VENDEUR",
+    profilClass: "vendeur",
+    tel: "+212 661 23 45 67",
+    email: "hassan.elfassi@example.com",
+    adresse: "12 Derb El Karima, Médina",
+    ville: "Marrakech",
+    quartier: "Médina",
+    typeBien: "Riad",
+    surface: "280 m² · 6 ch.",
+    prix_label_1: "Prix affiché",
+    prix_label_2: "Prix plancher",
+    prix_label_3: "Liquide (cash)",
+    prix_v1: "5 800 000",
+    prix_v2: "5 500 000",
+    prix_v3: "600 000",
+    prix_resume: "5,8 M MAD",
+    devise: "MAD",
+    showNotaire: true,
+    fraisNotaireLabel: "MA 6%",
+    fraisNotairePct: "6,0",
+    fraisNotaireMontant: "348 000",
+    syntheseLabel: "Prix de vente affiché",
+    syntheseValue: "6 235 000 MAD",
+    syntheseDetail: "Prix 5 800 000 + Liquide 600 000 + Agence 290 000 (hors notaire à charge acheteur)",
+    acteurs: [
+      {nom: "Agent mandat", type: "%", val: "2,5", montant: "145 000"},
+      {nom: "Agent contrepartie", type: "%", val: "2,5", montant: "145 000"}
+    ],
+    totalAgence: "290 000",
+  },
+  acheteur: {
+    nom: "Pierre & Marie DUPONT",
+    profil: "ACHETEUR",
+    profilClass: "acheteur",
+    tel: "+33 6 12 34 56 78",
+    email: "pierre.dupont@example.fr",
+    adresse: "45 Rue Lafayette, Paris 75009",
+    ville: "Marrakech (recherche)",
+    quartier: "Palmeraie / Médina",
+    typeBien: "Villa",
+    surface: "600+ m² · 5+ ch.",
+    prix_label_1: "Budget min",
+    prix_label_2: "Budget max",
+    prix_label_3: "Liquide max",
+    prix_v1: "3 500 000",
+    prix_v2: "4 500 000",
+    prix_v3: "500 000",
+    prix_resume: "3,5 - 4,5 M EUR",
+    devise: "EUR",
+    showNotaire: true,
+    fraisNotaireLabel: "MA 6% (charge acheteur)",
+    fraisNotairePct: "6,0",
+    fraisNotaireMontant: "270 000",
+    syntheseLabel: "Budget total mobilisable",
+    syntheseValue: "3,5 - 4,5 M EUR + 500 K EUR liquide",
+    syntheseDetail: "À charge acheteur : Agence ~150 K + Notaire ~270 K = ~420 K EUR additionnels",
+    acteurs: [
+      {nom: "Agent mandat", type: "%", val: "3,0", montant: "120 000"},
+      {nom: "Apporteur", type: "Forf", val: "10 000", montant: "10 000"}
+    ],
+    totalAgence: "130 000",
+  },
+  bailleur: {
+    nom: "Fatima BENHIMA",
+    profil: "BAILLEUR",
+    profilClass: "bailleur",
+    tel: "+212 661 33 78 41",
+    email: "fatima.benhima@example.com",
+    adresse: "Boulevard Hassan, Guéliz",
+    ville: "Marrakech",
+    quartier: "Guéliz",
+    typeBien: "Appartement",
+    surface: "110 m² · 2 ch.",
+    prix_label_1: "Loyer mensuel",
+    prix_label_2: "Charges",
+    prix_label_3: "Caution demandée",
+    prix_v1: "12 000",
+    prix_v2: "800",
+    prix_v3: "24 000",
+    prix_resume: "12 000 MAD/mois",
+    devise: "MAD",
+    showNotaire: false,
+    syntheseLabel: "Loyer affiché (charges incluses)",
+    syntheseValue: "12 800 MAD/mois",
+    syntheseDetail: "Loyer 12 000 + Charges 800. Caution 2 mois loyer.",
+    acteurs: [
+      {nom: "Agent mandat", type: "Forf", val: "12 000", montant: "12 000"}
+    ],
+    totalAgence: "12 000",
+  },
+  locataire: {
+    nom: "Sébastien LEMOINE",
+    profil: "LOCATAIRE",
+    profilClass: "locataire",
+    tel: "+33 6 84 22 17 56",
+    email: "sebastien.lemoine@example.com",
+    adresse: "8 Avenue de la République, Lyon",
+    ville: "Marrakech (recherche)",
+    quartier: "Guéliz / Hivernage",
+    typeBien: "T2 ou T3",
+    surface: "60-90 m²",
+    prix_label_1: "Loyer min",
+    prix_label_2: "Loyer max",
+    prix_label_3: "Caution dispo",
+    prix_v1: "8 000",
+    prix_v2: "14 000",
+    prix_v3: "28 000",
+    prix_resume: "8-14 K MAD/mois",
+    devise: "MAD",
+    showNotaire: false,
+    syntheseLabel: "Effort mensuel max",
+    syntheseValue: "≈ 15 000 MAD/mois",
+    syntheseDetail: "Loyer max 14 000 + Charges estimées ~1 000 MAD",
+    acteurs: [
+      {nom: "Agent mandat", type: "Forf", val: "12 000", montant: "12 000"}
+    ],
+    totalAgence: "12 000",
+  },
+};
+
+function renderCard(p) {
+  return `
+    <div class="card">
+      <div class="card-head">
+        <div class="card-thumb">🏠</div>
+        <div class="card-info">
+          <div class="card-name">
+            <span>${p.nom}</span>
+            <span class="profil-pill ${p.profilClass}">${p.profil.slice(0,3)}</span>
+          </div>
+          <div class="pills-line">
+            <span class="pill">📞 ${p.tel}</span>
+          </div>
+          <div class="pills-line">
+            <span class="pill">✉️ ${p.email}</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-grid">
+        <div class="card-sector">
+          <div class="card-sector-label">🏠 Bien</div>
+          <div class="card-sector-l1">${p.typeBien}</div>
+          <span class="card-pill-mini">📍 ${p.ville}</span>
+          <div class="card-sector-l2">${p.quartier}</div>
+          <div class="card-prix-resume">💰 ${p.prix_resume}</div>
+        </div>
+        <div class="card-sector">
+          <div class="card-sector-label">💼 Budget</div>
+          <div class="card-sector-l1">${p.prix_resume}</div>
+          <div class="card-sector-l2">${p.surface}</div>
+        </div>
+        <div class="card-sector">
+          <div class="card-sector-label">📅 Suivi</div>
+          <div class="card-sector-l2" style="color:var(--ocre-strong)">+ Planifier</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderBlocPrix(p, withSuffix=true) {
+  const sym = p.devise;
+  return `
+    <div class="s3-bloc">
+      <div class="s3-bloc-title">💰 Prix</div>
+      <div class="s3-row s3-row-3">
+        <div class="s3-field">
+          <span class="s3-label">${p.prix_label_1}</span>
+          <div class="s3-suffix">
+            <input class="s3-input" value="${p.prix_v1}" readonly/>
+            ${withSuffix ? `<span class="s3-suffix-text">${sym}</span>` : ''}
+          </div>
+        </div>
+        <div class="s3-field">
+          <span class="s3-label">${p.prix_label_2}</span>
+          <div class="s3-suffix">
+            <input class="s3-input ${p.profil==='VENDEUR' ? 'confidential' : ''}" value="${p.prix_v2}" readonly/>
+            ${withSuffix ? `<span class="s3-suffix-text">${sym}</span>` : ''}
+          </div>
+          ${p.profil==='VENDEUR' ? '<div class="s3-hint">Confidentiel agent</div>' : ''}
+          ${p.profil==='ACHETEUR' || p.profil==='LOCATAIRE' ? '<div class="s3-hint">Min &lt; Max au blur</div>' : ''}
+        </div>
+        <div class="s3-field">
+          <span class="s3-label">${p.prix_label_3}</span>
+          <div class="s3-suffix">
+            <input class="s3-input" value="${p.prix_v3}" readonly/>
+            ${withSuffix ? `<span class="s3-suffix-text">${sym}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderBlocAgence(p) {
+  const acteurs = p.acteurs.map(a => `
+    <div class="s3-acteur-row">
+      <div class="s3-acteur-pill">${a.nom}</div>
+      <div class="s3-toggle-pill">
+        <div class="s3-toggle-btn ${a.type==='%'?'active':''}">%</div>
+        <div class="s3-toggle-btn ${a.type==='Forf'?'active':''}">F</div>
+      </div>
+      <div class="s3-acteur-pill" style="background:var(--ocre-input-filled)">${a.val}${a.type==='%'?'%':''}</div>
+      <div class="s3-acteur-pill" style="background:var(--ocre-input-filled);font-weight:700">${a.montant} ${p.devise}</div>
+      <div style="text-align:center;color:var(--ocre-grey)">✕</div>
+    </div>
+  `).join('');
+  return `
+    <div class="s3-bloc">
+      <div class="s3-bloc-title">🤝 Frais d'agence</div>
+      ${acteurs}
+      <div class="s3-total-line">
+        <span>Total</span>
+        <span>${p.totalAgence} ${p.devise}</span>
+      </div>
+      <button class="s3-add-btn">+ Ajouter un acteur (max 4)</button>
+    </div>
+  `;
+}
+
+function renderBlocNotaire(p) {
+  if (!p.showNotaire) return '';
+  return `
+    <div class="s3-bloc">
+      <div class="s3-bloc-title">🏛 Frais de notaire <span style="color:var(--ocre-grey);font-weight:400;font-size:10px">(estimation) <span style="cursor:help">?</span></span></div>
+      <div class="s3-row s3-row-2">
+        <div class="s3-field">
+          <span class="s3-label">Pourcentage</span>
+          <div class="s3-suffix">
+            <input class="s3-input" value="${p.fraisNotairePct}" readonly/>
+            <span class="s3-suffix-text">%</span>
+          </div>
+          <div class="s3-hint">${p.fraisNotaireLabel}</div>
+        </div>
+        <div class="s3-field">
+          <span class="s3-label">Total estimé</span>
+          <div class="s3-readonly" style="text-align:right;font-weight:700">${p.fraisNotaireMontant} ${p.devise}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderBlocSynthese(p) {
+  return `
+    <div class="s3-synthese">
+      <div class="s3-synthese-label">📊 ${p.syntheseLabel}</div>
+      <div class="s3-synthese-value">${p.syntheseValue}</div>
+      <div class="s3-synthese-detail">${p.syntheseDetail}</div>
+    </div>
+  `;
+}
+
+function renderCollapsed() {
+  return `
+    <div class="s3-collapsed">📃 Mandat <span class="chev">▾</span></div>
+    <div class="s3-collapsed">💼 Plan de paiement <span class="chev">▾</span></div>
+    <div class="s3-collapsed">🏦 Financement <span class="chev">▾</span></div>
+    <div class="s3-collapsed">⚖ Répartition interne <span class="chev">▾</span></div>
+  `;
+}
+
+// VARIANTE A — Compacte minimaliste (M134 spec validée)
+function renderVarA(p) {
+  return `
+    <div class="section3">
+      <div class="section3-title">III. Budget &amp; financement</div>
+      ${renderBlocPrix(p)}
+      ${renderBlocAgence(p)}
+      ${renderBlocNotaire(p)}
+      ${renderBlocSynthese(p)}
+      ${renderCollapsed()}
+    </div>
+  `;
+}
+
+// VARIANTE B — Synthèse first
+function renderVarB(p) {
+  return `
+    <div class="section3">
+      <div class="section3-title">III. Budget &amp; financement</div>
+      <div class="s3-synthese-big">
+        <div class="lbl">${p.syntheseLabel}</div>
+        <div class="num">${p.syntheseValue}</div>
+        <div class="sub">${p.syntheseDetail}</div>
+      </div>
+      ${renderBlocPrix(p)}
+      ${renderBlocAgence(p)}
+      ${renderBlocNotaire(p)}
+      ${renderCollapsed()}
+    </div>
+  `;
+}
+
+// VARIANTE C — Stepper / wizard
+function renderVarC(p) {
+  const tabs = ['Prix','Agence','Notaire','Synthèse','Mandat','Plan','Financ.','Répart.'].filter(t => !(t==='Notaire' && !p.showNotaire));
+  return `
+    <div class="section3">
+      <div class="section3-title">III. Budget &amp; financement</div>
+      <div class="s3-tabs">
+        ${tabs.map((t,i) => `<div class="s3-tab ${i===0?'active':''}">${t}</div>`).join('')}
+      </div>
+      <div class="s3-progress">
+        <div class="s3-progress-fill" style="width:12%"></div>
+      </div>
+      <div class="s3-stepper-info">Étape 1 / ${tabs.length}</div>
+      ${renderBlocPrix(p)}
+      <button class="s3-stepper-next">Suivant : Frais d'agence →</button>
+    </div>
+  `;
+}
+
+// VARIANTE D — Cards groupées par thème
+function renderVarD(p) {
+  return `
+    <div class="section3">
+      <div class="section3-title">III. Budget &amp; financement</div>
+      <div class="s3-card-theme green">
+        <h4>💰 Prix &amp; vente</h4>
+        ${renderBlocPrix(p).replace('<div class="s3-bloc">','<div style="margin-bottom:8px">').replace('</div>\n    </div>','</div>')}
+        ${renderBlocSynthese(p)}
+      </div>
+      <div class="s3-card-theme ocre">
+        <h4>🤝 Frais &amp; marges</h4>
+        ${renderBlocAgence(p).replace('<div class="s3-bloc">','<div style="margin-bottom:8px">').replace('</div>\n    </div>','</div>')}
+        ${p.showNotaire ? renderBlocNotaire(p).replace('<div class="s3-bloc">','<div>').replace('</div>\n    </div>','</div>') : ''}
+      </div>
+      <div class="s3-card-theme blue">
+        <h4>📃 Engagement</h4>
+        <div class="s3-collapsed" style="background:rgba(255,255,255,.5)">📃 Mandat <span class="chev">▾</span></div>
+        <div class="s3-collapsed" style="background:rgba(255,255,255,.5)">💼 Plan paiement <span class="chev">▾</span></div>
+      </div>
+      ${p.profil==='ACHETEUR' ? `
+      <div class="s3-card-theme purple">
+        <h4>🏦 Crédit</h4>
+        <div class="s3-collapsed" style="background:rgba(255,255,255,.5)">🏦 Financement <span class="chev">▾</span></div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+// VARIANTE E — Tableau financier dense
+function renderVarE(p) {
+  const rows = [
+    {label: p.prix_label_1, type: '—', valeur: p.prix_v1, montant: p.prix_v1},
+    ...p.acteurs.map(a => ({label: 'Agence ' + a.nom, type: a.type, valeur: a.val + (a.type==='%'?'%':''), montant: a.montant})),
+  ];
+  if (p.showNotaire) rows.push({label: 'Notaire', type: '%', valeur: p.fraisNotairePct + '%', montant: p.fraisNotaireMontant});
+  const totalNum = rows.reduce((s,r) => s + parseInt(r.montant.replace(/\s/g,'')), 0);
+  return `
+    <div class="section3">
+      <div class="section3-title">III. Budget &amp; financement</div>
+      <table class="s3-table">
+        <thead>
+          <tr><th>Poste</th><th>Type</th><th class="num">Valeur</th><th class="num">Montant ${p.devise}</th></tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `<tr><td>${r.label}</td><td>${r.type}</td><td class="num">${r.valeur}</td><td class="num">${r.montant}</td></tr>`).join('')}
+          <tr class="total"><td colspan="3">Total ${p.profil==='VENDEUR'?'(côté vendeur)':p.profil==='ACHETEUR'?'(charge acheteur)':''}</td><td class="num">${totalNum.toLocaleString('fr-FR')}</td></tr>
+        </tbody>
+      </table>
+      ${renderBlocSynthese(p)}
+      ${renderCollapsed()}
+    </div>
+  `;
+}
+
+const VARIANTS = [
+  {id:'A', label:'A · Compacte minimaliste (M134)', render: renderVarA},
+  {id:'B', label:'B · Synthèse-first', render: renderVarB},
+  {id:'C', label:'C · Stepper / wizard', render: renderVarC},
+  {id:'D', label:'D · Cards groupées par thème', render: renderVarD},
+  {id:'E', label:'E · Tableau financier dense', render: renderVarE},
+];
+
+const PROFILS = [
+  {key:'vendeur', label:'PROFIL VENDEUR', sub:'Riad Marrakech 5 800 000 MAD'},
+  {key:'acheteur', label:'PROFIL ACHETEUR', sub:'Couple FR cherche villa Marrakech 3,5–4,5 M EUR'},
+  {key:'bailleur', label:'PROFIL BAILLEUR', sub:'Appartement Guéliz 12 000 MAD/mois'},
+  {key:'locataire', label:'PROFIL LOCATAIRE', sub:'Cherche T2/T3 Marrakech ≤14 000 MAD/mois'},
+];
+
+function renderProfil(profilKey) {
+  const profilInfo = PROFILS.find(x => x.key === profilKey);
+  const data = MOCK[profilKey];
+  const maquettes = VARIANTS.map(v => `
+    <div class="variant-wrapper">
+      <div class="variant-label">${profilInfo.label.split(' ')[1].slice(0,3)} ${v.id} — ${v.label.split('·')[1]||v.label}</div>
+      <div class="iphone-frame">
+        <div class="iphone-status"><span>10:21</span><span>Samedi 2 mai</span><span>70%</span></div>
+        <div class="iphone-screen">
+          ${renderCard(data)}
+          ${v.render(data)}
+        </div>
+      </div>
+    </div>
+  `).join('');
+  return `
+    <section class="profil-section">
+      <div class="profil-banner">
+        <span>${profilInfo.label}</span>
+        <span class="badge">${profilInfo.sub}</span>
+      </div>
+      <div class="maquettes-grid">${maquettes}</div>
+    </section>
+  `;
+}
+
+document.body.insertAdjacentHTML('beforeend', PROFILS.map(p => renderProfil(p.key)).join(''));
+</script>
+
+</body>
+</html>
