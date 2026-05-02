@@ -19987,9 +19987,19 @@ function FormView(props) {
         ) : (
           activeProfil !== 'Curieux' && <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
                  status={stageStatus[2].status} summary={stageStatus[2].summary}>
-            {/* V45 — Plan de paiement multi-lignes + Encaissements (toutes casquettes hors Curieux) */}
-            <PaymentPlanModule d={d} set={set}/>
-            {/* V55 — Section III pro : blocs adaptatifs Acheteur/Vendeur/Locataire/Bailleur + Investisseur. */}
+            {/* M/2026/05/02/39 — M144.H : suppression franche PaymentPlanModule legacy V45.
+                Cause Philippe iPad 14:27 (navigation privée) : voyait uniquement le V45 PaymentPlanModule
+                en tête de Section III ('Plan de paiement / Aucun versement prévu / + Ajouter / Encaissements reçus')
+                et n'a pas scrollé pour voir les blocs M144.B-F dessous. Le V45 multi-lignes est désormais
+                remplacé fonctionnellement par les blocs M144.D : Bloc Prix 3 cols (saisit prix bien Vendeur
+                / budget min-max Acheteur / loyer Bailleur), Plan de paiement collapsed (acompte/signature/solde %
+                avec validation total=100%), Multi-acteurs Frais agence (max 4 acteurs avec calc auto).
+                Anti-régression : d.payment_plan[] et d.received_payments[] restent en DB pour les dossiers
+                existants qui les ont saisis (les données ne sont pas perdues, juste plus exposées via cette UI). */}
+            {/* V55 — Section III pro : blocs adaptatifs Acheteur/Vendeur/Locataire/Bailleur + Investisseur.
+                V55 Section III remontée en TÊTE de Stage III (avant CustomFieldList) — Philippe doit voir
+                en premier les nouveaux blocs M144.B-F (Prix 3 cols, Frais agence multi-acteurs, Notaire
+                pays-conditionnel, Synthèse gradient ocre fort, sous-blocs collapsed Mandat/Plan/Financement/Répartition). */}
             <SectionFinanciereV55 activeProfil={activeProfil} isInvestisseur={isInvestisseur} profilType={profilType} d={d} set={set}/>
             {(activeProfil === 'Acheteur' || activeProfil === 'Investisseur') && (
               <FinancementForm activeProfil={activeProfil} d={d} set={set}
