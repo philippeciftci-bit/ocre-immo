@@ -7013,10 +7013,18 @@ function addMonthsISOV55(iso, months) {
   dt.setMonth(dt.getMonth() + (Number(months) || 0));
   return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
 }
+// M/2026/05/02/34 — M144.C livrable B : mappings pays enrichis pour frais notaire pré-rempli
+// selon GPS bien (Section II Bloc 01). FR ancien 7,5 / FR neuf 2,5 / MA 6 / ES ancien 11 /
+// ES neuf 12,5 / DZ 5 / TN 6 / BE ancien 12,5 / BE neuf 3 / IT 9 (résidence principale 2). Default 7,5.
 function fraisNotaireDefault(paysBien, neufAncien) {
+  const isNeuf = neufAncien === 'neuf';
+  if (paysBien === 'FR') return isNeuf ? 0.025 : 0.075;
   if (paysBien === 'MA') return 0.06;
-  if (paysBien === 'FR' && neufAncien === 'neuf') return 0.03;
-  if (paysBien === 'FR') return 0.075;
+  if (paysBien === 'ES') return isNeuf ? 0.125 : 0.11;
+  if (paysBien === 'DZ') return 0.05;
+  if (paysBien === 'TN') return 0.06;
+  if (paysBien === 'BE') return isNeuf ? 0.03 : 0.125;
+  if (paysBien === 'IT') return isNeuf ? 0.09 : 0.09;
   return 0.075;
 }
 
@@ -7337,8 +7345,29 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           </div>
         </V55Bloc>
 
-        <V55Bloc title="Coût total estimé" theme="synthese">
-          <V55ReadOnly label="Coût total acquisition" value={budget > 0 ? fmtMoneyV55(coutTotal, devise) : '—'} hint="Budget + frais agence (si charge acheteur) + frais notaire"/>
+        {/* M/2026/05/02/34 — M144.C livrable D : Synthèse Acheteur 'Budget total mobilisable'
+            cohérent avec Synthèse Vendeur M144.B (V55Bloc theme=synthese ocre fort font 20). */}
+        <V55Bloc title="📊 Budget total mobilisable" theme="synthese">
+          {(() => {
+            const _bMax = Number(d.budget_max) || 0;
+            const _liq = Number(d.prix_liquide) || 0;
+            const _notaire = Number(fraisNotEst) || 0;
+            const _total = _bMax + _liq + _notaire;
+            if (_total <= 0) return <V55ReadOnly label="—" value="Saisir budget pour calcul" hint="Budget max + Liquide + Notaire estimé"/>;
+            return (
+              <>
+                <div style={{fontSize:20, fontWeight:800, color:'#2A2018', marginBottom:4}}>
+                  {fmtMoneyV55(_total, devise)}
+                </div>
+                <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', lineHeight:1.4}}>
+                  Budget max {fmtMoneyV55(_bMax, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Notaire estimé {fmtMoneyV55(_notaire, devise)}
+                </div>
+                <div style={{fontSize:10, color:'#A07842', fontStyle:'italic', marginTop:6}}>
+                  Visible sur fiche dossier et PDF
+                </div>
+              </>
+            );
+          })()}
         </V55Bloc>
 
         {/* V62 — Détails financement en bas */}
@@ -7553,6 +7582,30 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           <V55Field label="Frais de dossier" type="number" value={d.frais_dossier} onChange={v => set('frais_dossier', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
         </V55Bloc>
 
+        {/* M/2026/05/02/34 — M144.C livrable D : Synthèse Locataire 'Effort mensuel maximum'. */}
+        <V55Bloc title="📊 Effort mensuel maximum" theme="synthese">
+          {(() => {
+            const _lMax = Number(d.loyer_max) || 0;
+            const _hono = Number(d.honoraires_locataire_estimes) || 0;
+            const _chargesEst = _lMax > 0 ? Math.round(_lMax * 0.07) : 0;
+            const _total = _lMax + _chargesEst;
+            if (_total <= 0) return <V55ReadOnly label="—" value="Saisir loyer max pour calcul" hint="Loyer max + Charges estimées (~7%)"/>;
+            return (
+              <>
+                <div style={{fontSize:20, fontWeight:800, color:'#2A2018', marginBottom:4}}>
+                  {fmtMoneyV55(_total, devise)}{devise === 'MAD' ? '/mois' : '/mois'}
+                </div>
+                <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', lineHeight:1.4}}>
+                  Loyer max {fmtMoneyV55(_lMax, devise)}/mois + Charges estimées {fmtMoneyV55(_chargesEst, devise)} (~7%){_hono > 0 ? '. Honoraires location ' + fmtMoneyV55(_hono, devise) + ' (1 fois)' : ''}
+                </div>
+                <div style={{fontSize:10, color:'#A07842', fontStyle:'italic', marginTop:6}}>
+                  Visible sur fiche dossier et PDF
+                </div>
+              </>
+            );
+          })()}
+        </V55Bloc>
+
         <V55Bloc title="Durée & emménagement">
           <V55Field label="Durée souhaitée" type="select" value={d.duree_souhaitee} onChange={v => set('duree_souhaitee', v)}
             options={['Bail meublé 1 an','Bail nu 3 ans','Saisonnier','Indéterminé']}/>
@@ -7611,6 +7664,29 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           {d.honoraires_locataire_partage_oui && (
             <V55Field label="Montant à charge locataire" type="number" value={d.honoraires_locataire_montant} onChange={v => set('honoraires_locataire_montant', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
           )}
+        </V55Bloc>
+
+        {/* M/2026/05/02/34 — M144.C livrable D : Synthèse Bailleur 'Loyer affiché au marché'. */}
+        <V55Bloc title="📊 Loyer affiché au marché" theme="synthese">
+          {(() => {
+            const _loyer = Number(d.loyer_demande) || 0;
+            const _charges = Number(d.charges_recuperables != null ? d.charges_recuperables : d.charges) || 0;
+            const _total = _loyer + _charges;
+            if (_total <= 0) return <V55ReadOnly label="—" value="Saisir loyer pour calcul" hint="Loyer demandé + Charges récupérables"/>;
+            return (
+              <>
+                <div style={{fontSize:20, fontWeight:800, color:'#2A2018', marginBottom:4}}>
+                  {fmtMoneyV55(_total, devise)}{devise === 'MAD' ? '/mois' : '/mois'}
+                </div>
+                <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', lineHeight:1.4}}>
+                  Loyer demandé {fmtMoneyV55(_loyer, devise)}/mois{_charges > 0 ? ' + Charges ' + fmtMoneyV55(_charges, devise) + '/mois (charges comprises)' : ''}
+                </div>
+                <div style={{fontSize:10, color:'#A07842', fontStyle:'italic', marginTop:6}}>
+                  Visible sur fiche dossier et PDF
+                </div>
+              </>
+            );
+          })()}
         </V55Bloc>
 
         {/* V62 — Détails plus bas */}
