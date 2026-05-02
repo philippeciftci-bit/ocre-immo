@@ -282,6 +282,9 @@ input, select, textarea, button { font-size:13px }
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <!-- M/2026/04/30/53 — SheetJS pour export XLSX multi-onglets cote client (navigator.share natif iOS). -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- M/2026/05/02/4 — M110 Phase B : libphonenumber-js (Google) bundle UMD. Expose window.libphonenumber.
+     Utilise par PhoneInput pour AsYouType formatting, isValidPhoneNumber validation, parsePhoneNumber E.164. -->
+<script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.10.51/bundle/libphonenumber-js.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -1625,6 +1628,82 @@ function PaysCompactButton({value, onChange}) {
             )}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// M/2026/05/02/4 — M110 Phase B : PhoneInput component avec libphonenumber-js (Google).
+// Drapeau cliquable (PaysCompactButton M111.5 reutilise) + champ numero avec format AsYouType
+// au fil de la frappe + validation isValidPhoneNumber (bordure verte si valide, rouge si invalide,
+// neutre si vide). Stockage : phone_country (ISO2) + phone_e164 (format international). Le format
+// d affichage est local au pays (AsYouType produit "06 12 34 56 78" pour FR, "+212 6 12 34 56 78" pour MA).
+// Auto-detection au mount : si pas de phone_country defini, fallback sur pays_residence du contact,
+// puis sur defaut 'FR'. Composant standalone reutilisable dans Section I (TelephoneMulti integration
+// progressive — ce composant est disponible des maintenant pour un single-input simple).
+function PhoneInput({value, onChange, country, onCountryChange, defaultCountry = 'FR', label = 'Téléphone', style = {}}) {
+  const lib = (typeof window !== 'undefined' && window.libphonenumber) || null;
+  const _country = country || defaultCountry || 'FR';
+  const [localText, setLocalText] = React.useState(() => String(value || ''));
+  React.useEffect(() => { setLocalText(String(value || '')); }, [value]);
+  // AsYouType formatting on each input change.
+  function handleInput(raw) {
+    setLocalText(raw);
+    if (!lib) { onChange(raw); return; }
+    try {
+      const t = new lib.AsYouType(_country);
+      const formatted = t.input(raw);
+      // Try parse to E.164 format if valid.
+      let e164 = null;
+      try {
+        const pn = lib.parsePhoneNumber(formatted, _country);
+        if (pn && pn.isValid()) e164 = pn.format('E.164');
+      } catch (e) {}
+      onChange(formatted, {country: _country, e164});
+    } catch (e) {
+      onChange(raw);
+    }
+  }
+  function handleCountryChange(cc) {
+    if (typeof onCountryChange === 'function') onCountryChange(cc);
+    // Re-format current value with new country.
+    if (lib && localText) {
+      try {
+        const t = new lib.AsYouType(cc);
+        const formatted = t.input(localText);
+        setLocalText(formatted);
+        let e164 = null;
+        try {
+          const pn = lib.parsePhoneNumber(formatted, cc);
+          if (pn && pn.isValid()) e164 = pn.format('E.164');
+        } catch (e) {}
+        onChange(formatted, {country: cc, e164});
+      } catch (e) {}
+    }
+  }
+  // Validation pour bordure couleur.
+  let valid = null;
+  if (lib && localText && localText.replace(/[^0-9]/g, '').length >= 6) {
+    try { valid = lib.isValidPhoneNumber(localText, _country); } catch (e) { valid = null; }
+  }
+  const borderColor = valid === false ? '#B73E3E' : valid === true ? '#2D6B3F' : '#D9C9A8';
+  return (
+    <div style={Object.assign({display:'flex', flexDirection:'column', gap:4}, style)}>
+      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>{label}</label>
+      <div style={{display:'flex', gap:6, alignItems:'flex-end'}}>
+        <div style={{minWidth:0, flexShrink:0}}>
+          <PaysCompactButton value={_country} onChange={handleCountryChange}/>
+        </div>
+        <input type="tel" value={localText} onChange={e => handleInput(e.target.value)}
+          inputMode="tel" autoComplete="tel"
+          placeholder={lib ? (new lib.AsYouType(_country)).input('06 12 34 56 78') : '06 12 34 56 78'}
+          style={{flex:1, minWidth:0, height:40, padding:'0 10px', borderRadius:8,
+            border:'1.5px solid '+borderColor, background:'#FDFAF7', color:'#2A2018',
+            fontSize:14, fontFamily:'inherit', outline:'none',
+            transition:'border-color .15s ease'}}/>
+      </div>
+      {valid === false && (
+        <span style={{fontSize:11, color:'#B73E3E', fontStyle:'italic'}}>Numéro invalide pour ce pays</span>
       )}
     </div>
   );
@@ -4302,8 +4381,27 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
   // Cascade descendante hierarchique : Pays > Ville > Quartier > Adresse rue.
   // Changement d un niveau efface tous les niveaux inferieurs + reset gps. Skip cascade si
   // gps_source === 'autocomplete' (auto-fill via AddressAutocomplete onPick - pas un change manuel).
-  function handlePaysChange(v) {
+  async function handlePaysChange(v) {
     if (v === bien.pays) return;
+    // M/2026/05/02/4 — M110 Phase C : modale alerte si champs Section II/III remplis. Le pays bien
+    // determine le referentiel actif (devise, diagnostics requis, fiscalite). Changer le pays signifie
+    // que certains champs deviennent obsoletes dans l UI. Les valeurs sont conservees en DB (jamais NULL
+    // forced), juste masquees si le nouveau referentiel ne les expose pas. Re-changer pour le pays
+    // initial fait reapparaitre les valeurs.
+    const hasBienData = !!(bien.titre || (Array.isArray(bien.types) && bien.types.length) ||
+      bien.surface || bien.surface_habitable || bien.surface_terrain ||
+      bien.prix_affiche || bien.loyer_demande || bien.description ||
+      (Array.isArray(bien.photos) && bien.photos.length));
+    if (bien.pays && hasBienData) {
+      const ok = await (typeof askConfirm === 'function' ? askConfirm({
+        title: 'Changer le pays du bien ?',
+        message: 'Passer de ' + bien.pays + ' à ' + v + ' va modifier les champs spécifiques au pays (cadastre, diagnostics, devise, fiscalité). Les valeurs déjà saisies pour des champs qui n\'existent plus seront conservées en base mais masquées dans cette vue. Tu peux les récupérer en repassant au pays initial.',
+        danger: true,
+        confirmLabel: 'Continuer',
+        cancelLabel: 'Annuler',
+      }) : Promise.resolve(true));
+      if (!ok) return;
+    }
     setBMany({pays: v, ville: '', quartier: '', code_postal: '', adresse: '',
               gps_lat: '', gps_lng: '', gps_source: ''});
   }
@@ -18275,10 +18373,58 @@ function FormView(props) {
           declenche aucune ligne DB. Le state React local suffit jusqu au premier blur input
           avec valeur non vide (R1 strict spec Philippe revisee). */}
       {/* M/2026/05/02/2 — M109.5 : props isInvestisseur/onInvestChange supprimes (toggle deplace
-          dans bloc Profil avance Section I). Sélecteur ne gere plus que le profil principal. */}
+          dans bloc Profil avance Section I). Sélecteur ne gere plus que le profil principal.
+          M/2026/05/02/4 — M110 Phase A : modale askConfirm si changement profil + champs role-specifiques
+          deja remplis OU toggle Investisseur/Promoteur/Marchand coche. Si Annuler -> revert (aucune
+          modif). Si Continuer -> reset toggles + champs role-specifiques (whitelist commune preservee). */}
       <ProfilSelectorBar
         activeProfil={activeProfil}
-        onChange={(p) => setActiveProfil(p)}/>
+        onChange={async (p) => {
+          if (p === activeProfil) return;
+          // Detection de donnees role-specifiques.
+          const COMMON = new Set(['prenom','nom','societe_nom','profil_type','tel','tels','email','emails','adresse','ville','code_postal','pays_residence','date_naissance','nationalite','siret','numero_societe','representant_prenom','representant_nom','representant_fonction','notes','_touch','id','user_id','created_at','updated_at','deleted_at','archived','is_draft','is_demo','is_staged','projet','profil_principal','phone_country','phone_e164','id_country','id_type','id_number','bien_country','linked_dossiers','tags','suivi','langue','canal','origine','pays_naissance']);
+          const cur = latestRef.current || {};
+          let hasRoleSpecific = isInvestisseur || isPromoteur || isMarchandDeBiens;
+          if (!hasRoleSpecific) {
+            for (const k of Object.keys(cur)) {
+              if (COMMON.has(k)) continue;
+              const v = cur[k];
+              if (v == null) continue;
+              if (typeof v === 'string' && v.trim() === '') continue;
+              if (Array.isArray(v) && v.length === 0) continue;
+              if (typeof v === 'object' && !Array.isArray(v)) {
+                const subFilled = Object.keys(v).some(kk => {
+                  const sv = v[kk];
+                  if (sv == null || sv === '') return false;
+                  if (typeof sv === 'string' && sv.trim() === '') return false;
+                  return true;
+                });
+                if (!subFilled) continue;
+              }
+              hasRoleSpecific = true; break;
+            }
+          }
+          if (hasRoleSpecific) {
+            const ok = await askConfirm({
+              title: 'Changer de profil ?',
+              message: 'Tu vas passer de ' + (activeProfil || 'aucun profil') + ' à ' + p + '. Les informations spécifiques au profil ' + (activeProfil || 'précédent') + ' (bien, budget, options Investisseur/Promoteur/Marchand) vont être effacées. Les informations communes (identité, téléphone, email, pays résidence) sont conservées.',
+              danger: true,
+              confirmLabel: 'Continuer',
+              cancelLabel: 'Annuler',
+            });
+            if (!ok) return;
+            // Reset toggles + champs role-specifiques (preserve whitelist commune).
+            setIsInvestisseur(false);
+            setIsPromoteur(false);
+            setIsMarchandDeBiens(false);
+            setD(prev => {
+              const next = {};
+              for (const k of Object.keys(prev || {})) if (COMMON.has(k)) next[k] = prev[k];
+              return next;
+            });
+          }
+          setActiveProfil(p);
+        }}/>
 
       {/* V18.17/V18.18 — banner mode staging. URL → lien origine. Image → thumbnail + contexte. */}
       {isStaged && (
@@ -18555,6 +18701,14 @@ function FormView(props) {
                     );
                   })}
                 </div>
+                {/* M/2026/05/02/4 — M110 Phase C : disclaimer juridique si toggle fiscal coche.
+                    Reference au referentiel pays bien (bien.pays) ou pays_residence en fallback.
+                    Visible uniquement si Investisseur/Promoteur/Marchand actif. */}
+                {(isInvestisseur || isPromoteur || isMarchandDeBiens) && (
+                  <div style={{marginTop:10, padding:'8px 10px', fontSize:11, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', borderTop:'1px solid #EDE6DC', lineHeight:1.4}}>
+                    ⚠ Information à titre indicatif basée sur le référentiel {(d.bien && d.bien.pays) || d.pays_residence || 'pays par défaut'} (version 2026.01). Confirmer avec un notaire ou un fiscaliste avant tout engagement.
+                  </div>
+                )}
               </div>
             );
           })()}
