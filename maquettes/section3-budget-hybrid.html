@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Hybrides L1+L8 Section III Budget — Ocre Immo</title>
+<style>
+:root {
+  --bg: #FAF6EE;
+  --soft: #FBF1E4;
+  --soft2: #F4ECE0;
+  --border: #E8DDC9;
+  --mid: #C9B79A;
+  --strong: #8B5E3C;
+  --deep: #5C3B1E;
+  --text: #2A2018;
+  --grey: #8B7F6E;
+  --input-empty: #FDFAF7;
+  --input-filled: #FFFCF5;
+  --red: #C73E3E;
+  /* teintes thématiques M143 */
+  --t-prix: #C97B3F;
+  --t-agence: #5C8A82;
+  --t-notaire: #6B7FB5;
+  --t-synthese: #B26D3A;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(180deg, #F4ECE0 0%, #EAD7B8 100%);
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+}
+.nav-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  box-shadow: 0 2px 12px rgba(139,94,60,.08);
+}
+.nav-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--deep);
+  margin-bottom: 4px;
+}
+.nav-title small {
+  font-weight: 400;
+  color: var(--grey);
+  font-size: 12px;
+}
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; font-size: 11px; color: var(--grey); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.variant-section {
+  max-width: 1700px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+.variant-header {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
+  padding: 14px 20px;
+}
+.variant-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--deep);
+}
+.variant-header h2 .num {
+  display: inline-block;
+  background: var(--strong);
+  color: white;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: 10px;
+}
+.variant-header p {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--grey);
+  font-style: italic;
+}
+.profils-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(390px, 1fr));
+  gap: 16px;
+  padding: 18px;
+  background: white;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+@media (min-width: 1700px) {
+  .profils-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.maquette-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.maquette-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--deep);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  background: var(--soft);
+  border: 1px solid var(--mid);
+  border-radius: 12px;
+}
+.iphone {
+  width: 390px;
+  max-width: 100%;
+  background: #1d1d1f;
+  border-radius: 32px;
+  padding: 6px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.18);
+}
+.iphone-status {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 16px 2px;
+  font-size: 10px;
+  color: white;
+  font-weight: 600;
+}
+.iphone-screen {
+  background: var(--bg);
+  border-radius: 26px;
+  overflow: hidden;
+  max-height: 700px;
+  overflow-y: auto;
+}
+.s3-page {
+  padding: 12px 12px 16px;
+  font-size: 12.5px;
+}
+.s3-h {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--deep);
+  display: inline-block;
+  border-bottom: 2px solid var(--strong);
+  padding-bottom: 3px;
+  margin-bottom: 10px;
+}
+
+/* === BLOC commun (squelette L1) === */
+.bloc {
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: white;
+}
+.bloc-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--strong);
+}
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.field-lbl {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--grey);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: block;
+  margin-bottom: 2px;
+}
+.input-wrap { position: relative; }
+.input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1.2px solid var(--mid);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--input-filled);
+  color: var(--text);
+  font-weight: 500;
+}
+.input.dashed { border-style: dashed; background: linear-gradient(135deg, #FFF5E6, #FBE8C8); }
+.input.with-suf { padding-right: 32px; }
+.suf {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--grey);
+  font-weight: 600;
+}
+.hint {
+  font-size: 9px;
+  color: var(--grey);
+  font-style: italic;
+  margin-top: 1px;
+}
+
+/* === Acteur agence (multi-acteurs dense) === */
+.act {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr 0.7fr 1fr 18px;
+  gap: 3px;
+  align-items: center;
+  font-size: 10.5px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.act:last-of-type { border-bottom: none; }
+.act-pill {
+  background: var(--soft);
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  color: var(--deep);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.act-pill.val { background: var(--input-filled); border: 1px solid var(--border); }
+.act-pill.tot { background: var(--input-filled); border: 1px solid var(--border); font-weight: 700; }
+.toggle {
+  display: flex;
+  background: var(--input-empty);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  height: 22px;
+}
+.toggle-b {
+  flex: 1;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--grey);
+  padding: 4px 0;
+}
+.toggle-b.on { background: var(--strong); color: white; }
+.add-btn {
+  display: block;
+  width: 100%;
+  padding: 5px;
+  background: white;
+  border: 1.2px dashed var(--mid);
+  border-radius: 5px;
+  color: var(--strong);
+  font-weight: 600;
+  font-size: 10px;
+  margin-top: 4px;
+}
+.tot-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 4px 0;
+  border-top: 1px solid var(--mid);
+  margin-top: 4px;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--deep);
+}
+.coll {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--grey);
+  font-weight: 600;
+}
+
+/* === VARIANTE A — Labels colorés sur fond neutre === */
+.A .bloc {
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 0;
+}
+.A .bloc:first-of-type { border-top: none; padding-top: 0; }
+.A .bloc-title.t-prix    { color: var(--t-prix);    border-bottom: 1px solid var(--t-prix);    padding-bottom: 3px; margin-bottom: 8px; }
+.A .bloc-title.t-agence  { color: var(--t-agence);  border-bottom: 1px solid var(--t-agence);  padding-bottom: 3px; margin-bottom: 8px; }
+.A .bloc-title.t-notaire { color: var(--t-notaire); border-bottom: 1px solid var(--t-notaire); padding-bottom: 3px; margin-bottom: 8px; }
+.A .bloc-title.t-synthese{ color: var(--t-synthese);border-bottom: 1px solid var(--t-synthese);padding-bottom: 3px; margin-bottom: 8px; }
+.A .synth {
+  background: transparent;
+  padding: 0;
+  margin-top: 4px;
+}
+.A .synth .synth-val { font-size: 17px; font-weight: 700; color: var(--text); }
+.A .synth .synth-det { font-size: 9.5px; color: var(--grey); margin-top: 3px; font-style: italic; line-height: 1.3; }
+
+/* === VARIANTE B — Bande verticale gauche colorée === */
+.B .bloc {
+  background: white;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  padding: 8px 10px 8px 14px;
+  position: relative;
+  margin-bottom: 7px;
+}
+.B .bloc::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.B .bloc.t-prix::before    { background: var(--t-prix); }
+.B .bloc.t-agence::before  { background: var(--t-agence); }
+.B .bloc.t-notaire::before { background: var(--t-notaire); }
+.B .bloc.t-synthese {
+  background: var(--soft);
+  border-color: var(--mid);
+  padding: 10px 12px 10px 16px;
+}
+.B .bloc.t-synthese::before { background: var(--t-synthese); width: 4px; }
+.B .bloc.t-synthese .bloc-title { color: var(--t-synthese); font-size: 11px; }
+.B .synth-val { font-size: 18px; font-weight: 800; color: var(--text); }
+.B .synth-det { font-size: 9.5px; color: var(--grey); margin-top: 3px; font-style: italic; line-height: 1.3; }
+
+/* Profil mini badge dans la maquette */
+.profil-mini {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.4px;
+  color: white;
+  margin-bottom: 6px;
+}
+.profil-mini.vendeur { background: #2C3F8B; }
+.profil-mini.acheteur { background: #2C5F8B; }
+.profil-mini.bailleur { background: #5F8B2C; }
+.profil-mini.locataire { background: #8B5F2C; }
+</style>
+</head>
+<body>
+
+<div class="nav-sticky">
+  <div class="nav-title">M143 — 2 hybrides L1 + L8 Section III Budget <small>· 8 frames iPhone 390px · 2 variantes × 4 profils</small></div>
+  <div style="font-size:12px;color:var(--grey);margin-top:4px">Squelette L1 minimaliste, accents L8 thématiques. Choisis A ou B et on intègre en prod.</div>
+  <div class="legend">
+    <span><i style="background:var(--t-prix)"></i>Prix</span>
+    <span><i style="background:var(--t-agence)"></i>Agence</span>
+    <span><i style="background:var(--t-notaire)"></i>Notaire</span>
+    <span><i style="background:var(--t-synthese)"></i>Synthèse</span>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<script>
+const PROFILS = [
+  {key:'vendeur', label:'VENDEUR', cls:'vendeur', mock:{
+    devise:'MAD', symbol:'MAD',
+    prixL1:'Prix bien', prixL2:'Prix bas', prixL3:'Liquide',
+    prix1:'5 800 000', prix2:'5 500 000', prix3:'200 000',
+    confidentialL2:true, validateMinMax:false,
+    showNotaire:true, notairePct:'6,0', notaireMontant:'348 000', notaireLabel:'MA 6%',
+    acteurs:[
+      {nom:'Agent mandat', type:'%', val:'4', montant:'232 000'},
+      {nom:'Contrepartie', type:'%', val:'2', montant:'116 000'},
+    ],
+    totalAgence:'348 000',
+    syntheseLabel:'Prix de vente affiché',
+    syntheseValue:'6 116 000 MAD',
+    syntheseDetail:'Prix 5 800 000 + Liquide 200 000 + Agence à charge acheteur 116 000 (hors notaire)',
+  }},
+  {key:'acheteur', label:'ACHETEUR', cls:'acheteur', mock:{
+    devise:'MAD', symbol:'MAD',
+    prixL1:'Budget bas', prixL2:'Budget haut', prixL3:'Liquide',
+    prix1:'2 800 000', prix2:'3 200 000', prix3:'100 000',
+    confidentialL2:false, validateMinMax:true,
+    showNotaire:true, notairePct:'6,0', notaireMontant:'180 000', notaireLabel:'MA 6% sur 3M',
+    acteurs:[],
+    totalAgence:'0',
+    syntheseLabel:'Budget total mobilisable',
+    syntheseValue:'2,8 - 3,2 M MAD + 100k',
+    syntheseDetail:'À charge acheteur : Notaire ~180k + Agence côté contrepartie selon mandat',
+  }},
+  {key:'bailleur', label:'BAILLEUR', cls:'bailleur', mock:{
+    devise:'MAD', symbol:'MAD',
+    prixL1:'Loyer demandé', prixL2:'Charges', prixL3:'Caution',
+    prix1:'14 000', prix2:'1 500', prix3:'28 000',
+    confidentialL2:false, validateMinMax:false,
+    showNotaire:false,
+    acteurs:[
+      {nom:'Agent mandat', type:'Forf', val:'14 000', montant:'14 000'},
+    ],
+    totalAgence:'14 000',
+    syntheseLabel:'Loyer affiché',
+    syntheseValue:'14 000 MAD/mois',
+    syntheseDetail:'Charges 1 500 séparées. Caution 2 mois. Frais agence 1 mois.',
+  }},
+  {key:'locataire', label:'LOCATAIRE', cls:'locataire', mock:{
+    devise:'MAD', symbol:'MAD',
+    prixL1:'Loyer min', prixL2:'Loyer max', prixL3:'Caution dispo',
+    prix1:'12 000', prix2:'15 000', prix3:'30 000',
+    confidentialL2:false, validateMinMax:true,
+    showNotaire:false,
+    acteurs:[],
+    totalAgence:'0',
+    syntheseLabel:'Effort mensuel max',
+    syntheseValue:'≈ 16 000 MAD/mois',
+    syntheseDetail:'Loyer max 15k + Charges estimées ~1k. Caution dispo 30k.',
+  }},
+];
+
+function blocPrix(m) {
+  return `
+    <div class="row3">
+      <div>
+        <span class="field-lbl">${m.prixL1}</span>
+        <div class="input-wrap">
+          <input class="input with-suf" value="${m.prix1}" readonly/>
+          <span class="suf">${m.symbol}</span>
+        </div>
+      </div>
+      <div>
+        <span class="field-lbl">${m.prixL2}</span>
+        <div class="input-wrap">
+          <input class="input with-suf ${m.confidentialL2?'dashed':''}" value="${m.prix2}" readonly/>
+          <span class="suf">${m.symbol}</span>
+        </div>
+        ${m.confidentialL2?'<div class="hint">Confidentiel agent</div>':''}
+        ${m.validateMinMax?'<div class="hint">Min &lt; Max</div>':''}
+      </div>
+      <div>
+        <span class="field-lbl">${m.prixL3}</span>
+        <div class="input-wrap">
+          <input class="input with-suf" value="${m.prix3}" readonly/>
+          <span class="suf">${m.symbol}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function blocAgence(m) {
+  if (m.acteurs.length === 0) {
+    return `<div style="font-size:10.5px;color:var(--grey);font-style:italic;text-align:center;padding:6px 0">Pas d'agence côté ${m.key === 'acheteur' ? 'acheteur' : 'locataire'} (côté contrepartie sur dossier mandat)</div>`;
+  }
+  const rows = m.acteurs.map(a => `
+    <div class="act">
+      <div class="act-pill">${a.nom}</div>
+      <div class="toggle">
+        <div class="toggle-b ${a.type==='%'?'on':''}">%</div>
+        <div class="toggle-b ${a.type==='Forf'?'on':''}">F</div>
+      </div>
+      <div class="act-pill val">${a.val}${a.type==='%'?'%':''}</div>
+      <div class="act-pill tot">${a.montant} ${m.symbol}</div>
+      <div style="text-align:center;color:var(--grey);font-size:11px">✕</div>
+    </div>
+  `).join('');
+  return `
+    ${rows}
+    <div class="tot-line"><span>Total</span><span>${m.totalAgence} ${m.symbol}</span></div>
+    <button class="add-btn">+ Ajouter (max 4)</button>
+  `;
+}
+
+function blocNotaire(m) {
+  if (!m.showNotaire) return '';
+  return `
+    <div class="row2">
+      <div>
+        <span class="field-lbl">Pourcentage</span>
+        <div class="input-wrap">
+          <input class="input with-suf" value="${m.notairePct}" readonly/>
+          <span class="suf">%</span>
+        </div>
+        <div class="hint">${m.notaireLabel}</div>
+      </div>
+      <div>
+        <span class="field-lbl">Total estimé</span>
+        <div style="background:var(--soft);padding:6px 8px;border-radius:6px;font-weight:700;font-size:12px;text-align:right">${m.notaireMontant} ${m.symbol}</div>
+      </div>
+    </div>
+  `;
+}
+
+function blocSynthese(m) {
+  return `
+    <div class="synth">
+      <div class="synth-val">${m.syntheseValue}</div>
+      <div class="synth-det">${m.syntheseDetail}</div>
+    </div>
+  `;
+}
+
+function collFooter(profilKey) {
+  return `
+    <div class="coll">📃 Mandat <span style="color:var(--mid)">▾</span></div>
+    ${profilKey === 'acheteur' ? '<div class="coll">▸ Plan de financement (optionnel) <span style="color:var(--mid)">▸</span></div>' : ''}
+  `;
+}
+
+function renderVariantA(m, k) {
+  const showN = m.showNotaire;
+  return `
+    <div class="s3-page A">
+      <div class="profil-mini ${k}">${m.prixL1.toUpperCase()}</div>
+      <div class="s3-h">III. Budget</div>
+      <div class="bloc"><div class="bloc-title t-prix">💰 Prix</div>${blocPrix(m)}</div>
+      <div class="bloc"><div class="bloc-title t-agence">🤝 Agence</div>${blocAgence(m)}</div>
+      ${showN?`<div class="bloc"><div class="bloc-title t-notaire">🏛 Notaire</div>${blocNotaire(m)}</div>`:''}
+      <div class="bloc"><div class="bloc-title t-synthese">📊 ${m.syntheseLabel}</div>${blocSynthese(m)}</div>
+      ${collFooter(k)}
+    </div>
+  `;
+}
+
+function renderVariantB(m, k) {
+  const showN = m.showNotaire;
+  return `
+    <div class="s3-page B">
+      <div class="profil-mini ${k}">${m.prixL1.toUpperCase()}</div>
+      <div class="s3-h">III. Budget</div>
+      <div class="bloc t-prix"><div class="bloc-title" style="color:var(--t-prix)">💰 Prix</div>${blocPrix(m)}</div>
+      <div class="bloc t-agence"><div class="bloc-title" style="color:var(--t-agence)">🤝 Agence</div>${blocAgence(m)}</div>
+      ${showN?`<div class="bloc t-notaire"><div class="bloc-title" style="color:var(--t-notaire)">🏛 Notaire</div>${blocNotaire(m)}</div>`:''}
+      <div class="bloc t-synthese"><div class="bloc-title">📊 ${m.syntheseLabel}</div>${blocSynthese(m)}</div>
+      ${collFooter(k)}
+    </div>
+  `;
+}
+
+const VARIANTS = [
+  {n:'A', nom:'Minimaliste + labels colorés sur fond neutre',
+   desc:'Squelette L1 minimaliste, fond ivoire. Labels de bloc colorés (Prix=ocre, Agence=vert d\'eau, Notaire=bleu poudre, Synthèse=ocre fort) avec fine ligne 1px de la même teinte sous chaque label. Ton sobre, lisible, signal couleur léger.',
+   render: renderVariantA},
+  {n:'B', nom:'Minimaliste + bande verticale gauche colorée',
+   desc:'Squelette L1 minimaliste. Bande verticale 3px à gauche de chaque bloc, teinte thématique. Bloc Synthèse en card légèrement teintée ocre soft pour ressortir comme bloc principal. Ton visuel, hiérarchie marquée, Synthèse mise en avant.',
+   render: renderVariantB},
+];
+
+const root = document.getElementById('root');
+
+VARIANTS.forEach(V => {
+  const sec = document.createElement('section');
+  sec.id = 'V' + V.n;
+  sec.className = 'variant-section';
+  sec.innerHTML = `
+    <div class="variant-header">
+      <h2><span class="num">${V.n}</span>${V.nom}</h2>
+      <p>${V.desc}</p>
+    </div>
+    <div class="profils-grid">
+      ${PROFILS.map(p => `
+        <div class="maquette-wrap">
+          <div class="maquette-label">${p.label} · ${V.n}</div>
+          <div class="iphone">
+            <div class="iphone-status"><span>10:21</span><span>${p.label}</span><span>70%</span></div>
+            <div class="iphone-screen">${V.render(p.mock, p.key)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  root.appendChild(sec);
+});
+</script>
+
+</body>
+</html>
