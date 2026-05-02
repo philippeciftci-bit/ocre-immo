@@ -1514,7 +1514,11 @@ function fetchAllCountries() {
     });
   return M111_COUNTRIES_CACHE.promise;
 }
-function PaysCompactButton({value, onChange, label = 'Pays'}) {
+// M/2026/05/02/10 — M121 : prop mode='country' (default) | 'phone'.
+// mode=phone affiche dans le bouton "🇫🇷 +33" au lieu de "🇫🇷 FR" et est utilisé par PhoneField
+// pour aligner le PhonePicker sur le CountryPicker (mêmes 5 favoris + recherche + 198 pays).
+// Largeur popover passée à max-content + min-width:140 + max-width:min(280, vw-24) (STANDARD UI M121).
+function PaysCompactButton({value, onChange, label = 'Pays', mode = 'country'}) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [allCountries, setAllCountries] = React.useState(() => M111_COUNTRIES_CACHE.data || []);
@@ -1541,7 +1545,10 @@ function PaysCompactButton({value, onChange, label = 'Pays'}) {
   }, [open]);
   const ent = value ? (allCountries.find(p => p.c === value) || PAYS.find(p => p.c === value)) : null;
   const flag = ent ? ent.f : '🌍';
-  const code = ent ? ent.c : 'Pays';
+  // M121 : mode=phone → "+33" (dial), mode=country → "FR" (ISO).
+  const code = ent
+    ? (mode === 'phone' ? ('+' + String(ent.dial || '').replace(/^\+/, '') || ent.c) : ent.c)
+    : (mode === 'phone' ? '+?' : 'Pays');
   const _q = normalizeAccent(query.trim());
   const _filterFn = (p) => !_q || normalizeAccent(p.n).includes(_q) || p.c.toLowerCase().startsWith(query.toLowerCase());
   // Section 1 : pays gérés (ordre fixe selon M111_MANAGED).
@@ -1596,7 +1603,7 @@ function PaysCompactButton({value, onChange, label = 'Pays'}) {
       {open && (
         <div style={{
           position:'absolute', top:'calc(100% + 4px)', left:0,
-          width:'min(220px, calc(100vw - 24px))', maxHeight:280,
+          width:'max-content', minWidth:160, maxWidth:'min(280px, calc(100vw - 24px))', maxHeight:280,
           background:'#fff', border:'1px solid #D9C9A8', borderRadius:10,
           boxShadow:'0 8px 32px rgba(107,79,53,0.12)',
           display:'flex', flexDirection:'column', zIndex:1000,
@@ -1621,6 +1628,92 @@ function PaysCompactButton({value, onChange, label = 'Pays'}) {
               <div style={{height:1, background:'#E5D9C2', margin:'2px 0'}}/>
             )}
             {others.length > 0 && others.map(renderItem)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// M/2026/05/02/10 — M115 : OptionPicker générique (popover compact). Réutilisable pour TOUS
+// les selects métier (Standing, État, Style architectural, etc.). Largeur proportionnelle au
+// contenu (STANDARD UI M121). Pas de favoris/drapeaux : liste plate avec recherche optionnelle.
+// API : options = ['Économique', 'Standard'] ou [{value, label}]. value/onChange string.
+function OptionPicker({label, value, onChange, options = [], placeholder = 'Choisir', searchable = true}) {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+  const wrapperRef = React.useRef(null);
+  const opts = options.map(o => typeof o === 'string' ? {value:o, label:o} : o);
+  const cur = opts.find(o => o.value === value);
+  React.useEffect(() => {
+    if (!open) return;
+    function onDoc(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false); setQuery('');
+      }
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('touchstart', onDoc);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('touchstart', onDoc);
+    };
+  }, [open]);
+  const _q = normalizeAccent(query.trim());
+  const filtered = opts.filter(o => !_q || normalizeAccent(o.label).includes(_q));
+  const showSearch = searchable && opts.length > 8;
+  return (
+    <div ref={wrapperRef} style={{marginBottom:10, position:'relative', minWidth:0}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <button type="button" onClick={() => setOpen(o => !o)}
+        style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit',
+                border:'1.5px solid '+(value ? '#BBA88B' : '#E8DDD0'),
+                background: value ? '#FFFCF5' : '#FDFAF7',
+                color: value ? '#2A2018' : '#B5A78F',
+                textAlign:'left', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8}}>
+        <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{cur ? cur.label : placeholder}</span>
+        <span style={{color:'#8B7F6E', flexShrink:0}}>▾</span>
+      </button>
+      {open && (
+        <div style={{
+          position:'absolute', top:'calc(100% + 4px)', left:0,
+          width:'max-content', minWidth:160, maxWidth:'min(280px, calc(100vw - 24px))', maxHeight:280,
+          background:'#fff', border:'1px solid #D9C9A8', borderRadius:10,
+          boxShadow:'0 8px 32px rgba(107,79,53,0.12)',
+          display:'flex', flexDirection:'column', zIndex:1000,
+          animation:'fadeIn .15s ease-out',
+          overflow:'hidden',
+        }}>
+          {showSearch && (
+            <div style={{padding:'8px 10px', borderBottom:'1px solid #EDE6DC'}}>
+              <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                placeholder="Rechercher..." autoCapitalize="off" autoCorrect="off"
+                style={{width:'100%', boxSizing:'border-box', padding:'6px 8px', border:'1px solid #D9C9A8', borderRadius:6, fontSize:12, fontFamily:'inherit', outline:'none'}}/>
+            </div>
+          )}
+          <div style={{flex:1, overflowY:'auto'}}>
+            {filtered.length === 0 && (
+              <div style={{padding:'18px 14px', fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center'}}>Aucune option</div>
+            )}
+            {filtered.map(o => {
+              const sel = o.value === value;
+              return (
+                <div key={o.value}
+                  onClick={() => { onChange(o.value === value ? '' : o.value); setOpen(false); setQuery(''); }}
+                  style={{
+                    display:'flex', alignItems:'center', gap:8,
+                    padding:'8px 12px', cursor:'pointer', fontSize:13,
+                    background: sel ? '#FBF1E4' : 'transparent',
+                    borderBottom:'1px solid #F4EEE6',
+                    whiteSpace:'nowrap',
+                  }}
+                  onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'rgba(107,79,53,0.04)'; }}
+                  onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'transparent'; }}>
+                  <span style={{flex:1, color:'#2A2018', fontWeight: sel ? 600 : 500}}>{o.label}</span>
+                  {sel && <span style={{color:'#B26D3A', fontWeight:700, fontSize:12, flexShrink:0}}>✓</span>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -2080,50 +2173,67 @@ function formatLocal(digits, dial) {
   // Default : groupes de 2
   return digits.replace(/(\d{2})/g, '$1 ').trim();
 }
+// M/2026/05/02/10 — M121 : refactor PhoneField pour utiliser PaysCompactButton mode=phone.
+// Avant : dropdown custom limité aux 2 entrées DIAL_CODES (override countries.php) + sans recherche.
+// Après : popover identique au CountryPicker (recherche + 5 favoris MA/FR/ES/IT/BE + 198 pays).
+// État interne : ISO code (ex 'FR') canonique. Le dial est dérivé via lookup PAYS/allCountries.
 function PhoneField({label, value, onChange, onBlur, residenceCountry='', style={}}) {
-  // value en E.164 "+33612345678" → split dial/local
   const parseE164 = (v) => {
     if (!v) return {dial:'', local:''};
     const m = /^\+(\d{1,3})(\d+)$/.exec(v.replace(/\s/g,''));
     if (!m) return {dial:'', local: v.replace(/\D/g,'')};
-    // Guess dial from DIAL_CODES — prefer longest match
-    for (const len of [3,2,1]) {
-      const candidate = m[1] + m[2].slice(0, Math.max(0, 3 - len));
-      // simpler: match exact against table
-    }
-    // Match greediest dial prefix
     const full = m[1] + m[2];
     const sorted = [...DIAL_CODES].sort((a,b) => b.d.length - a.d.length);
     const hit = sorted.find(dc => full.startsWith(dc.d));
-    if (hit) return {dial: hit.d, local: full.slice(hit.d.length)};
+    if (hit) return {dial: hit.d, local: full.slice(hit.d.length), country: hit.c};
     return {dial: m[1], local: m[2]};
   };
+  const lookupCountryByDial = (d) => {
+    if (!d) return '';
+    const hit = (window.M111_COUNTRIES_CACHE && window.M111_COUNTRIES_CACHE.data || PAYS).find(p => String(p.dial || '').replace(/^\+/, '') === String(d).replace(/^\+/, ''));
+    if (hit) return hit.c;
+    const dc = DIAL_CODES.find(x => x.d === String(d));
+    return dc ? dc.c : '';
+  };
+  const lookupDialByCountry = (cc) => {
+    if (!cc) return '';
+    const cache = (window.M111_COUNTRIES_CACHE && window.M111_COUNTRIES_CACHE.data) || PAYS;
+    const hit = cache.find(p => p.c === cc);
+    if (hit && hit.dial) return String(hit.dial).replace(/^\+/, '');
+    const dc = DIAL_CODES.find(x => x.c === cc);
+    return dc ? dc.d : '';
+  };
   const initial = parseE164(value);
-  const defaultDial = initial.dial
-    || (DIAL_CODES.find(dc => dc.c === residenceCountry) || {}).d
-    || '33';
-  const [dial, setDial] = React.useState(defaultDial);
+  const defaultCountry = initial.country
+    || lookupCountryByDial(initial.dial)
+    || residenceCountry
+    || 'FR';
+  const [country, setCountry] = React.useState(defaultCountry);
   const [localDigits, setLocalDigits] = React.useState(initial.local);
   React.useEffect(() => {
     const p = parseE164(value);
-    if (p.dial) setDial(p.dial);
+    if (p.country) setCountry(p.country);
+    else if (p.dial) {
+      const cc = lookupCountryByDial(p.dial);
+      if (cc) setCountry(cc);
+    }
     setLocalDigits(p.local);
   }, [value]);
 
+  const dial = lookupDialByCountry(country) || '33';
   const warn = localDigits.length > 0 && localDigits.length < 8;
   const filled = localDigits.length >= 8;
   const [focused, setFocused] = React.useState(false);
-  const [pickerOpen, setPickerOpen] = React.useState(false);
 
   function pushE164(d, l) {
     const clean = l.replace(/\D/g, '').replace(/^0+/, '');
     if (!clean) onChange('');
     else onChange('+' + d + clean);
   }
-  function pickDial(newDial) {
-    setDial(newDial);
-    setPickerOpen(false);
-    pushE164(newDial, localDigits);
+  function handleCountryChange(newCC) {
+    setCountry(newCC);
+    const newDial = lookupDialByCountry(newCC);
+    if (newDial) pushE164(newDial, localDigits);
   }
   function handleLocal(e) {
     const raw = e.target.value.replace(/\D/g, '').slice(0, 15);
@@ -2131,38 +2241,26 @@ function PhoneField({label, value, onChange, onBlur, residenceCountry='', style=
     pushE164(dial, raw);
   }
   const displayLocal = formatLocal(localDigits, dial);
-  const dc = DIAL_CODES.find(x => x.d === dial) || DIAL_CODES[0];
 
-  // V17.1 fix-ux-5 : cadre unifié unique (drapeau + numéro), bordure bascule au focus.
   let stateClass = 'is-empty';
   if (filled) stateClass = 'is-filled';
   else if (warn) stateClass = 'is-warn';
   if (focused) stateClass += ' is-focus';
 
   return (
-    <div style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
+    <div style={{marginBottom:10, minWidth:0, ...style}}>
       {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
-      <div className={'phone-unified ' + stateClass}>
-        <button type="button" className="dial-btn" onClick={() => setPickerOpen(o => !o)}
-          aria-label="Choisir le pays">
-          <span>{dc.f}</span>
-          <span>+{dial}</span>
-          <span style={{fontSize:9, opacity:.6}}>▾</span>
-        </button>
-        <div className="divider"/>
+      <div style={{display:'flex', gap:6, alignItems:'flex-end'}}>
+        <div style={{minWidth:0, flexShrink:0}}>
+          <PaysCompactButton value={country} onChange={handleCountryChange} mode="phone" label=""/>
+        </div>
         <input type="tel" inputMode="tel" autoComplete="tel" value={displayLocal} onChange={handleLocal}
           onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); onBlur && onBlur(); }}
-          placeholder={dial === '33' ? '6 12 34 56 78' : (dial === '1' ? '(555) 123-4567' : '…')}/>
+          placeholder={dial === '33' ? '6 12 34 56 78' : (dial === '1' ? '(555) 123-4567' : '…')}
+          style={{flex:1, minWidth:0, height:40, padding:'0 10px', borderRadius:8,
+            border:'1.5px solid '+(filled ? '#BBA88B' : warn ? '#D4A437' : '#D9C9A8'),
+            background:'#FDFAF7', color:'#2A2018', fontSize:14, fontFamily:'inherit', outline:'none'}}/>
       </div>
-      {pickerOpen && (
-        <div className="phone-popover" onMouseDown={e => e.preventDefault()}>
-          {DIAL_CODES.map(c => (
-            <div key={c.c + c.d} className="item" onClick={() => pickDial(c.d)}>
-              <span>{c.f}</span><span style={{fontWeight:600}}>+{c.d}</span>
-            </div>
-          ))}
-        </div>
-      )}
       {warn && !focused && <div style={{fontSize:11, color:'#D4A437', marginTop:2}}>Numéro trop court</div>}
     </div>
   );
@@ -4582,15 +4680,15 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             </div>
           )}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <SelectPopup label="Standing" value={bien.standing} onChange={v => setB('standing', v)} options={V4_STANDING}/>
-            <SelectPopup label="État" value={bien.etat_general} onChange={v => setB('etat_general', v)} options={V4_ETATS}/>
+            <OptionPicker label="Standing" value={bien.standing} onChange={v => setB('standing', v)} options={V4_STANDING}/>
+            <OptionPicker label="État" value={bien.etat_general} onChange={v => setB('etat_general', v)} options={V4_ETATS}/>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <Field label="Année construction" type="number" value={bien.annee_construction} onChange={v => setB('annee_construction', v)}/>
             <Field label="Année rénovation" type="number" value={bien.annee_renovation} onChange={v => setB('annee_renovation', v)}/>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <SelectPopup label="Style architectural" value={bien.style_architectural} onChange={v => setB('style_architectural', v)} options={V4_STYLES_ARCHI}/>
+            <OptionPicker label="Style architectural" value={bien.style_architectural} onChange={v => setB('style_architectural', v)} options={V4_STYLES_ARCHI}/>
             <Field label="Architecte" value={bien.architecte} onChange={v => setB('architecte', v)} placeholder="Optionnel"/>
           </div>
           {types.some(t => V4_TYPES_NEED_NIVEAUX.includes(t)) && (
