@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bloc Prix — proposition Philippe</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 12px;
+  background: #FAF6EE;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #2A2018;
+  display: flex;
+  justify-content: center;
+}
+.frame {
+  width: 390px;
+  max-width: 100%;
+}
+.bloc-prix {
+  background: #FBF1E4;
+  border: 1.2px solid #C9B79A;
+  border-radius: 8px;
+  padding: 14px;
+}
+h4 {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #B26D3A;
+}
+.row {
+  margin-bottom: 12px;
+}
+.row:last-child {
+  margin-bottom: 0;
+}
+.row-label {
+  font-size: 11px;
+  color: #5C5550;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.row-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.input-wrapper {
+  background: #fff;
+  border: 1px solid #D6C7AC;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+}
+.input-wrapper input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 14px;
+  background: transparent;
+  font-family: inherit;
+  color: #2A2018;
+  min-width: 0;
+  padding: 0;
+}
+.currency {
+  font-size: 12px;
+  color: #8B7F6E;
+  font-weight: 600;
+}
+.flag {
+  font-size: 16px;
+  line-height: 1;
+}
+.hint {
+  font-size: 10px;
+  color: #8B7F6E;
+  font-style: italic;
+  text-align: center;
+  margin-top: 4px;
+}
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="bloc-prix">
+      <h4>PRIX</h4>
+      <div class="row">
+        <div class="row-label">Prix</div>
+        <div class="row-inputs">
+          <div class="input-wrapper">
+            <input type="text" placeholder="0" inputmode="numeric" id="prixEur">
+            <span class="currency">€</span>
+            <span class="flag" aria-hidden="true">🇪🇺</span>
+          </div>
+          <div class="input-wrapper">
+            <input type="text" placeholder="0" inputmode="numeric" id="prixMad">
+            <span class="currency">Dhs</span>
+            <span class="flag" aria-hidden="true">🇲🇦</span>
+          </div>
+        </div>
+        <div class="hint">Conversion auto au taux du jour</div>
+      </div>
+      <div class="row">
+        <div class="row-label">Liquide</div>
+        <div class="row-inputs">
+          <div class="input-wrapper">
+            <input type="text" placeholder="0" inputmode="numeric" id="liqEur">
+            <span class="currency">€</span>
+            <span class="flag" aria-hidden="true">🇪🇺</span>
+          </div>
+          <div class="input-wrapper">
+            <input type="text" placeholder="0" inputmode="numeric" id="liqMad">
+            <span class="currency">Dhs</span>
+            <span class="flag" aria-hidden="true">🇲🇦</span>
+          </div>
+        </div>
+        <div class="hint">Partie cash hors compta</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const TAUX_EUR_TO_MAD = 10.85; // taux placeholder, à remplacer par taux du jour réel en prod
+
+function setupConversion(eurId, madId) {
+  const eur = document.getElementById(eurId);
+  const mad = document.getElementById(madId);
+
+  eur.addEventListener('input', () => {
+    if (document.activeElement === eur) {
+      const v = parseFloat(eur.value.replace(/\s/g, '').replace(',', '.')) || 0;
+      mad.value = v ? Math.round(v * TAUX_EUR_TO_MAD).toLocaleString('fr-FR') : '';
+    }
+  });
+
+  mad.addEventListener('input', () => {
+    if (document.activeElement === mad) {
+      const v = parseFloat(mad.value.replace(/\s/g, '').replace(',', '.')) || 0;
+      eur.value = v ? Math.round(v / TAUX_EUR_TO_MAD).toLocaleString('fr-FR') : '';
+    }
+  });
+}
+
+setupConversion('prixEur', 'prixMad');
+setupConversion('liqEur', 'liqMad');
+</script>
+</body>
+</html>
