@@ -6844,8 +6844,16 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
             <V55Field label="Part vendeur" type="pct" value={d.commission_split_vendeur_pct != null ? d.commission_split_vendeur_pct : 50} onChange={v => set('commission_split_vendeur_pct', v)} suffix="%"
               hint="Le reste à la charge de l'acheteur"/>
           )}
+          {/* M/2026/05/02/9 — M117 fix : hint TVA selon pays bien (lecture paysBien existant).
+              Avant : 'TVA 20% France' hardcoded affiche meme sur dossier MA. */}
           <V55Field label="TTC ou HT" type="select" value={d.commission_ttc_ou_ht || 'TTC'} onChange={v => set('commission_ttc_ou_ht', v)}
-            options={['TTC','HT']} hint="TVA 20% France"/>
+            options={['TTC','HT']}
+            hint={paysBien === 'FR' ? 'TVA France 20%'
+                : paysBien === 'MA' ? 'TVA Maroc 20%'
+                : paysBien === 'ES' ? 'IVA España 21%'
+                : paysBien === 'BE' ? 'TVA Belgique 21%'
+                : paysBien === 'IT' ? 'IVA Italia 22%'
+                : ''}/>
           <V55ReadOnly label="Commission calculée" value={fmtMoneyV55(commCalc, devise)} hint={commMode === 'Pourcentage' ? `${prix.toLocaleString('fr-FR')} × ${commTaux}%` : 'Forfait'}/>
         </V55Bloc>
 
@@ -6871,11 +6879,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <V55Field label="Date signature" type="date_fr" value={d.mandat_date_signature} onChange={v => set('mandat_date_signature', v)}/>
-            <V55Field label="Date expiration"
-              type="date_fr"
-              value={d.mandat_date_expiration || dateExpAuto}
-              onChange={v => set('mandat_date_expiration', v)}
-              hint={dateExpAuto && !d.mandat_date_expiration ? 'Auto : ' + fmtDateFRV55(dateExpAuto) : ''}/>
+            {/* M/2026/05/02/9 — M117 fix : Date expiration read-only auto-calculee (Date Signature
+                + Duree mois). Si user change duree ou signature, expiration recalcule en live. */}
+            <V55ReadOnly label="Date expiration (auto)"
+              value={dateExpAuto ? fmtDateFRV55(dateExpAuto) : '—'}
+              hint={dateSig && duree ? 'Signature + ' + duree + ' mois' : 'Saisir Date signature + Durée'}/>
           </div>
         </V55Bloc>
 
@@ -18823,7 +18831,10 @@ function FormView(props) {
                 showToast={showToast}/>
             )}
             <CustomFieldList sectionKey="financement" d={d} set={set}/>
-            <button onClick={() => commitAndNext(2)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
+            {/* M/2026/05/02/9 — M117 : bouton Enregistrer Section III orphelin SUPPRIME franchement.
+                Auto-save M103 actif (blur input avec valeur non vide -> commit/PATCH). Le bouton
+                cosmétique creait confusion sans valeur ajoutee. Bouton ✓ Valider sticky footer
+                M108 reste pour la promotion brouillon -> dossier valide. */}
           </Stage>
         )}
 
