@@ -16242,17 +16242,27 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   // Vendeur/Bailleur = Prix affiché + Liquide + Commission (sans notaire = charge acheteur).
   // Acheteur/Locataire = fourchette Min-Max (M134.B reporté pour fourchettes complètes).
   // Format compact : 1,2 M MAD / 620 k€ etc.
+  // M/2026/05/02/25 — M137 fix devise : utiliser la devise EFFECTIVE du prix
+  // (c.financement.devise / c.devise / bien.devise saisis ou extraits via M137 import_url),
+  // PAS la devise dérivée du pays bien. Cas Philippe : Villa MA avec prix 3,5M EUR extrait
+  // de LuxuryEstate -> ligne devait dire 'EUR' pas 'MAD' (bien.pays=MA mais devise=EUR).
   function _fmtPrixCompact(n, cur) {
     const x = Number(n);
     if (!x) return '';
+    const sym = cur === 'MAD' ? ' MAD'
+              : cur === 'USD' ? ' $'
+              : cur === 'GBP' ? ' £'
+              : cur === 'CHF' ? ' CHF'
+              : cur === 'AED' ? ' AED'
+              : ' €'; // EUR par défaut
     if (cur === 'MAD') {
       if (x >= 1000000) return (x / 1000000).toFixed(x % 1000000 ? 2 : 0).replace(/\.?0+$/, '').replace('.', ',') + ' M MAD';
       if (x >= 1000) return Math.round(x / 1000) + 'k MAD';
-      return x.toLocaleString('fr-FR') + ' MAD';
+      return x.toLocaleString('fr-FR') + sym;
     }
-    if (x >= 1000000) return (x / 1000000).toFixed(x % 1000000 ? 1 : 0).replace('.', ',') + ' M€';
-    if (x >= 1000) return Math.round(x / 1000) + 'k€';
-    return x.toLocaleString('fr-FR') + ' €';
+    if (x >= 1000000) return (x / 1000000).toFixed(x % 1000000 ? 1 : 0).replace('.', ',') + ' M' + sym.trim();
+    if (x >= 1000) return Math.round(x / 1000) + 'k' + sym.trim();
+    return x.toLocaleString('fr-FR') + sym;
   }
   const _prixVenteAffiche = (() => {
     const _prix = Number(c.prix_affiche) || 0;
@@ -16261,7 +16271,10 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     if (_prix <= 0 && _liq <= 0) return '';
     const total = _prix + _liq + _comm;
     if (total <= 0) return '';
-    const cur = bien.pays === 'MA' ? 'MAD' : '€';
+    // M137 — devise effective : 1. financement.devise (extraction URL M137 / saisie manuelle),
+    // 2. c.devise / bien.devise legacy, 3. fallback dérivé du pays bien.
+    const _fin = (c.financement && typeof c.financement === 'object') ? c.financement : {};
+    const cur = _fin.devise || c.devise || (bien && bien.devise) || (bien.pays === 'MA' ? 'MAD' : 'EUR');
     return _fmtPrixCompact(total, cur);
   })();
 
