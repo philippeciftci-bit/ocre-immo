@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>M-PAN-MAQ2 — Section III avec CurrencyPicker — Ocre Immo</title>
+<style>
+:root {
+  --bg: #FAF6EE;
+  --soft: #FBF1E4;
+  --soft2: #F4ECE0;
+  --border: #E8DDC9;
+  --mid: #C9B79A;
+  --strong: #8B5E3C;
+  --deep: #5C3B1E;
+  --text: #2A2018;
+  --grey: #8B7F6E;
+  --aqua: #E5F4F0;
+  --aqua-bord: #7FCBB7;
+  --aqua-text: #1F7765;
+  --blue: #E5F0F9;
+  --blue-bord: #7FAFD3;
+  --blue-text: #1F5784;
+  --red: #C73E3E;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(180deg, #F4ECE0 0%, #EAD7B8 100%);
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+}
+.nav-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  box-shadow: 0 2px 12px rgba(139,94,60,.08);
+}
+.nav-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--deep);
+}
+.nav-title small {
+  font-weight: 400;
+  color: var(--grey);
+  font-size: 11px;
+}
+.layout-section {
+  max-width: 1700px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+.profils-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(390px, 1fr));
+  gap: 16px;
+  padding: 18px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+@media (min-width: 1700px) {
+  .profils-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.maquette-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.maquette-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  background: var(--soft);
+  border: 1px solid var(--mid);
+  border-radius: 10px;
+  color: var(--deep);
+}
+.iphone {
+  width: 390px;
+  max-width: 100%;
+  background: #1d1d1f;
+  border-radius: 32px;
+  padding: 6px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.18);
+}
+.iphone-status {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 16px 2px;
+  font-size: 10px;
+  color: white;
+  font-weight: 600;
+}
+.iphone-screen {
+  background: var(--bg);
+  border-radius: 26px;
+  overflow: hidden;
+  max-height: 800px;
+  overflow-y: auto;
+  position: relative;
+}
+.s3-page { padding: 12px; font-size: 12.5px; }
+.s3-h {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--deep);
+  display: inline-block;
+  border-bottom: 2px solid var(--strong);
+  padding-bottom: 3px;
+  margin-bottom: 10px;
+}
+.profil-mini {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.4px;
+  color: white;
+  margin-bottom: 6px;
+}
+.profil-mini.vendeur { background: #2C3F8B; }
+.profil-mini.acheteur { background: #2C5F8B; }
+.profil-mini.bailleur { background: #5F8B2C; }
+.profil-mini.locataire { background: #8B5F2C; }
+
+/* === BLOCS === */
+.bloc {
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.bloc-prix {
+  background: var(--soft);
+  border: 1.2px solid var(--mid);
+}
+.bloc-agence {
+  background: var(--aqua);
+  border: 1.2px solid var(--aqua-bord);
+}
+.bloc-notaire {
+  background: var(--blue);
+  border: 1.2px solid var(--blue-bord);
+}
+.bloc h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.bloc-prix h4 { color: #B26D3A; }
+.bloc-agence h4 { color: var(--aqua-text); }
+.bloc-notaire h4 { color: var(--blue-text); }
+
+.h4-totals {
+  display: flex;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 10.5px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.h4-totals .t-eur { color: #B26D3A; }
+.h4-totals .t-mad { color: var(--aqua-text); }
+.bloc-notaire .h4-totals .t-eur,
+.bloc-notaire .h4-totals .t-mad { color: var(--blue-text); }
+
+/* Inputs EUR/MAD pair */
+.row-pair { margin-bottom: 8px; }
+.row-pair:last-of-type { margin-bottom: 0; }
+.row-label {
+  font-size: 11px;
+  color: #5C5550;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.row-pair-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+.iw {
+  background: #fff;
+  border: 1px solid #D6C7AC;
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 38px;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.iw.warn { border-color: var(--red); background: #FEF6F6; }
+.iw input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 13px;
+  background: transparent;
+  font-family: inherit;
+  color: var(--text);
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+}
+.iw-cur-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.iw-cur-btn:hover { background: rgba(139,94,60,.06); }
+.iw-cur-btn .cur { font-size: 11px; color: var(--grey); font-weight: 600; }
+.iw-cur-btn .flag { font-size: 14px; line-height: 1; }
+.iw-cur-btn .caret { font-size: 8px; color: var(--grey); margin-left: 1px; }
+
+.hint {
+  font-size: 10px;
+  color: var(--grey);
+  font-style: italic;
+  text-align: center;
+  margin-top: 3px;
+}
+.hint.warn { color: var(--red); font-weight: 600; }
+.hint.lock { color: #8B5E3C; }
+
+.add-btn {
+  display: block;
+  width: 100%;
+  padding: 7px;
+  margin-top: 8px;
+  background: white;
+  border: 1.5px dashed var(--mid);
+  border-radius: 6px;
+  color: var(--strong);
+  font-weight: 600;
+  font-size: 11.5px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.add-btn:hover { background: var(--soft); }
+
+.cohesion-notice {
+  font-size: 9.5px;
+  color: var(--grey);
+  font-style: italic;
+  text-align: center;
+  margin-top: 6px;
+  padding: 4px 6px;
+  background: rgba(139,94,60,.04);
+  border-radius: 4px;
+}
+
+/* === Frais agence === */
+.act-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) 50px minmax(0, 0.7fr) minmax(0, 1.2fr) 18px;
+  gap: 4px;
+  align-items: center;
+  font-size: 10.5px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.act-row:last-of-type { border-bottom: none; }
+.act-select {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 4px;
+  font-size: 10.5px;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+}
+.act-toggle {
+  display: flex;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  height: 22px;
+}
+.act-tg-b {
+  flex: 1;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--grey);
+  padding: 4px 0;
+  cursor: pointer;
+  user-select: none;
+}
+.act-tg-b.on { background: var(--aqua-text); color: #fff; }
+.act-val {
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-weight: 600;
+  font-size: 10.5px;
+  font-family: inherit;
+  color: var(--text);
+  text-align: right;
+  min-width: 0;
+  width: 100%;
+  outline: none;
+}
+.act-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-weight: 700;
+  font-size: 10px;
+  text-align: right;
+  line-height: 1.15;
+}
+.act-totals .t-eur { color: #B26D3A; }
+.act-totals .t-mad { color: var(--aqua-text); }
+.act-rm {
+  text-align: center;
+  color: var(--grey);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.act-total-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 4px 0;
+  border-top: 1px solid var(--aqua-bord);
+  margin-top: 4px;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--aqua-text);
+}
+.act-total-line .totals-2col {
+  display: flex;
+  gap: 10px;
+}
+
+/* === Notaire === */
+.not-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.not-pct {
+  background: #fff;
+  border: 1px solid #D6C7AC;
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 38px;
+}
+.not-pct input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  flex: 1;
+  font-size: 13px;
+  min-width: 0;
+  width: 100%;
+  font-family: inherit;
+  color: var(--text);
+}
+.not-pct .pct { font-size: 12px; color: var(--grey); font-weight: 600; flex-shrink: 0; }
+.not-total {
+  background: rgba(127,175,211,.18);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue-text);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.not-total .label { font-weight: 600; }
+.not-total .totals-2col { display: flex; gap: 10px; }
+.not-total .t-eur { color: #B26D3A; font-weight: 700; }
+.not-total .t-mad { color: var(--blue-text); font-weight: 700; }
+
+/* === CurrencyPicker popover === */
+.cur-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,18,8,.18);
+  z-index: 1000;
+  display: none;
+}
+.cur-overlay.open { display: block; }
+.cur-popover {
+  position: absolute;
+  background: #fff;
+  border: 1px solid var(--mid);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(26,18,8,.18);
+  padding: 8px;
+  width: 260px;
+  max-height: 380px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+.cur-search {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--soft2);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+.cur-search:focus { border-color: var(--mid); }
+.cur-list {
+  overflow-y: auto;
+  flex: 1;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.cur-section {
+  font-size: 9.5px;
+  color: var(--grey);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 6px 8px 4px;
+}
+.cur-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  height: 32px;
+}
+.cur-item:hover { background: var(--soft); }
+.cur-item.active { background: var(--soft); border: 1px solid var(--mid); }
+.cur-item .flag { font-size: 16px; line-height: 1; }
+.cur-item .code { font-weight: 700; color: var(--deep); font-size: 12px; min-width: 36px; }
+.cur-item .name { color: var(--grey); font-size: 11.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+</style>
+</head>
+<body>
+
+<div class="nav-sticky">
+  <div class="nav-title">M-PAN-MAQ2 — Section III avec CurrencyPicker au tap <small>· 4 profils · suppression DEVISE+DATE · Frais agence/notaire 2 cols monnaies · validation visuelle uniquement</small></div>
+</div>
+
+<div class="cur-overlay" id="curOverlay"></div>
+
+<div id="root"></div>
+
+<script>
+// === Currency catalog ===
+const CURRENCIES = [
+  {code:'EUR', name:'Euro', flag:'🇪🇺', favorite:true},
+  {code:'MAD', name:'Dirham marocain', flag:'🇲🇦', favorite:true},
+  {code:'USD', name:'Dollar américain', flag:'🇺🇸', favorite:true},
+  {code:'GBP', name:'Livre sterling', flag:'🇬🇧', favorite:true},
+  {code:'CHF', name:'Franc suisse', flag:'🇨🇭', favorite:true},
+  {code:'AED', name:'Dirham émirati', flag:'🇦🇪'},
+  {code:'CAD', name:'Dollar canadien', flag:'🇨🇦'},
+  {code:'AUD', name:'Dollar australien', flag:'🇦🇺'},
+  {code:'JPY', name:'Yen japonais', flag:'🇯🇵'},
+  {code:'CNY', name:'Yuan chinois', flag:'🇨🇳'},
+  {code:'TRY', name:'Livre turque', flag:'🇹🇷'},
+  {code:'DZD', name:'Dinar algérien', flag:'🇩🇿'},
+  {code:'TND', name:'Dinar tunisien', flag:'🇹🇳'},
+  {code:'EGP', name:'Livre égyptienne', flag:'🇪🇬'},
+  {code:'SAR', name:'Riyal saoudien', flag:'🇸🇦'},
+  {code:'QAR', name:'Riyal qatari', flag:'🇶🇦'},
+  {code:'KWD', name:'Dinar koweitien', flag:'🇰🇼'},
+  {code:'NGN', name:'Naira nigérian', flag:'🇳🇬'},
+  {code:'ZAR', name:'Rand sud-africain', flag:'🇿🇦'},
+  {code:'BRL', name:'Real brésilien', flag:'🇧🇷'},
+  {code:'MXN', name:'Peso mexicain', flag:'🇲🇽'},
+  {code:'INR', name:'Roupie indienne', flag:'🇮🇳'},
+  {code:'SGD', name:'Dollar de Singapour', flag:'🇸🇬'},
+  {code:'HKD', name:'Dollar de Hong Kong', flag:'🇭🇰'},
+  {code:'NOK', name:'Couronne norvégienne', flag:'🇳🇴'},
+  {code:'SEK', name:'Couronne suédoise', flag:'🇸🇪'},
+  {code:'DKK', name:'Couronne danoise', flag:'🇩🇰'},
+];
+const CUR_BY_CODE = Object.fromEntries(CURRENCIES.map(c => [c.code, c]));
+
+const SYMBOL_FOR = {
+  EUR: '€', MAD: 'Dhs', USD: '$', GBP: '£', CHF: 'CHF',
+  AED: 'AED', CAD: 'CA$', AUD: 'AU$', JPY: '¥', CNY: '¥',
+  TRY: '₺', DZD: 'DZD', TND: 'TND', EGP: 'E£', SAR: 'SAR',
+  QAR: 'QAR', KWD: 'KWD', NGN: '₦', ZAR: 'R', BRL: 'R$',
+  MXN: 'Mex$', INR: '₹', SGD: 'S$', HKD: 'HK$', NOK: 'kr',
+  SEK: 'kr', DKK: 'kr',
+};
+
+// === Conversion (placeholder taux du jour, base EUR) ===
+// rates[XXX] = montant XXX pour 1 EUR. Source : approximations manuelles.
+const RATES_VS_EUR = {
+  EUR: 1, MAD: 10.85, USD: 1.08, GBP: 0.85, CHF: 0.97,
+  AED: 3.97, CAD: 1.47, AUD: 1.65, JPY: 161, CNY: 7.79,
+  TRY: 35, DZD: 145, TND: 3.36, EGP: 53, SAR: 4.05,
+  QAR: 3.93, KWD: 0.33, NGN: 1700, ZAR: 19.7, BRL: 6.4,
+  MXN: 21.5, INR: 90, SGD: 1.45, HKD: 8.4, NOK: 11.5,
+  SEK: 12.0, DKK: 7.46,
+};
+
+function convert(value, from, to) {
+  if (from === to) return value;
+  const fromRate = RATES_VS_EUR[from];
+  const toRate = RATES_VS_EUR[to];
+  if (!fromRate || !toRate) return value;
+  return (value / fromRate) * toRate;
+}
+
+const fmt = (n) => {
+  if (!n || !isFinite(n)) return '';
+  const v = Number(n);
+  if (Math.abs(v) < 1) return v.toFixed(2);
+  return Math.round(v).toLocaleString('fr-FR');
+};
+
+// === MOCK data (Maroc focus) ===
+const MOCK = {
+  vendeur: {
+    type: 'vendeur', label: 'VENDEUR', cls: 'vendeur',
+    leftCur: 'EUR', rightCur: 'MAD',
+    rows: [
+      {key:'prix', label:'Prix', valEUR:534562, valMAD:5800000, hint:'Conversion auto au taux du jour', hintCls:''},
+      {key:'plancher', label:'Prix plancher', valEUR:506912, valMAD:5500000, hint:'🔒 Visible agent uniquement (masqué sur PDF partagé)', hintCls:'lock'},
+      {key:'liquide', label:'Liquide', valEUR:0, valMAD:0, hint:'Partie cash hors compta', hintCls:''},
+    ],
+    addLabel:'+ Ajouter un prix',
+    showNotaire: true,
+    notairePct: 6.0,
+    notaireDossier: 0,
+    notaireLabel: 'MA 6%',
+    acteurs: [
+      {nom:'mandat', mode:'pct', val:5},
+      {nom:'contrepartie', mode:'pct', val:2.5},
+    ],
+    baseEUR: 534562, baseMAD: 5800000,
+  },
+  acheteur: {
+    type: 'acheteur', label: 'ACHETEUR', cls: 'acheteur',
+    leftCur: 'EUR', rightCur: 'MAD',
+    rows: [
+      {key:'min', label:'Prix min', valEUR:258064, valMAD:2800000, hint:'Conversion auto au taux du jour', hintCls:''},
+      {key:'max', label:'Prix max', valEUR:294930, valMAD:3200000, hint:'', hintCls:''},
+      {key:'liquide', label:'Liquide dispo', valEUR:18433, valMAD:200000, hint:'Cash hors crédit', hintCls:''},
+    ],
+    addLabel:'+ Ajouter',
+    showNotaire: true,
+    notairePct: 6.0,
+    notaireDossier: 0,
+    notaireLabel: 'MA 6%',
+    acteurs: [
+      {nom:'contrepartie', mode:'pct', val:2.5},
+    ],
+    baseEUR: 294930, baseMAD: 3200000,
+  },
+  bailleur: {
+    type: 'bailleur', label: 'BAILLEUR', cls: 'bailleur',
+    leftCur: 'EUR', rightCur: 'MAD',
+    rows: [
+      {key:'loyer', label:'Loyer demandé', valEUR:1290, valMAD:14000, hint:'Conversion auto', hintCls:''},
+      {key:'plancher', label:'Loyer plancher', valEUR:1105, valMAD:12000, hint:'🔒 Visible agent uniquement', hintCls:'lock'},
+      {key:'charges', label:'Charges', valEUR:138, valMAD:1500, hint:'Mensuelles récupérables', hintCls:''},
+      {key:'caution', label:'Caution', valEUR:2580, valMAD:28000, hint:'2-3 mois loyer', hintCls:''},
+    ],
+    addLabel:'+ Ajouter',
+    showNotaire: false,
+    acteurs: [
+      {nom:'mandat', mode:'forfait', val:14000},
+    ],
+    baseEUR: 1290, baseMAD: 14000,
+  },
+  locataire: {
+    type: 'locataire', label: 'LOCATAIRE', cls: 'locataire',
+    leftCur: 'EUR', rightCur: 'MAD',
+    rows: [
+      {key:'min', label:'Loyer min', valEUR:1105, valMAD:12000, hint:'Conversion auto', hintCls:''},
+      {key:'max', label:'Loyer max', valEUR:1382, valMAD:15000, hint:'Charges comprises', hintCls:''},
+      {key:'caution', label:'Caution dispo', valEUR:2765, valMAD:30000, hint:'Cash dépôt', hintCls:''},
+    ],
+    addLabel:'+ Ajouter',
+    showNotaire: false,
+    acteurs: [],
+    baseEUR: 1382, baseMAD: 15000,
+  },
+};
+
+const ACTEUR_TYPES = [
+  {v:'mandat', l:'Agent mandat'},
+  {v:'contrepartie', l:'Agent contrepartie'},
+  {v:'co_agence', l:'Co-agence'},
+  {v:'apporteur', l:'Apporteur'},
+  {v:'autre', l:'Autre'},
+];
+const ACTEUR_LABEL = Object.fromEntries(ACTEUR_TYPES.map(t => [t.v, t.l]));
+
+// === CurrencyPicker (singleton popover) ===
+const overlay = document.getElementById('curOverlay');
+let openCallback = null;
+
+function openCurrencyPicker(anchorEl, currentCode, onSelect) {
+  closeCurrencyPicker();
+  openCallback = onSelect;
+
+  const pop = document.createElement('div');
+  pop.className = 'cur-popover';
+  pop.innerHTML = `
+    <input type="text" class="cur-search" placeholder="🔍 Rechercher une monnaie..." autofocus>
+    <div class="cur-list"></div>
+  `;
+  overlay.appendChild(pop);
+  overlay.classList.add('open');
+
+  const list = pop.querySelector('.cur-list');
+  const search = pop.querySelector('.cur-search');
+
+  const renderList = (q) => {
+    const term = (q || '').trim().toLowerCase();
+    list.innerHTML = '';
+    const filtered = CURRENCIES.filter(c => !term || c.code.toLowerCase().includes(term) || c.name.toLowerCase().includes(term));
+    const favs = filtered.filter(c => c.favorite);
+    const others = filtered.filter(c => !c.favorite);
+    if (favs.length && !term) {
+      const h = document.createElement('div'); h.className = 'cur-section'; h.textContent = 'Favorites'; list.appendChild(h);
+    }
+    favs.forEach(c => list.appendChild(makeItem(c, currentCode)));
+    if (others.length) {
+      const h = document.createElement('div'); h.className = 'cur-section'; h.textContent = term ? 'Résultats' : 'Toutes les monnaies'; list.appendChild(h);
+    }
+    others.forEach(c => list.appendChild(makeItem(c, currentCode)));
+    if (!filtered.length) {
+      const empty = document.createElement('div'); empty.className = 'cur-section'; empty.style.textAlign = 'center'; empty.style.padding = '14px'; empty.textContent = 'Aucune monnaie trouvée'; list.appendChild(empty);
+    }
+  };
+
+  function makeItem(c, currentCode) {
+    const it = document.createElement('div');
+    it.className = 'cur-item' + (c.code === currentCode ? ' active' : '');
+    it.innerHTML = `
+      <span class="flag">${c.flag}</span>
+      <span class="code">${c.code}</span>
+      <span class="name">${c.name}</span>
+    `;
+    it.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (openCallback) openCallback(c.code);
+      closeCurrencyPicker();
+    });
+    return it;
+  }
+
+  search.addEventListener('input', () => renderList(search.value));
+  renderList('');
+
+  // Position popover above the anchor, clamped to viewport
+  const rect = anchorEl.getBoundingClientRect();
+  pop.style.visibility = 'hidden';
+  document.body.appendChild(pop); // measure outside overlay first
+  const pw = pop.offsetWidth;
+  const ph = pop.offsetHeight;
+  overlay.appendChild(pop);
+  let left = rect.left + rect.width / 2 - pw / 2;
+  let top = rect.bottom + 4;
+  if (top + ph > window.innerHeight - 8) {
+    top = rect.top - ph - 4;
+  }
+  if (left < 8) left = 8;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - 8 - pw;
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+  pop.style.visibility = 'visible';
+
+  setTimeout(() => search.focus(), 30);
+}
+function closeCurrencyPicker() {
+  overlay.classList.remove('open');
+  overlay.innerHTML = '';
+  openCallback = null;
+}
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay) closeCurrencyPicker();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeCurrencyPicker();
+});
+
+// === Render frame iPhone ===
+function renderProfil(p) {
+  const screen = document.createElement('div');
+  screen.className = 'iphone-screen';
+  screen.dataset.profil = p.type;
+
+  const repaint = () => {
+    screen.innerHTML = '';
+    screen.appendChild(blocPrix(p, repaint));
+    screen.appendChild(blocAgence(p, repaint));
+    if (p.showNotaire) screen.appendChild(blocNotaire(p, repaint));
+  };
+  repaint();
+  return screen;
+}
+
+function el(tag, attrs, ...children) {
+  const e = document.createElement(tag);
+  if (attrs) {
+    for (const k in attrs) {
+      if (k === 'style' && typeof attrs[k] === 'object') Object.assign(e.style, attrs[k]);
+      else if (k.startsWith('on') && typeof attrs[k] === 'function') e.addEventListener(k.slice(2).toLowerCase(), attrs[k]);
+      else if (k === 'className') e.className = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+  }
+  for (const c of children) {
+    if (c == null) continue;
+    if (typeof c === 'string') e.appendChild(document.createTextNode(c));
+    else e.appendChild(c);
+  }
+  return e;
+}
+
+// Bloc Prix
+function blocPrix(p, repaint) {
+  const titre = p.type === 'bailleur' ? 'Loyer & conditions' : (p.type === 'locataire' ? 'Loyer recherché' : 'Prix');
+  const wrap = el('div', {className: 'bloc bloc-prix'},
+    el('div', null, el('span', {className: 's3-h'}, 'III. Prix · Agence · Notaire')),
+    el('div', {className: 'profil-mini ' + p.cls}, p.label),
+    el('h4', null, el('span', null, '💰 ' + titre.toUpperCase()))
+  );
+
+  // Set top header outside this card actually — but the mockup wants the s3-h before card.
+  // Simpler : we render the s3-h header INSIDE the screen separately. We'll do it differently.
+  // Reset:
+  wrap.innerHTML = '';
+  wrap.appendChild(el('h4', null, el('span', null, '💰 ' + titre.toUpperCase())));
+
+  // Render rows
+  for (const row of p.rows) {
+    const isMaxRow = row.key === 'max';
+    const minRow = p.rows.find(r => r.key === 'min');
+    const warnMax = isMaxRow && minRow && minRow.valEUR > 0 && row.valEUR > 0 && row.valEUR < minRow.valEUR;
+    wrap.appendChild(buildRow(p, row, repaint, warnMax));
+  }
+
+  // Add button
+  const add = el('button', {className: 'add-btn', type: 'button'}, p.addLabel);
+  wrap.appendChild(add);
+
+  // Cohesion notice
+  wrap.appendChild(el('div', {className: 'cohesion-notice'}, 'Toutes les lignes Prix utilisent la même paire de devises'));
+
+  return wrap;
+}
+
+function buildRow(p, row, repaint, warn) {
+  const wrap = el('div', {className: 'row-pair'});
+  wrap.appendChild(el('div', {className: 'row-label'}, row.label));
+  const inputs = el('div', {className: 'row-pair-inputs'});
+
+  // Left col input (devise = p.leftCur)
+  inputs.appendChild(buildIw(p, row, 'left', warn, repaint));
+  // Right col input (devise = p.rightCur)
+  inputs.appendChild(buildIw(p, row, 'right', warn, repaint));
+
+  wrap.appendChild(inputs);
+
+  if (row.hint) {
+    wrap.appendChild(el('div', {className: 'hint ' + (warn ? 'warn' : (row.hintCls || ''))},
+      warn ? '⚠ Prix max < Prix min' : row.hint));
+  }
+  return wrap;
+}
+
+function buildIw(p, row, side, warn, repaint) {
+  const cur = side === 'left' ? p.leftCur : p.rightCur;
+  const val = side === 'left' ? row.valEUR : row.valMAD;
+  // We use semantic field names valEUR/valMAD on the row internally — but label them "leftValue/rightValue"
+  // Actually we always store left in valEUR slot, right in valMAD slot (for simplicity), but the displayed
+  // currency is whatever leftCur/rightCur is. So when leftCur changes, we re-interpret the stored value
+  // in the new devise (no conversion of stored — the stored is "left value in leftCur").
+  const iw = el('div', {className: 'iw' + (warn ? ' warn' : '')});
+  const input = el('input', {type: 'text', inputmode: 'numeric', value: fmt(val), placeholder: '0'});
+  input.addEventListener('input', () => {
+    const v = parseFloat(input.value.replace(/\s/g,'').replace(',','.')) || 0;
+    if (side === 'left') {
+      row.valEUR = v;
+      row.valMAD = v ? convert(v, p.leftCur, p.rightCur) : 0;
+    } else {
+      row.valMAD = v;
+      row.valEUR = v ? convert(v, p.rightCur, p.leftCur) : 0;
+    }
+    // Live sync : update opposite input value without full repaint (smooth typing)
+    syncOppositeInput(iw.parentNode, side, p, row);
+    // Also live update agence/notaire totals
+    updateBaseFromRow(p);
+    updateAllTotals(iw.closest('.iphone-screen'), p);
+  });
+  iw.appendChild(input);
+
+  const btn = el('button', {className: 'iw-cur-btn', type: 'button'});
+  const c = CUR_BY_CODE[cur];
+  btn.appendChild(el('span', {className: 'cur'}, SYMBOL_FOR[cur] || cur));
+  btn.appendChild(el('span', {className: 'flag'}, c ? c.flag : '🏳️'));
+  btn.appendChild(el('span', {className: 'caret'}, '▾'));
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openCurrencyPicker(btn, cur, (newCode) => {
+      if (side === 'left') p.leftCur = newCode;
+      else p.rightCur = newCode;
+      repaint();
+    });
+  });
+  iw.appendChild(btn);
+
+  return iw;
+}
+
+function syncOppositeInput(rowInputs, sideJustEdited, p, row) {
+  if (!rowInputs) return;
+  const inputs = rowInputs.querySelectorAll('input');
+  if (inputs.length !== 2) return;
+  const [leftInput, rightInput] = inputs;
+  if (sideJustEdited === 'left') rightInput.value = fmt(row.valMAD);
+  else leftInput.value = fmt(row.valEUR);
+}
+
+function updateBaseFromRow(p) {
+  // Recompute baseEUR/baseMAD from the "main" row (first non-fourchette or 'max' for fourchette).
+  let mainKey;
+  if (p.type === 'vendeur') mainKey = 'prix';
+  else if (p.type === 'acheteur') mainKey = 'max';
+  else if (p.type === 'bailleur') mainKey = 'loyer';
+  else if (p.type === 'locataire') mainKey = 'max';
+  const main = p.rows.find(r => r.key === mainKey);
+  if (main) { p.baseEUR = main.valEUR; p.baseMAD = main.valMAD; }
+}
+
+// Bloc Frais agence
+function blocAgence(p, repaint) {
+  const wrap = el('div', {className: 'bloc bloc-agence'});
+  const totals = computeAgenceTotals(p);
+  const headerTotals = totals.eur > 0 || totals.mad > 0
+    ? el('span', {className: 'h4-totals'},
+        el('span', {className: 't-eur'}, fmt(totals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur)),
+        el('span', null, '|'),
+        el('span', {className: 't-mad'}, fmt(totals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur))
+      )
+    : null;
+  wrap.appendChild(el('h4', null,
+    el('span', null, "🤝 FRAIS D'AGENCE"),
+    headerTotals
+  ));
+
+  for (const a of p.acteurs) {
+    wrap.appendChild(buildActeurRow(p, a, repaint));
+  }
+  if (!p.acteurs.length) {
+    wrap.appendChild(el('div', {className: 'hint', style: {textAlign:'center', padding:'8px 0'}},
+      "Aucun acteur. Tap + Ajouter pour ajouter."));
+  }
+
+  // Footer total line
+  if (p.acteurs.length) {
+    const footer = el('div', {className: 'act-total-line'},
+      el('span', null, 'Total agence'),
+      el('div', {className: 'totals-2col'},
+        el('span', null, fmt(totals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur)),
+        el('span', {style:{color:'#7FCBB7'}}, '|'),
+        el('span', null, fmt(totals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur))
+      )
+    );
+    wrap.appendChild(footer);
+  }
+
+  const add = el('button', {className: 'add-btn', type: 'button'}, '+ Ajouter (' + p.acteurs.length + '/4)');
+  add.addEventListener('click', () => {
+    if (p.acteurs.length >= 4) return;
+    p.acteurs.push({nom:'autre', mode:'pct', val:1});
+    repaint();
+  });
+  wrap.appendChild(add);
+
+  return wrap;
+}
+
+function computeAgenceTotals(p) {
+  let eur = 0, mad = 0;
+  for (const a of p.acteurs) {
+    let valEur, valMad;
+    if (a.mode === 'forfait') {
+      // Forfait stocké en leftCur (EUR)
+      valEur = Number(a.val) || 0;
+      valMad = convert(valEur, p.leftCur, p.rightCur);
+    } else {
+      const pct = Number(a.val) || 0;
+      valEur = (Number(p.baseEUR) || 0) * pct / 100;
+      valMad = (Number(p.baseMAD) || 0) * pct / 100;
+    }
+    eur += valEur;
+    mad += valMad;
+  }
+  return {eur, mad};
+}
+
+function buildActeurRow(p, a, repaint) {
+  const row = el('div', {className: 'act-row'});
+
+  // Type select
+  const sel = el('select', {className: 'act-select'});
+  for (const t of ACTEUR_TYPES) {
+    const opt = el('option', {value: t.v}, t.l);
+    if (t.v === a.nom) opt.setAttribute('selected', 'selected');
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change', () => { a.nom = sel.value; });
+  row.appendChild(sel);
+
+  // Mode toggle
+  const tog = el('div', {className: 'act-toggle'});
+  const tgPct = el('div', {className: 'act-tg-b' + (a.mode === 'pct' ? ' on' : '')}, '%');
+  const tgF = el('div', {className: 'act-tg-b' + (a.mode === 'forfait' ? ' on' : '')}, 'F');
+  tgPct.addEventListener('click', () => { a.mode = 'pct'; repaint(); });
+  tgF.addEventListener('click', () => { a.mode = 'forfait'; repaint(); });
+  tog.appendChild(tgPct); tog.appendChild(tgF);
+  row.appendChild(tog);
+
+  // Value
+  const valIn = el('input', {className: 'act-val', type: 'text', inputmode: 'decimal', value: a.mode === 'pct' ? a.val + '%' : fmt(a.val)});
+  valIn.addEventListener('focus', () => { valIn.value = String(a.val); });
+  valIn.addEventListener('input', () => {
+    const v = parseFloat(valIn.value.replace(/\s/g,'').replace(',','.')) || 0;
+    a.val = v;
+    // Update only totals (not full repaint to keep focus)
+    updateAllTotals(valIn.closest('.iphone-screen'), p);
+  });
+  valIn.addEventListener('blur', () => {
+    valIn.value = a.mode === 'pct' ? a.val + '%' : fmt(a.val);
+  });
+  row.appendChild(valIn);
+
+  // Totals 2 cols
+  const totals = (() => {
+    if (a.mode === 'forfait') {
+      const e = Number(a.val) || 0;
+      return {eur: e, mad: convert(e, p.leftCur, p.rightCur)};
+    }
+    const pct = Number(a.val) || 0;
+    return {
+      eur: (Number(p.baseEUR) || 0) * pct / 100,
+      mad: (Number(p.baseMAD) || 0) * pct / 100,
+    };
+  })();
+  row.appendChild(el('div', {className: 'act-totals'},
+    el('span', {className: 't-eur'}, fmt(totals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur)),
+    el('span', {className: 't-mad'}, fmt(totals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur))
+  ));
+
+  // Remove btn
+  const rm = el('div', {className: 'act-rm'}, '✕');
+  rm.addEventListener('click', () => {
+    p.acteurs.splice(p.acteurs.indexOf(a), 1);
+    repaint();
+  });
+  row.appendChild(rm);
+
+  return row;
+}
+
+function blocNotaire(p, repaint) {
+  const wrap = el('div', {className: 'bloc bloc-notaire'});
+  wrap.appendChild(el('h4', null, el('span', null, '🏛 FRAIS NOTAIRE')));
+
+  // Row : pourcentage + frais dossier
+  const row = el('div', {className: 'not-row'});
+  const pctBox = el('div', null);
+  pctBox.appendChild(el('div', {className: 'row-label'}, 'Pourcentage'));
+  const pctIw = el('div', {className: 'not-pct'});
+  const pctIn = el('input', {type:'text', inputmode:'decimal', value: String(p.notairePct)});
+  pctIn.addEventListener('input', () => {
+    p.notairePct = parseFloat(pctIn.value.replace(',', '.')) || 0;
+    updateNotaireTotals(wrap, p);
+  });
+  pctIw.appendChild(pctIn);
+  pctIw.appendChild(el('span', {className: 'pct'}, '%'));
+  pctBox.appendChild(pctIw);
+  pctBox.appendChild(el('div', {className: 'hint'}, p.notaireLabel || ''));
+  row.appendChild(pctBox);
+
+  const dosBox = el('div', null);
+  dosBox.appendChild(el('div', {className: 'row-label'}, 'Frais de dossier (optionnel)'));
+  const dosInputs = el('div', {className: 'row-pair-inputs'});
+  // 2 cols : EUR (leftCur) + MAD (rightCur)
+  const dosLeft = buildSimpleIw(p, 'left', p.notaireDossier || 0, (v) => {
+    p.notaireDossier = v;
+    p._notaireDossierRight = v ? convert(v, p.leftCur, p.rightCur) : 0;
+    syncOppositeSimpleInput(dosInputs, 'left', p);
+    updateNotaireTotals(wrap, p);
+  });
+  const dosRight = buildSimpleIw(p, 'right', p._notaireDossierRight || convert(p.notaireDossier || 0, p.leftCur, p.rightCur), (v) => {
+    p._notaireDossierRight = v;
+    p.notaireDossier = v ? convert(v, p.rightCur, p.leftCur) : 0;
+    syncOppositeSimpleInput(dosInputs, 'right', p);
+    updateNotaireTotals(wrap, p);
+  });
+  dosInputs.appendChild(dosLeft);
+  dosInputs.appendChild(dosRight);
+  dosBox.appendChild(dosInputs);
+  row.appendChild(dosBox);
+  wrap.appendChild(row);
+
+  // Total estimé
+  const totals = computeNotaireTotals(p);
+  const total = el('div', {className: 'not-total'},
+    el('span', {className: 'label'}, 'Total estimé'),
+    el('div', {className: 'totals-2col'},
+      el('span', {className: 't-eur'}, fmt(totals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur)),
+      el('span', {style:{color:'#7FAFD3'}}, '|'),
+      el('span', {className: 't-mad'}, fmt(totals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur))
+    )
+  );
+  wrap.appendChild(total);
+  wrap.appendChild(el('div', {className: 'hint', style:{marginTop:6}}, 'Pré-rempli selon pays — modifiable'));
+
+  return wrap;
+}
+
+function buildSimpleIw(p, side, val, onChange) {
+  const cur = side === 'left' ? p.leftCur : p.rightCur;
+  const iw = el('div', {className: 'iw'});
+  const input = el('input', {type:'text', inputmode:'numeric', value: fmt(val), placeholder:'0'});
+  input.addEventListener('input', () => {
+    const v = parseFloat(input.value.replace(/\s/g,'').replace(',','.')) || 0;
+    onChange(v);
+  });
+  iw.appendChild(input);
+  const c = CUR_BY_CODE[cur];
+  iw.appendChild(el('span', {className: 'cur', style:{fontSize:11, color:'#8B7F6E', fontWeight:600, flexShrink:0}}, SYMBOL_FOR[cur]||cur));
+  iw.appendChild(el('span', {className: 'flag', style:{fontSize:14, lineHeight:1, flexShrink:0}}, c ? c.flag : ''));
+  return iw;
+}
+
+function syncOppositeSimpleInput(rowInputs, sideJustEdited, p) {
+  const inputs = rowInputs.querySelectorAll('input');
+  if (inputs.length !== 2) return;
+  const [leftInput, rightInput] = inputs;
+  if (sideJustEdited === 'left') rightInput.value = fmt(p._notaireDossierRight || 0);
+  else leftInput.value = fmt(p.notaireDossier || 0);
+}
+
+function computeNotaireTotals(p) {
+  const baseEur = (Number(p.baseEUR) || 0) * (Number(p.notairePct) || 0) / 100;
+  const dossierEur = Number(p.notaireDossier) || 0;
+  const totalEur = baseEur + dossierEur;
+  const baseMad = (Number(p.baseMAD) || 0) * (Number(p.notairePct) || 0) / 100;
+  const dossierMad = Number(p._notaireDossierRight) || convert(dossierEur, p.leftCur, p.rightCur);
+  const totalMad = baseMad + dossierMad;
+  return {eur: totalEur, mad: totalMad};
+}
+
+function updateNotaireTotals(blocNotaireEl, p) {
+  const totals = computeNotaireTotals(p);
+  const ts = blocNotaireEl.querySelectorAll('.not-total .totals-2col span');
+  if (ts.length >= 3) {
+    ts[0].textContent = fmt(totals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur);
+    ts[2].textContent = fmt(totals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur);
+  }
+}
+
+function updateAllTotals(screenEl, p) {
+  if (!screenEl) return;
+  // Refresh agence totals (header + footer + per-row)
+  const blocAg = screenEl.querySelector('.bloc-agence');
+  if (blocAg) {
+    const agTotals = computeAgenceTotals(p);
+    // header totals
+    const hSpans = blocAg.querySelectorAll('h4 .h4-totals span');
+    if (hSpans.length >= 3) {
+      hSpans[0].textContent = fmt(agTotals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur);
+      hSpans[2].textContent = fmt(agTotals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur);
+    }
+    // per-row totals
+    const actRows = blocAg.querySelectorAll('.act-row');
+    actRows.forEach((rowEl, i) => {
+      const a = p.acteurs[i];
+      if (!a) return;
+      let eur, mad;
+      if (a.mode === 'forfait') {
+        eur = Number(a.val) || 0;
+        mad = convert(eur, p.leftCur, p.rightCur);
+      } else {
+        eur = (Number(p.baseEUR)||0) * (Number(a.val)||0) / 100;
+        mad = (Number(p.baseMAD)||0) * (Number(a.val)||0) / 100;
+      }
+      const ts = rowEl.querySelectorAll('.act-totals span');
+      if (ts.length >= 2) {
+        ts[0].textContent = fmt(eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur);
+        ts[1].textContent = fmt(mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur);
+      }
+    });
+    // footer total
+    const footerSpans = blocAg.querySelectorAll('.act-total-line .totals-2col span');
+    if (footerSpans.length >= 3) {
+      footerSpans[0].textContent = fmt(agTotals.eur) + ' ' + (SYMBOL_FOR[p.leftCur]||p.leftCur);
+      footerSpans[2].textContent = fmt(agTotals.mad) + ' ' + (SYMBOL_FOR[p.rightCur]||p.rightCur);
+    }
+  }
+  // Refresh notaire totals
+  if (p.showNotaire) {
+    const blocNot = screenEl.querySelector('.bloc-notaire');
+    if (blocNot) updateNotaireTotals(blocNot, p);
+  }
+}
+
+// === Build page ===
+const PROFILS = ['vendeur','acheteur','bailleur','locataire'];
+const root = document.getElementById('root');
+
+const sec = document.createElement('section');
+sec.className = 'layout-section';
+const grid = el('div', {className: 'profils-grid'});
+PROFILS.forEach(k => {
+  const p = MOCK[k];
+  const wrap = el('div', {className: 'maquette-wrap'},
+    el('div', {className: 'maquette-label'}, p.label + ' · L2 + Currency'),
+    el('div', {className: 'iphone'},
+      el('div', {className: 'iphone-status'},
+        el('span', null, '17:22'),
+        el('span', null, p.label),
+        el('span', null, '72%')
+      ),
+      renderProfilWrapped(p)
+    )
+  );
+  grid.appendChild(wrap);
+});
+sec.appendChild(grid);
+root.appendChild(sec);
+
+function renderProfilWrapped(p) {
+  // Wrap: iphone-screen avec s3-h header + profil-mini
+  const screen = el('div', {className: 'iphone-screen'});
+  screen.dataset.profil = p.type;
+  screen.appendChild(el('div', {className: 's3-page'},
+    el('div', {className: 'profil-mini ' + p.cls}, p.label),
+    el('div', null, el('span', {className: 's3-h'}, 'III. Prix · Agence · Notaire'))
+  ));
+  const body = el('div', {className: 's3-page', style: {paddingTop: 0}});
+  screen.appendChild(body);
+
+  const repaint = () => {
+    body.innerHTML = '';
+    body.appendChild(blocPrix(p, repaint));
+    body.appendChild(blocAgence(p, repaint));
+    if (p.showNotaire) body.appendChild(blocNotaire(p, repaint));
+  };
+  repaint();
+  return screen;
+}
+</script>
+
+</body>
+</html>
