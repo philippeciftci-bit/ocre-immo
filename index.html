@@ -7362,10 +7362,38 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
               <span style={{fontSize:10, color:'#A07842', fontStyle:'italic'}}>(choix manuel)</span>
             )}
           </div>
-          <V55Field label="Prix affiché" type="number" value={d.prix_affiche} onChange={v => set('prix_affiche', v)} suffix={devise}/>
+          {/* M/2026/05/02/22 — M134 : Bloc Prix Vendeur restructuré 3 cols 1 ligne (iPhone first).
+              Prix affiché + Prix plancher (confidentiel agent) + Liquide (cash hors compta MA notamment).
+              Sur mobile <500px le grid responsive s'empile. Date de disponibilité reste en dessous. */}
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:6}}>
+            <V55Field label="Prix affiché" type="number" value={d.prix_affiche} onChange={v => set('prix_affiche', v)} suffix={devise} style={{marginBottom:0}}/>
+            <V55Field label="Prix plancher" type="number" value={d.prix_plancher} onChange={v => set('prix_plancher', v)} suffix={devise} hint="Confidentiel agent" style={{marginBottom:0}}/>
+            <V55Field label="Liquide (cash)" type="number" value={d.prix_liquide} onChange={v => set('prix_liquide', v)} suffix={devise} hint="Partie cash hors compta" style={{marginBottom:0}}/>
+          </div>
           <ConversionDisplay amount={d.prix_affiche} devise={devise} pays={paysBien}/>
-          <V55Field label="Prix plancher (confidentiel)" type="number" value={d.prix_plancher} onChange={v => set('prix_plancher', v)} suffix={devise} hint="Visible uniquement par l'agent"/>
           <V55Field label="Date de disponibilité" type="date_fr" value={d.date_disponibilite} onChange={v => set('date_disponibilite', v)}/>
+          {/* M/2026/05/02/22 — M134 Bloc Synthèse : Prix de vente affiché = Prix affiché + Liquide + Commission.
+              Sans frais notaire (charge acheteur, hors prix annoncé vendeur). Calculé live. */}
+          {(() => {
+            const _prixAff = Number(d.prix_affiche) || 0;
+            const _liq = Number(d.prix_liquide) || 0;
+            const _comm = Number(commCalc) || 0;
+            const _total = _prixAff + _liq + _comm;
+            if (_total <= 0) return null;
+            return (
+              <div style={{marginTop:10, padding:'10px 12px', background:'linear-gradient(135deg,#FBF1E4,#F5EAD8)', border:'1.5px solid #BBA88B', borderRadius:10}}>
+                <div style={{fontSize:11, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4, marginBottom:4}}>
+                  Prix de vente affiché
+                </div>
+                <div style={{fontSize:16, fontWeight:700, color:'#2A2018'}}>
+                  {fmtMoneyV55(_total, devise)}
+                </div>
+                <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:3, fontStyle:'italic'}}>
+                  Prix {fmtMoneyV55(_prixAff, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Commission {fmtMoneyV55(_comm, devise)} (hors notaire à charge acheteur)
+                </div>
+              </div>
+            );
+          })()}
         </V55Bloc>
 
         <V55Bloc title="Honoraires (commission)">
@@ -16204,6 +16232,32 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     const q = [bien.adresse, [bien.code_postal, bien.ville].filter(Boolean).join(' '), bien.pays].filter(Boolean).join(', ');
     return q ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q) : null;
   })();
+  // M/2026/05/02/22 — M134 Bloc Synthèse : Prix de vente affiché pour zone BIEN card.
+  // Vendeur/Bailleur = Prix affiché + Liquide + Commission (sans notaire = charge acheteur).
+  // Acheteur/Locataire = fourchette Min-Max (M134.B reporté pour fourchettes complètes).
+  // Format compact : 1,2 M MAD / 620 k€ etc.
+  function _fmtPrixCompact(n, cur) {
+    const x = Number(n);
+    if (!x) return '';
+    if (cur === 'MAD') {
+      if (x >= 1000000) return (x / 1000000).toFixed(x % 1000000 ? 2 : 0).replace(/\.?0+$/, '').replace('.', ',') + ' M MAD';
+      if (x >= 1000) return Math.round(x / 1000) + 'k MAD';
+      return x.toLocaleString('fr-FR') + ' MAD';
+    }
+    if (x >= 1000000) return (x / 1000000).toFixed(x % 1000000 ? 1 : 0).replace('.', ',') + ' M€';
+    if (x >= 1000) return Math.round(x / 1000) + 'k€';
+    return x.toLocaleString('fr-FR') + ' €';
+  }
+  const _prixVenteAffiche = (() => {
+    const _prix = Number(c.prix_affiche) || 0;
+    const _liq = Number(c.prix_liquide) || 0;
+    const _comm = Number(c.commission_calc || c.commission_montant) || 0;
+    if (_prix <= 0 && _liq <= 0) return '';
+    const total = _prix + _liq + _comm;
+    if (total <= 0) return '';
+    const cur = bien.pays === 'MA' ? 'MAD' : '€';
+    return _fmtPrixCompact(total, cur);
+  })();
 
   // V18.22 — thumbnail photo bien 1ère + badge +N si plusieurs.
   // Proxy : URL externes (http/https) direct. Chemin interne (/uploads/...) via api/image.php auth.
@@ -16623,6 +16677,14 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
                     )}
                   </span>
                 </a>
+              )}
+              {/* M/2026/05/02/22 — M134 : ligne 💰 prix de vente affiché (Vendeur/Bailleur).
+                  Calculé Prix affiché + Liquide + Commission (sans notaire). Profil-dépendant. */}
+              {_prixVenteAffiche && (
+                <div style={{display:'flex', alignItems:'center', gap:4, marginTop:3, fontSize:12, color:'#5C3B1E', fontWeight:600}}>
+                  <span aria-hidden="true">💰</span>
+                  <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{_prixVenteAffiche}</span>
+                </div>
               )}
             </>
           ) : (
