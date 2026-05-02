@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>80 maquettes Section III Budget — Ocre Immo</title>
+<style>
+:root {
+  --bg: #FAF6EE;
+  --soft: #FBF1E4;
+  --soft2: #F4ECE0;
+  --border: #E8DDC9;
+  --mid: #C9B79A;
+  --strong: #8B5E3C;
+  --deep: #5C3B1E;
+  --text: #2A2018;
+  --grey: #8B7F6E;
+  --input-empty: #FDFAF7;
+  --input-filled: #FFFCF5;
+  --red: #C73E3E;
+  --green: #2D6B3F;
+  --blue-soft: #E5F0F9;
+  --green-soft: #EAF7E8;
+  --purple-soft: #F0E8F7;
+  --aqua-soft: #E5F4F0;
+  --pink-soft: #FCE9F1;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(180deg, #F4ECE0 0%, #EAD7B8 100%);
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+}
+.nav-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  box-shadow: 0 2px 12px rgba(139,94,60,.08);
+}
+.nav-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--deep);
+  margin-bottom: 6px;
+}
+.nav-title small {
+  font-weight: 400;
+  color: var(--grey);
+  font-size: 11px;
+}
+.nav-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 11px;
+}
+.nav-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--soft);
+  color: var(--deep);
+  border: 1px solid var(--mid);
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.nav-pill:hover { background: var(--strong); color: white; }
+.layout-section {
+  max-width: 1700px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+.layout-header {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
+  padding: 12px 18px;
+}
+.layout-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--deep);
+}
+.layout-header .num {
+  display: inline-block;
+  background: var(--strong);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 8px;
+}
+.layout-header p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--grey);
+  font-style: italic;
+}
+.profils-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(390px, 1fr));
+  gap: 16px;
+  padding: 18px;
+  background: white;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+@media (min-width: 1700px) {
+  .profils-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.maquette-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.maquette-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--deep);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  background: var(--soft);
+  border: 1px solid var(--mid);
+  border-radius: 10px;
+}
+.iphone {
+  width: 390px;
+  max-width: 100%;
+  background: #1d1d1f;
+  border-radius: 32px;
+  padding: 6px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.18);
+}
+.iphone-status {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 16px 2px;
+  font-size: 10px;
+  color: white;
+  font-weight: 600;
+}
+.iphone-screen {
+  background: var(--bg);
+  border-radius: 26px;
+  overflow: hidden;
+  max-height: 700px;
+  overflow-y: auto;
+}
+.s3-page {
+  padding: 12px 12px 16px;
+  font-size: 12.5px;
+}
+.s3-h {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--deep);
+  display: inline-block;
+  border-bottom: 2px solid #A07842;
+  padding-bottom: 3px;
+  margin-bottom: 10px;
+}
+
+/* BLOC commun */
+.bloc {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+.bloc-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--strong);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.field-lbl {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--grey);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: block;
+  margin-bottom: 2px;
+}
+.input-wrap {
+  position: relative;
+}
+.input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1.2px solid var(--mid);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--input-filled);
+  color: var(--text);
+  font-weight: 500;
+}
+.input.dashed { border-style: dashed; background: linear-gradient(135deg, #FFF5E6, #FBE8C8); }
+.input.warn { border-color: var(--red); background: #FEF6F6; }
+.input.with-suf { padding-right: 32px; }
+.suf {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--grey);
+  font-weight: 600;
+}
+.hint {
+  font-size: 9px;
+  color: var(--grey);
+  font-style: italic;
+  margin-top: 1px;
+}
+
+/* Acteur agence row dense */
+.act {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr 0.7fr 1fr 18px;
+  gap: 3px;
+  align-items: center;
+  font-size: 10.5px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.act:last-child { border-bottom: none; }
+.act-pill {
+  background: var(--soft);
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  color: var(--deep);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.act-pill.val { background: var(--input-filled); border: 1px solid var(--border); }
+.act-pill.tot { background: var(--input-filled); border: 1px solid var(--border); font-weight: 700; }
+.toggle {
+  display: flex;
+  background: var(--input-empty);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  height: 22px;
+}
+.toggle-b {
+  flex: 1;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--grey);
+  padding: 4px 0;
+  cursor: pointer;
+}
+.toggle-b.on { background: var(--strong); color: white; }
+
+.add-btn {
+  display: block;
+  width: 100%;
+  padding: 5px;
+  background: white;
+  border: 1.2px dashed var(--mid);
+  border-radius: 5px;
+  color: var(--strong);
+  font-weight: 600;
+  font-size: 10px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+.tot-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 4px 0;
+  border-top: 1px solid var(--mid);
+  margin-top: 4px;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--deep);
+}
+.synth {
+  background: linear-gradient(135deg, var(--soft), #F5EAD8);
+  border: 1.2px solid var(--mid);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.synth-lbl {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--strong);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+.synth-val {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.synth-det {
+  font-size: 9.5px;
+  color: var(--grey);
+  margin-top: 3px;
+  font-style: italic;
+  line-height: 1.3;
+}
+.coll {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--grey);
+  font-weight: 600;
+}
+
+/* Variations spécifiques */
+.tabs {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  margin-bottom: 8px;
+  padding-bottom: 3px;
+}
+.tab {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 10.5px;
+  color: var(--grey);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tab.on { background: var(--strong); color: white; border-color: var(--strong); }
+.progress {
+  height: 2.5px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.progress > div {
+  height: 100%;
+  background: var(--strong);
+}
+.step-info {
+  text-align: center;
+  font-size: 9.5px;
+  color: var(--grey);
+  margin-bottom: 6px;
+}
+.next-btn {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  background: var(--strong);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.theme {
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border: 1.2px solid;
+}
+.theme.green { background: var(--green-soft); border-color: #9DCB94; }
+.theme.ocre { background: var(--soft); border-color: var(--mid); }
+.theme.blue { background: var(--blue-soft); border-color: #7FAFD3; }
+.theme.purple { background: var(--purple-soft); border-color: #B79DD3; }
+.theme.aqua { background: var(--aqua-soft); border-color: #7FCBB7; }
+.theme.pink { background: var(--pink-soft); border-color: #D37FA7; }
+.theme h4 {
+  margin: 0 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.theme.green h4 { color: var(--green); }
+.theme.ocre h4 { color: var(--deep); }
+.theme.blue h4 { color: #1F5784; }
+.theme.purple h4 { color: #5F3F8B; }
+.theme.aqua h4 { color: #1F7765; }
+.theme.pink h4 { color: #99316C; }
+
+table.tab-fin {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+}
+table.tab-fin th, table.tab-fin td {
+  padding: 4px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+table.tab-fin th {
+  background: var(--soft);
+  color: var(--deep);
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+table.tab-fin tr.tot td {
+  background: var(--soft);
+  font-weight: 700;
+  border-top: 1.5px solid var(--strong);
+}
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Variant 7 — pills inline */
+.pill-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.pill-flow .p {
+  background: var(--soft);
+  border: 1px solid var(--mid);
+  border-radius: 12px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--deep);
+  font-weight: 600;
+}
+.pill-flow .p b { color: var(--strong); }
+
+/* Variant 9 — dashboard widgets */
+.widgets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.widget {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+.widget .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--grey); }
+.widget .num { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 2px; text-align: center; }
+.widget .sub { font-size: 9px; color: var(--grey); }
+
+/* Variant 12 — timeline */
+.timeline {
+  position: relative;
+  padding-left: 20px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--mid);
+}
+.tl-item {
+  position: relative;
+  margin-bottom: 8px;
+}
+.tl-item::before {
+  content: '';
+  position: absolute;
+  left: -18px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--strong);
+  border: 2px solid white;
+}
+
+/* Variant 13 — bento */
+.bento {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 5px;
+  min-height: 320px;
+}
+.bento > div { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-size: 11px; }
+.bento .b1 { grid-row: 1 / 3; grid-column: 1; }
+.bento .b2 { grid-row: 1 / 2; grid-column: 2; }
+.bento .b3 { grid-row: 2 / 3; grid-column: 2; }
+.bento .b4 { grid-row: 3 / 4; grid-column: 1 / 3; background: linear-gradient(135deg, var(--soft), #F5EAD8); border-color: var(--mid); }
+
+/* Variant 14 — stripes */
+.stripe {
+  padding: 8px 10px;
+}
+.stripe.alt { background: var(--soft); }
+
+/* Variant 15 — borderless */
+.bless { padding: 6px 0; margin-bottom: 4px; }
+
+/* Variant 17 — floating labels */
+.float-wrap { position: relative; padding-top: 8px; }
+.float-wrap .input { padding-top: 14px; padding-bottom: 4px; }
+.float-wrap .field-lbl {
+  position: absolute;
+  left: 9px;
+  top: 11px;
+  background: var(--input-filled);
+  padding: 0 4px;
+  font-size: 8.5px;
+}
+
+/* Variant 18 — top sticky synthese */
+.sticky-synth {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(135deg, var(--strong), #A06B45);
+  color: white;
+  padding: 10px 12px;
+  text-align: center;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.sticky-synth .num { font-size: 17px; font-weight: 800; }
+
+/* Variant 19 — sectioned pills */
+.sec-pill {
+  display: inline-block;
+  background: var(--strong);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  margin-bottom: 5px;
+}
+
+/* Variant 20 — glass */
+.glass {
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(232,221,201,0.6);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  backdrop-filter: blur(10px);
+}
+
+/* Profil banner mini dans la maquette pour rappel */
+.profil-mini {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.4px;
+  color: white;
+  margin-bottom: 8px;
+}
+.profil-mini.vendeur { background: #2C3F8B; }
+.profil-mini.acheteur { background: #2C5F8B; }
+.profil-mini.bailleur { background: #5F8B2C; }
+.profil-mini.locataire { background: #8B5F2C; }
+
+/* Variant 6 — liste dense type tableur */
+.dense-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.dense-row:last-child { border-bottom: none; }
+.dense-row .lbl { color: var(--grey); font-weight: 600; }
+.dense-row .val { font-weight: 700; color: var(--text); }
+.dense-row .val.confidential { color: var(--strong); font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="nav-sticky">
+  <div class="nav-title">M142 — 80 maquettes Section III Budget <small>· 20 layouts × 4 profils · iPhone 390px · max 700px hauteur</small></div>
+  <div class="nav-pills" id="nav"></div>
+</div>
+
+<div id="root"></div>
+
+<script>
+const PROFILS = [
+  {key:'vendeur', label:'VENDEUR', cls:'vendeur', mock:{
+    nom:'Hassan EL FASSI', tel:'+212 661 23 45 67',
+    devise:'MAD', symbol:'MAD',
+    prixL1:'Prix bien', prixL2:'Prix bas', prixL3:'Liquide',
+    prix1:'5 800 000', prix2:'5 500 000', prix3:'600 000',
+    prixResume:'5,8 M MAD',
+    confidentialL2:true, validateMinMax:false,
+    showNotaire:true, notairePct:'6,0', notaireMontant:'348 000', notaireLabel:'MA 6%',
+    acteurs:[
+      {nom:'Agent mandat', type:'%', val:'5', montant:'290 000'},
+      {nom:'Agent contrepartie', type:'%', val:'2,5', montant:'145 000'},
+    ],
+    totalAgence:'435 000',
+    syntheseLabel:'Prix de vente affiché',
+    syntheseValue:'6 835 000 MAD',
+    syntheseDetail:'Prix 5,8M + Liquide 600k + Agence 435k (hors notaire à charge acheteur)',
+  }},
+  {key:'acheteur', label:'ACHETEUR', cls:'acheteur', mock:{
+    nom:'P. & M. DUPONT', tel:'+33 6 12 34 56 78',
+    devise:'MAD', symbol:'MAD',
+    prixL1:'Prix min', prixL2:'Prix max', prixL3:'Liquide max',
+    prix1:'2 000 000', prix2:'3 000 000', prix3:'400 000',
+    prixResume:'2-3 M MAD',
+    confidentialL2:false, validateMinMax:true,
+    showNotaire:true, notairePct:'6,0', notaireMontant:'180 000', notaireLabel:'MA 6%',
+    acteurs:[],
+    totalAgence:'0',
+    syntheseLabel:'Budget total mobilisable',
+    syntheseValue:'2-3 M MAD + 400k cash',
+    syntheseDetail:'À charge acheteur : Notaire ~180k + frais agence côté contrepartie selon mandat',
+  }},
+  {key:'bailleur', label:'BAILLEUR', cls:'bailleur', mock:{
+    nom:'Fatima BENHIMA', tel:'+212 661 33 78 41',
+    devise:'MAD', symbol:'MAD',
+    prixL1:'Loyer', prixL2:'Charges', prixL3:'Caution',
+    prix1:'14 000', prix2:'1 200', prix3:'28 000',
+    prixResume:'14 000 MAD/mois',
+    confidentialL2:false, validateMinMax:false,
+    showNotaire:false,
+    acteurs:[
+      {nom:'Agent mandat', type:'Forf', val:'14 000', montant:'14 000'},
+    ],
+    totalAgence:'14 000',
+    syntheseLabel:'Loyer affiché',
+    syntheseValue:'15 200 MAD/mois',
+    syntheseDetail:'Loyer 14 000 + Charges 1 200. Caution 2 mois. Frais agence 1 mois loyer.',
+  }},
+  {key:'locataire', label:'LOCATAIRE', cls:'locataire', mock:{
+    nom:'Sébastien LEMOINE', tel:'+33 6 84 22 17 56',
+    devise:'MAD', symbol:'MAD',
+    prixL1:'Loyer min', prixL2:'Loyer max', prixL3:'Caution dispo',
+    prix1:'8 000', prix2:'14 000', prix3:'28 000',
+    prixResume:'8-14 K MAD/mois',
+    confidentialL2:false, validateMinMax:true,
+    showNotaire:false,
+    acteurs:[],
+    totalAgence:'0',
+    syntheseLabel:'Effort mensuel max',
+    syntheseValue:'≈ 15 000 MAD/mois',
+    syntheseDetail:'Loyer max 14k + Charges estimées ~1k + provision frais.',
+  }},
+];
+
+// HELPERS rendu blocs réutilisables
+function blocPrix(m, opts={}) {
+  const cls = opts.dense ? 'input' : 'input';
+  return `
+    <div class="row3">
+      <div>
+        <span class="field-lbl">${m.prixL1}</span>
+        <div class="input-wrap">
+          <input class="${cls} with-suf" value="${m.prix1}" readonly/>
+          <span class="suf">${m.symbol}</span>
+        </div>
+      </div>
+      <div>
+        <span class="field-lbl">${m.prixL2}</span>
+        <div class="input-wrap">
+          <input class="${cls} with-suf ${m.confidentialL2?'dashed':''} ${m.validateMinMax?'':''}" value="${m.prix2}" readonly/>
+          <span class="suf">${m.symbol}</span>
+        </div>
+        ${m.confidentialL2?'<div class="hint">Confidentiel</div>':''}
+        ${m.validateMinMax?'<div class="hint">Min &lt; Max</div>':''}
+      </div>
+      <div>
+        <span class="field-lbl">${m.prixL3}</span>
+        <div class="input-wrap">
+          <input class="${cls} with-suf" value="${m.prix3}" readonly/>
+          <span class="suf">${m.symbol}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function blocAgence(m) {
+  if (m.acteurs.length === 0) {
+    return `<div style="font-size:10.5px;color:var(--grey);font-style:italic;text-align:center;padding:6px">Pas d'agence côté ${m.key === 'acheteur' ? 'acheteur' : 'locataire'} (côté contrepartie sur dossier mandat)</div>`;
+  }
+  const rows = m.acteurs.map(a => `
+    <div class="act">
+      <div class="act-pill">${a.nom}</div>
+      <div class="toggle">
+        <div class="toggle-b ${a.type==='%'?'on':''}">%</div>
+        <div class="toggle-b ${a.type==='Forf'?'on':''}">F</div>
+      </div>
+      <div class="act-pill val">${a.val}${a.type==='%'?'%':''}</div>
+      <div class="act-pill tot">${a.montant} ${m.symbol}</div>
+      <div style="text-align:center;color:var(--grey);font-size:11px">✕</div>
+    </div>
+  `).join('');
+  return `
+    ${rows}
+    <div class="tot-line"><span>Total</span><span>${m.totalAgence} ${m.symbol}</span></div>
+    <button class="add-btn">+ Ajouter (max 4)</button>
+  `;
+}
+
+function blocNotaire(m) {
+  if (!m.showNotaire) return '';
+  return `
+    <div class="row2">
+      <div>
+        <span class="field-lbl">Pourcentage</span>
+        <div class="input-wrap">
+          <input class="input with-suf" value="${m.notairePct}" readonly/>
+          <span class="suf">%</span>
+        </div>
+        <div class="hint">${m.notaireLabel}</div>
+      </div>
+      <div>
+        <span class="field-lbl">Total estimé</span>
+        <div style="background:var(--soft);padding:6px 8px;border-radius:6px;font-weight:700;font-size:12px;text-align:right">${m.notaireMontant} ${m.symbol}</div>
+      </div>
+    </div>
+  `;
+}
+
+function blocSynthese(m) {
+  return `
+    <div class="synth">
+      <div class="synth-lbl">📊 ${m.syntheseLabel}</div>
+      <div class="synth-val">${m.syntheseValue}</div>
+      <div class="synth-det">${m.syntheseDetail}</div>
+    </div>
+  `;
+}
+
+function collFooter(profilKey) {
+  return `
+    <div class="coll">📃 Mandat <span style="color:var(--mid)">▾</span></div>
+    <div class="coll">💼 Plan paiement <span style="color:var(--mid)">▾</span></div>
+    ${profilKey === 'acheteur' ? '<div class="coll">🏦 Financement <span style="color:var(--mid)">▾</span></div>' : ''}
+  `;
+}
+
+// 20 LAYOUTS
+const LAYOUTS = [
+  {n:1, nom:'Compact ultra-minimaliste', desc:'4 blocs colonne unique, séparateurs fins, dense max', render: (m,k) => `
+    <div class="s3-page">
+      <div class="profil-mini ${k}">${m.prixResume.length<20?m.prixResume:'…'}</div>
+      <div class="s3-h">III. Budget</div>
+      <div class="bloc"><div class="bloc-title">💰 Prix</div>${blocPrix(m)}</div>
+      <div class="bloc"><div class="bloc-title">🤝 Frais agence</div>${blocAgence(m)}</div>
+      ${m.showNotaire?`<div class="bloc"><div class="bloc-title">🏛 Notaire</div>${blocNotaire(m)}</div>`:''}
+      ${blocSynthese(m)}
+      ${collFooter(k)}
+    </div>
+  `},
+
+  {n:2, nom:'Cards plates ocre soft', desc:'4 cartes empilées radius 8, sans ombre, fond ocre soft', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="bloc" style="background:var(--soft);border-color:var(--mid)"><div class="bloc-title">💰 Prix</div>${blocPrix(m)}</div>
+      <div class="bloc" style="background:var(--soft);border-color:var(--mid)"><div class="bloc-title">🤝 Agence</div>${blocAgence(m)}</div>
+      ${m.showNotaire?`<div class="bloc" style="background:var(--soft);border-color:var(--mid)"><div class="bloc-title">🏛 Notaire</div>${blocNotaire(m)}</div>`:''}
+      <div class="bloc" style="background:var(--soft);border-color:var(--mid);padding:0">${blocSynthese(m)}</div>
+      ${collFooter(k)}
+    </div>
+  `},
+
+  {n:3, nom:'Tabs horizontaux', desc:'tabs Prix/Agence/Notaire/Synthèse, 1 actif à la fois', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="tabs">
+        <div class="tab on">💰 Prix</div>
+        <div class="tab">🤝 Agence</div>
+        ${m.showNotaire?'<div class="tab">🏛 Notaire</div>':''}
+        <div class="tab">📊 Synthèse</div>
+      </div>
+      <div class="bloc">${blocPrix(m)}</div>
+      <div style="text-align:center;font-size:10px;color:var(--grey);margin-top:6px;font-style:italic">Swipe horizontal pour basculer entre les onglets</div>
+      ${collFooter(k)}
+    </div>
+  `},
+
+  {n:4, nom:'Accordion vertical', desc:'Prix toujours visible, autres collapsés avec chevron', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="bloc"><div class="bloc-title">💰 Prix <span style="margin-left:auto;color:var(--mid)">▾</span></div>${blocPrix(m)}</div>
+      <div class="coll">🤝 Frais agence (${m.totalAgence} ${m.symbol}) <span style="color:var(--mid)">▸</span></div>
+      ${m.showNotaire?`<div class="coll">🏛 Notaire (${m.notaireMontant} ${m.symbol}) <span style="color:var(--mid)">▸</span></div>`:''}
+      <div class="coll" style="background:var(--soft);border-color:var(--mid);font-weight:700;color:var(--deep)">📊 Synthèse — ${m.syntheseValue.slice(0,18)} <span>▸</span></div>
+      ${collFooter(k)}
+    </div>
+  `},
+
+  {n:5, nom:'Stepper guidé', desc:'Étape 1/4 Prix → Suivant ... bouton nav', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="step-info">Étape 1 / 4 — Prix</div>
+      <div class="progress"><div style="width:25%"></div></div>
+      <div class="bloc"><div class="bloc-title">💰 Prix du ${k}</div>${blocPrix(m)}</div>
+      <button class="next-btn">Suivant : Frais d'agence →</button>
+    </div>
+  `},
+
+  {n:6, nom:'Liste dense type tableur', desc:'1 ligne fine par champ, label gauche / valeur droite', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="bloc">
+        <div class="bloc-title">💰 Prix</div>
+        <div class="dense-row"><span class="lbl">${m.prixL1}</span><span class="val">${m.prix1} ${m.symbol}</span></div>
+        <div class="dense-row"><span class="lbl">${m.prixL2}</span><span class="val ${m.confidentialL2?'confidential':''}">${m.prix2} ${m.symbol}</span></div>
+        <div class="dense-row"><span class="lbl">${m.prixL3}</span><span class="val">${m.prix3} ${m.symbol}</span></div>
+      </div>
+      <div class="bloc">
+        <div class="bloc-title">🤝 Agence</div>
+        ${m.acteurs.map(a => `<div class="dense-row"><span class="lbl">${a.nom}</span><span class="val">${a.montant} ${m.symbol}</span></div>`).join('') || '<div class="dense-row"><span class="lbl" style="font-style:italic">Aucun</span><span></span></div>'}
+        ${m.acteurs.length?`<div class="dense-row" style="border-top:1.5px solid var(--mid);font-weight:800"><span>Total</span><span>${m.totalAgence} ${m.symbol}</span></div>`:''}
+      </div>
+      ${m.showNotaire?`<div class="bloc"><div class="bloc-title">🏛 Notaire</div>
+        <div class="dense-row"><span class="lbl">${m.notaireLabel}</span><span class="val">${m.notaireMontant} ${m.symbol}</span></div>
+      </div>`:''}
+      ${blocSynthese(m)}
+    </div>
+  `},
+
+  {n:7, nom:'Pills inline', desc:'Champs en pills compactes, flow horizontal', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="bloc">
+        <div class="bloc-title">💰 Prix</div>
+        <div class="pill-flow">
+          <span class="p"><b>${m.prixL1}</b> ${m.prix1} ${m.symbol}</span>
+          <span class="p"><b>${m.prixL2}</b> ${m.prix2} ${m.symbol}</span>
+          <span class="p"><b>${m.prixL3}</b> ${m.prix3} ${m.symbol}</span>
+        </div>
+      </div>
+      <div class="bloc">
+        <div class="bloc-title">🤝 Agence</div>
+        <div class="pill-flow">
+          ${m.acteurs.map(a => `<span class="p">${a.nom} <b>${a.montant} ${m.symbol}</b></span>`).join('') || '<span class="p" style="font-style:italic;color:var(--grey)">Aucun acteur</span>'}
+        </div>
+      </div>
+      ${m.showNotaire?`<div class="bloc"><div class="bloc-title">🏛 Notaire</div><div class="pill-flow"><span class="p">${m.notaireLabel} <b>${m.notaireMontant} ${m.symbol}</b></span></div></div>`:''}
+      ${blocSynthese(m)}
+    </div>
+  `},
+
+  {n:8, nom:'Cards thématiques colorées', desc:'4 teintes : ocre/aqua/blue/strong-ocre', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="theme ocre"><h4>💰 Prix</h4>${blocPrix(m)}</div>
+      <div class="theme aqua"><h4>🤝 Agence</h4>${blocAgence(m)}</div>
+      ${m.showNotaire?`<div class="theme blue"><h4>🏛 Notaire</h4>${blocNotaire(m)}</div>`:''}
+      <div class="theme" style="background:linear-gradient(135deg,var(--strong),#A06B45);border:none;color:white"><h4 style="color:white">📊 ${m.syntheseLabel}</h4><div style="font-size:17px;font-weight:800">${m.syntheseValue}</div><div style="font-size:9.5px;opacity:.85;margin-top:3px;font-style:italic">${m.syntheseDetail}</div></div>
+    </div>
+  `},
+
+  {n:9, nom:'Dashboard widgets', desc:'4 widgets carrés 2x2, valeurs principales en gros', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="widgets">
+        <div class="widget"><div class="lbl">💰 ${m.prixL1}</div><div class="num">${m.prix1}</div><div class="sub">${m.symbol}</div></div>
+        <div class="widget"><div class="lbl">🤝 Agence</div><div class="num">${m.totalAgence}</div><div class="sub">${m.symbol} total</div></div>
+        ${m.showNotaire?`<div class="widget"><div class="lbl">🏛 Notaire</div><div class="num">${m.notaireMontant}</div><div class="sub">${m.notairePct}% ${m.symbol}</div></div>`:''}
+        <div class="widget" style="background:linear-gradient(135deg,var(--soft),#F5EAD8);border-color:var(--mid)"><div class="lbl">📊 Synthèse</div><div class="num">${m.prixResume}</div><div class="sub">net affiché</div></div>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:var(--grey);font-style:italic;text-align:center">Tap widget pour détails</div>
+      ${collFooter(k)}
+    </div>
+  `},
+
+  {n:10, nom:'Inline ribbon', desc:'Ruban horizontal Prix+Synthèse, détails dépliables', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div style="display:flex;gap:6px;background:linear-gradient(135deg,var(--soft),#F5EAD8);padding:8px 10px;border-radius:8px;border:1px solid var(--mid);margin-bottom:8px;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:9px;text-transform:uppercase;color:var(--grey);font-weight:700">Prix · Synthèse</div>
+          <div style="font-size:14px;font-weight:700">${m.prixResume}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;color:var(--grey)">Affiché marché</div>
+          <div style="font-size:13px;font-weight:700;color:var(--strong)">${m.syntheseValue.slice(0,16)}</div>
+        </div>
+      </div>
+      <div class="bloc"><div class="bloc-title">💰 Détail prix</div>${blocPrix(m)}</div>
+      <div class="coll">🤝 Frais agence (${m.totalAgence} ${m.symbol}) ▸</div>
+      ${m.showNotaire?`<div class="coll">🏛 Notaire ▸</div>`:''}
+      ${collFooter(k)}
+    </div>
+  `},
+
+  {n:11, nom:'Calculateur live', desc:'Inputs gauche / résultats live droite (split vertical)', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div class="bloc">
+          <div class="bloc-title">📝 Saisie</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <input class="input" value="${m.prix1}" readonly placeholder="${m.prixL1}"/>
+            <input class="input ${m.confidentialL2?'dashed':''}" value="${m.prix2}" readonly placeholder="${m.prixL2}"/>
+            <input class="input" value="${m.prix3}" readonly placeholder="${m.prixL3}"/>
+          </div>
+        </div>
+        <div class="bloc" style="background:var(--soft)">
+          <div class="bloc-title">🧮 Live</div>
+          <div style="font-size:10px;color:var(--grey);margin-bottom:3px">Agence</div>
+          <div style="font-weight:700;color:var(--deep)">${m.totalAgence} ${m.symbol}</div>
+          ${m.showNotaire?`<div style="font-size:10px;color:var(--grey);margin-top:5px">Notaire</div><div style="font-weight:700;color:var(--deep)">${m.notaireMontant} ${m.symbol}</div>`:''}
+          <div style="border-top:1.5px solid var(--mid);margin-top:5px;padding-top:4px">
+            <div style="font-size:10px;color:var(--grey)">${m.syntheseLabel}</div>
+            <div style="font-weight:800;color:var(--strong);font-size:13px">${m.syntheseValue.slice(0,16)}</div>
+          </div>
+        </div>
+      </div>
+      ${blocAgence(m)}
+      ${collFooter(k)}
+    </div>
+  `},
+
+  {n:12, nom:'Timeline verticale', desc:'Blocs reliés par timeline avec dots', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="timeline">
+        <div class="tl-item"><div class="bloc"><div class="bloc-title">💰 Prix</div>${blocPrix(m)}</div></div>
+        <div class="tl-item"><div class="bloc"><div class="bloc-title">🤝 Agence</div>${blocAgence(m)}</div></div>
+        ${m.showNotaire?`<div class="tl-item"><div class="bloc"><div class="bloc-title">🏛 Notaire</div>${blocNotaire(m)}</div></div>`:''}
+        <div class="tl-item">${blocSynthese(m)}</div>
+      </div>
+    </div>
+  `},
+
+  {n:13, nom:'Bento box', desc:'Grille asymétrique 2 cols × 3 rows', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="bento">
+        <div class="b1"><div class="bloc-title">💰 Prix</div><div style="font-size:10.5px;font-weight:700">${m.prix1} ${m.symbol}</div><div style="font-size:9.5px;color:var(--grey);margin-top:4px">${m.prixL2} : ${m.prix2}</div><div style="font-size:9.5px;color:var(--grey)">${m.prixL3} : ${m.prix3}</div></div>
+        <div class="b2"><div class="bloc-title">🤝 Agence</div><div style="font-size:11px;font-weight:700">${m.totalAgence} ${m.symbol}</div><div style="font-size:9.5px;color:var(--grey)">${m.acteurs.length} acteur${m.acteurs.length>1?'s':''}</div></div>
+        <div class="b3">${m.showNotaire?`<div class="bloc-title">🏛 Notaire</div><div style="font-size:11px;font-weight:700">${m.notaireMontant} ${m.symbol}</div>`:`<div class="bloc-title">📃 Mandat</div><div style="font-size:9.5px;color:var(--grey)">À définir</div>`}</div>
+        <div class="b4"><div style="font-size:9px;color:var(--strong);font-weight:700;text-transform:uppercase">📊 ${m.syntheseLabel}</div><div style="font-size:15px;font-weight:800;margin-top:2px">${m.syntheseValue}</div></div>
+      </div>
+      ${collFooter(k)}
+    </div>
+  `},
+
+  {n:14, nom:'Stripes alternés', desc:'Bandes blanches/ocre soft alternées', render: (m,k) => `
+    <div class="s3-page" style="padding:0">
+      <div style="padding:12px"><div class="s3-h">III. Budget</div></div>
+      <div class="stripe"><div class="bloc-title">💰 Prix</div>${blocPrix(m)}</div>
+      <div class="stripe alt"><div class="bloc-title">🤝 Agence</div>${blocAgence(m)}</div>
+      ${m.showNotaire?`<div class="stripe"><div class="bloc-title">🏛 Notaire</div>${blocNotaire(m)}</div>`:''}
+      <div class="stripe alt">${blocSynthese(m)}</div>
+      <div style="padding:0 12px 12px">${collFooter(k)}</div>
+    </div>
+  `},
+
+  {n:15, nom:'Borderless', desc:'Pas de borders, juste typographie + espacement', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="bless"><div class="bloc-title">💰 Prix</div>${blocPrix(m)}</div>
+      <div class="bless" style="border-top:1px dashed var(--mid);padding-top:8px"><div class="bloc-title">🤝 Agence</div>${blocAgence(m)}</div>
+      ${m.showNotaire?`<div class="bless" style="border-top:1px dashed var(--mid);padding-top:8px"><div class="bloc-title">🏛 Notaire</div>${blocNotaire(m)}</div>`:''}
+      <div class="bless" style="border-top:1px dashed var(--mid);padding-top:8px">${blocSynthese(m)}</div>
+    </div>
+  `},
+
+  {n:16, nom:'Minimalist cards icônes', desc:'Petite icône à gauche de chaque bloc', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="bloc" style="display:flex;gap:8px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">💰</span>
+        <div style="flex:1;min-width:0">${blocPrix(m)}</div>
+      </div>
+      <div class="bloc" style="display:flex;gap:8px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">🤝</span>
+        <div style="flex:1;min-width:0">${blocAgence(m)}</div>
+      </div>
+      ${m.showNotaire?`<div class="bloc" style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:20px;flex-shrink:0">🏛</span><div style="flex:1;min-width:0">${blocNotaire(m)}</div></div>`:''}
+      <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-size:20px;flex-shrink:0">📊</span><div style="flex:1;min-width:0">${blocSynthese(m)}</div></div>
+    </div>
+  `},
+
+  {n:17, nom:'Floating labels', desc:'Inputs avec labels flottants type Material', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div class="bloc">
+        <div class="bloc-title">💰 Prix</div>
+        <div class="row3">
+          <div class="float-wrap"><span class="field-lbl">${m.prixL1}</span><div class="input-wrap"><input class="input with-suf" value="${m.prix1}" readonly/><span class="suf">${m.symbol}</span></div></div>
+          <div class="float-wrap"><span class="field-lbl">${m.prixL2}</span><div class="input-wrap"><input class="input with-suf ${m.confidentialL2?'dashed':''}" value="${m.prix2}" readonly/><span class="suf">${m.symbol}</span></div></div>
+          <div class="float-wrap"><span class="field-lbl">${m.prixL3}</span><div class="input-wrap"><input class="input with-suf" value="${m.prix3}" readonly/><span class="suf">${m.symbol}</span></div></div>
+        </div>
+      </div>
+      <div class="bloc"><div class="bloc-title">🤝 Agence</div>${blocAgence(m)}</div>
+      ${m.showNotaire?`<div class="bloc"><div class="bloc-title">🏛 Notaire</div>${blocNotaire(m)}</div>`:''}
+      ${blocSynthese(m)}
+    </div>
+  `},
+
+  {n:18, nom:'Top sticky synthèse', desc:'Synthèse en haut sticky, autres en dessous', render: (m,k) => `
+    <div class="s3-page">
+      <div class="sticky-synth">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.5px;opacity:0.9">📊 ${m.syntheseLabel}</div>
+        <div class="num">${m.syntheseValue}</div>
+        <div style="font-size:9px;opacity:0.8;margin-top:2px">${m.syntheseDetail.slice(0,40)}…</div>
+      </div>
+      <div class="s3-h">III. Budget — détails</div>
+      <div class="bloc"><div class="bloc-title">💰 Prix</div>${blocPrix(m)}</div>
+      <div class="bloc"><div class="bloc-title">🤝 Agence</div>${blocAgence(m)}</div>
+      ${m.showNotaire?`<div class="bloc"><div class="bloc-title">🏛 Notaire</div>${blocNotaire(m)}</div>`:''}
+      ${collFooter(k)}
+    </div>
+  `},
+
+  {n:19, nom:'Sectioned pills', desc:'Pills numérotées 01/02/03 avant chaque bloc', render: (m,k) => `
+    <div class="s3-page">
+      <div class="s3-h">III. Budget</div>
+      <div><span class="sec-pill">01 PRIX</span></div>
+      <div class="bloc">${blocPrix(m)}</div>
+      <div><span class="sec-pill">02 AGENCE</span></div>
+      <div class="bloc">${blocAgence(m)}</div>
+      ${m.showNotaire?`<div><span class="sec-pill">03 NOTAIRE</span></div><div class="bloc">${blocNotaire(m)}</div>`:''}
+      <div><span class="sec-pill">${m.showNotaire?'04':'03'} SYNTHÈSE</span></div>
+      ${blocSynthese(m)}
+    </div>
+  `},
+
+  {n:20, nom:'Glass morphism', desc:'Fonds semi-transparents avec backdrop-filter blur', render: (m,k) => `
+    <div class="s3-page" style="background:linear-gradient(135deg,#FBE8C8 0%,#E8DDC9 50%,#C9B79A 100%);min-height:600px">
+      <div class="s3-h" style="color:white;border-color:white">III. Budget</div>
+      <div class="glass"><div class="bloc-title">💰 Prix</div>${blocPrix(m)}</div>
+      <div class="glass"><div class="bloc-title">🤝 Agence</div>${blocAgence(m)}</div>
+      ${m.showNotaire?`<div class="glass"><div class="bloc-title">🏛 Notaire</div>${blocNotaire(m)}</div>`:''}
+      <div class="glass" style="background:rgba(255,255,255,0.7)"><div class="synth-lbl">📊 ${m.syntheseLabel}</div><div class="synth-val">${m.syntheseValue}</div><div class="synth-det">${m.syntheseDetail}</div></div>
+    </div>
+  `},
+];
+
+// Render
+const root = document.getElementById('root');
+const nav = document.getElementById('nav');
+
+LAYOUTS.forEach(L => {
+  // nav pill
+  const a = document.createElement('a');
+  a.href = '#L' + L.n;
+  a.className = 'nav-pill';
+  a.textContent = L.n;
+  nav.appendChild(a);
+
+  // section
+  const sec = document.createElement('section');
+  sec.id = 'L' + L.n;
+  sec.className = 'layout-section';
+  sec.innerHTML = `
+    <div class="layout-header">
+      <h2><span class="num">${String(L.n).padStart(2,'0')}</span>${L.nom}</h2>
+      <p>${L.desc}</p>
+    </div>
+    <div class="profils-grid">
+      ${PROFILS.map(p => `
+        <div class="maquette-wrap">
+          <div class="maquette-label ${p.cls}">${p.label} · ${L.n}${String.fromCharCode(64+PROFILS.indexOf(p)+1)}</div>
+          <div class="iphone">
+            <div class="iphone-status"><span>10:21</span><span>${p.label}</span><span>70%</span></div>
+            <div class="iphone-screen">${L.render(p.mock, p.key)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  root.appendChild(sec);
+});
+</script>
+
+</body>
+</html>
