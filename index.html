@@ -4624,11 +4624,14 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           style={{marginBottom:0}}
           onPick={handleAdressePick}/>
       </div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:10}}>
-        <Field label="Code postal" value={bien.code_postal} onChange={v => setB('code_postal', v)} style={{marginBottom:0}}
-          autoComplete="postal-code" name="bien-postal-code" inputMode="text"/>
+      {/* M/2026/05/02/11 — M122 : swap CP <-> Ville. Ordre cible Ville | CP | Quartier
+          (au lieu de CP | Ville | Quartier). Le code postal est plus court visuellement
+          que la ville donc le mettre au milieu équilibre la grille. */}
+      <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1.5fr', gap:8, marginBottom:10}}>
         <CityPicker label="Ville" value={bien.ville} onChange={handleVilleChange} country={bien.pays} showFlag={false} style={{marginBottom:0}}
           autoComplete="address-level2" name="bien-address-level2"/>
+        <Field label="Code postal" value={bien.code_postal} onChange={v => setB('code_postal', v)} style={{marginBottom:0}}
+          autoComplete="postal-code" name="bien-postal-code" inputMode="text"/>
         <DistrictPicker ville={bien.ville} pays={bien.pays}
           value={bien.quartier} onChange={handleQuartierChange}
           fallbackList={bien.pays === 'MA' && (bien.ville || '').toLowerCase() === 'marrakech' ? QUARTIERS_MARRAKECH : []}/>
@@ -17804,29 +17807,14 @@ function FormView(props) {
     if (Array.isArray(data.payment_plan) && data.payment_plan.some(l => l && Number(l.amount) > 0)) return false;
     return true;
   }
-  // M/2026/04/30/9 — auto-detection pays via IP au mount en mode CREATION.
-  // N ecrase JAMAIS un pays deja saisi par l utilisateur (verification fraiche dans setD).
-  React.useEffect(() => {
-    const isCreate = !editing || !editing.id || String(editing.id).startsWith('tmp-');
-    if (!isCreate) return;
-    let cancelled = false;
-    fetch('/api/detect_country.php')
-      .then(r => r.json())
-      .then(j => {
-        if (cancelled || !j || !j.ok || !j.country_code) return;
-        setD(prev => {
-          const next = {...prev};
-          if (!next.pays_residence) next.pays_residence = j.country_code;
-          if (!next.bien || !next.bien.pays) {
-            next.bien = {...(next.bien || {}), pays: (next.bien && next.bien.pays) || j.country_code};
-          }
-          return next;
-        });
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // M/2026/05/02/11 — M122 : retrait franc du pré-remplissage geoIP côté UI.
+  // Anciennement (M/2026/04/30/9) : fetch /api/detect_country.php au mount en mode
+  // CREATION et set pays_residence + bien.pays automatiquement. Retiré car cas réel
+  // Philippe : Ophélie au Maroc / client résident France / bien en Espagne — geoIP
+  // ne devine rien. L'agent choisit le pays explicitement. detect_country.php reste
+  // disponible côté backend pour analytics/log si besoin futur (suggestion modale
+  // séparée plutôt que fill silencieux). Anciens dossiers : pays_residence préservé
+  // en DB, pas de migration.
   // M/2026/04/29/11 — AI message modal state.
   // M/2026/04/29/44 — aiMessageOpen state retire (boutons Resume/Message supprimes header).
   // M/2026/04/28/51 — banner edit pending : si edit_consent.list_pending retourne
@@ -18700,23 +18688,27 @@ function FormView(props) {
                   <EmailMulti value={d.emails} onChange={v => set('emails', v)} showToast={showToast}/>
                 </div>
               </div>
-              {/* M/2026/04/29/53 — Adresse autocomplete Nominatim mondial (5 suggestions, debounce 300ms, auto-remplit Ville/CP/Pays). */}
-              <AddressAutocomplete label="Adresse" value={d.adresse} onChange={v => set('adresse', v)}
-                autoComplete="street-address" name="street-address"
-                onPick={(p) => {
-                  if (p.adresse) set('adresse', p.adresse);
-                  if (p.ville) set('ville', p.ville);
-                  if (p.code_postal) set('code_postal', p.code_postal);
-                  if (p.pays) set('pays_residence', p.pays);
-                }}/>
-              {/* M/2026/04/29/55 — L2 NEW grid 3 cols [Code postal | Ville (sans drapeau) | Pays residence (avec drapeau)]. */}
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:10}}>
-                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
-                  autoComplete="postal-code" name="postal-code" inputMode="text"/>
+              {/* M/2026/05/02/11 — M122 : layout cible Section I Particulier
+                  L1 [Pays | Adresse] · L2 [Ville | CP].
+                  Pays remonté en L1 (cohérent Section II). Plus de geoIP en pré-remplissage
+                  (M107 conservé en backend pour analytics, retiré du UI fill). */}
+              <div style={{display:'grid', gridTemplateColumns:'auto 1fr', gap:8, marginBottom:10, alignItems:'flex-end'}}>
+                <PaysCompactButton label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
+                <AddressAutocomplete label="Adresse" value={d.adresse} onChange={v => set('adresse', v)}
+                  autoComplete="street-address" name="street-address"
+                  style={{marginBottom:0}}
+                  onPick={(p) => {
+                    if (p.adresse) set('adresse', p.adresse);
+                    if (p.ville) set('ville', p.ville);
+                    if (p.code_postal) set('code_postal', p.code_postal);
+                    if (p.pays) set('pays_residence', p.pays);
+                  }}/>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:6, marginBottom:10}}>
                 <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
                   autoComplete="address-level2" name="address-level2"/>
-                {/* M/2026/05/02/7 — M120 livrable C : CountryPicker partage Section I/II (coherence). */}
-                <PaysCompactButton label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
+                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
+                  autoComplete="postal-code" name="postal-code" inputMode="text"/>
               </div>
               {/* M/2026/04/29/44 v8 — L3 Date naissance / Pays de naissance. */}
               <div className="row-pair">
@@ -18757,23 +18749,25 @@ function FormView(props) {
                 <Field label="Fonction" value={d.representant_fonction} onChange={v => set('representant_fonction', v)}
                   autoComplete="organization-title" name="organization-title"/>
               </div>
-              {/* M/2026/04/29/53 — Adresse autocomplete Nominatim mondial (idem Particulier). */}
-              <AddressAutocomplete label="Adresse société" value={d.adresse} onChange={v => set('adresse', v)}
-                autoComplete="section-societe street-address" name="societe-street-address"
-                onPick={(p) => {
-                  if (p.adresse) set('adresse', p.adresse);
-                  if (p.ville) set('ville', p.ville);
-                  if (p.code_postal) set('code_postal', p.code_postal);
-                  if (p.pays) set('pays_residence', p.pays);
-                }}/>
-              {/* M/2026/04/29/55 — L5 NEW grid 3 cols [Code postal | Ville (sans drapeau) | Pays (avec drapeau)] - cohere Particulier. */}
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:10}}>
-                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
-                  autoComplete="section-societe postal-code" name="societe-postal-code"/>
+              {/* M/2026/05/02/11 — M122 : layout cible Section I Société
+                  L1 [Pays | Adresse société] · L2 [Ville | CP]. Cohérent avec Particulier. */}
+              <div style={{display:'grid', gridTemplateColumns:'auto 1fr', gap:8, marginBottom:10, alignItems:'flex-end'}}>
+                <PaysCompactButton label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
+                <AddressAutocomplete label="Adresse société" value={d.adresse} onChange={v => set('adresse', v)}
+                  autoComplete="section-societe street-address" name="societe-street-address"
+                  style={{marginBottom:0}}
+                  onPick={(p) => {
+                    if (p.adresse) set('adresse', p.adresse);
+                    if (p.ville) set('ville', p.ville);
+                    if (p.code_postal) set('code_postal', p.code_postal);
+                    if (p.pays) set('pays_residence', p.pays);
+                  }}/>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:6, marginBottom:10}}>
                 <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
                   autoComplete="section-societe address-level2" name="societe-address-level2"/>
-                {/* M/2026/05/02/7 — M120 livrable C : Section I Société pays = CountryPicker. */}
-                <PaysCompactButton label="Pays" value={d.pays_residence} onChange={v => set('pays_residence', v)}/>
+                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
+                  autoComplete="section-societe postal-code" name="societe-postal-code"/>
               </div>
               {/* L6 Tel | Email (harmonise Particulier : Tel a gauche, Email a droite). */}
               <div className="row-pair">

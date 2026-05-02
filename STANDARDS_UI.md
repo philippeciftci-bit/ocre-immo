@@ -83,14 +83,60 @@ pour afficher "Hispano-mauresque" tronque. La règle `max-content` règle les de
 - Succès (numéro valide) : `#2D6B3F` / `#4BB77B`
 - Warning (incomplet) : `#D4A437`
 
+## 4.bis Bloc adresse standardisé (M122)
+
+Tous les blocs adresse de l'app suivent la même convention pour cohérence
+visuelle universelle.
+
+### Layout cible
+
+- **Ligne 1** : `[PAYS PaysCompactButton] [ADRESSE input avec autocomplete]`
+  - Grid : `auto 1fr` (Pays largeur naturelle, Adresse flex).
+  - Sur très petits écrans (<400px) : empilage vertical autorisé.
+- **Ligne 2** : `[VILLE] [CP] [QUARTIER]` (Section II) ou `[VILLE] [CP]` (Section I).
+  - Grid Section II : `2fr 1fr 1.5fr` (Ville plus large, CP au milieu, Quartier à droite).
+  - Grid Section I : `2fr 1fr` (Ville prioritaire, CP compact à droite).
+
+### Ordre des champs
+
+L'ordre `Ville / CP / Quartier` est volontaire (CP au milieu = équilibre visuel
+car CP plus court que Ville et Quartier). Décision Philippe M122.
+
+### Pré-remplissage geoIP — retiré (M122)
+
+`detect_country.php` ne pré-remplit plus `pays_residence` ni `bien.pays` côté UI.
+Cas réel Philippe : Ophélie agente au Maroc / client résident France / bien en
+Espagne — geoIP ne devine rien. L'agent choisit le pays explicitement.
+
+`detect_country.php` reste disponible backend pour analytics. Si besoin futur
+de suggestion contextuelle, c'est une mission séparée (modale "On dirait que
+tu es au Maroc, créer en MAD ?" plutôt que fill silencieux).
+
+### Auto-fill CP via ville (reporté en mission future)
+
+Spec définie M122 mais non livrée :
+- FR : `geo.api.gouv.fr/communes?nom={query}&fields=codesPostaux,nom`.
+- MA : tableau JSON embarqué `data/villes_ma.json` (~50 villes).
+- ES, IT, BE : Nominatim OpenStreetMap (proxy `/api/nominatim.php` existant).
+- Autres pays : input libre.
+
+Logique : auto-fill CP au pick d'une ville sauf si CP déjà saisi manuellement
+(respect saisie manuelle prime).
+
+### Migration progressive
+
+M122 livre uniquement Section I (Particulier + Société) et Section II.
+Audit secondaire reporté : profil agent (paramètres), adresse facturation,
+adresse pièce d'identité (lieu de délivrance). Composant `AdresseBlock`
+unifié réutilisable est aussi reporté en mission future (refacto plus large).
+
 ## 5. Principes UX (rappels Philippe)
 
 - **Zéro emoji décoratif.** Drapeaux pays acceptés (sémantique). Aucun autre
   emoji dans le formulaire métier (pas de ✨, 🎉, 💡, etc.).
-- **Pré-remplissage geoIP** : suggestion modifiable, jamais imposition.
-  - `pays_residence` (Section I) : pré-rempli geoIP M107 si vide.
-  - `bien_country` (Section II) : pré-rempli geoIP M107 si vide.
-  - `pays_naissance`, `id_country` : VIDE par défaut (l'agent saisit selon le client).
+- **Pré-remplissage geoIP retiré (M122).** Tous les pays sont VIDE par défaut.
+  L'agent choisit explicitement (pays_residence, bien.pays, pays_naissance, id_country).
+  `detect_country.php` reste backend-only pour analytics.
 - **CountryPicker partout** pour les champs pays. Plus jamais d'input texte libre
   ou d'autocomplete custom pour un pays (incohérence Section I → corrigée M120).
 - **Auto-save sur blur** (M103) : pas de bouton "Enregistrer" cosmétique. Le bouton
