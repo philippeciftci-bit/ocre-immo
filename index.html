@@ -7095,22 +7095,27 @@ function ConversionPair({label, eurKey, madKey, legacyKey, set, d, hint, warn, d
     const v = parse(e.target.value);
     writeBoth(v ? Math.round(v / TAUX) : 0, v);
   };
-  const iwBase = {display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 6, padding: '6px 8px', height: 38, gap: 5, boxSizing: 'border-box'};
+  // M/2026/05/02/44 — M-PAN-FIX1 : iwBase + grid + input avec minWidth:0 + overflow:hidden pour
+  // empêcher que la min-content du wrapper input (drapeau emoji + symbole € + padding intérieur)
+  // dépasse la fraction 1fr et fasse déborder la card hors viewport iPhone 390px (~340px usable
+  // après padding card 14px). minmax(0, 1fr) sur grid + minWidth:0 sur les enfants flex/grid =
+  // pattern CSS standard pour forcer le shrink en dessous de la min-content native.
+  const iwBase = {display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 6, padding: '6px 8px', height: 38, gap: 5, boxSizing: 'border-box', minWidth: 0, overflow: 'hidden'};
   const iwBorder = warn ? '1px solid #C73E3E' : '1px solid #D6C7AC';
-  const inputStyle = {flex: 1, border: 'none', outline: 'none', fontSize: 13, background: 'transparent', minWidth: 0, padding: 0, fontFamily: 'inherit', color: '#2A2018'};
+  const inputStyle = {flex: 1, border: 'none', outline: 'none', fontSize: 13, background: 'transparent', minWidth: 0, width: '100%', padding: 0, fontFamily: 'inherit', color: '#2A2018'};
   return (
     <div style={{marginBottom: 8}}>
       <div style={{fontSize: 11, color: '#5C5550', fontWeight: 600, marginBottom: 4}}>{label}</div>
-      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6}}>
+      <div style={{display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 6}}>
         <div style={{...iwBase, border: iwBorder, background: warn ? '#FEF6F6' : '#fff'}}>
           <input type="text" inputMode="numeric" value={fmt(displayEur)} onChange={handleEur} placeholder="0" style={inputStyle}/>
-          <span style={{fontSize: 11, color: '#8B7F6E', fontWeight: 600}}>€</span>
-          <span style={{fontSize: 14, lineHeight: 1}} aria-hidden="true">🇪🇺</span>
+          <span style={{fontSize: 11, color: '#8B7F6E', fontWeight: 600, flexShrink: 0}}>€</span>
+          <span style={{fontSize: 14, lineHeight: 1, flexShrink: 0}} aria-hidden="true">🇪🇺</span>
         </div>
         <div style={{...iwBase, border: iwBorder, background: warn ? '#FEF6F6' : '#fff'}}>
           <input type="text" inputMode="numeric" value={fmt(displayMad)} onChange={handleMad} placeholder="0" style={inputStyle}/>
-          <span style={{fontSize: 11, color: '#8B7F6E', fontWeight: 600}}>Dhs</span>
-          <span style={{fontSize: 14, lineHeight: 1}} aria-hidden="true">🇲🇦</span>
+          <span style={{fontSize: 11, color: '#8B7F6E', fontWeight: 600, flexShrink: 0}}>Dhs</span>
+          <span style={{fontSize: 14, lineHeight: 1, flexShrink: 0}} aria-hidden="true">🇲🇦</span>
         </div>
       </div>
       {hint && <div style={{fontSize: 10, color: warn ? '#C73E3E' : '#8B7F6E', fontStyle: 'italic', textAlign: 'center', marginTop: 3, fontWeight: warn ? 600 : 400}}>{hint}</div>}
