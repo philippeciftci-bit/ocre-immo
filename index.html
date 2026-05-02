@@ -7126,31 +7126,52 @@ const V55_THEMES = {
   financement: {bg:'#ECEFF4', bord:'#4A5C7A', lbl:'#4A5C7A'},
   repartition: {bg:'#F1ECF1', bord:'#8B6B8C', lbl:'#8B6B8C'},
 };
-function V55Bloc({title, children, theme}) {
+function V55Bloc({title, children, theme, collapsible, expanded, onToggle}) {
   const t = theme && V55_THEMES[theme];
   if (t) {
     const isMain = theme === 'synthese';
+    const titleEl = collapsible ? (
+      <div onClick={onToggle} style={{
+        fontFamily: 'Cormorant Garamond,serif',
+        fontSize: isMain ? 17 : 15,
+        fontWeight: isMain ? 700 : 600,
+        color: t.lbl,
+        marginBottom: expanded ? 8 : 0,
+        paddingBottom: expanded ? 4 : 0,
+        borderBottom: expanded ? '1px solid ' + t.bord + '40' : 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        userSelect: 'none',
+      }}>
+        <span style={{fontSize: 12, transition: 'transform .15s'}}>{expanded ? '▾' : '▸'}</span>
+        <span>{title}</span>
+      </div>
+    ) : (
+      <div style={{
+        fontFamily: 'Cormorant Garamond,serif',
+        fontSize: isMain ? 17 : 15,
+        fontWeight: isMain ? 700 : 600,
+        color: t.lbl,
+        marginBottom: 8,
+        paddingBottom: 4,
+        borderBottom: '1px solid ' + t.bord + '40',
+      }}>{title}</div>
+    );
     return (
       <div style={{
         background: t.bg,
         borderLeft: '3px solid ' + t.bord,
         borderRadius: '0 10px 10px 0',
-        padding: isMain ? '14px 14px 4px' : '12px 14px 4px',
+        padding: collapsible && !expanded ? '10px 14px' : (isMain ? '14px 14px 4px' : '12px 14px 4px'),
         marginBottom: 10,
         boxShadow: isMain
           ? '0 0 0 1px ' + t.bord + '40, 0 2px 4px rgba(178,109,58,.08)'
           : '0 0 0 1px rgba(139,94,60,.06)',
       }}>
-        <div style={{
-          fontFamily: 'Cormorant Garamond,serif',
-          fontSize: isMain ? 17 : 15,
-          fontWeight: isMain ? 700 : 600,
-          color: t.lbl,
-          marginBottom: 8,
-          paddingBottom: 4,
-          borderBottom: '1px solid ' + t.bord + '40',
-        }}>{title}</div>
-        {children}
+        {titleEl}
+        {(!collapsible || expanded) && children}
       </div>
     );
   }
@@ -7176,6 +7197,98 @@ function V55ReadOnly({label, value, hint}) {
 }
 
 // V62 — sous-titre regroupant pour les blocs "détails" en bas de section.
+// M/2026/05/02/35 — M144.D livrable 1 : FraisAgenceMultiActeurs composant autonome.
+// Data model array : bien.frais_agence_acteurs = [{id, label, mode, valeur, total_calcule}].
+// Max 4 acteurs. Pré-rempli par profil. Calcul auto live (pourcent ou forfait).
+// Persiste via set('frais_agence_acteurs', ..., {commit: true}) auto-save M129.
+const FRAIS_AGENCE_TYPES = [
+  {v: 'mandat', l: 'Agent mandat'},
+  {v: 'contrepartie', l: 'Agent contrepartie'},
+  {v: 'co_agence', l: 'Co-agence'},
+  {v: 'apporteur', l: 'Apporteur'},
+  {v: 'autre', l: 'Autre'},
+];
+function FraisAgenceMultiActeurs({d, set, devise, baseAmount, profil}) {
+  const acteurs = Array.isArray(d.frais_agence_acteurs) ? d.frais_agence_acteurs : [];
+  // Pré-remplissage initial selon profil si array vide.
+  React.useEffect(() => {
+    if (acteurs.length > 0) return;
+    let initial = [];
+    if (profil === 'Vendeur') {
+      initial = [
+        {id: 'mandat', label: 'Agent mandat', mode: 'pourcent', valeur: 5},
+        {id: 'contrepartie', label: 'Agent contrepartie', mode: 'pourcent', valeur: 2.5},
+      ];
+    } else if (profil === 'Bailleur') {
+      initial = [{id: 'mandat', label: 'Agent mandat', mode: 'forfait', valeur: Number(baseAmount) || 0}];
+    } else if (profil === 'Acheteur') {
+      initial = [{id: 'contrepartie', label: 'Agent contrepartie', mode: 'pourcent', valeur: 2.5}];
+    }
+    if (initial.length > 0) {
+      set('frais_agence_acteurs', initial, {fromUser: false});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function calcTotal(a) {
+    if (a.mode === 'forfait') return Number(a.valeur) || 0;
+    return Math.round((Number(baseAmount) || 0) * (Number(a.valeur) || 0) / 100);
+  }
+  const totalGlobal = acteurs.reduce((s, a) => s + calcTotal(a), 0);
+  function updateActeur(idx, patch) {
+    const next = acteurs.map((a, i) => i === idx ? {...a, ...patch} : a);
+    set('frais_agence_acteurs', next, {commit: true});
+  }
+  function removeActeur(idx) {
+    const next = acteurs.filter((_, i) => i !== idx);
+    set('frais_agence_acteurs', next, {commit: true});
+  }
+  function addActeur() {
+    if (acteurs.length >= 4) return;
+    const next = [...acteurs, {id: 'autre', label: 'Autre', mode: 'pourcent', valeur: 0}];
+    set('frais_agence_acteurs', next, {commit: true});
+  }
+  return (
+    <>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid #C9B79A40'}}>
+        <span style={{fontSize:11, fontWeight:700, color:'#5C8A82', textTransform:'uppercase', letterSpacing:.4}}>Total agence</span>
+        <span style={{fontSize:14, fontWeight:800, color:'#5C8A82'}}>{fmtMoneyV55(totalGlobal, devise)}</span>
+      </div>
+      {acteurs.length === 0 && (
+        <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', padding:'8px 0'}}>
+          Aucun acteur. Tap + Ajouter pour commencer.
+        </div>
+      )}
+      {acteurs.map((a, idx) => {
+        const total = calcTotal(a);
+        return (
+          <div key={idx} style={{display:'grid', gridTemplateColumns:'1.4fr 0.7fr 0.8fr 1fr 24px', gap:4, alignItems:'center', padding:'5px 0', borderBottom: idx < acteurs.length - 1 ? '1px dashed #E8DDC9' : 'none', fontSize:11.5}}>
+            <select value={a.id} onChange={e => {
+              const t = FRAIS_AGENCE_TYPES.find(x => x.v === e.target.value);
+              updateActeur(idx, {id: e.target.value, label: t ? t.l : 'Autre'});
+            }} style={{padding:'4px 6px', border:'1px solid #C9B79A', borderRadius:5, fontSize:11, background:'#FBF1E4', fontFamily:'inherit', color:'#5C3B1E', fontWeight:600}}>
+              {FRAIS_AGENCE_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
+            </select>
+            <div style={{display:'flex', background:'#FDFAF7', border:'1px solid #E8DDC9', borderRadius:5, overflow:'hidden', height:26}}>
+              <div onClick={() => updateActeur(idx, {mode: 'pourcent'})} style={{flex:1, textAlign:'center', fontSize:9.5, fontWeight:700, padding:'5px 0', cursor:'pointer', color: a.mode === 'pourcent' ? '#fff' : '#8B7F6E', background: a.mode === 'pourcent' ? '#5C8A82' : 'transparent'}}>%</div>
+              <div onClick={() => updateActeur(idx, {mode: 'forfait'})} style={{flex:1, textAlign:'center', fontSize:9.5, fontWeight:700, padding:'5px 0', cursor:'pointer', color: a.mode === 'forfait' ? '#fff' : '#8B7F6E', background: a.mode === 'forfait' ? '#5C8A82' : 'transparent'}}>F</div>
+            </div>
+            <input type="number" value={a.valeur || ''} onChange={e => updateActeur(idx, {valeur: e.target.value})} placeholder="0" style={{padding:'4px 6px', border:'1px solid #C9B79A', borderRadius:5, fontSize:11.5, fontWeight:600, fontFamily:'inherit', background:'#FFFCF5', color:'#2A2018', textAlign:'right', width:'100%'}}/>
+            <div style={{padding:'4px 6px', background:'#fff', border:'1px solid #E8DDC9', borderRadius:5, fontWeight:700, fontSize:11.5, color:'#2A2018', textAlign:'right'}}>{fmtMoneyV55(total, devise)}</div>
+            {acteurs.length > 1 ? (
+              <button type="button" onClick={() => removeActeur(idx)} style={{background:'transparent', border:'none', cursor:'pointer', color:'#8B7F6E', fontSize:14, padding:0}}>✕</button>
+            ) : <span/>}
+          </div>
+        );
+      })}
+      {acteurs.length < 4 && (
+        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:6, marginTop:6, background:'#fff', border:'1.5px dashed #C9B79A', borderRadius:5, color:'#5C8A82', fontWeight:600, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>
+          + Ajouter un acteur ({acteurs.length}/4)
+        </button>
+      )}
+    </>
+  );
+}
+
 function V62SubTitle({children}) {
   return (
     <div style={{fontFamily:'DM Sans,inherit', fontSize:11.5, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginTop:18, marginBottom:6, paddingBottom:4, borderBottom:'1px solid #F0E9DC'}}>
@@ -7262,7 +7375,16 @@ function RechercheBienBloc({d, set}) {
 // V55 — Section III pro : selon profil + invest. Stockage dans d (data JSON, pas de migration DB).
 // V62 — réordonné : essentiels (Prix / Frais agence / Frais notaire / Coût total) en haut,
 // détails (Capacité, Mandat, Co-courtage, Répartition, Stratégie, Performance) en bas.
+// M/2026/05/02/35 — M144.D : state global expandedBlocks pour 4 sous-blocs collapsed (Mandat,
+// Plan paiement, Financement, Répartition). Tap chevron ▸ → expand, tap encore → collapse.
 function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}) {
+  const [expandedBlocks, setExpandedBlocks] = React.useState({
+    mandat: false,
+    plan_paiement: false,
+    financement: false,
+    repartition: false,
+  });
+  const toggleBlock = (k) => setExpandedBlocks(p => ({...p, [k]: !p[k]}));
   const paysBien = (d.bien && d.bien.pays) || (d.pays_residence === 'Maroc' ? 'MA' : 'FR');
   // M/2026/04/30/29 — devise resolue via d.devise utilisateur OU currencyForCountry(pays).
   // Auto-suggestion : si devise vide ET devise_source != 'manual' -> set auto via currencyForCountry.
@@ -7334,6 +7456,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           {honoCharge === 'Vendeur' && (
             <V55ReadOnly label="Honoraires" value="Supportés par le vendeur" hint="Aucun frais d'agence à votre charge"/>
           )}
+          {/* M/2026/05/02/35 — M144.D livrable 1 : Multi-acteurs Frais d'agence Acheteur.
+              Pré-rempli 'Agent contrepartie' 2,5%. Calc auto sur budget_max. */}
+          <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid #C9B79A40'}}>
+            <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={Number(d.budget_max) || 0} profil="Acheteur"/>
+          </div>
         </V55Bloc>
 
         <V55Bloc title="Frais de notaire (estimation)" theme="notaire">
@@ -7370,9 +7497,35 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           })()}
         </V55Bloc>
 
+        {/* M/2026/05/02/35 — M144.D livrable 2 : Plan de paiement collapsed (Acheteur).
+            Acompte / Signature acte / Solde livraison %. Validation total = 100%. */}
+        <V55Bloc title="Plan de paiement" theme="paiement" collapsible expanded={expandedBlocks.plan_paiement} onToggle={() => toggleBlock('plan_paiement')}>
+          {(() => {
+            const _ac = Number(d.plan_paiement_acompte_pct) || 0;
+            const _si = Number(d.plan_paiement_signature_pct) || 0;
+            const _so = Number(d.plan_paiement_solde_pct) || 0;
+            const _tot = _ac + _si + _so;
+            const _diff = Math.abs(_tot - 100);
+            const _ok = _tot === 0 || _diff < 0.01;
+            return (
+              <>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:6}}>
+                  <V55Field label="Acompte / Réservation" type="number" value={d.plan_paiement_acompte_pct} onChange={v => set('plan_paiement_acompte_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
+                  <V55Field label="Signature acte" type="number" value={d.plan_paiement_signature_pct} onChange={v => set('plan_paiement_signature_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
+                  <V55Field label="Solde livraison" type="number" value={d.plan_paiement_solde_pct} onChange={v => set('plan_paiement_solde_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
+                </div>
+                <div style={{padding:'8px 10px', borderRadius:6, background: _ok ? '#EAF7E8' : '#FEF6F6', border:'1px solid '+(_ok ? '#9DCB94' : '#D64545'), display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13, fontWeight:700}}>
+                  <span style={{color: _ok ? '#2D6B3F' : '#C04B20'}}>Total</span>
+                  <span style={{color: _ok ? '#2D6B3F' : '#C04B20'}}>{_tot.toFixed(1)}% {_ok ? '✓' : '⚠ ≠ 100%'}</span>
+                </div>
+              </>
+            );
+          })()}
+        </V55Bloc>
+
         {/* V62 — Détails financement en bas */}
         <V62SubTitle>Détails de financement</V62SubTitle>
-        <V55Bloc title="Capacité d'achat" theme="financement">
+        <V55Bloc title="Capacité d'achat / Financement" theme="financement" collapsible expanded={expandedBlocks.financement} onToggle={() => toggleBlock('financement')}>
           <V55Field label="Apport personnel" type="number" value={d.apport_personnel} onChange={v => set('apport_personnel', v)} suffix={devise}/>
           <V55Field label="Mode de financement" type="select" value={d.mode_financement} onChange={v => set('mode_financement', v)}
             options={['Comptant','Crédit','Mixte']}/>
@@ -7476,6 +7629,12 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
                 : paysBien === 'IT' ? 'IVA Italia 22%'
                 : ''}/>
           <V55ReadOnly label="Commission calculée" value={fmtMoneyV55(commCalc, devise)} hint={commMode === 'Pourcentage' ? `${prix.toLocaleString('fr-FR')} × ${commTaux}%` : 'Forfait'}/>
+          {/* M/2026/05/02/35 — M144.D livrable 1 : Multi-acteurs Frais d'agence cohabite avec
+              Honoraires legacy. Pré-rempli Vendeur 5%+2,5%. Calc auto sur prix bien. Si saisi,
+              prend précédence dans la Synthèse via _totalAgenceMulti. */}
+          <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid #C9B79A40'}}>
+            <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={prix} profil="Vendeur"/>
+          </div>
         </V55Bloc>
 
         {/* M/2026/05/02/33 — M144.B : Bloc Synthèse Vendeur SÉPARÉ (extrait du Bloc Prix M134).
@@ -7484,7 +7643,14 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {(() => {
           const _prixAff = Number(d.prix_affiche) || 0;
           const _liq = Number(d.prix_liquide) || 0;
-          const _comm = Number(commCalc) || 0;
+          // M/2026/05/02/35 — M144.D : préfère sum(frais_agence_acteurs) si renseigné,
+          // sinon fallback commCalc legacy pour rétrocompat dossiers existants.
+          const _multi = Array.isArray(d.frais_agence_acteurs) ? d.frais_agence_acteurs : [];
+          const _multiSum = _multi.reduce((s, a) => {
+            const v = Number(a.valeur) || 0;
+            return s + (a.mode === 'forfait' ? v : Math.round(_prixAff * v / 100));
+          }, 0);
+          const _comm = _multi.length > 0 ? _multiSum : (Number(commCalc) || 0);
           const _total = _prixAff + _liq + _comm;
           if (_total <= 0) return null;
           return (
@@ -7493,7 +7659,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
                 {fmtMoneyV55(_total, devise)}
               </div>
               <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', lineHeight:1.4}}>
-                Prix {fmtMoneyV55(_prixAff, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Commission {fmtMoneyV55(_comm, devise)} (hors notaire à charge acheteur)
+                Prix {fmtMoneyV55(_prixAff, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Frais agence {fmtMoneyV55(_comm, devise)} (hors notaire à charge acheteur)
               </div>
               <div style={{fontSize:10, color:'#A07842', fontStyle:'italic', marginTop:6}}>
                 Visible sur fiche dossier et PDF
@@ -7515,7 +7681,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
 
         {/* V62 — Détails plus bas */}
         <V62SubTitle>Mandat</V62SubTitle>
-        <V55Bloc title="Mandat" theme="mandat">
+        <V55Bloc title="Mandat" theme="mandat" collapsible expanded={expandedBlocks.mandat} onToggle={() => toggleBlock('mandat')}>
           <V55Field label="Type" type="select" value={d.mandat_type} onChange={v => set('mandat_type', v)}
             options={['Simple','Exclusif','Semi-exclusif','Co-exclusif']}/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
@@ -7546,8 +7712,33 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           )}
         </V55Bloc>
 
+        {/* M/2026/05/02/35 — M144.D livrable 2 : Plan de paiement Vendeur collapsed (échelonné vente). */}
+        <V55Bloc title="Plan de paiement" theme="paiement" collapsible expanded={expandedBlocks.plan_paiement} onToggle={() => toggleBlock('plan_paiement')}>
+          {(() => {
+            const _ac = Number(d.plan_paiement_acompte_pct) || 0;
+            const _si = Number(d.plan_paiement_signature_pct) || 0;
+            const _so = Number(d.plan_paiement_solde_pct) || 0;
+            const _tot = _ac + _si + _so;
+            const _diff = Math.abs(_tot - 100);
+            const _ok = _tot === 0 || _diff < 0.01;
+            return (
+              <>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:6}}>
+                  <V55Field label="Acompte / Réservation" type="number" value={d.plan_paiement_acompte_pct} onChange={v => set('plan_paiement_acompte_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
+                  <V55Field label="Signature acte" type="number" value={d.plan_paiement_signature_pct} onChange={v => set('plan_paiement_signature_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
+                  <V55Field label="Solde livraison" type="number" value={d.plan_paiement_solde_pct} onChange={v => set('plan_paiement_solde_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
+                </div>
+                <div style={{padding:'8px 10px', borderRadius:6, background: _ok ? '#EAF7E8' : '#FEF6F6', border:'1px solid '+(_ok ? '#9DCB94' : '#D64545'), display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13, fontWeight:700}}>
+                  <span style={{color: _ok ? '#2D6B3F' : '#C04B20'}}>Total</span>
+                  <span style={{color: _ok ? '#2D6B3F' : '#C04B20'}}>{_tot.toFixed(1)}% {_ok ? '✓' : '⚠ ≠ 100%'}</span>
+                </div>
+              </>
+            );
+          })()}
+        </V55Bloc>
+
         <V62SubTitle>Répartition interne</V62SubTitle>
-        <V55Bloc title="Répartition interne" theme="repartition">
+        <V55Bloc title="Répartition interne" theme="repartition" collapsible expanded={expandedBlocks.repartition} onToggle={() => toggleBlock('repartition')}>
           <V55Field label="Part agent" type="pct" value={d.part_agent_pct != null ? d.part_agent_pct : 50} onChange={v => set('part_agent_pct', v)} suffix="%" hint="% de la commission nette agence"/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <V55ReadOnly label="Part agent" value={fmtMoneyV55(partAg, devise)}/>
@@ -7664,6 +7855,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           {d.honoraires_locataire_partage_oui && (
             <V55Field label="Montant à charge locataire" type="number" value={d.honoraires_locataire_montant} onChange={v => set('honoraires_locataire_montant', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
           )}
+          {/* M/2026/05/02/35 — M144.D livrable 1 : Multi-acteurs Frais d'agence Bailleur.
+              Pré-rempli 'Agent mandat' forfait = 1 mois loyer. Calc auto. */}
+          <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid #C9B79A40'}}>
+            <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={Number(d.loyer_demande) || 0} profil="Bailleur"/>
+          </div>
         </V55Bloc>
 
         {/* M/2026/05/02/34 — M144.C livrable D : Synthèse Bailleur 'Loyer affiché au marché'. */}
