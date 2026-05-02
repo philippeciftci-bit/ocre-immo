@@ -6804,149 +6804,7 @@ function PaymentRow({line, onChange, onRemove, withDate}) {
   );
 }
 
-function PaymentPlanModule({d, set}) {
-  // V45 — payment_plan + received_payments (séparés). Migration legacy douce au mount.
-  const planRaw = Array.isArray(d.payment_plan) ? d.payment_plan : null;
-  const receivedRaw = Array.isArray(d.received_payments) ? d.received_payments : [];
-  // Si pas de plan ET legacy budget existe, dériver une ligne au premier rendu.
-  const initialPlan = planRaw || ppDeriveLegacy(d);
-  const plan = initialPlan;
-  const received = receivedRaw;
-
-  function setPlan(next) {
-    set('payment_plan', next);
-    // Recalculer un budget_summary lisible pour aperçu accueil.
-    const summary = computePlanSummary(next);
-    set('budget_summary', summary);
-  }
-  function setReceived(next) {
-    set('received_payments', next);
-  }
-  function addPlanLine() {
-    const next = [...plan, {id: ppNewId(), amount: 0, currency: 'MAD', method: 'wire'}];
-    setPlan(next);
-  }
-  function updatePlanLine(idx, line) {
-    const next = plan.slice(); next[idx] = line; setPlan(next);
-  }
-  function removePlanLine(idx) {
-    const next = plan.filter((_, i) => i !== idx); setPlan(next);
-  }
-  function addReceivedLine() {
-    const today = new Date().toISOString().slice(0, 10);
-    const next = [...received, {id: ppNewId(), date: today, amount: 0, currency: 'MAD', method: 'wire'}];
-    setReceived(next);
-  }
-  function updateReceivedLine(idx, line) {
-    const next = received.slice(); next[idx] = line; setReceived(next);
-  }
-  function removeReceivedLine(idx) {
-    const next = received.filter((_, i) => i !== idx); setReceived(next);
-  }
-  // Sous-totaux par monnaie.
-  const totals = {};
-  plan.forEach(l => {
-    const c = l.currency || 'MAD';
-    totals[c] = totals[c] || {planned: 0, received: 0};
-    totals[c].planned += Number(l.amount) || 0;
-  });
-  received.forEach(l => {
-    const c = l.currency || 'MAD';
-    totals[c] = totals[c] || {planned: 0, received: 0};
-    totals[c].received += Number(l.amount) || 0;
-  });
-  const totalCurrencies = Object.keys(totals);
-  return (
-    <div style={{marginTop:8, marginBottom:14, padding:12, borderRadius:10, border:'1.5px solid #E0CDAE', background:'#FFFCF5'}}>
-      <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:8}}>
-        <IconBanknote size={15} color="#8B5E3C"/>
-        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:15, fontWeight:600, color:'#8B5E3C'}}>Plan de paiement</span>
-        {plan.length > 0 && plan.every(l => Number(l.amount) > 0) && (
-          <span style={{display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:9, background:'#E8F5EC', color:'#3E8B5E', fontSize:11, fontWeight:800, marginLeft:2}}>✓</span>
-        )}
-      </div>
-      {plan.length === 0 && (
-        <div style={{padding:'10px 8px', textAlign:'center', color:'#8B7F6E', fontStyle:'italic', fontSize:12}}>
-          Aucun versement prévu
-        </div>
-      )}
-      {plan.map((l, i) => (
-        <PaymentRow key={l.id || i} line={l} onChange={ln => updatePlanLine(i, ln)} onRemove={() => removePlanLine(i)}/>
-      ))}
-      <button type="button" onClick={addPlanLine}
-        style={{
-          width:'100%', marginTop:4, padding:'10px', borderRadius:8, fontFamily:'inherit',
-          border:'1.5px dashed #C9B79A', background:'#FBF1E4', color:'#8B5E3C',
-          fontWeight:600, fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
-        }}>
-        <IconPlus size={14} color="#8B5E3C"/> Ajouter un versement
-      </button>
-      {plan.some(l => Number(l.amount) > 0) && (
-        <div style={{marginTop:10, paddingTop:8, borderTop:'1px dashed #E0CDAE'}}>
-          <div style={{fontSize:10, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, fontWeight:700, marginBottom:3}}>Total prévu</div>
-          {Object.keys(totals).filter(c => (totals[c].planned || 0) > 0).map(c => (
-            <div key={c} style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:600, color:'#2A2018', fontVariantNumeric:'tabular-nums'}}>
-              {ppFmtAmount(totals[c].planned)} {c}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Sous-section Encaissements reçus */}
-      <div style={{marginTop:14, paddingTop:12, borderTop:'1px solid #E8DDD0'}}>
-        <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:8}}>
-          <IconCheck size={14} color="#8B5E3C"/>
-          <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:14, fontWeight:600, color:'#8B5E3C'}}>Encaissements reçus</span>
-        </div>
-        {received.length === 0 && (
-          <div style={{padding:'8px', textAlign:'center', color:'#8B7F6E', fontStyle:'italic', fontSize:12}}>
-            Aucun encaissement enregistré
-          </div>
-        )}
-        {received.map((l, i) => (
-          <PaymentRow key={l.id || i} line={l} onChange={ln => updateReceivedLine(i, ln)} onRemove={() => removeReceivedLine(i)} withDate/>
-        ))}
-        <button type="button" onClick={addReceivedLine}
-          style={{
-            width:'100%', marginTop:4, padding:'10px', borderRadius:8, fontFamily:'inherit',
-            border:'1.5px dashed #C9B79A', background:'#FBF1E4', color:'#8B5E3C',
-            fontWeight:600, fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
-          }}>
-          <IconPlus size={14} color="#8B5E3C"/> Encaissement
-        </button>
-        {totalCurrencies.length > 0 && (plan.some(l => Number(l.amount) > 0) || received.some(l => Number(l.amount) > 0)) && (
-          <div style={{marginTop:10, padding:'10px 12px', borderRadius:8, background:'#FBF7F0', border:'1px solid #E0CDAE'}}>
-            {totalCurrencies.map(c => {
-              const planned = totals[c].planned || 0;
-              const got = totals[c].received || 0;
-              const balance = planned - got;
-              const orphan = planned === 0 && got > 0;
-              const settled = planned > 0 && balance <= 0;
-              return (
-                <div key={c} style={{marginBottom:4, fontSize:12, fontVariantNumeric:'tabular-nums'}}>
-                  {orphan ? (
-                    <span style={{color:'#8B5E3C'}}>Reçu hors plan : <b>{ppFmtAmount(got)} {c}</b></span>
-                  ) : (
-                    <>
-                      <div><span style={{color:'#8B7F6E'}}>Prévu :</span> <b style={{color:'#2A2018'}}>{ppFmtAmount(planned)} {c}</b></div>
-                      <div><span style={{color:'#8B7F6E'}}>Reçu :</span> <b style={{color: got > 0 ? '#3E8B5E' : '#8B7F6E'}}>{ppFmtAmount(got)} {c}</b></div>
-                      <div>
-                        <span style={{color:'#8B7F6E'}}>Solde :</span>{' '}
-                        {settled
-                          ? <b style={{color:'#3E8B5E'}}>Soldé ✓</b>
-                          : <b style={{color: balance > 0 ? '#C04B20' : '#3E8B5E'}}>{ppFmtAmount(Math.max(0, balance))} {c}</b>}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+// M/2026/05/02/40 — M144.I : PaymentPlanModule V45 SUPPRIMÉ FRANCHEMENT (143 lignes). Composant legacy multi-lignes payment_plan + received_payments. Remplacé par M144.D Bloc Plan de paiement collapsed (acompte/signature/solde % validation total=100) + Multi-acteurs Frais agence M144.D. Données d.payment_plan[] et d.received_payments[] restent en DB pour rétrocompat dossiers existants.
 
 // V45 — Résumé compact ClientRow accueil. Multi-monnaies → plus grosse + suffixe ⁺N.
 function computePlanSummary(plan) {
@@ -7568,17 +7426,21 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
   // ─── VENDEUR ──────────────────────────────────────────────────────────
   if (activeProfil === 'Vendeur') {
     const prix = Number(d.prix_affiche) || 0;
-    const commMode = d.commission_mode || 'Pourcentage';
-    const commTaux = Number(d.commission_taux) || 0;
-    const commForfait = Number(d.commission_forfait) || 0;
-    const commCalc = commMode === 'Pourcentage' ? Math.round(prix * commTaux / 100) : commForfait;
-    const coCourtage = !!d.co_courtage_actif;
-    const coPct = Number(d.co_courtage_pct) || 0;
-    const coMontant = Math.round(commCalc * coPct / 100);
-    const commNette = commCalc - coMontant;
+    // M/2026/05/02/40 — M144.I : commission calculée depuis frais_agence_acteurs[] (M144.D Multi-acteurs).
+    // Variables legacy commMode/commTaux/commForfait/commCalc/coCourtage/coPct/coMontant SUPPRIMÉES franchement.
+    // Bloc Honoraires legacy + Bloc Co-courtage legacy retirés. Multi-acteurs M144.D est l'UNIQUE source.
+    const _multi = Array.isArray(d.frais_agence_acteurs) ? d.frais_agence_acteurs : [];
+    const totalAgenceMulti = _multi.reduce((s, a) => {
+      const v = Number(a.valeur) || 0;
+      return s + (a.mode === 'forfait' ? v : Math.round(prix * v / 100));
+    }, 0);
     const partAgPct = d.part_agent_pct != null ? Number(d.part_agent_pct) : 50;
-    const partAg = Math.round(commNette * partAgPct / 100);
-    const partAgence = commNette - partAg;
+    const partAg = Math.round(totalAgenceMulti * partAgPct / 100);
+    const partAgence = totalAgenceMulti - partAg;
+    const fraisNotPctVendeur = d.frais_notaire_pct != null ? Number(d.frais_notaire_pct) : fraisNotaireDefault(paysBien, neufAncien) * 100;
+    const fraisNotEstVendeur = prix > 0 ? Math.round(prix * fraisNotPctVendeur / 100) : 0;
+    const fraisNotDossier = Number(d.frais_notaire_dossier) || 0;
+    const fraisNotTotal = fraisNotEstVendeur + fraisNotDossier;
     const dateSig = d.mandat_date_signature || '';
     const duree = Number(d.mandat_duree_mois) || 3;
     const dateExpAuto = dateSig ? addMonthsISOV55(dateSig, duree) : '';
@@ -7606,53 +7468,20 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           <V55Field label="Date de disponibilité" type="date_fr" value={d.date_disponibilite} onChange={v => set('date_disponibilite', v)}/>
         </V55Bloc>
 
-        <V55Bloc title="Honoraires (commission)" theme="agence">
-          <V55Field label="Mode" type="select" value={d.commission_mode || 'Pourcentage'} onChange={v => set('commission_mode', v)}
-            options={['Pourcentage','Forfait']}/>
-          {commMode === 'Pourcentage' ? (
-            <V55Field label="Taux commission" type="pct" value={d.commission_taux} onChange={v => set('commission_taux', v)} suffix="%"/>
-          ) : (
-            <V55Field label="Forfait" type="number" value={d.commission_forfait} onChange={v => set('commission_forfait', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
-          )}
-          <V55Field label="À la charge de" type="select" value={d.commission_charge} onChange={v => set('commission_charge', v)}
-            options={['Vendeur','Acheteur','Partagés']}/>
-          {d.commission_charge === 'Partagés' && (
-            <V55Field label="Part vendeur" type="pct" value={d.commission_split_vendeur_pct != null ? d.commission_split_vendeur_pct : 50} onChange={v => set('commission_split_vendeur_pct', v)} suffix="%"
-              hint="Le reste à la charge de l'acheteur"/>
-          )}
-          {/* M/2026/05/02/9 — M117 fix : hint TVA selon pays bien (lecture paysBien existant).
-              Avant : 'TVA 20% France' hardcoded affiche meme sur dossier MA. */}
-          <V55Field label="TTC ou HT" type="select" value={d.commission_ttc_ou_ht || 'TTC'} onChange={v => set('commission_ttc_ou_ht', v)}
-            options={['TTC','HT']}
-            hint={paysBien === 'FR' ? 'TVA France 20%'
-                : paysBien === 'MA' ? 'TVA Maroc 20%'
-                : paysBien === 'ES' ? 'IVA España 21%'
-                : paysBien === 'BE' ? 'TVA Belgique 21%'
-                : paysBien === 'IT' ? 'IVA Italia 22%'
-                : ''}/>
-          <V55ReadOnly label="Commission calculée" value={fmtMoneyV55(commCalc, devise)} hint={commMode === 'Pourcentage' ? `${prix.toLocaleString('fr-FR')} × ${commTaux}%` : 'Forfait'}/>
-          {/* M/2026/05/02/35 — M144.D livrable 1 : Multi-acteurs Frais d'agence cohabite avec
-              Honoraires legacy. Pré-rempli Vendeur 5%+2,5%. Calc auto sur prix bien. Si saisi,
-              prend précédence dans la Synthèse via _totalAgenceMulti. */}
-          <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid #C9B79A40'}}>
-            <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={prix} profil="Vendeur"/>
-          </div>
+        {/* M/2026/05/02/40 — M144.I : Bloc Frais d'agence Multi-acteurs UNIQUE.
+            Suppression franche du legacy Honoraires (Mode pourcent/forfait + Taux + Charge + Commission calc + TTC/HT).
+            Multi-acteurs M144.D est désormais la seule source de saisie des frais d'agence Vendeur. */}
+        <V55Bloc title="Frais d'agence" theme="agence">
+          <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={prix} profil="Vendeur"/>
         </V55Bloc>
 
-        {/* M/2026/05/02/33 — M144.B : Bloc Synthèse Vendeur SÉPARÉ (extrait du Bloc Prix M134).
-            Prix de vente affiché = Prix + Liquide + Commission (HORS notaire = charge acheteur).
-            Bloc principal V55Bloc theme=synthese (ocre fort marqué). Calcul live. */}
+        {/* M/2026/05/02/40 — M144.I : Synthèse Vendeur. Prix de vente affiché = Prix + Liquide + Total agence
+            (hors notaire = charge acheteur). Calcul live UNIQUEMENT depuis frais_agence_acteurs (Multi-acteurs M144.D).
+            Plus de fallback commCalc legacy (variables Honoraires legacy supprimées M144.I). */}
         {(() => {
           const _prixAff = Number(d.prix_affiche) || 0;
           const _liq = Number(d.prix_liquide) || 0;
-          // M/2026/05/02/35 — M144.D : préfère sum(frais_agence_acteurs) si renseigné,
-          // sinon fallback commCalc legacy pour rétrocompat dossiers existants.
-          const _multi = Array.isArray(d.frais_agence_acteurs) ? d.frais_agence_acteurs : [];
-          const _multiSum = _multi.reduce((s, a) => {
-            const v = Number(a.valeur) || 0;
-            return s + (a.mode === 'forfait' ? v : Math.round(_prixAff * v / 100));
-          }, 0);
-          const _comm = _multi.length > 0 ? _multiSum : (Number(commCalc) || 0);
+          const _comm = totalAgenceMulti;
           const _total = _prixAff + _liq + _comm;
           if (_total <= 0) return null;
           return (
@@ -7670,19 +7499,18 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           );
         })()}
 
-        {/* V62 — Frais notaire (info à charge acheteur) */}
-        <V55Bloc title="Frais de notaire (à la charge de l'acheteur)" theme="notaire">
-          {(() => {
-            const taux = fraisNotaireDefault(paysBien, neufAncien) * 100;
-            const fraisAch = prix > 0 ? Math.round(prix * taux / 100) : 0;
-            return (
-              <V55ReadOnly label={'Estimation ' + (paysBien === 'FR' ? (neufAncien === 'neuf' ? 'FR neuf 3%' : 'FR ancien 7,5%') : 'MA 6%')} value={prix > 0 ? fmtMoneyV55(fraisAch, devise) : '—'} hint="Information : ces frais sont supportés par l'acheteur."/>
-            );
-          })()}
+        {/* M/2026/05/02/40 — M144.I : Bloc Frais notaire Vendeur RÉFONDU avec parité Acheteur.
+            Avant : juste estimation readonly. Après : 3 cols Pourcentage modifiable + Frais dossier optionnel + Total live.
+            Pré-rempli selon GPS pays bien (M144.C livrable B fraisNotaireDefault enrichi 7 pays). */}
+        <V55Bloc title="Frais de notaire (à charge acheteur)" theme="notaire">
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:6}}>
+            <V55Field label={'Taux %' + (paysBien === 'FR' ? (neufAncien === 'neuf' ? ' (FR neuf 2,5%)' : ' (FR ancien 7,5%)') : paysBien === 'MA' ? ' (MA 6%)' : paysBien === 'ES' ? (neufAncien === 'neuf' ? ' (ES neuf 12,5%)' : ' (ES ancien 11%)') : '')}
+              type="pct" value={d.frais_notaire_pct} onChange={v => set('frais_notaire_pct', v)} suffix="%"
+              placeholder={String(fraisNotaireDefault(paysBien, neufAncien) * 100)} style={{marginBottom:0}}/>
+            <V55Field label="Frais dossier (optionnel)" type="number" value={d.frais_notaire_dossier} onChange={v => set('frais_notaire_dossier', v)} suffix={devise} style={{marginBottom:0}}/>
+          </div>
+          <V55ReadOnly label="Total notaire estimé" value={prix > 0 ? fmtMoneyV55(fraisNotTotal, devise) : '—'} hint="Information : ces frais sont supportés par l'acheteur. Hors prix de vente affiché."/>
         </V55Bloc>
-
-        {/* V62 — Détails plus bas */}
-        <V62SubTitle>Mandat</V62SubTitle>
         <V55Bloc title="Mandat" theme="mandat" collapsible expanded={expandedBlocks.mandat} onToggle={() => toggleBlock('mandat')}>
           <V55Field label="Type" type="select" value={d.mandat_type} onChange={v => set('mandat_type', v)}
             options={['Simple','Exclusif','Semi-exclusif','Co-exclusif']}/>
@@ -7700,19 +7528,9 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           </div>
         </V55Bloc>
 
-        <V62SubTitle>Co-courtage / Apporteur</V62SubTitle>
-        <V55Bloc title="Co-courtage / apporteur" theme="paiement">
-          <V55Field label="Co-courtage actif" type="toggle" value={coCourtage} onChange={v => set('co_courtage_actif', v)}/>
-          {coCourtage && (
-            <>
-              <V55Field label="Nom co-courtier / apporteur" value={d.co_courtage_nom} onChange={v => set('co_courtage_nom', v)}/>
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-                <V55Field label="% rétrocédé" type="pct" value={d.co_courtage_pct} onChange={v => set('co_courtage_pct', v)} suffix="%"/>
-                <V55ReadOnly label="Montant rétrocédé" value={fmtMoneyV55(coMontant, devise)}/>
-              </div>
-            </>
-          )}
-        </V55Bloc>
+        {/* M/2026/05/02/40 — M144.I : Bloc Co-courtage / apporteur SUPPRIMÉ FRANCHEMENT.
+            Couvert fonctionnellement par FraisAgenceMultiActeurs M144.D (acteur Co-agence ou Apporteur
+            ajoutable jusqu'à 4). V62SubTitle "Co-courtage / Apporteur" SUPPRIMÉ AUSSI. */}
 
         {/* M/2026/05/02/35 — M144.D livrable 2 : Plan de paiement Vendeur collapsed (échelonné vente). */}
         <V55Bloc title="Plan de paiement" theme="paiement" collapsible expanded={expandedBlocks.plan_paiement} onToggle={() => toggleBlock('plan_paiement')}>
@@ -7739,14 +7557,15 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           })()}
         </V55Bloc>
 
-        <V62SubTitle>Répartition interne</V62SubTitle>
+        {/* M/2026/05/02/40 — M144.I : Bloc Répartition interne. V62SubTitle SUPPRIMÉ (titre h4 du V55Bloc suffit, cohérent maquette L8).
+            Calcul depuis totalAgenceMulti (sum frais_agence_acteurs M144.D) au lieu de commNette legacy. */}
         <V55Bloc title="Répartition interne" theme="repartition" collapsible expanded={expandedBlocks.repartition} onToggle={() => toggleBlock('repartition')}>
-          <V55Field label="Part agent" type="pct" value={d.part_agent_pct != null ? d.part_agent_pct : 50} onChange={v => set('part_agent_pct', v)} suffix="%" hint="% de la commission nette agence"/>
+          <V55Field label="Part agent" type="pct" value={d.part_agent_pct != null ? d.part_agent_pct : 50} onChange={v => set('part_agent_pct', v)} suffix="%" hint="% du total frais d'agence"/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <V55ReadOnly label="Part agent" value={fmtMoneyV55(partAg, devise)}/>
             <V55ReadOnly label="Part agence" value={fmtMoneyV55(partAgence, devise)}/>
           </div>
-          <V55ReadOnly label="Commission nette" value={fmtMoneyV55(commNette, devise)} hint="Commission − co-courtage"/>
+          <V55ReadOnly label="Total agence" value={fmtMoneyV55(totalAgenceMulti, devise)} hint="Sum des acteurs Frais d'agence"/>
         </V55Bloc>
       </>
     );
@@ -7773,6 +7592,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         <V55Bloc title="Honoraires location (estimation)" theme="agence">
           <V55Field label="Honoraires locataire estimés" type="number" value={d.honoraires_locataire_estimes} onChange={v => set('honoraires_locataire_estimes', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? 'Encadré ALUR France ~10-13€/m² selon zone tendue' : 'MA usage variable, souvent payés par bailleur'}/>
           <V55Field label="Frais de dossier" type="number" value={d.frais_dossier} onChange={v => set('frais_dossier', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+          {/* M/2026/05/02/40 — M144.I : 4e call site Multi-acteurs FraisAgenceMultiActeurs Locataire (parité 4 profils).
+              Pré-rempli vide (Locataire pas d'agence par défaut, mais peut ajouter manuellement). baseAmount = loyer max. */}
+          <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid #C9B79A40'}}>
+            <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={Number(d.loyer_max) || 0} profil="Locataire"/>
+          </div>
         </V55Bloc>
 
         {/* M/2026/05/02/34 — M144.C livrable D : Synthèse Locataire 'Effort mensuel maximum'. */}
