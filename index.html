@@ -18357,10 +18357,18 @@ function FormView(props) {
         activeProfil={activeProfil}
         onChange={async (p) => {
           if (p === activeProfil) return;
+          // M/2026/05/02/6 — M118 HOTFIX : skip modale si pas de profil precedent reel (premiere
+          // selection). 'Tu vas passer de aucun profil a Acheteur' n a aucun sens, rien a effacer.
+          // La modale n est legitime que pour un changement REEL entre 2 profils selectionnes.
+          const hasPreviousProfil = !!activeProfil &&
+            ['Acheteur','Vendeur','Bailleur','Locataire','Investisseur'].includes(activeProfil);
+          if (!hasPreviousProfil) { setActiveProfil(p); return; }
           // Detection de donnees role-specifiques.
           const COMMON = new Set(['prenom','nom','societe_nom','profil_type','tel','tels','email','emails','adresse','ville','code_postal','pays_residence','date_naissance','nationalite','siret','numero_societe','representant_prenom','representant_nom','representant_fonction','notes','_touch','id','user_id','created_at','updated_at','deleted_at','archived','is_draft','is_demo','is_staged','projet','profil_principal','phone_country','phone_e164','id_country','id_type','id_number','bien_country','linked_dossiers','tags','suivi','langue','canal','origine','pays_naissance']);
           const cur = latestRef.current || {};
-          let hasRoleSpecific = isInvestisseur || isPromoteur || isMarchandDeBiens;
+          // M118 HOTFIX : strict equality === true pour les toggles (eviter coerce truthy
+          // d'une valeur initiale undefined ou null par exemple).
+          let hasRoleSpecific = (isInvestisseur === true) || (isPromoteur === true) || (isMarchandDeBiens === true);
           if (!hasRoleSpecific) {
             for (const k of Object.keys(cur)) {
               if (COMMON.has(k)) continue;
@@ -18383,7 +18391,7 @@ function FormView(props) {
           if (hasRoleSpecific) {
             const ok = await askConfirm({
               title: 'Changer de profil ?',
-              message: 'Tu vas passer de ' + (activeProfil || 'aucun profil') + ' à ' + p + '. Les informations spécifiques au profil ' + (activeProfil || 'précédent') + ' (bien, budget, options Investisseur/Promoteur/Marchand) vont être effacées. Les informations communes (identité, téléphone, email, pays résidence) sont conservées.',
+              message: 'Tu vas passer de ' + activeProfil + ' à ' + p + '. Les informations spécifiques au profil ' + activeProfil + ' (bien, budget, options Investisseur/Promoteur/Marchand) vont être effacées. Les informations communes (identité, téléphone, email, pays résidence) sont conservées.',
               danger: true,
               confirmLabel: 'Continuer',
               cancelLabel: 'Annuler',
