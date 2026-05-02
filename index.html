@@ -3675,6 +3675,57 @@ function Select({label, value, onChange, options, style={}}) {
 // M/2026/04/29/44 — PieceIdentiteBlock : sous-bloc Section I Particulier.
 // 4 champs (Type, N°, Délivré par, Date expiration) + upload multi-fichiers via /api/upload.php.
 const V8_TYPES_PIECE = ['', 'CNI · Carte d\'identité', 'CIN Maroc', 'Passeport', 'Carte de séjour', 'Permis de conduire'];
+// M/2026/05/02/17 — M128 helpers module-level réutilisables.
+// Dedup toast : skip si même message vu dans les TTL ms. _LAST_TOAST déjà existe via _lastToastRef
+// dans le système de toast root, mais l'upload file traverse 2 chemins (validation front +
+// erreur serveur) qui peuvent émettre la même string. showToastDedup ajoute une garde locale
+// au call-site pour éviter le doublon avant d'atteindre le toast root.
+const _TOAST_DEDUP_MAP = new Map();
+function showToastDedup(showToast, msg, ttl = 3000) {
+  if (!showToast || !msg) return;
+  const now = Date.now();
+  const last = _TOAST_DEDUP_MAP.get(msg);
+  if (last && (now - last) < ttl) return;
+  _TOAST_DEDUP_MAP.set(msg, now);
+  if (_TOAST_DEDUP_MAP.size > 50) {
+    const cutoff = now - ttl;
+    for (const [k, t] of _TOAST_DEDUP_MAP) if (t < cutoff) _TOAST_DEDUP_MAP.delete(k);
+  }
+  showToast(msg);
+}
+// Compression image canvas avant upload. Skip si déjà sous threshold ou non-image.
+async function compressImageIfNeeded(file, {thresholdMb = 2, maxDim = 1920, quality = 0.85} = {}) {
+  if (!file || !(file instanceof File)) return file;
+  const isImg = /^image\//.test(file.type) && !/svg/.test(file.type);
+  if (!isImg) return file;
+  if (file.size <= thresholdMb * 1024 * 1024) return file;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      try {
+        const ratio = Math.min(maxDim / img.width, maxDim / img.height, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(url);
+          if (!blob) { resolve(file); return; }
+          if (blob.size >= file.size) { resolve(file); return; }
+          const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+          resolve(new File([blob], newName, {type: 'image/jpeg', lastModified: Date.now()}));
+        }, 'image/jpeg', quality);
+      } catch (e) { URL.revokeObjectURL(url); resolve(file); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+const M128_MAX_FILES_IDENTITE = 4;
+const M128_MAX_FILE_BYTES = 15 * 1024 * 1024;
+
 function PieceIdentiteBlock({d, set, dossierId, showToast}) {
   const inputRef = React.useRef(null);
   const [uploading, setUploading] = React.useState(false);
@@ -3701,12 +3752,30 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
   const imageFiles = files.filter(isImage);
   async function handleFiles(fileList) {
     if (!fileList || !fileList.length) return;
-    if (!dossierId) { showToast && showToast('Enregistre d\'abord le dossier'); return; }
+    if (!dossierId) { showToastDedup(showToast, 'Enregistre d\'abord le dossier'); return; }
+    // M128 — limite 4 fichiers max. Tronquer la sélection si dépassement.
+    const slotsLeft = Math.max(0, M128_MAX_FILES_IDENTITE - files.length);
+    if (slotsLeft <= 0) {
+      showToastDedup(showToast, 'Maximum ' + M128_MAX_FILES_IDENTITE + ' documents');
+      return;
+    }
+    const arr = Array.from(fileList);
+    if (arr.length > slotsLeft) {
+      showToastDedup(showToast, 'Maximum ' + M128_MAX_FILES_IDENTITE + ' documents');
+    }
+    const toProcess = arr.slice(0, slotsLeft);
     setUploading(true);
     const tk = localStorage.getItem('ocre_token') || '';
     const newOnes = [];
-    for (const f of fileList) {
+    for (const raw of toProcess) {
       try {
+        // M128 — compression auto images > 2 Mo (max 1920px, JPEG quality 0.85).
+        const f = await compressImageIfNeeded(raw, {thresholdMb: 2, maxDim: 1920, quality: 0.85});
+        // M128 — limite finale 15 Mo après compression.
+        if (f.size > M128_MAX_FILE_BYTES) {
+          showToastDedup(showToast, 'Fichier trop volumineux (max 15 Mo)');
+          continue;
+        }
         const fd = new FormData();
         fd.append('action', 'upload');
         fd.append('dossier_id', String(dossierId));
@@ -3718,9 +3787,9 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
         if (r && r.ok && r.photo) {
           newOnes.push({name: r.photo.name || f.name, url: r.photo.url, size: f.size, type: f.type, ts: Date.now()});
         } else {
-          showToast && showToast((r && r.error) || ('Échec upload ' + f.name));
+          showToastDedup(showToast, (r && r.error) || ('Échec upload ' + f.name));
         }
-      } catch (e) { showToast && showToast('Erreur réseau'); }
+      } catch (e) { showToastDedup(showToast, 'Erreur réseau'); }
     }
     if (newOnes.length) set('identite_files', [...files, ...newOnes]);
     setUploading(false);
@@ -3747,56 +3816,62 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
         <Field label="Délivré par" value={d.identite_delivre_par || ''} onChange={v => set('identite_delivre_par', v)} style={{flex:1}}/>
         <DateMaskField label="Date expiration" value={d.identite_date_exp || ''} onChange={v => set('identite_date_exp', v)} style={{flex:1}}/>
       </div>
+      {/* M/2026/05/02/17 — M128 livrable B : bouton "+ Ajouter" conditionnel.
+          Si 4/4 documents -> texte gris à la place du bouton. */}
       <div style={{marginTop:6}}>
-        <button type="button" onClick={() => inputRef.current && inputRef.current.click()}
-          disabled={uploading}
-          style={{padding:'7px 12px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFF3EC', color:'#8B5E3C', fontSize:12, fontWeight:700, cursor: uploading ? 'wait' : 'pointer', fontFamily:'inherit'}}>
-          {uploading ? '⏳ Upload…' : '+ Ajouter un fichier'}
-        </button>
-        {/* M/2026/05/02/16 — M127 hotfix iOS : capture="environment" RETIRÉ. Forçait l'ouverture
-            directe de la caméra arrière. Sans cet attribut, iOS Safari affiche la sheet standard
-            (Photothèque / Appareil photo / Parcourir Fichiers) — comportement attendu pour CNI/passeport
-            scanné PDF souvent reçu par email. accept image+pdf conservé. */}
+        {files.length < M128_MAX_FILES_IDENTITE ? (
+          <button type="button" onClick={() => inputRef.current && inputRef.current.click()}
+            disabled={uploading}
+            style={{padding:'7px 12px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFF3EC', color:'#8B5E3C', fontSize:12, fontWeight:700, cursor: uploading ? 'wait' : 'pointer', fontFamily:'inherit'}}>
+            {uploading ? '⏳ Upload…' : '+ Ajouter un fichier'}
+          </button>
+        ) : (
+          <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic', padding:'4px 0'}}>
+            Maximum {M128_MAX_FILES_IDENTITE} documents (CNI recto/verso, passeport, etc.)
+          </div>
+        )}
+        {/* M/2026/05/02/16 — M127 hotfix iOS : capture="environment" RETIRÉ pour sheet standard. */}
         <input ref={inputRef} type="file" multiple accept="image/*,application/pdf"
           onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} style={{display:'none'}}/>
       </div>
+      {/* M/2026/05/02/17 — M128 livrable A : grille compacte 4 carrés max
+          au lieu de la liste verticale. Carrés 80x80 (1:1 responsive), thumbnail
+          image cover, icône PDF centrée, ✕ absolute top-right, nom dessous tronqué. */}
       {files.length > 0 && (
-        <div style={{marginTop:8, display:'flex', flexDirection:'column', gap:6}}>
+        <div style={{marginTop:8, display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:8}}>
           {files.map((f, i) => {
             const img = isImage(f);
             const pdf = isPdf(f);
             const imgIdx = img ? imageFiles.indexOf(f) : -1;
             return (
-              <div key={i} style={{display:'flex', alignItems:'center', gap:10, padding:8, background:'#FDFAF7', border:'1px solid #EDE6DC', borderRadius:10}}>
-                {img ? (
-                  <img src={f.url || '#'} alt=""
-                    onClick={() => imgIdx >= 0 && setLightboxOpenIdx(imgIdx)}
-                    style={{width:56, height:56, objectFit:'cover', borderRadius:8, cursor:'pointer', flexShrink:0, background:'#F5EFE6'}}
-                    onError={e => { e.target.style.display = 'none'; }}/>
-                ) : pdf ? (
-                  <a href={f.url || '#'} target="_blank" rel="noopener"
-                    style={{width:56, height:56, borderRadius:8, background:'#F5EFE6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, textDecoration:'none', color:'#8B5E3C'}}>
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                      <text x="7.5" y="17" fontSize="6" fontWeight="700" fill="currentColor" stroke="none" fontFamily="Arial">PDF</text>
-                    </svg>
-                  </a>
-                ) : (
-                  <div style={{width:56, height:56, borderRadius:8, background:'#F5EFE6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'#8B7F6E', fontSize:11, fontWeight:700}}>
-                    DOC
-                  </div>
-                )}
-                <div style={{flex:1, minWidth:0}}>
-                  <a href={f.url || '#'} target="_blank" rel="noopener"
-                    style={{display:'block', fontSize:13, color:'#2A2018', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textDecoration:'none'}}
-                    title={f.name}>
-                    {truncateName(f.name, 30)}
-                  </a>
-                  <div style={{fontSize:11, color:'#8B7F6E', marginTop:2}}>{fmtSize(f.size)}</div>
+              <div key={i} style={{position:'relative', display:'flex', flexDirection:'column', gap:4, minWidth:0}}>
+                <div style={{position:'relative', width:'100%', aspectRatio:'1 / 1', borderRadius:8, overflow:'hidden', background:'#F5EFE6', border:'1px solid #EDE6DC'}}>
+                  {img ? (
+                    <img src={f.url || '#'} alt={f.name}
+                      onClick={() => imgIdx >= 0 && setLightboxOpenIdx(imgIdx)}
+                      style={{width:'100%', height:'100%', objectFit:'cover', cursor:'pointer', display:'block'}}
+                      onError={e => { e.target.style.display = 'none'; }}/>
+                  ) : pdf ? (
+                    <a href={f.url || '#'} target="_blank" rel="noopener"
+                      style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textDecoration:'none', color:'#8B5E3C'}}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <text x="7.5" y="17" fontSize="6" fontWeight="700" fill="currentColor" stroke="none" fontFamily="Arial">PDF</text>
+                      </svg>
+                    </a>
+                  ) : (
+                    <a href={f.url || '#'} target="_blank" rel="noopener"
+                      style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textDecoration:'none', color:'#8B7F6E', fontSize:11, fontWeight:700}}>
+                      DOC
+                    </a>
+                  )}
+                  <button type="button" onClick={() => removeFile(i)} title="Retirer"
+                    style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'1px solid #E8DDD0', background:'rgba(255,255,255,0.95)', color:'#8B7F6E', cursor:'pointer', fontSize:13, padding:0, lineHeight:'18px', boxShadow:'0 1px 3px rgba(0,0,0,0.12)'}}>×</button>
                 </div>
-                <button type="button" onClick={() => removeFile(i)} title="Retirer"
-                  style={{flex:'0 0 auto', width:30, height:30, borderRadius:15, border:'1px solid #E8DDD0', background:'#fff', color:'#8B7F6E', cursor:'pointer', fontSize:15, padding:0, lineHeight:'28px'}}>×</button>
+                <div title={f.name} style={{fontSize:11, color:'#8B7F6E', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'center'}}>
+                  {truncateName(f.name, 16)}
+                </div>
               </div>
             );
           })}

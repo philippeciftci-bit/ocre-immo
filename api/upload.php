@@ -1,12 +1,15 @@
 <?php
 // V17.2 Phase 2a — upload photos d'un bien. Stockage ../uploads/<dossier_id>/.
-// MIME image only, 30 photos max par dossier, 8 Mo max par fichier.
+// MIME image only, 30 photos max par dossier, 15 Mo max par fichier (M128).
 // M/2026/04/29/3 — pipeline compression WebP auto + thumb 400x400 + table photo_compression_stats.
+// M/2026/05/02/17 — M128 : limite portée 8 Mo -> 15 Mo. Compression client (canvas 1920px JPEG q=0.85)
+// désormais en amont pour les images > 2 Mo, donc 15 Mo couvre largement les PDF officiels et les
+// rares images post-compression toujours volumineuses. Toast erreur dédupliqué côté client.
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/lib/photo_pipeline.php';
 setCorsHeaders();
 
-define('UPLOAD_MAX_BYTES', 8 * 1024 * 1024);
+define('UPLOAD_MAX_BYTES', 15 * 1024 * 1024);
 define('UPLOAD_MAX_PER_DOSSIER', 30);
 // V17.6 Section III : PDF accepté en plus des images (pour les docs crédit).
 define('UPLOAD_ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
@@ -87,7 +90,7 @@ switch ($action) {
         if (empty($_FILES['file'])) jsonError('Aucun fichier reçu');
         $f = $_FILES['file'];
         if ($f['error'] !== UPLOAD_ERR_OK) jsonError('Erreur upload code=' . $f['error']);
-        if ($f['size'] > UPLOAD_MAX_BYTES) jsonError('Fichier trop volumineux (max 8 Mo)');
+        if ($f['size'] > UPLOAD_MAX_BYTES) jsonError('Fichier trop volumineux (max 15 Mo)');
 
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($f['tmp_name']);
