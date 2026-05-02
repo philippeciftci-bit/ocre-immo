@@ -17002,6 +17002,17 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:9.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background: PROFILS[profil] || '#8B5E3C', color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
               {PROFILS_LABEL[profil] || (profil || '').toUpperCase()}
             </span>
+            {/* M/2026/05/02/36 — M140.B livrable C : badge source d'annonce (Mandat/Partenaire/Veille).
+                Pas de badge si source_type absent (anti-régression dossiers existants). */}
+            {c.source_type && (
+              <span title={c.source_type === 'partenaire' && c.partenaire_nom ? '© Source : ' + c.partenaire_nom : ''}
+                style={{flexShrink:0, fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:4, fontFamily:'inherit', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:.3,
+                  color: c.source_type === 'mandat' ? '#B26D3A' : c.source_type === 'partenaire' ? '#5C5550' : '#999',
+                  border: '1px solid '+(c.source_type === 'mandat' ? '#E8DDC9' : c.source_type === 'partenaire' ? '#D5CFC8' : '#E8E5E0'),
+                  background: '#fff'}}>
+                {c.source_type === 'mandat' ? 'Mandat' : c.source_type === 'partenaire' ? 'Partenaire' : 'Veille'}
+              </span>
+            )}
           </div>
           {/* LIGNE 2 : chip tel + chip mail + cible à droite */}
           <div style={{display:'flex', alignItems:'center', gap:5, minWidth:0}}>
@@ -18114,6 +18125,12 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
   const [creating, setCreating] = React.useState(false);
   const [manualNote, setManualNote] = React.useState('');
   const urlRef = React.useRef(null);
+  // M/2026/05/02/36 — M140.B livrable B : source d'annonce (Mandat/Partenaire/Veille).
+  // Choix obligatoire avant 'Créer le brouillon'. Partenaire -> nom optionnel + toggle publier.
+  // Mandat -> toggle publier. Veille -> pas de publication (référence interne).
+  const [sourceType, setSourceType] = React.useState('');
+  const [partenaireNom, setPartenaireNom] = React.useState('');
+  const [publierOcre, setPublierOcre] = React.useState(false);
 
   // Autofocus textarea uniquement si liste staged vide (première visite / après validation du dernier).
   React.useEffect(() => {
@@ -18165,6 +18182,10 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
       source_url: result.source_url || detectedUrl,
       source_domain: result.source_domain,
       url_imported_at: now,
+      // M/2026/05/02/36 — M140.B livrable B : source d'annonce attachée au client.
+      source_type: sourceType || 'mandat',
+      partenaire_nom: sourceType === 'partenaire' ? (partenaireNom || '') : '',
+      publier_ocre_immo: (sourceType === 'mandat' || sourceType === 'partenaire') ? !!publierOcre : false,
     };
     if (isPro && annonceurNom) client.societe_nom = annonceurNom;
     else if (annonceurNom) client.prenom = annonceurNom;
@@ -18328,23 +18349,20 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
 
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 96px'}}>
 
-        {/* Card URL inline — textarea toujours prête. */}
-        <div style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:12, padding:14, marginBottom:12, boxShadow:'0 1px 3px rgba(139,94,60,.06)'}}>
-          <div style={{fontSize:13, fontWeight:700, color:'#8B5E3C', marginBottom:8, display:'flex', alignItems:'center', gap:6}}>
+        {/* M/2026/05/02/36 — M140.B livrable A : compactage bloc URL iPhone-first.
+            Avant ~280px hauteur (textarea minHeight 64 + ligne dupliquée 30 + bouton 60 + paddings 24).
+            Après ~140px (input height 44 + bouton 44 + paddings 12, doublon ligne URL supprimé). */}
+        <div style={{background:'#fff', border:'1px solid #A67F5A', borderRadius:12, padding:12, marginBottom:12, boxShadow:'0 1px 3px rgba(139,94,60,.06)'}}>
+          <div style={{fontSize:12, fontWeight:700, color:'#8B5E3C', marginBottom:6, display:'flex', alignItems:'center', gap:5}}>
             🔗 Coller une URL
           </div>
           <textarea ref={urlRef} value={rawText} onChange={e => setRawText(e.target.value)}
             placeholder="ex: https://www.mubawab.ma/fr/a/..."
             autoCapitalize="off" autoCorrect="off" spellCheck="false"
-            style={{width:'100%', minHeight:64, padding:'10px 12px', borderRadius:9, border:'1px solid #E0CDAE', background:'#FDFAF7', fontSize:13, outline:'none', fontFamily:'inherit', color:'#2A2018', marginBottom:8, resize:'vertical'}}/>
-          {detectedUrl && (
-            <div style={{fontSize:11, color:'#8B5E3C', marginBottom:8, background:'#FBF1E4', padding:'6px 10px', borderRadius:8, border:'1px solid #E0CDAE', display:'flex', alignItems:'center', gap:6, overflow:'hidden'}}>
-              <span style={{flexShrink:0}}>🔗</span>
-              <span style={{flex:1, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontWeight:600}}>{detectedUrl.replace(/^https?:\/\/(www\.)?/, '')}</span>
-            </div>
-          )}
+            style={{width:'100%', minHeight:44, maxHeight:80, padding:'10px 14px', borderRadius:8, border:'1px solid #E0CDAE', background:'#FDFAF7', fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018', marginBottom:8, resize:'vertical'}}/>
+          {/* M140.B : ligne URL détectée SUPPRIMÉE (doublon avec textarea). L'URL est déjà visible dans la textarea. */}
           <button type="button" onClick={analyseUrl} disabled={!detectedUrl || loading}
-            style={{width:'100%', padding:'12px', background: detectedUrl ? 'linear-gradient(135deg,#8B5E3C,#A06B45)' : '#C4B5A0', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:13.5, cursor: detectedUrl ? 'pointer' : 'not-allowed', fontFamily:'inherit', opacity: loading ? .6 : 1}}>
+            style={{width:'100%', padding:'10px 16px', height:44, background: detectedUrl ? 'linear-gradient(135deg,#8B5E3C,#A06B45)' : '#C4B5A0', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13.5, cursor: detectedUrl ? 'pointer' : 'not-allowed', fontFamily:'inherit', opacity: loading ? .6 : 1, display:'flex', alignItems:'center', justifyContent:'center'}}>
             {loading ? '⏳ Analyse ~10s…' : (detectedUrl ? '📥 Extraire et créer brouillon' : 'Aucune URL détectée')}
           </button>
         </div>
@@ -18413,14 +18431,47 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
                 placeholder="Tel/email vus sur l'annonce, notes perso…"
                 style={{width:'100%', minHeight:54, padding:'8px 10px', borderRadius:8, border:'1px solid #E0CDAE', background:'#FDFAF7', fontSize:13, outline:'none', fontFamily:'inherit', resize:'vertical'}}/>
             </div>
-            <button type="button" onClick={createStagedFromUrl} disabled={creating}
-              style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit', opacity: creating ? .6 : 1}}>
-              {creating ? 'Création…' : '🟧 Créer le brouillon Vendeur'}
+            {/* M/2026/05/02/36 — M140.B livrable B : champ source d'annonce obligatoire (3 radios).
+                Mandat -> toggle publier ocre.immo. Partenaire -> nom agence + toggle publier.
+                Veille -> rien (référence interne, pas de publication). Bouton Créer disabled tant
+                que sourceType vide. */}
+            <div style={{borderTop:'1px solid #F0E4D4', paddingTop:10, marginTop:6}}>
+              <div style={{fontSize:13, fontWeight:700, color:'#8B5E3C', marginBottom:8, display:'flex', alignItems:'center', gap:5}}>
+                🏷 Source de l'annonce <span style={{color:'#C04B20'}}>*</span>
+              </div>
+              <div style={{display:'flex', flexDirection:'column', gap:6, marginBottom:8}}>
+                {[
+                  {v: 'mandat', l: "Mon mandat (j'ai le bien)"},
+                  {v: 'partenaire', l: 'Annonce partenaire (accord pour partager)'},
+                  {v: 'veille', l: 'Veille marché (référence interne)'},
+                ].map(opt => (
+                  <label key={opt.v} style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'1.5px solid '+(sourceType === opt.v ? '#B26D3A' : '#E0CDAE'), background: sourceType === opt.v ? '#FBF1E4' : '#FDFAF7', cursor:'pointer', fontSize:13, fontFamily:'inherit', color: sourceType === opt.v ? '#5C3B1E' : '#2A2018', fontWeight: sourceType === opt.v ? 600 : 500}}>
+                    <input type="radio" name="source-annonce" value={opt.v} checked={sourceType === opt.v} onChange={() => setSourceType(opt.v)} style={{margin:0, accentColor:'#B26D3A'}}/>
+                    <span>{opt.l}</span>
+                  </label>
+                ))}
+              </div>
+              {sourceType === 'partenaire' && (
+                <input type="text" placeholder="Nom de l'agence partenaire (optionnel)" value={partenaireNom} onChange={e => setPartenaireNom(e.target.value)}
+                  style={{width:'100%', padding:'9px 11px', borderRadius:8, border:'1px solid #E0CDAE', background:'#FDFAF7', fontSize:13, outline:'none', fontFamily:'inherit', marginBottom:8, color:'#2A2018'}}/>
+              )}
+              {(sourceType === 'mandat' || sourceType === 'partenaire') && (
+                <label style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, background:'#FDFAF7', border:'1px solid #E0CDAE', fontSize:12, color:'#2A2018', cursor:'pointer'}}>
+                  <input type="checkbox" checked={publierOcre} onChange={e => setPublierOcre(e.target.checked)} style={{margin:0, accentColor:'#B26D3A'}}/>
+                  <span>📡 Publier sur ocre.immo après création{sourceType === 'partenaire' ? ' (avec mention © Source)' : ''}</span>
+                </label>
+              )}
+            </div>
+
+            <button type="button" onClick={createStagedFromUrl} disabled={creating || !sourceType}
+              title={!sourceType ? "Choisis d'abord la source de l'annonce" : ''}
+              style={{width:'100%', padding:'13px', background: sourceType ? 'linear-gradient(135deg,#8B5E3C,#A06B45)' : '#C4B5A0', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor: sourceType ? 'pointer' : 'not-allowed', fontFamily:'inherit', opacity: creating ? .6 : 1, marginTop:8}}>
+              {creating ? 'Création…' : (sourceType ? '🟧 Créer le brouillon Vendeur' : '🟧 Choisir la source d\'abord')}
             </button>
             {/* M/2026/05/02/28 — M140 livrable B : reset COMPLET au tap 'Analyser un autre lien'.
                 Avant : seul setResult+setManualNote reset. Après : reset rawText + detectedUrl
                 aussi (l'URL collée précédemment était conservée dans l'input). */}
-            <button type="button" onClick={() => { setResult(null); setManualNote(''); setRawText(''); setDetectedUrl(null); }}
+            <button type="button" onClick={() => { setResult(null); setManualNote(''); setRawText(''); setDetectedUrl(null); setSourceType(''); setPartenaireNom(''); setPublierOcre(false); }}
               style={{width:'100%', padding:'9px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:10, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>
               🔄 Analyser un autre lien
             </button>
