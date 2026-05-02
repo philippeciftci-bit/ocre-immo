@@ -130,6 +130,24 @@ Audit secondaire reporté : profil agent (paramètres), adresse facturation,
 adresse pièce d'identité (lieu de délivrance). Composant `AdresseBlock`
 unifié réutilisable est aussi reporté en mission future (refacto plus large).
 
+## 4.ter Comportement universel popovers (M123)
+
+Tous les popovers de l'app (`PaysCompactButton`, `OptionPicker`, `DistrictPicker`,
+et futurs) suivent 3 règles d'auto-fermeture :
+
+1. **Tap sur un autre popover ouvert → ferme le précédent** : un seul popover
+   ouvert à la fois. Implémentation : event global `ocre:popover-open` dispatché
+   à chaque ouverture, listener via le hook `usePopoverGroup(open, setOpen, id)`.
+2. **Sélection (single-select) → ferme automatiquement** après le tap.
+3. **Multi-select** : pas de fermeture auto à chaque tap. Bouton "Valider" en
+   footer + tap "✕" pour fermer. (Cas rare dans l'app actuelle, à conserver
+   comme exception documentée.)
+
+Compactage QuartierPicker (DistrictPicker) M123 : modale plein écran `.bsheet-overlay`
+remplacée par popover `position:absolute` `width:max-content` `min-width:200px`
+`max-width:min(320px, calc(100vw - 24px))` `max-height:360px`. Style cohérent
+avec OptionPicker M115.
+
 ## 5. Principes UX (rappels Philippe)
 
 - **Zéro emoji décoratif.** Drapeaux pays acceptés (sémantique). Aucun autre

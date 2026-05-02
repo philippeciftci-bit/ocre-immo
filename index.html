@@ -1514,6 +1514,30 @@ function fetchAllCountries() {
     });
   return M111_COUNTRIES_CACHE.promise;
 }
+// M/2026/05/02/12 — M123 : helper auto-fermeture popovers. Tous les popovers de l'app
+// (PaysCompactButton, OptionPicker, DistrictPicker, ...) écoutent l'événement global
+// 'ocre:popover-open' et ferment leur état si l'événement vient d'un autre popover.
+// Utilisation : appeler dispatchPopoverOpen(id) à l'ouverture, listener via useEffect.
+let _OCRE_POPOVER_SEQ = 0;
+function dispatchPopoverOpen(id) {
+  try {
+    document.dispatchEvent(new CustomEvent('ocre:popover-open', {detail: {id}}));
+  } catch (e) {}
+}
+// Renommé usePopoverGroup (le nom usePopoverAutoClose est déjà utilisé pour le
+// listener tap-dehors ligne 1168). Ce hook gère la coordination entre popovers
+// frères (un seul ouvert à la fois).
+function usePopoverGroup(open, setOpen, id) {
+  React.useEffect(() => {
+    if (!open) return;
+    function onOther(e) {
+      if (e && e.detail && e.detail.id !== id) setOpen(false);
+    }
+    document.addEventListener('ocre:popover-open', onOther);
+    return () => document.removeEventListener('ocre:popover-open', onOther);
+  }, [open, id, setOpen]);
+}
+
 // M/2026/05/02/10 — M121 : prop mode='country' (default) | 'phone'.
 // mode=phone affiche dans le bouton "🇫🇷 +33" au lieu de "🇫🇷 FR" et est utilisé par PhoneField
 // pour aligner le PhonePicker sur le CountryPicker (mêmes 5 favoris + recherche + 198 pays).
@@ -1523,6 +1547,9 @@ function PaysCompactButton({value, onChange, label = 'Pays', mode = 'country'}) 
   const [query, setQuery] = React.useState('');
   const [allCountries, setAllCountries] = React.useState(() => M111_COUNTRIES_CACHE.data || []);
   const wrapperRef = React.useRef(null);
+  const popoverIdRef = React.useRef('pays-' + (++_OCRE_POPOVER_SEQ));
+  usePopoverGroup(open, setOpen, popoverIdRef.current);
+  React.useEffect(() => { if (open) dispatchPopoverOpen(popoverIdRef.current); }, [open]);
   React.useEffect(() => {
     if (open && allCountries.length === 0) {
       fetchAllCountries().then(arr => setAllCountries(arr));
@@ -1643,6 +1670,9 @@ function OptionPicker({label, value, onChange, options = [], placeholder = 'Choi
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const wrapperRef = React.useRef(null);
+  const popoverIdRef = React.useRef('opt-' + (++_OCRE_POPOVER_SEQ));
+  usePopoverGroup(open, setOpen, popoverIdRef.current);
+  React.useEffect(() => { if (open) dispatchPopoverOpen(popoverIdRef.current); }, [open]);
   const opts = options.map(o => typeof o === 'string' ? {value:o, label:o} : o);
   const cur = opts.find(o => o.value === value);
   React.useEffect(() => {
@@ -5488,11 +5518,33 @@ out center tags;`;
 }
 
 // V18.8 — DistrictPicker bottom-sheet : Overpass + cache + pinned + fallback hardcoded.
+// M/2026/05/02/12 — M123 : DistrictPicker refondu en popover compact (style OptionPicker M115).
+// Avant : modale plein écran via .bsheet-overlay (lourde sur iPad). Après : popover absolute
+// 280px sous le champ. Auto-fermeture via usePopoverGroup. Single-select : tap ferme. Saisie
+// libre conservée si ville sans quartiers OSM.
 function DistrictPicker({ville, pays, value, onChange, fallbackList}) {
   const [open, setOpen] = React.useState(false);
   const [list, setList] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [search, setSearch] = React.useState('');
+  const wrapperRef = React.useRef(null);
+  const popoverIdRef = React.useRef('district-' + (++_OCRE_POPOVER_SEQ));
+  usePopoverGroup(open, setOpen, popoverIdRef.current);
+  React.useEffect(() => { if (open) dispatchPopoverOpen(popoverIdRef.current); }, [open]);
+  React.useEffect(() => {
+    if (!open) return;
+    function onDoc(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false); setSearch('');
+      }
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('touchstart', onDoc);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('touchstart', onDoc);
+    };
+  }, [open]);
   const pinned = PINNED_DISTRICTS[(ville || '').toLowerCase() + '|' + pays] || [];
 
   async function loadList() {
@@ -5500,7 +5552,6 @@ function DistrictPicker({ville, pays, value, onChange, fallbackList}) {
     setLoading(true);
     let r = await fetchDistrictsOverpass(ville, pays);
     if (!r || r.length === 0) r = fallbackList || [];
-    // Dédup avec pinned
     const all = Array.from(new Set([...pinned, ...r]));
     setList(all);
     setLoading(false);
@@ -5510,62 +5561,83 @@ function DistrictPicker({ville, pays, value, onChange, fallbackList}) {
   const filtered = list
     ? list.filter(d => !search || d.toLowerCase().includes(search.toLowerCase()))
     : [];
+  const showPinnedSection = !loading && pinned.length > 0 && !search;
+  const otherItems = !loading
+    ? filtered.filter(d => !pinned.includes(d) || search)
+    : [];
 
   return (
-    <div style={{flex:1, minWidth:0}}>
+    <div ref={wrapperRef} style={{flex:1, minWidth:0, position:'relative'}}>
       <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Quartier</label>
-      <div onClick={() => ville && setOpen(true)}
-        style={{padding:'9px 11px', borderRadius:8, border:'1.5px solid ' + (value ? '#BBA88B' : '#E8DDD0'),
+      <button type="button" onClick={() => ville && setOpen(o => !o)}
+        disabled={!ville}
+        style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, border:'1.5px solid ' + (value ? '#BBA88B' : '#E8DDD0'),
                 background: !ville ? '#F4EEE6' : (value ? '#FFFCF5' : '#FDFAF7'),
                 fontSize:14, cursor: ville ? 'pointer' : 'not-allowed', color: value ? '#2A2018' : '#B5A78F',
-                fontFamily:'inherit', display:'flex', justifyContent:'space-between', alignItems:'center', minHeight:38, gap:6, minWidth:0}}>
-        {/* M/2026/04/30/36 — placeholder raccourci 'Choisir…' (au lieu de 'Choisir un quartier…')
-            + ellipsis si saisie/valeur depasse la cellule grid (uniformise vs CodePostal/Ville). */}
+                fontFamily:'inherit', textAlign:'left', display:'flex', justifyContent:'space-between', alignItems:'center', minHeight:40, gap:6, minWidth:0}}>
         <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{value || (ville ? 'Choisir…' : 'Saisir d\'abord la ville')}</span>
         <span style={{color:'#8B7F6E', flexShrink:0}}>▾</span>
-      </div>
+      </button>
       {open && (
-        <div className="bsheet-overlay" onClick={() => setOpen(false)}>
-          <div className="bsheet" onClick={e => e.stopPropagation()}>
-            <div className="bsheet-handle"/>
-            <div className="bsheet-head">
-              <div className="bsheet-title">Quartiers de {ville}</div>
-              <button type="button" className="bsheet-close" onClick={() => setOpen(false)}>×</button>
-            </div>
-            <div className="bsheet-search">
-              <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder={loading ? 'Chargement quartiers…' : 'Rechercher (ex: Gueliz, Maarif)'}/>
-            </div>
-            <div className="bsheet-list">
-              {loading && <div className="bsheet-empty">Chargement (Overpass OpenStreetMap)…</div>}
-              {!loading && pinned.length > 0 && !search && <div className="bsheet-group-hdr">Populaires</div>}
-              {!loading && !search && pinned.map(d => (
-                <div key={'p-'+d} className={'bsheet-item ' + (value === d ? 'selected' : '')}
-                  onClick={() => { onChange(d); setOpen(false); setSearch(''); }}>
-                  <span className="check">{value === d ? '✓' : ''}</span>
-                  <span>{d}</span>
+        <div style={{
+          position:'absolute', top:'calc(100% + 4px)', left:0,
+          width:'max-content', minWidth:200, maxWidth:'min(320px, calc(100vw - 24px))', maxHeight:360,
+          background:'#fff', border:'1px solid #D9C9A8', borderRadius:10,
+          boxShadow:'0 8px 32px rgba(107,79,53,0.12)',
+          display:'flex', flexDirection:'column', zIndex:1000,
+          animation:'fadeIn .15s ease-out',
+          overflow:'hidden',
+        }}>
+          <div style={{padding:'8px 10px', borderBottom:'1px solid #EDE6DC'}}>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder={loading ? 'Chargement…' : 'Rechercher un quartier…'}
+              autoCapitalize="off" autoCorrect="off"
+              style={{width:'100%', boxSizing:'border-box', padding:'6px 8px', border:'1px solid #D9C9A8', borderRadius:6, fontSize:13, fontFamily:'inherit', outline:'none'}}/>
+          </div>
+          <div style={{flex:1, overflowY:'auto'}}>
+            {loading && <div style={{padding:'14px 12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center'}}>Chargement…</div>}
+            {showPinnedSection && pinned.map(d => {
+              const sel = value === d;
+              return (
+                <div key={'p-'+d}
+                  onClick={() => { onChange(d); setOpen(false); setSearch(''); }}
+                  style={{display:'flex', alignItems:'center', gap:8, padding:'6px 10px', cursor:'pointer', fontSize:13, background: sel ? '#FBF1E4' : 'transparent', borderBottom:'1px solid #F4EEE6'}}
+                  onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'rgba(107,79,53,0.04)'; }}
+                  onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'transparent'; }}>
+                  <span style={{flex:1, color:'#2A2018', fontWeight: sel ? 600 : 500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{d}</span>
+                  {sel && <span style={{color:'#B26D3A', fontWeight:700, fontSize:12, flexShrink:0}}>✓</span>}
                 </div>
-              ))}
-              {!loading && filtered.length > 0 && (search || pinned.length === 0) && <div className="bsheet-group-hdr">Tous ({filtered.length})</div>}
-              {!loading && filtered.filter(d => !pinned.includes(d) || search).map(d => (
-                <div key={d} className={'bsheet-item ' + (value === d ? 'selected' : '')}
-                  onClick={() => { onChange(d); setOpen(false); setSearch(''); }}>
-                  <span className="check">{value === d ? '✓' : ''}</span>
-                  <span>{d}</span>
+              );
+            })}
+            {showPinnedSection && otherItems.length > 0 && (
+              <div style={{height:1, background:'#E5D9C2', margin:'2px 0'}}/>
+            )}
+            {!loading && otherItems.map(d => {
+              const sel = value === d;
+              return (
+                <div key={d}
+                  onClick={() => { onChange(d); setOpen(false); setSearch(''); }}
+                  style={{display:'flex', alignItems:'center', gap:8, padding:'6px 10px', cursor:'pointer', fontSize:13, background: sel ? '#FBF1E4' : 'transparent', borderBottom:'1px solid #F4EEE6'}}
+                  onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'rgba(107,79,53,0.04)'; }}
+                  onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'transparent'; }}>
+                  <span style={{flex:1, color:'#2A2018', fontWeight: sel ? 600 : 500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{d}</span>
+                  {sel && <span style={{color:'#B26D3A', fontWeight:700, fontSize:12, flexShrink:0}}>✓</span>}
                 </div>
-              ))}
-              {!loading && list && filtered.length === 0 && (
-                <div className="bsheet-empty">
-                  Aucun résultat.
-                  <div style={{marginTop:10}}>
-                    <button type="button" onClick={() => { onChange(search); setOpen(false); }}
-                      style={{padding:'8px 14px', background:'#FBF1E4', color:'#8B5E3C', border:'1.5px solid #B26D3A', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+              );
+            })}
+            {!loading && list && filtered.length === 0 && (
+              <div style={{padding:'14px 12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center'}}>
+                Aucun résultat.
+                {search && (
+                  <div style={{marginTop:8}}>
+                    <button type="button" onClick={() => { onChange(search); setOpen(false); setSearch(''); }}
+                      style={{padding:'6px 12px', background:'#FBF1E4', color:'#8B5E3C', border:'1.5px solid #B26D3A', borderRadius:6, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>
                       Saisir « {search} »
                     </button>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -18519,7 +18591,7 @@ function FormView(props) {
             ['Acheteur','Vendeur','Bailleur','Locataire','Investisseur'].includes(activeProfil);
           if (!hasPreviousProfil) { setActiveProfil(p); return; }
           // Detection de donnees role-specifiques.
-          const COMMON = new Set(['prenom','nom','societe_nom','profil_type','tel','tels','email','emails','adresse','ville','code_postal','pays_residence','date_naissance','nationalite','siret','numero_societe','representant_prenom','representant_nom','representant_fonction','notes','_touch','id','user_id','created_at','updated_at','deleted_at','archived','is_draft','is_demo','is_staged','projet','profil_principal','phone_country','phone_e164','id_country','id_type','id_number','bien_country','linked_dossiers','tags','suivi','langue','canal','origine','pays_naissance']);
+          const COMMON = new Set(['prenom','nom','societe_nom','profil_type','tel','tels','email','emails','adresse','ville','code_postal','pays_residence','quartier_residence','date_naissance','nationalite','siret','numero_societe','representant_prenom','representant_nom','representant_fonction','notes','_touch','id','user_id','created_at','updated_at','deleted_at','archived','is_draft','is_demo','is_staged','projet','profil_principal','phone_country','phone_e164','id_country','id_type','id_number','bien_country','linked_dossiers','tags','suivi','langue','canal','origine','pays_naissance']);
           const cur = latestRef.current || {};
           // M118 HOTFIX : strict equality === true pour les toggles (eviter coerce truthy
           // d'une valeur initiale undefined ou null par exemple).
@@ -18704,11 +18776,16 @@ function FormView(props) {
                     if (p.pays) set('pays_residence', p.pays);
                   }}/>
               </div>
-              <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:6, marginBottom:10}}>
+              {/* M/2026/05/02/12 — M123 : 3 cols Ville/CP/Quartier cohérent Section II.
+                  Quartier résidence = Field texte libre (saisie optionnelle, pas de DistrictPicker
+                  car résidence personnelle ≠ adresse bien). Stocké en d.quartier_residence. */}
+              <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1.5fr', gap:6, marginBottom:10}}>
                 <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
                   autoComplete="address-level2" name="address-level2"/>
                 <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
                   autoComplete="postal-code" name="postal-code" inputMode="text"/>
+                <Field label="Quartier" value={d.quartier_residence} onChange={v => set('quartier_residence', v)} style={{marginBottom:0}}
+                  placeholder="Optionnel" autoComplete="address-level3" name="address-level3"/>
               </div>
               {/* M/2026/04/29/44 v8 — L3 Date naissance / Pays de naissance. */}
               <div className="row-pair">
@@ -18763,11 +18840,14 @@ function FormView(props) {
                     if (p.pays) set('pays_residence', p.pays);
                   }}/>
               </div>
-              <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:6, marginBottom:10}}>
+              {/* M/2026/05/02/12 — M123 : 3 cols Ville/CP/Quartier cohérent Section II + Particulier. */}
+              <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1.5fr', gap:6, marginBottom:10}}>
                 <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
                   autoComplete="section-societe address-level2" name="societe-address-level2"/>
                 <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
                   autoComplete="section-societe postal-code" name="societe-postal-code"/>
+                <Field label="Quartier" value={d.quartier_residence} onChange={v => set('quartier_residence', v)} style={{marginBottom:0}}
+                  placeholder="Optionnel" autoComplete="section-societe address-level3" name="societe-address-level3"/>
               </div>
               {/* L6 Tel | Email (harmonise Particulier : Tel a gauche, Email a droite). */}
               <div className="row-pair">
