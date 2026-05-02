@@ -6991,19 +6991,23 @@ function V55Bloc({title, children, theme, collapsible, expanded, onToggle}) {
   if (t) {
     const isMain = theme === 'synthese';
     // M/2026/05/02/37 — M144.F : style L8 maquette EXACT.
-    // Card compact : padding 8x10, marginBottom 6, borderRadius 8, border 1.2px solid teinte.
-    // Titre h4 inline : fontSize 11 fontWeight 700 marginBottom 5 color teinte.
-    // Synthèse : background gradient ocre fort, color blanc, padding 10x12 marginBottom 8.
+    // M/2026/05/02/47 — alignement horizontal : tous les blocs themed partagent EXACTEMENT
+    // padding 10x10 + border 1.2px (solid teinte pour notaire/mandat/etc., transparent pour
+    // synthese) + marginBottom 6 + borderRadius 8 + boxSizing border-box (global). Avant :
+    // synthese avait padding 10x12 + border:none + marginBottom 8 → contenu interne inset 2px
+    // de plus + bord coloré différent = misalignment visuel sur iPhone Vendeur (Philippe 17:42).
+    // Padding vertical 10 (au lieu de 8) sur TOUS les blocs pour préserver le breathing room
+    // initialement réservé à la synthèse (big number 22px) ; léger enlargement uniforme acceptable.
     const cardStyle = isMain ? {
       borderRadius: 8,
-      padding: '10px 12px',
-      marginBottom: 8,
+      padding: '10px 10px',
+      marginBottom: 6,
       background: 'linear-gradient(135deg,#8B5E3C,#A06B45)',
-      border: 'none',
+      border: '1.2px solid transparent',
       color: '#fff',
     } : {
       borderRadius: 8,
-      padding: collapsible && !expanded ? '8px 10px' : '8px 10px',
+      padding: '10px 10px',
       marginBottom: 6,
       background: t.bg,
       border: '1.2px solid ' + t.bord,
