@@ -114,25 +114,47 @@ function parseMetaOG($html) {
 }
 
 // V17.15 I3 : extrait jusqu'à 10 images depuis le HTML (og + <img> significatifs).
+// M/2026/05/02/28 — M140 livrable D : extraction photos enrichie.
+// (1) Priorité JSON-LD si galerie array (> og:image qui est souvent un favicon générique cas LuxuryEstate).
+// (2) Normalisation URLs protocol-relative '//pic.le-cdn.com/...' -> 'https://pic.le-cdn.com/...'.
+// (3) Filtrage favicons/logos appliqué AUSSI à og:image (pas seulement <img>).
+function _normPhotoUrl($u) {
+    if (!is_string($u) || $u === '') return null;
+    $u = trim($u);
+    if (substr($u, 0, 2) === '//') return 'https:' . $u;
+    if (!preg_match('#^https?://#i', $u)) return null;
+    return $u;
+}
+function _isPhotoNoise($u) {
+    if (preg_match('#\.(svg|gif)(\?|$)#i', $u)) return true;
+    if (preg_match('#(logo|icon|favicon|avatar|sprite|placeholder|og-image|default-thumb)#i', $u)) return true;
+    return false;
+}
 function extractPhotos($html, $og, $jld) {
     $photos = [];
-    foreach (['image','image:url','image:secure_url'] as $k) if (!empty($og[$k])) $photos[] = $og[$k];
+    // (1) JSON-LD prioritaire (cas LuxuryEstate : galerie 37 photos array).
     foreach ($jld as $g) {
         if (!empty($g['image'])) {
             $im = is_array($g['image']) ? $g['image'] : [$g['image']];
             foreach ($im as $u) {
-                if (is_string($u)) $photos[] = $u;
-                else if (is_array($u) && !empty($u['url'])) $photos[] = $u['url'];
+                $url = is_string($u) ? $u : (is_array($u) && !empty($u['url']) ? $u['url'] : null);
+                $n = _normPhotoUrl($url);
+                if ($n && !_isPhotoNoise($n)) $photos[] = $n;
             }
         }
     }
-    // Images significatives : classes contenant photo/gallery/image ou width >= 300
+    // (2) og:image en complément (mais filtré contre les favicons génériques).
+    foreach (['image','image:url','image:secure_url'] as $k) {
+        if (!empty($og[$k])) {
+            $n = _normPhotoUrl($og[$k]);
+            if ($n && !_isPhotoNoise($n)) $photos[] = $n;
+        }
+    }
+    // (3) Images <img> significatives en fallback.
     if (preg_match_all('#<img[^>]+src=["\']([^"\']+)["\'][^>]*>#i', $html, $mm)) {
         foreach ($mm[1] as $src) {
-            if (!preg_match('#^https?://#i', $src)) continue;
-            if (preg_match('#\.(svg|gif)(\?|$)#i', $src)) continue;
-            if (preg_match('#(logo|icon|favicon|avatar|sprite|placeholder)#i', $src)) continue;
-            $photos[] = $src;
+            $n = _normPhotoUrl($src);
+            if ($n && !_isPhotoNoise($n)) $photos[] = $n;
         }
     }
     $photos = array_values(array_unique(array_filter($photos)));

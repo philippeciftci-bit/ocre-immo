@@ -18033,7 +18033,10 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
               style={{width:'100%', padding:'13px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit', opacity: creating ? .6 : 1}}>
               {creating ? 'Création…' : '🟧 Créer le brouillon Vendeur'}
             </button>
-            <button type="button" onClick={() => { setResult(null); setManualNote(''); }}
+            {/* M/2026/05/02/28 — M140 livrable B : reset COMPLET au tap 'Analyser un autre lien'.
+                Avant : seul setResult+setManualNote reset. Après : reset rawText + detectedUrl
+                aussi (l'URL collée précédemment était conservée dans l'input). */}
+            <button type="button" onClick={() => { setResult(null); setManualNote(''); setRawText(''); setDetectedUrl(null); }}
               style={{width:'100%', padding:'9px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E0CDAE', borderRadius:10, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>
               🔄 Analyser un autre lien
             </button>
