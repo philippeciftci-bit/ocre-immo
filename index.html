@@ -3791,11 +3791,14 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
         }
       } catch (e) { showToastDedup(showToast, 'Erreur réseau'); }
     }
-    if (newOnes.length) set('identite_files', [...files, ...newOnes]);
+    // M/2026/05/02/18 — M129 : opts.commit=true flippe userBlurredRef pour déclencher
+    // auto-save M103. Sans cela, upload photo + flèche retour = PERTE backend de la photo
+    // (la photo upload réussi mais le tableau identite_files n'est jamais sauvegardé sur DB).
+    if (newOnes.length) set('identite_files', [...files, ...newOnes], {commit: true});
     setUploading(false);
   }
   function removeFile(i) {
-    set('identite_files', files.filter((_, j) => j !== i));
+    set('identite_files', files.filter((_, j) => j !== i), {commit: true});
   }
   function fmtSize(b) {
     if (!b) return '';
@@ -18202,8 +18205,14 @@ function FormView(props) {
   const userBlurredRef = useRef(false);  // M103 — true uniquement apres un blur input avec valeur non vide
   function markUserAction() { userInteractedRef.current = true; }
   function markBlurCommit() { userBlurredRef.current = true; }
+  // M/2026/05/02/18 — M129 : opts.commit=true bascule userBlurredRef à true et déclenche
+  // l'auto-save M103 (debounce 800ms) pour les actions engageantes non-text (toggles, uploads,
+  // GPS, picker single-tap). Sans cela, la perte de données est réelle si l'agent fait :
+  // upload photo + toggle Investisseur + flèche retour SANS jamais blur'er un input texte.
+  // commit=undefined garde le comportement M103 strict (commit-on-blur uniquement).
   function set(k, v, opts) {
     if (!opts || opts.fromUser !== false) markUserAction();
+    if (opts && opts.commit) userBlurredRef.current = true;
     setD(prev => ({...prev, [k]: v}));
   }
   // M/2026/05/01/25 — allFieldsEmpty (R4) : helper qui retourne true si TOUS les champs
@@ -19252,10 +19261,13 @@ function FormView(props) {
               marchand_de_biens:   {l: 'Marchand de biens',desc: 'Achat / revente professionnel'},
             };
             const states = {investisseur: isInvestisseur, promoteur: isPromoteur, marchand_de_biens: isMarchandDeBiens};
+            // M/2026/05/02/18 — M129 : flipper userBlurredRef à chaque toggle pour
+            // déclencher l'auto-save (debounce 800ms via useEffect deps isInvestisseur etc.).
+            // Sans cela : tap toggle + flèche retour = PERTE de l'état coché en DB.
             const setters = {
-              investisseur: (v) => setIsInvestisseur(v),
-              promoteur:    (v) => { setIsPromoteur(v); if (v) setIsMarchandDeBiens(false); },
-              marchand_de_biens: (v) => { setIsMarchandDeBiens(v); if (v) setIsPromoteur(false); },
+              investisseur: (v) => { setIsInvestisseur(v); userBlurredRef.current = true; },
+              promoteur:    (v) => { setIsPromoteur(v); if (v) setIsMarchandDeBiens(false); userBlurredRef.current = true; },
+              marchand_de_biens: (v) => { setIsMarchandDeBiens(v); if (v) setIsPromoteur(false); userBlurredRef.current = true; },
             };
             return (
               <div style={{marginTop:14, padding:'12px 14px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:10}}>
@@ -19308,10 +19320,11 @@ function FormView(props) {
               </div>
             );
           })()}
-          <button onClick={() => commitAndNext(0)} style={{marginTop:14, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
-
-          {/* V28 — bouton "+ Ajouter une casquette" bas Stage I retiré. Accessible via le
-              bouton "+" rond en ligne nom/prénom du header Stage I. */}
+          {/* M/2026/05/02/18 — M129 : bouton 'Enregistrer' Section I orphelin SUPPRIMÉ.
+              Auto-save M103 + opts.commit M129 sauvent automatiquement à chaque saisie/toggle/upload.
+              Le bouton créait confusion (l'agent pouvait croire qu'il valide le dossier entier alors
+              qu'il ne fait que commit() de la section). Validation finale = bouton ✓ sticky footer M108. */}
+          {/* V28 — bouton "+ Ajouter une casquette" bas Stage I retiré. */}
         </Stage>
 
         </div>
@@ -19342,7 +19355,7 @@ function FormView(props) {
             <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
               d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
               showToast={showToast}/>
-            <button onClick={() => commitAndNext(1)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer</button>
+            {/* M/2026/05/02/18 — M129 : bouton 'Enregistrer' Section II orphelin SUPPRIMÉ. Auto-save M103. */}
           </Stage>
         )}
 
@@ -19393,7 +19406,7 @@ function FormView(props) {
             defaultRecipient={d.tel || d.email || ''}
             showToast={showToast}/>
           <CustomFieldList sectionKey="remarques" d={d} set={set}/>
-          <button onClick={() => commitAndNext(3)} style={{marginTop:4, padding:'9px 14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Enregistrer · Fermer ✓</button>
+          {/* M/2026/05/02/18 — M129 : bouton 'Enregistrer · Fermer ✓' Section IV orphelin SUPPRIMÉ. Auto-save M103. */}
         </Stage>
         </div>
 
