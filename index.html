@@ -4195,7 +4195,11 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
           </button>
         )}
       </div>
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple
+      {/* M/2026/05/02/20 — M132 : accept élargi 'image/jpeg,image/png,image/webp' -> 'image/*'.
+          iOS Safari avait tendance à proposer/forcer la caméra direct sur l'accept restrictif.
+          Avec image/* la sheet native standard (Photothèque / Appareil photo / Parcourir) s'ouvre.
+          Backend MIME validation rejette les non-images (image/jpeg, image/png, image/webp seulement). */}
+      <input ref={inputRef} type="file" accept="image/*" multiple
         onChange={e => handleFiles(Array.from(e.target.files || []))} style={{display:'none'}}/>
       {!dossierId && <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic'}}>Enregistrez le dossier une fois pour activer les photos.</div>}
     </div>
@@ -5385,9 +5389,12 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
 
           {/* === BLOC 11 — PHOTOS === */}
           {sectionTitle(9, 'Photos')}
+          {/* M/2026/05/02/20 — M132 : opts.commit=true M129 propagé pour auto-save photos.
+              Bug Philippe iPad 08:54 : upload + flèche retour = photo perdue. setB('photos', v)
+              sans commit = userBlurredRef ne flippe pas = pas de POST DB. Fix M132 : {commit:true}. */}
           <PhotoUpload dossierId={dossierId} showToast={showToast}
             photos={Array.isArray(bien.photos) ? bien.photos : []}
-            onPhotosChange={v => setB('photos', v)}/>
+            onPhotosChange={v => setB('photos', v, {commit: true})}/>
           <div style={{fontSize:11, color:'#8B7F6E', marginTop:6}}>
             {(bien.photos || []).length} / 30 photos · WebP auto · 1920 px max
           </div>
@@ -5436,7 +5443,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           {sectionTitle(13, 'Documents')}
           <DocumentUpload dossierId={dossierId} showToast={showToast}
             documents={Array.isArray(bien.documents) ? bien.documents : []}
-            onDocumentsChange={v => setB('documents', v)}/>
+            onDocumentsChange={v => setB('documents', v, {commit: true})}/>
           <div style={{fontSize:11, color:'#8B7F6E', marginTop:6}}>
             {(bien.documents || []).length} / 30 documents · PDF / JPG / PNG · 10 Mo max
           </div>
