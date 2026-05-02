@@ -9931,7 +9931,7 @@ function App() {
       setView('list');
       setPromotedId(id);
       setTimeout(() => setPromotedId(cur => (cur === id ? null : cur)), 3200);
-      showToast('✓ Enregistré dans tes dossiers');
+      showToast('📥 Brouillon ajouté à tes dossiers');
       return true;
     } catch (e) { showToast('Erreur réseau'); return false; }
   }
@@ -19582,7 +19582,12 @@ function FormView(props) {
         </Stage>
         </div>
 
-        {/* V18.17 — boutons dédiés pour staged : Enregistrer dans mes dossiers + Supprimer téléchargement. */}
+        {/* V18.17 — boutons dédiés pour staged : Ajouter à mes brouillons + Supprimer téléchargement.
+            M/2026/05/02/27 — M139 : wording renommé. Avant 'Enregistrer dans mes dossiers' (ambigu, suggérait
+            validation finale). Après '📥 Ajouter à mes brouillons' (clarifie que le dossier rentre en BROUILLON,
+            visible page d'accueil section Brouillons X+1, l'agent travaille via auto-save M129, validation finale
+            future via bouton 'Valider le dossier' M130 si livré). promoteStaged inchangé : sort le client de
+            staged + l'ajoute à clients[] (brouillons inclus selon is_draft). Toast aligné. */}
         {isStaged ? (
           <div style={{display:'flex', flexDirection:'column', gap:8, marginTop:12, marginBottom:24}}>
             <button onClick={async () => {
@@ -19592,7 +19597,7 @@ function FormView(props) {
               promoteStaged && promoteStaged(editing.id);
             }}
               style={{width:'100%', padding:'14px', background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit'}}>
-              ✓ Enregistrer dans mes dossiers
+              📥 Ajouter à mes brouillons
             </button>
             <button onClick={() => deleteStaged && deleteStaged(editing.id)}
               style={{width:'100%', padding:'10px', background:'#FDFAF7', color:'#C04B20', border:'1.5px solid #E8DDD0', borderRadius:10, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>
