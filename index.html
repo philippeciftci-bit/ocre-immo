@@ -4847,8 +4847,13 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               {k:'surface_pool_house',      l:'Pool house',      show: _isVilla},
               {k:'hauteur_sous_plafond',    l:'H. sous plafond', show: !_isTerrain},
             ].filter(a => a.show);
-            const filledAnnexes = ANNEXES.filter(a => _num(bien[a.k]) > 0);
-            const emptyAnnexes = ANNEXES.filter(a => !(_num(bien[a.k]) > 0));
+            // M/2026/05/02/13 — M124 : différencier "annexe ajoutée vide" de "annexe non ajoutée".
+            // Avant M124 : setB(a.k, '0.0001') au tap chip pour forcer filled — bug visible 0.0001 m².
+            // Après M124 : setB(a.k, '') au tap (string vide explicite = marqueur d'ajout). Filtre addedAnnexes
+            // distingue undefined (jamais ajouté) de '' / valeur (ajouté). Total brut via _num ignore '' (renvoie 0).
+            const _isAdded = (a) => bien[a.k] !== undefined && bien[a.k] !== null && bien[a.k] !== false;
+            const filledAnnexes = ANNEXES.filter(_isAdded);
+            const emptyAnnexes = ANNEXES.filter(a => !_isAdded(a));
             return (
               <>
               {/* Champs principaux pays-specifiques. */}
@@ -4865,25 +4870,35 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
                     : <Field label="Terrain" type="number" value={bien.surface_terrain_v2} onChange={v => setB('surface_terrain_v2', v)} style={{marginBottom:0}}/>}
                 </div>
               </div>
-              {/* Chips remplies. */}
+              {/* M/2026/05/02/13 — M124 : pills ajoutées (vides ou remplies).
+                  Vide = '' explicite -> placeholder 'saisir m²' gris + input vide focus auto.
+                  Remplie = num > 0 -> 'X m²' formaté. Suppression franche via setB(a.k, undefined). */}
               {filledAnnexes.length > 0 && (
                 <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:8}}>
-                  {filledAnnexes.map(a => (
-                    <div key={a.k} style={{display:'inline-flex', alignItems:'center', gap:6, padding:'5px 8px 5px 12px', borderRadius:14, background:'#F4ECE3', border:'1.5px solid #BBA88B', fontSize:12, fontWeight:600, color:'#5C3B1E'}}>
-                      <span>{a.l} · {_num(bien[a.k])} m²</span>
-                      <input type="number" value={bien[a.k] || ''} onChange={e => setB(a.k, e.target.value)}
-                        style={{width:48, padding:'1px 4px', border:'1px solid #C9B79A', borderRadius:4, fontSize:11, fontFamily:'inherit', textAlign:'right'}}/>
-                      <button type="button" onClick={() => setB(a.k, '')}
-                        style={{padding:'0 4px', background:'transparent', border:'none', color:'#8B7F6E', fontSize:14, cursor:'pointer', fontFamily:'inherit'}} title="Retirer">✕</button>
-                    </div>
-                  ))}
+                  {filledAnnexes.map(a => {
+                    const _v = _num(bien[a.k]);
+                    const _hasValue = _v > 0;
+                    const _displayNum = _hasValue ? (_v >= 1000 ? _v.toLocaleString('fr-FR') : String(_v)) : '';
+                    return (
+                      <div key={a.k} style={{display:'inline-flex', alignItems:'center', gap:6, padding:'5px 8px 5px 12px', borderRadius:14, background: _hasValue ? '#F4ECE3' : '#FAF5EE', border:'1.5px solid '+(_hasValue ? '#BBA88B' : '#D9C9A8'), fontSize:12, fontWeight:600, color: _hasValue ? '#5C3B1E' : '#8B7F6E'}}>
+                        <span>{a.l} · {_hasValue ? (_displayNum + ' m²') : 'saisir m²'}</span>
+                        <input type="number" inputMode="decimal" value={bien[a.k] || ''}
+                          onChange={e => setB(a.k, e.target.value)}
+                          autoFocus={!_hasValue}
+                          placeholder="0"
+                          style={{width:48, padding:'1px 4px', border:'1px solid #C9B79A', borderRadius:4, fontSize:11, fontFamily:'inherit', textAlign:'right', background:'#fff'}}/>
+                        <button type="button" onClick={() => setB(a.k, undefined)}
+                          style={{padding:'0 4px', background:'transparent', border:'none', color:'#8B7F6E', fontSize:14, cursor:'pointer', fontFamily:'inherit'}} title="Retirer">✕</button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
-              {/* Chips ajoutables (pills outline). */}
+              {/* Chips ajoutables (pills outline). M124 : tap injecte '' explicite (pas 0.0001). */}
               {emptyAnnexes.length > 0 && (
                 <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:10}}>
                   {emptyAnnexes.map(a => (
-                    <button key={a.k} type="button" onClick={() => setB(a.k, '0.0001')}
+                    <button key={a.k} type="button" onClick={() => setB(a.k, '')}
                       style={{padding:'5px 12px', borderRadius:14, border:'1.5px dashed #C9B79A', background:'transparent', color:'#8B5E3C', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}
                       title={'Ajouter ' + a.l}>
                       + {a.l}
