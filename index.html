@@ -3753,7 +3753,11 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
           style={{padding:'7px 12px', borderRadius:8, border:'1.5px solid #BBA88B', background:'#FFF3EC', color:'#8B5E3C', fontSize:12, fontWeight:700, cursor: uploading ? 'wait' : 'pointer', fontFamily:'inherit'}}>
           {uploading ? '⏳ Upload…' : '+ Ajouter un fichier'}
         </button>
-        <input ref={inputRef} type="file" multiple accept="image/*,application/pdf" capture="environment"
+        {/* M/2026/05/02/16 — M127 hotfix iOS : capture="environment" RETIRÉ. Forçait l'ouverture
+            directe de la caméra arrière. Sans cet attribut, iOS Safari affiche la sheet standard
+            (Photothèque / Appareil photo / Parcourir Fichiers) — comportement attendu pour CNI/passeport
+            scanné PDF souvent reçu par email. accept image+pdf conservé. */}
+        <input ref={inputRef} type="file" multiple accept="image/*,application/pdf"
           onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} style={{display:'none'}}/>
       </div>
       {files.length > 0 && (
