@@ -4660,10 +4660,18 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             <SelectPopup label="Type de mandat" value={bien.type_mandat} onChange={v => setB('type_mandat', v)} options={V4_TYPE_MANDAT}/>
             <Field label="N° mandat" value={bien.numero_mandat} onChange={v => setB('numero_mandat', v)}/>
           </div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
-            <Field label="Date mandat" type="date" value={bien.date_mandat} onChange={v => setB('date_mandat', v)}/>
-            <SelectPopup label="Validité" value={bien.validite_mandat} onChange={v => setB('validite_mandat', v)} options={V4_VALIDITE_MANDAT}/>
-            <SelectPopup label="Reconduction" value={bien.reconduction} onChange={v => setB('reconduction', v)} options={V4_RECONDUCTION}/>
+          {/* M/2026/05/02/8 — M116 Phase A : grid 3 colonnes equitables avec minWidth:0 sur les
+              enfants pour empecher chevauchement sur iPad portrait (~810px). gap 12. */}
+          <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)', gap:12}}>
+            <div style={{minWidth:0}}>
+              <Field label="Date mandat" type="date" value={bien.date_mandat} onChange={v => setB('date_mandat', v)}/>
+            </div>
+            <div style={{minWidth:0}}>
+              <SelectPopup label="Validité" value={bien.validite_mandat} onChange={v => setB('validite_mandat', v)} options={V4_VALIDITE_MANDAT}/>
+            </div>
+            <div style={{minWidth:0}}>
+              <SelectPopup label="Reconduction" value={bien.reconduction} onChange={v => setB('reconduction', v)} options={V4_RECONDUCTION}/>
+            </div>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
             <Field label="Honoraires (%)" type="number" value={bien.honoraires_pct} onChange={v => setB('honoraires_pct', v)}/>
@@ -4681,52 +4689,108 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
 
           {/* === BLOC 04 — SURFACES (m²) === */}
           {sectionTitle(4, 'Surfaces (m²)')}
-          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginBottom:10}}>
-            <Field label="Habitable *" type="number" value={bien.surface_hab} onChange={v => setB('surface_hab', v)} style={{marginBottom:0}}/>
-            <Field label="Terrain" type="number" value={bien.surface_terrain_v2} onChange={v => setB('surface_terrain_v2', v)} style={{marginBottom:0}}/>
-            <Field label="Carrez" type="number" value={bien.surface_carrez} onChange={v => setB('surface_carrez', v)} style={{marginBottom:0}}/>
-            {_bienCond.isRiad && (
-              <Field label="Patio" type="number" value={bien.surface_patio} onChange={v => setB('surface_patio', v)} style={{marginBottom:0}}/>
-            )}
-            <Field label="Jardin" type="number" value={bien.surface_jardin} onChange={v => setB('surface_jardin', v)} style={{marginBottom:0}}/>
-            <Field label="Terrasse" type="number" value={bien.surface_terrasse} onChange={v => setB('surface_terrasse', v)} style={{marginBottom:0}}/>
-            <Field label="Toiture-terrasse" type="number" value={bien.surface_toiture_terrasse} onChange={v => setB('surface_toiture_terrasse', v)} style={{marginBottom:0}}/>
-            {types.some(t => V4_TYPES_APPART.includes(t)) && (
-              <Field label="Balcon" type="number" value={bien.surface_balcon} onChange={v => setB('surface_balcon', v)} style={{marginBottom:0}}/>
-            )}
-            {types.some(t => V4_TYPES_APPART.includes(t)) && (
-              <Field label="Loggia" type="number" value={bien.surface_loggia} onChange={v => setB('surface_loggia', v)} style={{marginBottom:0}}/>
-            )}
-            <Field label="Sous-sol" type="number" value={bien.surface_sous_sol} onChange={v => setB('surface_sous_sol', v)} style={{marginBottom:0}}/>
-            <Field label="Garage" type="number" value={bien.surface_garage} onChange={v => setB('surface_garage', v)} style={{marginBottom:0}}/>
-            <Field label="Dépendance" type="number" value={bien.surface_dependance} onChange={v => setB('surface_dependance', v)} style={{marginBottom:0}}/>
-            <Field label="H. sous plafond" type="number" value={bien.hauteur_sous_plafond} onChange={v => setB('hauteur_sous_plafond', v)} style={{marginBottom:0}}/>
-          </div>
+          {/* M/2026/05/02/8 — M116 Phase B : refonte Surfaces pro adapté pays/type. Champs principaux
+              toujours visibles (Habitable obligatoire + champ pays-spécifique). Annexes en chips
+              ajoutables : pill outline '+ X' quand vide, pill remplie 'X · 60 m²' + ✕ quand saisie.
+              Adapté FR (Carrez si copro), MA (Terrain + Patio essentiel Riad), ES (Útil/Construida).
+              Pondérée luxe affichée FR uniquement. Total brut avec tap-tooltip. Compacite +. */}
           {(() => {
-            const _hab = _num(bien.surface_hab);
-            const _ter = _num(bien.surface_terrain_v2);
-            const _patio = _num(bien.surface_patio);
-            const _jar = _num(bien.surface_jardin);
-            const _terr = _num(bien.surface_terrasse);
-            const _toit = _num(bien.surface_toiture_terrasse);
-            const _balc = _num(bien.surface_balcon);
-            const _logg = _num(bien.surface_loggia);
-            const _ss = _num(bien.surface_sous_sol);
-            const _gar = _num(bien.surface_garage);
-            const _dep = _num(bien.surface_dependance);
-            const totalBrut = _hab + _ter + _patio + _jar + _terr + _toit + _balc + _logg + _ss + _gar + _dep;
-            const ponderee = _hab + 0.5*_terr + 0.5*_toit + 0.3*_balc + 0.3*_logg + 0.5*_patio;
+            const _isFR = bien.pays === 'FR';
+            const _isMA = bien.pays === 'MA';
+            const _isES = bien.pays === 'ES';
+            const _isAppart = types.some(t => V4_TYPES_APPART.includes(t));
+            const _isRiad = _bienCond.isRiad;
+            const _isVilla = types.some(t => ['Villa','Maison'].includes(t));
+            const _isTerrain = _bienCond.isTerrainOnly;
+            // Annexes catalogue : key (champ DB) / label / show predicate.
+            const ANNEXES = [
+              {k:'surface_patio',           l:'Patio',           show: _isRiad || (_isMA && _isVilla)},
+              {k:'surface_terrasse',        l:'Terrasse',        show: !_isTerrain},
+              {k:'surface_toiture_terrasse',l:'Toiture-terrasse',show: _isMA || _isRiad},
+              {k:'surface_balcon',          l:'Balcon',          show: _isAppart},
+              {k:'surface_loggia',          l:'Loggia',          show: _isAppart},
+              {k:'surface_jardin',          l:'Jardin',          show: !_isTerrain && !_isAppart},
+              {k:'surface_sous_sol',        l:'Sous-sol',        show: !_isTerrain},
+              {k:'surface_garage',          l:'Garage',          show: !_isTerrain},
+              {k:'surface_dependance',      l:'Dépendance',      show: !_isTerrain},
+              {k:'surface_pool_house',      l:'Pool house',      show: _isVilla},
+              {k:'hauteur_sous_plafond',    l:'H. sous plafond', show: !_isTerrain},
+            ].filter(a => a.show);
+            const filledAnnexes = ANNEXES.filter(a => _num(bien[a.k]) > 0);
+            const emptyAnnexes = ANNEXES.filter(a => !(_num(bien[a.k]) > 0));
             return (
-              <div style={{marginBottom:10}}>
-                <div style={{padding:'8px 11px', background:'#FBF1E4', border:'1.5px solid #C9B79A', borderRadius:8, marginBottom:6, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                  <span style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Total brut</span>
-                  <span style={{fontSize:14, fontWeight:700, color:'#5C3B1E'}}>{totalBrut > 0 ? totalBrut + ' m²' : '—'}</span>
+              <>
+              {/* Champs principaux pays-specifiques. */}
+              <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:8, marginBottom:8}}>
+                <div style={{minWidth:0}}>
+                  <Field label={_isTerrain ? 'Surface totale *' : 'Habitable *'} type="number"
+                    value={bien.surface_hab} onChange={v => setB('surface_hab', v)} style={{marginBottom:0}}/>
                 </div>
-                <div style={{padding:'8px 11px', background:'#FDFAF7', border:'1px dashed #C9B79A', borderRadius:8, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                  <span style={{fontSize:11, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, fontStyle:'italic'}}>Pondérée luxe</span>
-                  <span style={{fontSize:13, fontWeight:600, color:'#8B5E3C', fontStyle:'italic'}}>{ponderee > 0 ? ponderee.toFixed(1) + ' m²' : '—'}</span>
+                <div style={{minWidth:0}}>
+                  {_isTerrain ? null
+                    : _isRiad || _isMA ? <Field label="Terrain" type="number" value={bien.surface_terrain_v2} onChange={v => setB('surface_terrain_v2', v)} style={{marginBottom:0}}/>
+                    : _isFR && _isAppart ? <Field label="Carrez (si copro)" type="number" value={bien.surface_carrez} onChange={v => setB('surface_carrez', v)} style={{marginBottom:0}}/>
+                    : _isES ? <Field label="Construida" type="number" value={bien.surface_carrez} onChange={v => setB('surface_carrez', v)} style={{marginBottom:0}}/>
+                    : <Field label="Terrain" type="number" value={bien.surface_terrain_v2} onChange={v => setB('surface_terrain_v2', v)} style={{marginBottom:0}}/>}
                 </div>
               </div>
+              {/* Chips remplies. */}
+              {filledAnnexes.length > 0 && (
+                <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:8}}>
+                  {filledAnnexes.map(a => (
+                    <div key={a.k} style={{display:'inline-flex', alignItems:'center', gap:6, padding:'5px 8px 5px 12px', borderRadius:14, background:'#F4ECE3', border:'1.5px solid #BBA88B', fontSize:12, fontWeight:600, color:'#5C3B1E'}}>
+                      <span>{a.l} · {_num(bien[a.k])} m²</span>
+                      <input type="number" value={bien[a.k] || ''} onChange={e => setB(a.k, e.target.value)}
+                        style={{width:48, padding:'1px 4px', border:'1px solid #C9B79A', borderRadius:4, fontSize:11, fontFamily:'inherit', textAlign:'right'}}/>
+                      <button type="button" onClick={() => setB(a.k, '')}
+                        style={{padding:'0 4px', background:'transparent', border:'none', color:'#8B7F6E', fontSize:14, cursor:'pointer', fontFamily:'inherit'}} title="Retirer">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Chips ajoutables (pills outline). */}
+              {emptyAnnexes.length > 0 && (
+                <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:10}}>
+                  {emptyAnnexes.map(a => (
+                    <button key={a.k} type="button" onClick={() => setB(a.k, '0.0001')}
+                      style={{padding:'5px 12px', borderRadius:14, border:'1.5px dashed #C9B79A', background:'transparent', color:'#8B5E3C', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}
+                      title={'Ajouter ' + a.l}>
+                      + {a.l}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* Total brut + Pondérée FR uniquement. */}
+              {(() => {
+                const _hab = _num(bien.surface_hab);
+                const _ter = _num(bien.surface_terrain_v2);
+                const _carr = _num(bien.surface_carrez);
+                const sum = _hab + _ter + _carr + ANNEXES.reduce((s, a) => s + _num(bien[a.k]), 0);
+                const _terr = _num(bien.surface_terrasse);
+                const _toit = _num(bien.surface_toiture_terrasse);
+                const _balc = _num(bien.surface_balcon);
+                const _logg = _num(bien.surface_loggia);
+                const _patio = _num(bien.surface_patio);
+                const ponderee = _hab + 0.5*_terr + 0.5*_toit + 0.3*_balc + 0.3*_logg + 0.5*_patio;
+                if (sum <= 0) return null;
+                return (
+                  <div style={{marginBottom:10}}>
+                    <div title="Somme habitable + toutes les annexes saisies"
+                      style={{padding:'6px 10px', background:'#FBF1E4', border:'1.5px solid #C9B79A', borderRadius:8, marginBottom:4, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                      <span style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Total brut</span>
+                      <span style={{fontSize:13, fontWeight:700, color:'#5C3B1E'}}>{sum > 0 ? sum + ' m²' : '—'}</span>
+                    </div>
+                    {_isFR && ponderee > 0 && (
+                      <div title="Coeffs : habitable 1.0, terrasse/toiture 0.5, balcon/loggia 0.3, patio 0.5"
+                        style={{padding:'6px 10px', background:'#FDFAF7', border:'1px dashed #C9B79A', borderRadius:8, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <span style={{fontSize:11, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, fontStyle:'italic'}}>Pondérée FR</span>
+                        <span style={{fontSize:12, fontWeight:600, color:'#8B5E3C', fontStyle:'italic'}}>{ponderee.toFixed(1)} m²</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+              </>
             );
           })()}
 
