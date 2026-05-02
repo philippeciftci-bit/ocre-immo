@@ -1751,6 +1751,285 @@ function OptionPicker({label, value, onChange, options = [], placeholder = 'Choi
   );
 }
 
+// M/2026/05/02/15 — M126 : VilleAutocomplete avec auto-fill CP via API selon pays.
+// FR : geo.api.gouv.fr/communes (gratuit, illimité, officiel data.gouv).
+// MA : /data/villes_ma.json embarqué (~50 villes principales).
+// ES/IT/BE : nominatim.openstreetmap.org (User-Agent obligatoire, max 1 req/s).
+// Autres : input libre sans suggestions.
+// Cache localStorage 24h pour limiter les appels.
+const VILLE_CACHE_KEY = 'ocre:ville_cache:v1';
+const VILLE_CACHE_TTL_MS = 24 * 3600 * 1000;
+let _MA_VILLES_CACHE = null;
+let _MA_VILLES_LOADING = null;
+function _loadMaVilles() {
+  if (_MA_VILLES_CACHE) return Promise.resolve(_MA_VILLES_CACHE);
+  if (_MA_VILLES_LOADING) return _MA_VILLES_LOADING;
+  _MA_VILLES_LOADING = fetch('/data/villes_ma.json')
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { _MA_VILLES_CACHE = (j && j.MA) || []; return _MA_VILLES_CACHE; })
+    .catch(() => { _MA_VILLES_CACHE = []; return _MA_VILLES_CACHE; });
+  return _MA_VILLES_LOADING;
+}
+function _readVilleCache(pays, query) {
+  try {
+    const raw = localStorage.getItem(VILLE_CACHE_KEY);
+    if (!raw) return null;
+    const all = JSON.parse(raw);
+    const k = pays + ':' + query.toLowerCase();
+    const hit = all && all[k];
+    if (hit && (Date.now() - hit.t) < VILLE_CACHE_TTL_MS) return hit.r;
+  } catch (e) {}
+  return null;
+}
+function _writeVilleCache(pays, query, results) {
+  try {
+    const raw = localStorage.getItem(VILLE_CACHE_KEY);
+    const all = (raw ? JSON.parse(raw) : null) || {};
+    all[pays + ':' + query.toLowerCase()] = {t: Date.now(), r: results};
+    // Cap à 200 entrées pour éviter de gonfler localStorage.
+    const keys = Object.keys(all);
+    if (keys.length > 200) {
+      const sorted = keys.map(k => [k, all[k].t]).sort((a, b) => a[1] - b[1]);
+      sorted.slice(0, keys.length - 200).forEach(([k]) => delete all[k]);
+    }
+    localStorage.setItem(VILLE_CACHE_KEY, JSON.stringify(all));
+  } catch (e) {}
+}
+async function fetchVillesByCountry(pays, query) {
+  const q = String(query || '').trim();
+  if (q.length < 2) return [];
+  const cached = _readVilleCache(pays, q);
+  if (cached) return cached;
+  let results = [];
+  try {
+    if (pays === 'FR') {
+      const url = 'https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q)
+        + '&fields=codesPostaux,nom,codeRegion,nomRegion,population&boost=population&limit=10';
+      const r = await fetch(url);
+      const j = await r.json();
+      if (Array.isArray(j)) {
+        results = j.map(c => ({
+          ville: c.nom,
+          cp: Array.isArray(c.codesPostaux) ? c.codesPostaux[0] : '',
+          cp_all: Array.isArray(c.codesPostaux) ? c.codesPostaux : [],
+          region: c.nomRegion || '',
+          population: c.population || 0,
+        }));
+      }
+    } else if (pays === 'MA') {
+      const villes = await _loadMaVilles();
+      const norm = normalizeAccent(q);
+      results = villes
+        .filter(v => normalizeAccent(v.nom).includes(norm))
+        .slice(0, 10)
+        .map(v => ({
+          ville: v.nom,
+          cp: Array.isArray(v.cp) ? v.cp[0] : '',
+          cp_all: Array.isArray(v.cp) ? v.cp : [],
+          region: v.region || '',
+        }));
+    } else if (['ES','IT','BE','DE','PT','NL','LU','CH','AT'].includes(pays)) {
+      const url = 'https://nominatim.openstreetmap.org/search?city=' + encodeURIComponent(q)
+        + '&country=' + pays + '&format=json&limit=10&addressdetails=1';
+      const r = await fetch(url, {headers: {'Accept-Language': 'fr'}});
+      const j = await r.json();
+      if (Array.isArray(j)) {
+        const seen = new Set();
+        results = j.map(item => {
+          const addr = item.address || {};
+          const ville = addr.city || addr.town || addr.village || addr.municipality || item.display_name.split(',')[0];
+          return {
+            ville,
+            cp: addr.postcode || '',
+            cp_all: addr.postcode ? [addr.postcode] : [],
+            region: addr.state || '',
+          };
+        }).filter(v => {
+          const k = v.ville.toLowerCase();
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      }
+    }
+  } catch (e) {}
+  _writeVilleCache(pays, q, results);
+  return results;
+}
+function VilleAutocomplete({pays, value, onChange, onSelect, label = 'Ville', style = {}, autoComplete = 'address-level2', name = 'address-level2'}) {
+  const [open, setOpen] = React.useState(false);
+  const [results, setResults] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const inputRef = React.useRef(null);
+  const wrapperRef = React.useRef(null);
+  const popoverIdRef = React.useRef('ville-' + (++_OCRE_POPOVER_SEQ));
+  usePopoverGroup(open, setOpen, popoverIdRef.current);
+  const debounceRef = React.useRef(null);
+
+  const supportedAuto = ['FR','MA','ES','IT','BE','DE','PT','NL','LU','CH','AT'].includes(pays);
+
+  React.useEffect(() => {
+    if (!open) return;
+    function onDoc(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('touchstart', onDoc);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('touchstart', onDoc);
+    };
+  }, [open]);
+
+  function triggerFetch(q) {
+    if (!supportedAuto || q.trim().length < 2) { setResults([]); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      const r = await fetchVillesByCountry(pays, q);
+      setLoading(false);
+      setResults(r);
+    }, 350);
+  }
+
+  function handleInput(e) {
+    const v = e.target.value;
+    onChange(v);
+    if (supportedAuto) {
+      setOpen(true);
+      dispatchPopoverOpen(popoverIdRef.current);
+      triggerFetch(v);
+    }
+  }
+
+  function pickResult(r) {
+    setOpen(false);
+    setResults([]);
+    if (typeof onSelect === 'function') {
+      onSelect({ville: r.ville, cp: r.cp, cp_all: r.cp_all, region: r.region});
+    } else {
+      onChange(r.ville);
+    }
+    if (inputRef.current) try { inputRef.current.blur(); } catch (e) {}
+  }
+
+  const filled = !!value;
+  return (
+    <div ref={wrapperRef} style={{marginBottom:10, minWidth:0, position:'relative', ...style}}>
+      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
+      <input ref={inputRef} type="text" value={value || ''}
+        onChange={handleInput}
+        onFocus={() => { if (supportedAuto && (value || '').length >= 2) { setOpen(true); dispatchPopoverOpen(popoverIdRef.current); triggerFetch(value); } }}
+        autoCapitalize="words" autoCorrect="off" spellCheck="false"
+        autoComplete={autoComplete} name={name}
+        placeholder={supportedAuto ? 'Tape une ville…' : 'Saisir la ville'}
+        style={{width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'#2A2018', minHeight:38,
+                ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
+      {open && supportedAuto && (
+        <div style={{
+          position:'absolute', top:'calc(100% + 4px)', left:0,
+          width:'max-content', minWidth:'100%', maxWidth:'min(360px, calc(100vw - 24px))', maxHeight:280,
+          background:'#fff', border:'1px solid #D9C9A8', borderRadius:10,
+          boxShadow:'0 8px 32px rgba(107,79,53,0.12)',
+          display:'flex', flexDirection:'column', zIndex:1000, overflow:'hidden',
+        }}>
+          <div style={{flex:1, overflowY:'auto'}}>
+            {loading && <div style={{padding:'12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center'}}>Recherche…</div>}
+            {!loading && results.length === 0 && (value || '').trim().length >= 2 && (
+              <div style={{padding:'12px', fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center'}}>Aucune ville trouvée. Saisie libre OK.</div>
+            )}
+            {!loading && results.map((r, i) => (
+              <div key={i} onClick={() => pickResult(r)}
+                style={{display:'flex', alignItems:'center', gap:8, padding:'8px 12px', cursor:'pointer', fontSize:13, borderBottom:'1px solid #F4EEE6'}}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(107,79,53,0.04)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <span style={{flex:1, color:'#2A2018', fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{r.ville}</span>
+                {r.cp && <span style={{fontSize:11, color:'#8B7F6E', flexShrink:0}}>{r.cp}{r.cp_all && r.cp_all.length > 1 ? '+' : ''}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// M/2026/05/02/15 — M126 : AdresseBlock composant unifié partout dans l'app.
+// API : value = {pays, adresse, ville, cp, quartier} · onChange(newValue) atomique.
+// showQuartier (default true). paysFixe (ISO2) verrouille le pays. context = sémantique
+// pour l'autocomplete name/section (contact_residence | societe | bien | ...).
+// Layout : L1 [PaysCompactButton] [AddressAutocomplete] · L2 [VilleAutocomplete] [CP] [Quartier].
+// Auto-fill CP via VilleAutocomplete onSelect, sauf si CP déjà saisi (saisie manuelle prime).
+function AdresseBlock({value, onChange, showQuartier = true, paysFixe = null, context = 'contact_residence', addressNamePrefix = ''}) {
+  const v = value || {};
+  const pays = paysFixe || v.pays || '';
+  const userTouchedCpRef = React.useRef(false);
+  function patch(p) { onChange({...v, ...p}); }
+  function handlePaysChange(cc) {
+    if (paysFixe) return;
+    patch({pays: cc, ville: '', cp: '', adresse: '', quartier: ''});
+    userTouchedCpRef.current = false;
+  }
+  function handleAdresseChange(text) { patch({adresse: text}); }
+  function handleAdressePick(p) {
+    const nx = {};
+    if (p.adresse) nx.adresse = p.adresse;
+    if (p.ville) nx.ville = p.ville;
+    if (p.code_postal && !userTouchedCpRef.current) nx.cp = p.code_postal;
+    if (p.quartier) nx.quartier = p.quartier;
+    if (p.pays && !paysFixe) nx.pays = p.pays;
+    patch(nx);
+  }
+  function handleVilleChange(text) { patch({ville: text}); }
+  function handleVilleSelect({ville, cp}) {
+    const nx = {ville};
+    if (cp && !userTouchedCpRef.current && !v.cp) nx.cp = cp;
+    patch(nx);
+  }
+  function handleCpChange(text) {
+    userTouchedCpRef.current = true;
+    patch({cp: text});
+  }
+  function handleQuartierChange(text) { patch({quartier: text}); }
+  const namePfx = addressNamePrefix ? (addressNamePrefix + '-') : '';
+  const sectionAttr = context === 'societe' ? 'section-societe ' : '';
+  return (
+    <>
+      <div style={{display:'grid', gridTemplateColumns:'auto 1fr', gap:8, marginBottom:10, alignItems:'flex-end'}}>
+        {paysFixe ? (
+          <div style={{minWidth:0, opacity:0.85}}>
+            <PaysCompactButton value={pays} onChange={() => {}} label="Pays"/>
+          </div>
+        ) : (
+          <PaysCompactButton value={pays} onChange={handlePaysChange} label="Pays"/>
+        )}
+        <AddressAutocomplete label="Adresse" value={v.adresse}
+          onChange={handleAdresseChange}
+          country={pays}
+          autoComplete={sectionAttr + 'street-address'} name={namePfx + 'street-address'}
+          style={{marginBottom:0}}
+          onPick={handleAdressePick}/>
+      </div>
+      <div style={{display:'grid', gridTemplateColumns: showQuartier ? '2fr 1fr 1.5fr' : '2fr 1fr', gap:6, marginBottom:10}}>
+        <VilleAutocomplete pays={pays} value={v.ville}
+          onChange={handleVilleChange}
+          onSelect={handleVilleSelect}
+          autoComplete={sectionAttr + 'address-level2'} name={namePfx + 'address-level2'}
+          style={{marginBottom:0}}/>
+        <Field label="Code postal" value={v.cp} onChange={handleCpChange} style={{marginBottom:0}}
+          autoComplete={sectionAttr + 'postal-code'} name={namePfx + 'postal-code'} inputMode="text"/>
+        {showQuartier && (
+          <Field label="Quartier" value={v.quartier} onChange={handleQuartierChange} style={{marginBottom:0}}
+            placeholder="Optionnel"
+            autoComplete={sectionAttr + 'address-level3'} name={namePfx + 'address-level3'}/>
+        )}
+      </div>
+    </>
+  );
+}
+
 // M/2026/05/02/4 — M110 Phase B : PhoneInput component avec libphonenumber-js (Google).
 // Drapeau cliquable (PaysCompactButton M111.5 reutilise) + champ numero avec format AsYouType
 // au fil de la frappe + validation isValidPhoneNumber (bordure verte si valide, rouge si invalide,
@@ -4629,9 +4908,19 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
       {/* M/2026/05/02/11 — M122 : swap CP <-> Ville. Ordre cible Ville | CP | Quartier
           (au lieu de CP | Ville | Quartier). Le code postal est plus court visuellement
           que la ville donc le mettre au milieu équilibre la grille. */}
+      {/* M/2026/05/02/15 — M126 : VilleAutocomplete remplace CityPicker (M115 hardcoded list).
+          onSelect fait setBMany pour propager ville + cp atomiquement (auto-fill CP via API
+          geo.api.gouv FR / JSON MA / Nominatim ES/IT/BE). Saisie manuelle CP préservée. */}
       <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1.5fr', gap:8, marginBottom:10}}>
-        <CityPicker label="Ville" value={bien.ville} onChange={handleVilleChange} country={bien.pays} showFlag={false} style={{marginBottom:0}}
-          autoComplete="address-level2" name="bien-address-level2"/>
+        <VilleAutocomplete label="Ville" value={bien.ville} pays={bien.pays}
+          onChange={handleVilleChange}
+          onSelect={({ville: nv, cp}) => {
+            const patch = {ville: nv, quartier: '', adresse: '', gps_lat: '', gps_lng: '', gps_source: ''};
+            if (cp && !bien.code_postal) patch.code_postal = cp;
+            setBMany(patch);
+          }}
+          autoComplete="address-level2" name="bien-address-level2"
+          style={{marginBottom:0}}/>
         <Field label="Code postal" value={bien.code_postal} onChange={v => setB('code_postal', v)} style={{marginBottom:0}}
           autoComplete="postal-code" name="bien-postal-code" inputMode="text"/>
         <DistrictPicker ville={bien.ville} pays={bien.pays}
@@ -18766,9 +19055,16 @@ function FormView(props) {
               {/* M/2026/05/02/12 — M123 : 3 cols Ville/CP/Quartier cohérent Section II.
                   Quartier résidence = Field texte libre (saisie optionnelle, pas de DistrictPicker
                   car résidence personnelle ≠ adresse bien). Stocké en d.quartier_residence. */}
+              {/* M/2026/05/02/15 — M126 : VilleAutocomplete + auto-fill CP Section I Particulier. */}
               <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1.5fr', gap:6, marginBottom:10}}>
-                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
-                  autoComplete="address-level2" name="address-level2"/>
+                <VilleAutocomplete label="Ville" value={d.ville} pays={d.pays_residence}
+                  onChange={v => set('ville', v)}
+                  onSelect={({ville: nv, cp}) => {
+                    set('ville', nv);
+                    if (cp && !d.code_postal) set('code_postal', cp);
+                  }}
+                  autoComplete="address-level2" name="address-level2"
+                  style={{marginBottom:0}}/>
                 <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
                   autoComplete="postal-code" name="postal-code" inputMode="text"/>
                 <Field label="Quartier" value={d.quartier_residence} onChange={v => set('quartier_residence', v)} style={{marginBottom:0}}
@@ -18828,9 +19124,16 @@ function FormView(props) {
                   }}/>
               </div>
               {/* M/2026/05/02/12 — M123 : 3 cols Ville/CP/Quartier cohérent Section II + Particulier. */}
+              {/* M/2026/05/02/15 — M126 : VilleAutocomplete + auto-fill CP Section I Société. */}
               <div style={{display:'grid', gridTemplateColumns:'2fr 1fr 1.5fr', gap:6, marginBottom:10}}>
-                <CityPicker label="Ville" value={d.ville} onChange={v => set('ville', v)} country={d.pays_residence} showFlag={false} style={{marginBottom:0}}
-                  autoComplete="section-societe address-level2" name="societe-address-level2"/>
+                <VilleAutocomplete label="Ville" value={d.ville} pays={d.pays_residence}
+                  onChange={v => set('ville', v)}
+                  onSelect={({ville: nv, cp}) => {
+                    set('ville', nv);
+                    if (cp && !d.code_postal) set('code_postal', cp);
+                  }}
+                  autoComplete="section-societe address-level2" name="societe-address-level2"
+                  style={{marginBottom:0}}/>
                 <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
                   autoComplete="section-societe postal-code" name="societe-postal-code"/>
                 <Field label="Quartier" value={d.quartier_residence} onChange={v => set('quartier_residence', v)} style={{marginBottom:0}}

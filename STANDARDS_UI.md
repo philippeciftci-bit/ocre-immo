@@ -68,6 +68,12 @@ pour afficher "Hispano-mauresque" tronque. La règle `max-content` règle les de
   + libphonenumber-js validation.
 - `<Select>` natif HTML — utilisé pour 11 champs (Forme juridique, Étage, etc.). UX iOS
   native picker wheel acceptable, non migré (ni modale plein écran ni incohérent).
+- `VilleAutocomplete(pays, value, onChange, onSelect, label, style)` — autocomplete ville
+  par pays (FR geo.api.gouv / MA JSON / ES-IT-BE Nominatim) avec auto-fill CP via onSelect.
+  Cache localStorage 24h, debounce 350ms. Livré M126.
+- `AdresseBlock({value:{pays,adresse,ville,cp,quartier}, onChange, showQuartier, paysFixe, context})`
+  — composant unifié pour bloc adresse complet. Layout L1 [Pays|Adresse] L2 [Ville|CP|Quartier].
+  Adoption progressive (cf section 4.bis). Livré M126.
 
 ## 3. Densité visuelle
 
@@ -122,23 +128,52 @@ Espagne — geoIP ne devine rien. L'agent choisit le pays explicitement.
 de suggestion contextuelle, c'est une mission séparée (modale "On dirait que
 tu es au Maroc, créer en MAD ?" plutôt que fill silencieux).
 
-### Auto-fill CP via ville (reporté en mission future)
+### Auto-fill CP via ville (livré M126)
 
-Spec définie M122 mais non livrée :
-- FR : `geo.api.gouv.fr/communes?nom={query}&fields=codesPostaux,nom`.
-- MA : tableau JSON embarqué `data/villes_ma.json` (~50 villes).
-- ES, IT, BE : Nominatim OpenStreetMap (proxy `/api/nominatim.php` existant).
-- Autres pays : input libre.
+Composant `VilleAutocomplete(pays, value, onChange, onSelect)` :
+- **FR** : `geo.api.gouv.fr/communes?nom={q}&fields=codesPostaux,nom,codeRegion,nomRegion,population&boost=population&limit=10` — gratuit, illimité, officiel data.gouv. Cache 24h localStorage.
+- **MA** : `/data/villes_ma.json` embarqué (~50 villes principales avec CP). Source : Wikipédia Codes postaux du Maroc + Poste Maroc. Multi-CP supportés (Casablanca 20000-20520, Rabat 10000-10220).
+- **ES / IT / BE / DE / PT / NL / LU / CH / AT** : `nominatim.openstreetmap.org/search?city={q}&country={iso2}&format=json` — gratuit, max 1 req/s. Debounce 350ms côté client + cache 24h localStorage.
+- **Autres pays** : input libre sans suggestions.
 
-Logique : auto-fill CP au pick d'une ville sauf si CP déjà saisi manuellement
-(respect saisie manuelle prime).
+Logique auto-fill :
+- Sur `onSelect({ville, cp, region})` → AdresseBlock met à jour ville + cp.
+- **Saisie manuelle CP prime** : si `code_postal` déjà non-vide avant sélection ville → ne pas écraser.
+- Multi-CP (Paris 75001-75020, Casablanca 20000-20520) → premier CP injecté, l'agent peut éditer.
 
-### Migration progressive
+### Composant `AdresseBlock` (livré M126)
 
-M122 livre uniquement Section I (Particulier + Société) et Section II.
-Audit secondaire reporté : profil agent (paramètres), adresse facturation,
-adresse pièce d'identité (lieu de délivrance). Composant `AdresseBlock`
-unifié réutilisable est aussi reporté en mission future (refacto plus large).
+Composant unifié `value={pays, adresse, ville, cp, quartier}` + `onChange(newValue)`.
+Layout standard L1 [Pays|Adresse] L2 [Ville|CP|Quartier]. Props :
+- `paysFixe` (ISO2) verrouille le pays (cas pièce d'identité où pays vient d'ailleurs).
+- `showQuartier` (default true).
+- `context` ('contact_residence' | 'societe' | 'bien' | 'agent' | 'facturation' | 'piece_id_delivery').
+
+**Adoption progressive** : Section I (Particulier + Société) et Section II ont été
+migrés au layout cible M122. Section II conserve ses handlers complexes (cascade
+pays>ville>quartier+gps, modale alerte changement pays, gps_source preservation),
+trop sensibles pour migration aveugle vers AdresseBlock. Pour Section II, seul le
+remplacement chirurgical CityPicker → VilleAutocomplete a été appliqué (auto-fill
+CP fonctionnel sans casser les handlers métier).
+
+`AdresseBlock` est prêt pour adoption sur :
+- Profil agent (mission future si Philippe ajoute une adresse agent paramètres).
+- Adresse facturation (mission future si feature ajoutée).
+- Lieu délivrance pièce ID (mission future si Philippe veut structurer).
+
+### Audit secondaire M126
+
+Audit blocs adresse complets dans le repo :
+- ✅ Section I Particulier (résidence contact) — migré M122 + VilleAutocomplete M126.
+- ✅ Section I Société (adresse société) — migré M122 + VilleAutocomplete M126.
+- ✅ Section II (adresse bien) — migré M122 + VilleAutocomplete M126 (handlers préservés).
+- ❌ Profil agent : pas de bloc adresse trouvé en grep (feature non implémentée).
+- ❌ Adresse facturation : pas de bloc trouvé.
+- ⚠️ Pièce d'identité — sous-bloc Section I, "Délivré par" = input texte libre. Pas migré (volontairement). Décision M126 : laisser en input libre. Si Philippe veut filtrage géographique futur → mission séparée.
+- ⚠️ Notaire / Adoul (Section II Mandat ligne 4785) : `Field` texte libre. Pas une adresse complète, juste le nom. Pas migré.
+- ⚠️ Avocat (Section II Mandat ligne 4786) : idem `Field` texte libre. Pas migré.
+
+Total : 3 blocs adresse complets migrés / 0 blocs minimaux à migrer.
 
 ## 4.ter Comportement universel popovers (M123)
 
