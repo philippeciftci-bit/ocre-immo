@@ -8522,36 +8522,12 @@ function PWAInstallOverlay({onClose}) {
 // PublishButton déclenche PublishPreviewModal qui affiche une preview WYSIWYG + champs
 // éditables (titre, description, vertical). Post-publi : PublishSuccessModal "site en cours
 // de création". Gestion post-publi : bouton devient "Gérer la publication" + toggle visibility.
-function PublishButton({dossier, dossierId, disabled, onOpen, showToast}) {
-  // M/2026/04/30/32 — verrou mode test : ne pas afficher Publier en mode test (sandbox isole).
-  if (typeof window !== 'undefined' && window.__ocreMode === 'test') return null;
-  const published = !!dossier.is_published;
-  const visible = dossier.public_visible !== 0 && dossier.public_visible !== false;
-  let label, subBadge = null, btnStyle, iconEl;
-  iconEl = <IconGlobe size={15}/>;
-  if (disabled) {
-    label = 'Publier sur ocre.immo';
-    btnStyle = {background:'#F2EBE2', color:'#A89882', border:'1.5px solid #E0CDAE', cursor:'not-allowed'};
-  } else if (!published) {
-    label = 'Publier sur ocre.immo';
-    btnStyle = {background:'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', cursor:'pointer'};
-  } else {
-    label = 'Gérer la publication';
-    btnStyle = {background:'#fff', color:'#8B5E3C', border:'1.5px solid #8B5E3C', cursor:'pointer'};
-    subBadge = visible
-      ? <span style={{marginLeft:8, fontSize:11, color:'#2E7D32'}}>● En ligne</span>
-      : <span style={{marginLeft:8, fontSize:11, color:'#8B7F6E'}}>● Masquée</span>;
-  }
-  return (
-    <div style={{padding:'14px 4px 4px', display:'flex', justifyContent:'center'}}>
-      <button type="button" onClick={disabled ? () => showToast && showToast('Complète le dossier avant publication') : onOpen}
-        title={disabled ? 'Complète le dossier avant publication' : label}
-        style={{width:'100%', maxWidth:420, padding:'13px 18px', borderRadius:10, fontWeight:700, fontSize:14, fontFamily:'inherit', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, ...btnStyle}}>
-        {iconEl}<span>{label}</span>{subBadge}
-      </button>
-    </div>
-  );
-}
+// M/2026/05/02/5 — M114 : PublishButton SUPPRIME franchement. Code mort depuis V32 (commentaire
+// historique ligne 18233 : 'PublishButton full-width supprimé. Chip PUBLIER intégré dans la barre
+// footer'). Aucun call-site <PublishButton ...> trouvé en grep. Sa presence creait une 2eme source
+// de toast 'Complète le dossier avant publication' (avec accent grave) qui pouvait conflicter avec
+// la source active Chip PUBLIER footer ('Complete' sans accent) et contourner la dedup M105/M106
+// (chaines differentes -> pas de match strict). Suppression franche elimine la source orpheline.
 
 function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
   const [loading, setLoading] = React.useState(true);
@@ -18889,10 +18865,10 @@ function FormView(props) {
               const label = _published ? 'EN LIGNE' : 'PUBLIER';
               const bg = !_publishEnabled ? '#C9B79A' : (_published ? '#2E7D32' : '#8B5E3C');
               const tooltip = !activeProfil ? 'Choisis un profil pour activer la publication'
-                : (!_isOffreProfil ? 'Publication reservee Vendeur / Bailleur / Investisseur'
+                : (!_isOffreProfil ? 'Publication réservée Vendeur / Bailleur / Investisseur'
                 : (!_hasRealId ? "Saisis quelques champs pour commencer le dossier" :
-                  (d.is_draft ? 'Complete le dossier avant publication'
-                  : (_published ? 'Publication active — gerer' : 'Publier sur ocre.immo'))));
+                  (d.is_draft ? 'Complète le dossier avant publication'
+                  : (_published ? 'Publication active — gérer' : 'Publier sur ocre.immo'))));
               return (
                 <button onClick={() => {
                     if (!_publishEnabled) { showToast && showToast(tooltip); return; }
