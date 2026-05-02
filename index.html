@@ -7103,7 +7103,50 @@ function V55Field({label, value, onChange, type='text', options, suffix, placeho
   );
 }
 
-function V55Bloc({title, children}) {
+// M/2026/05/02/32 — M144 : V55Bloc enrichi avec prop theme pour design L8 colorisé
+// (validé Philippe via maquettes M142 + hybride M143). Chaque sous-bloc Section III a une teinte
+// thématique distincte : Prix=ocre, Agence=vert d'eau, Notaire=bleu poudre, Synthèse=ocre fort,
+// Mandat=taupe, Paiement=vert sage, Financement=bleu marine, Répartition=mauve poudre.
+// Fallback theme=undefined : design original blanc préservé (anti-régression call sites legacy).
+const V55_THEMES = {
+  prix:        {bg:'#FBF1E4', bord:'#C97B3F', lbl:'#C97B3F'},
+  agence:      {bg:'#EEF4F2', bord:'#5C8A82', lbl:'#5C8A82'},
+  notaire:     {bg:'#EDF0F7', bord:'#6B7FB5', lbl:'#6B7FB5'},
+  synthese:    {bg:'#F5E1C9', bord:'#B26D3A', lbl:'#B26D3A'},
+  mandat:      {bg:'#F2EEE9', bord:'#8A7A6E', lbl:'#8A7A6E'},
+  paiement:    {bg:'#EEF1ED', bord:'#7A9277', lbl:'#7A9277'},
+  financement: {bg:'#ECEFF4', bord:'#4A5C7A', lbl:'#4A5C7A'},
+  repartition: {bg:'#F1ECF1', bord:'#8B6B8C', lbl:'#8B6B8C'},
+};
+function V55Bloc({title, children, theme}) {
+  const t = theme && V55_THEMES[theme];
+  if (t) {
+    const isMain = theme === 'synthese';
+    return (
+      <div style={{
+        background: t.bg,
+        borderLeft: '3px solid ' + t.bord,
+        borderRadius: '0 10px 10px 0',
+        padding: isMain ? '14px 14px 4px' : '12px 14px 4px',
+        marginBottom: 10,
+        boxShadow: isMain
+          ? '0 0 0 1px ' + t.bord + '40, 0 2px 4px rgba(178,109,58,.08)'
+          : '0 0 0 1px rgba(139,94,60,.06)',
+      }}>
+        <div style={{
+          fontFamily: 'Cormorant Garamond,serif',
+          fontSize: isMain ? 17 : 15,
+          fontWeight: isMain ? 700 : 600,
+          color: t.lbl,
+          marginBottom: 8,
+          paddingBottom: 4,
+          borderBottom: '1px solid ' + t.bord + '40',
+        }}>{title}</div>
+        {children}
+      </div>
+    );
+  }
+  // Default original (call sites sans theme conservent le visuel legacy).
   return (
     <div style={{background:'#fff', borderRadius:10, padding:'14px 14px 4px', marginBottom:12, boxShadow:'0 0 0 1px rgba(139,94,60,.08), 0 1px 2px rgba(26,18,8,.04)'}}>
       <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:600, color:'#8B5E3C', marginBottom:10, paddingBottom:6, borderBottom:'1px solid #F0E9DC'}}>{title}</div>
@@ -7269,7 +7312,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           <ConversionDisplay amount={d.budget_max} devise={devise} pays={paysBien}/>
         </V55Bloc>
 
-        <V55Bloc title="Frais d'agence">
+        <V55Bloc title="Frais d'agence" theme="agence">
           <V55Field label="Honoraires à charge" type="select" value={d.honoraires_charge} onChange={v => set('honoraires_charge', v)}
             options={['Vendeur','Acheteur','Partagés']}/>
           {honoCharge === 'Acheteur' && (
@@ -7280,7 +7323,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           )}
         </V55Bloc>
 
-        <V55Bloc title="Frais de notaire (estimation)">
+        <V55Bloc title="Frais de notaire (estimation)" theme="notaire">
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <V55Field label={'Taux %' + (paysBien === 'FR' ? (neufAncien === 'neuf' ? ' (FR neuf 3%)' : ' (FR ancien 7,5%)') : ' (MA 6%)')}
               type="pct" value={d.frais_notaire_pct} onChange={v => set('frais_notaire_pct', v)} suffix="%"
@@ -7289,13 +7332,13 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           </div>
         </V55Bloc>
 
-        <V55Bloc title="Coût total estimé">
+        <V55Bloc title="Coût total estimé" theme="synthese">
           <V55ReadOnly label="Coût total acquisition" value={budget > 0 ? fmtMoneyV55(coutTotal, devise) : '—'} hint="Budget + frais agence (si charge acheteur) + frais notaire"/>
         </V55Bloc>
 
         {/* V62 — Détails financement en bas */}
         <V62SubTitle>Détails de financement</V62SubTitle>
-        <V55Bloc title="Capacité d'achat">
+        <V55Bloc title="Capacité d'achat" theme="financement">
           <V55Field label="Apport personnel" type="number" value={d.apport_personnel} onChange={v => set('apport_personnel', v)} suffix={devise}/>
           <V55Field label="Mode de financement" type="select" value={d.mode_financement} onChange={v => set('mode_financement', v)}
             options={['Comptant','Crédit','Mixte']}/>
@@ -7353,7 +7396,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     return (
       <>
         {/* V62 — Bloc essentiels en haut */}
-        <V55Bloc title="Prix">
+        <V55Bloc title="Prix" theme="prix">
           {/* M/2026/04/30/29 — CurrencyPicker mondial + ConversionDisplay live sous Prix. */}
           <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
             <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise</span>
@@ -7396,7 +7439,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           })()}
         </V55Bloc>
 
-        <V55Bloc title="Honoraires (commission)">
+        <V55Bloc title="Honoraires (commission)" theme="agence">
           <V55Field label="Mode" type="select" value={d.commission_mode || 'Pourcentage'} onChange={v => set('commission_mode', v)}
             options={['Pourcentage','Forfait']}/>
           {commMode === 'Pourcentage' ? (
@@ -7424,7 +7467,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         </V55Bloc>
 
         {/* V62 — Frais notaire (info à charge acheteur) */}
-        <V55Bloc title="Frais de notaire (à la charge de l'acheteur)">
+        <V55Bloc title="Frais de notaire (à la charge de l'acheteur)" theme="notaire">
           {(() => {
             const taux = fraisNotaireDefault(paysBien, neufAncien) * 100;
             const fraisAch = prix > 0 ? Math.round(prix * taux / 100) : 0;
@@ -7436,7 +7479,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
 
         {/* V62 — Détails plus bas */}
         <V62SubTitle>Mandat</V62SubTitle>
-        <V55Bloc title="Mandat">
+        <V55Bloc title="Mandat" theme="mandat">
           <V55Field label="Type" type="select" value={d.mandat_type} onChange={v => set('mandat_type', v)}
             options={['Simple','Exclusif','Semi-exclusif','Co-exclusif']}/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
@@ -7454,7 +7497,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         </V55Bloc>
 
         <V62SubTitle>Co-courtage / Apporteur</V62SubTitle>
-        <V55Bloc title="Co-courtage / apporteur">
+        <V55Bloc title="Co-courtage / apporteur" theme="paiement">
           <V55Field label="Co-courtage actif" type="toggle" value={coCourtage} onChange={v => set('co_courtage_actif', v)}/>
           {coCourtage && (
             <>
@@ -7468,7 +7511,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         </V55Bloc>
 
         <V62SubTitle>Répartition interne</V62SubTitle>
-        <V55Bloc title="Répartition interne">
+        <V55Bloc title="Répartition interne" theme="repartition">
           <V55Field label="Part agent" type="pct" value={d.part_agent_pct != null ? d.part_agent_pct : 50} onChange={v => set('part_agent_pct', v)} suffix="%" hint="% de la commission nette agence"/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <V55ReadOnly label="Part agent" value={fmtMoneyV55(partAg, devise)}/>
@@ -7487,11 +7530,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
       <>
         {/* M/2026/04/30/49 — Sous-bloc Recherche bien aussi pour Locataire. */}
         <RechercheBienBloc d={d} set={set}/>
-        <V55Bloc title="Loyer">
+        <V55Bloc title="Loyer" theme="prix">
           <V55Field label="Loyer max charges comprises" type="number" value={d.loyer_max} onChange={v => set('loyer_max', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
         </V55Bloc>
 
-        <V55Bloc title="Honoraires location (estimation)">
+        <V55Bloc title="Honoraires location (estimation)" theme="agence">
           <V55Field label="Honoraires locataire estimés" type="number" value={d.honoraires_locataire_estimes} onChange={v => set('honoraires_locataire_estimes', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? 'Encadré ALUR France ~10-13€/m² selon zone tendue' : 'MA usage variable, souvent payés par bailleur'}/>
           <V55Field label="Frais de dossier" type="number" value={d.frais_dossier} onChange={v => set('frais_dossier', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
         </V55Bloc>
@@ -7528,7 +7571,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const rendementBrutAuto = acquisitionPrix > 0 && loyer > 0 ? Math.round((loyer * 12) / acquisitionPrix * 1000) / 10 : null;
     return (
       <>
-        <V55Bloc title="Loyer & charges">
+        <V55Bloc title="Loyer & charges" theme="prix">
           <V55Field label="Loyer demandé (hors charges)" type="number" value={d.loyer_demande} onChange={v => set('loyer_demande', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
           <V55Field label="Loyer plancher (confidentiel)" type="number" value={d.loyer_plancher} onChange={v => set('loyer_plancher', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
@@ -7538,7 +7581,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           <V55Field label="Dépôt de garantie demandé" type="number" value={d.depot_garantie_demande != null ? d.depot_garantie_demande : d.depot} onChange={v => set('depot_garantie_demande', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? 'France : 1 mois nu / 2 mois meublé' : ''}/>
         </V55Bloc>
 
-        <V55Bloc title="Honoraires de location">
+        <V55Bloc title="Honoraires de location" theme="agence">
           <V55Field label="Mode" type="select" value={d.honoraires_bailleur_mode || '% loyer mensuel'} onChange={v => set('honoraires_bailleur_mode', v)}
             options={['% loyer mensuel','Forfait']}/>
           {honoMode === '% loyer mensuel' ? (
