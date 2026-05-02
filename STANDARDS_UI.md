@@ -57,7 +57,17 @@ pour afficher "Hispano-mauresque" tronque. La règle `max-content` règle les de
 
 - `PaysCompactButton(value, onChange, label, mode)` — pays/téléphone (ISO + dial).
 - `OptionPicker(label, value, onChange, options, placeholder, searchable)` — selects métier
-  (Standing, État, Style architectural, etc.). Réutilisable.
+  (Standing, État, Style architectural, Exposition, Luminosité, Mandat, Honoraires, etc.).
+  **Cible universelle pour TOUS les selects custom de l'app** depuis M125.
+- `SelectPopup(label, value, onChange, options, placeholder)` — alias historique délégué
+  vers OptionPicker depuis M125. 18 call sites migrent automatiquement (Section II surtout).
+  Ne plus créer de nouveau call site SelectPopup, utiliser directement OptionPicker.
+- `DistrictPicker(ville, pays, value, onChange, fallbackList)` — quartiers via Overpass
+  + pinned + saisie libre fallback. Popover compact M123.
+- `PhoneField(label, value, onChange)` — téléphone E.164 avec PaysCompactButton mode=phone
+  + libphonenumber-js validation.
+- `<Select>` natif HTML — utilisé pour 11 champs (Forme juridique, Étage, etc.). UX iOS
+  native picker wheel acceptable, non migré (ni modale plein écran ni incohérent).
 
 ## 3. Densité visuelle
 

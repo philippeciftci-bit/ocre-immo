@@ -4441,43 +4441,15 @@ function PillsMulti({label, value, onChange, options}) {
     </div>
   );
 }
+// M/2026/05/02/14 — M125 : SelectPopup délégué vers OptionPicker M115.
+// Avant : modale plein écran via .bsheet-overlay (incohérent avec M115/M120/M123).
+// Après : popover compact identique au reste de l'app (Standing/État/Style architectural
+// déjà migrés M115). Bénéfice : 18 usages SelectPopup migrent automatiquement vers le
+// pattern compact + auto-fermeture (event ocre:popover-open M123). Anti-régression :
+// signature props strictement compatible (label, value, onChange, options, placeholder).
 function SelectPopup({label, value, onChange, options, placeholder='Choisir'}) {
-  const [open, setOpen] = React.useState(false);
-  const opts = options.map(o => typeof o === 'string' ? {value:o, label:o} : o);
-  const cur = opts.find(o => o.value === value);
-  return (
-    <div style={{marginBottom:10}}>
-      {label && <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
-      <button type="button" onClick={() => setOpen(true)}
-        style={{width:'100%', padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit',
-                border:'1.5px solid '+(value ? '#BBA88B' : '#E8DDD0'),
-                background: value ? '#FFFCF5' : '#FDFAF7',
-                color: value ? '#2A2018' : '#B5A78F',
-                textAlign:'left', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-        <span>{cur ? cur.label : placeholder}</span><span style={{color:'#8B7F6E'}}>▾</span>
-      </button>
-      {open && (
-        <div className="bsheet-overlay" onClick={() => setOpen(false)}>
-          <div className="bsheet" onClick={e => e.stopPropagation()}>
-            <div className="bsheet-handle"/>
-            <div className="bsheet-head">
-              <div className="bsheet-title">{label || 'Choisir'}</div>
-              <button type="button" className="bsheet-close" onClick={() => setOpen(false)}>×</button>
-            </div>
-            <div className="bsheet-list">
-              {opts.map(o => (
-                <div key={o.value} className={'bsheet-item '+(value===o.value?'selected':'')}
-                  onClick={() => { onChange(o.value === value ? '' : o.value); setOpen(false); }}>
-                  <span className="check">{value===o.value ? '✓' : ''}</span>
-                  <span>{o.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return <OptionPicker label={label} value={value} onChange={onChange}
+    options={options} placeholder={placeholder}/>;
 }
 
 // V17.2 Phase 2a — BienForm : Section II "Le bien", country-first × type-driven (multi depuis v17.9).
