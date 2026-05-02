@@ -16108,6 +16108,50 @@ function MatchModal({clientId, clients, findClientById, setEditingFromMatch, onC
 // V18.15 — ClientRow 3 lignes : header teinté profil (ligne 1) + grid 3 secteurs cliquables (lignes 2-3).
 // Tap header hors tel → ouvre dossier. Tap secteur → ouvre Section II/III/IV du dossier.
 // Préserve v18.2 navigation par section (initialExpandedSection 1/2/3).
+// M/2026/05/02/19 — M131 : AdressePill pill cliquable adresse bien sur cards page d'accueil.
+// Style cohérent avec les pills tel/email existantes (capsule ocre soft, icône SVG, padding compact).
+// Tap -> ouvre Google Maps (URL universelle qui marche sur iOS Safari -> Plans natif via redirect,
+// Android -> Google Maps direct, desktop -> nouvel onglet). Génère l'URL selon données dispo :
+// 1. lat/lng -> coordonnées exactes 2. adresse texte -> recherche par adresse 3. ville seule -> ville+pays.
+// Retourne null si aucune adresse saisie (préserve l'état actuel de la card).
+function AdressePill({adresse, ville, cp, quartier, pays, lat, lng}) {
+  if (!adresse && !ville) return null;
+  let url = null;
+  if (lat && lng) {
+    url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng);
+  } else {
+    const q = [adresse, [cp, ville].filter(Boolean).join(' '), pays].filter(Boolean).join(', ');
+    if (q) url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+  }
+  const subParts = [ville, cp, quartier].filter(Boolean);
+  const sub = subParts.join(' · ');
+  return (
+    <a href={url || '#'} target="_blank" rel="noopener"
+      onClick={e => e.stopPropagation()}
+      onTouchStart={e => e.stopPropagation()}
+      style={{display:'inline-flex', alignItems:'flex-start', gap:5, padding:'4px 9px',
+              background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:14,
+              color:'#5C3B1E', textDecoration:'none', fontSize:11, fontWeight:500,
+              fontFamily:'inherit', minWidth:0, maxWidth:'100%', boxSizing:'border-box',
+              flexShrink:1, overflow:'hidden', lineHeight:1.25}}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        style={{flexShrink:0, marginTop:2}}>
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
+      <span style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:0}}>
+        {adresse && (
+          <span style={{fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{adresse}</span>
+        )}
+        {sub && (
+          <span style={{fontSize:10.5, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{sub}</span>
+        )}
+      </span>
+    </a>
+  );
+}
+
 function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection, isGrouped, isFirstInGroup, isLastInGroup, ...props}) {
   const [telChooser, setTelChooser] = React.useState(false);
   // M/2026/04/29/46 — lightbox photos local au row.
@@ -16521,6 +16565,20 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
                 title={'Voir les matches' + (matchInfo.max_score > 80 ? ' (★ = match qualité élevée, score > 80 %)' : '')}>🎯 {matchInfo.count}{matchInfo.max_score > 80 ? '★' : ''}</button>
             )}
           </div>
+          {/* M/2026/05/02/19 — M131 : pill 📍 adresse complète bien cliquable -> Google Maps / Plans iOS.
+              Visible uniquement si bien.adresse ou bien.ville défini (sinon null, preserve layout actuel). */}
+          {(bien.adresse || bien.ville) && (
+            <div style={{display:'flex', alignItems:'flex-start', gap:5, minWidth:0, marginTop:4}}>
+              <AdressePill
+                adresse={bien.adresse}
+                ville={bien.ville}
+                cp={bien.code_postal}
+                quartier={bien.quartier}
+                pays={bien.pays}
+                lat={bien.gps_lat}
+                lng={bien.gps_lng}/>
+            </div>
+          )}
         </div>
       </div>
       <div className="client-row-grid">
