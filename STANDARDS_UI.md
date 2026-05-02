@@ -209,6 +209,61 @@ avec OptionPicker M115.
 - **Modale changement profil** (M118) : ne s'affiche QUE si previousProfil non null
   ET différent ET au moins un champ rôle-spécifique rempli.
 
+## 5.bis Layout universel (M136)
+
+Pattern unique pour TOUTES les vues principales (page d'accueil, détail dossier,
+vue partagée, paramètres, modales plein écran).
+
+### Header
+
+`position: fixed | sticky` selon contenu. `top: 0`. Background blanc `#fff`.
+Border-bottom `1px solid #E8DDC9` (ocre soft cohérent). z-index 100.
+
+### Footbar
+
+`position: fixed | sticky`. `bottom: 0`. **Background BLANC `#fff` UNIQUE** sur
+toutes les vues (pas de variantes brun/vert/autre). Border-top `1px solid #E8DDC9`.
+Box-shadow douce `0 -2px 6px rgba(139,94,60,.05)` pour décollement visuel.
+z-index 40-100 selon contexte. **Padding-bottom obligatoire** :
+`calc(env(safe-area-inset-bottom, 0px) + 4px)` pour notch/home indicator iPhone.
+
+### Boutons dans la footbar
+
+- Cercle 36×36 ou 52×52 selon densité.
+- Background `#FBF1E4` (actif) / `#FDFAF7` (inactif).
+- Border `1.5px solid #B26D3A` (actif) / `#E8DDC9` (inactif).
+- Icône color `#8B5E3C` (ocre fort lisible sur blanc).
+- Bouton CTA principal (ex `+ Ajouter`) : gradient `linear-gradient(135deg,#8B5E3C,#A06B45)`, color blanc.
+
+### Padding du contenu principal
+
+Le `<main>` ou conteneur scrollable doit avoir :
+- `padding-top: <hauteur header>` pour ne pas être masqué par header fixed.
+- `padding-bottom: <hauteur footbar>` pour ne pas être masqué par footbar fixed.
+
+### Z-index global
+
+- Header / Footbar : 40–100.
+- Dropdowns / Popovers : 1000.
+- Modales : 200–300.
+- Toasts : 300+.
+- Lightbox plein écran : 99999.
+
+### Vues affectées et statut M136
+
+- ✅ Liste accueil (footbar fixed bottom blanc, ligne 16021) — déjà conforme.
+- ✅ PdfShareModal footbar (ligne 13606) — M136 a aligné brun #5C4530 → blanc cohérent.
+- ⚠️ FormView footer (ligne 9369) — sticky bottom blanc, à auditer si Philippe rapporte
+  un problème de scroll. Reporté M136.B si nécessaire.
+- ⚠️ Header principal — pattern non identifié uniquement (audit reporté M136.B).
+
+### Symbole € sur PDF (reporté M136.B)
+
+Bug rapporté : € invisible sur exports PDF. Cause probable police PDF par défaut
+(Helvetica) sans glyphe €. Fix : police custom (Roboto/Noto Sans) via `addFileToVFS()`
++ `addFont()` jsPDF, ou `@font-face` HTML pour Puppeteer. Audit générateur PDF
+nécessaire (jsPDF / Puppeteer / html2pdf) avant fix.
+
 ## 6. Versioning Service Worker
 
 À chaque déploiement modifiant index.html ou sw.js : `SW_VERSION` bump entier.

@@ -13581,12 +13581,14 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
 
 // M/2026/04/30/8 — barre PDF avec 3 toggles centres + trait rouge diagonal si masque.
 function PdfBottomBar({onBack, showPrice, setShowPrice, showAddress, setShowAddress, showIdentity, setShowIdentity, onShare}) {
-  const ICON_COLOR = '#F5EFE6';
+  // M/2026/05/02/24 — M136 : palette adaptée au fond blanc (était #F5EFE6 sur brun #5C4530).
+  // Toggle actif = ocre soft #FBF1E4, inactif = blanc cassé #FDFAF7. Icône #8B5E3C lisible.
+  const ICON_COLOR = '#8B5E3C';
   function ToggleBtn({active, onClick, title, children}) {
     return (
       <button type="button" onClick={onClick} title={title} aria-pressed={!active}
-        style={{position:'relative', width:52, height:52, borderRadius:14, border:'none',
-                background: active ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.06)',
+        style={{position:'relative', width:52, height:52, borderRadius:14, border:'1.5px solid '+(active ? '#B26D3A' : '#E8DDC9'),
+                background: active ? '#FBF1E4' : '#FDFAF7',
                 color: ICON_COLOR, cursor:'pointer', fontFamily:'inherit',
                 display:'flex', alignItems:'center', justifyContent:'center',
                 transition:'transform 80ms ease, background 120ms ease'}}
@@ -13602,12 +13604,16 @@ function PdfBottomBar({onBack, showPrice, setShowPrice, showAddress, setShowAddr
       </button>
     );
   }
+  // M/2026/05/02/24 — M136 : footbar PDF view alignée sur le pattern universel
+  // (background blanc, border ocre soft, safe-area-inset-bottom iOS preserved).
+  // Avant : background brun #5C4530 incohérent avec footbar liste accueil blanc.
   return (
-    <div style={{position:'sticky', bottom:0, background:'#5C4530', borderTop:'1px solid #3F2F1F',
+    <div style={{position:'sticky', bottom:0, background:'#fff', borderTop:'1px solid #E8DDC9',
+                 boxShadow:'0 -2px 6px rgba(139,94,60,.05)',
                  padding:'12px 14px calc(env(safe-area-inset-bottom, 0px) + 12px)',
                  display:'flex', alignItems:'center', gap:10}}>
       <button type="button" onClick={onBack} title="Retour"
-        style={{width:52, height:52, borderRadius:14, border:'none', background:'rgba(255,255,255,0.14)',
+        style={{width:52, height:52, borderRadius:14, border:'1.5px solid #E8DDC9', background:'#FDFAF7',
                 color: ICON_COLOR, cursor:'pointer', fontFamily:'inherit',
                 display:'flex', alignItems:'center', justifyContent:'center'}}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
