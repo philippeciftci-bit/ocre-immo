@@ -19412,13 +19412,32 @@ function FormView(props) {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   // V18.27 — loupe dans le dossier : filtre live les sections matchées, auto-open, highlight.
+  // M/2026/05/03/28 — loupe deplacee dans le header (a droite). Tap exterieur ferme la recherche.
   const [formSearchOpen, setFormSearchOpen] = useState(false);
   const [formSearchInput, setFormSearchInput] = useState('');
   const [formSearchQuery, setFormSearchQuery] = useState('');
+  const headerSearchRef = useRef(null);
   useEffect(() => {
     const t = setTimeout(() => setFormSearchQuery(formSearchInput), 200);
     return () => clearTimeout(t);
   }, [formSearchInput]);
+  useEffect(() => {
+    if (!formSearchOpen) return undefined;
+    function onPointer(e) {
+      if (headerSearchRef.current && !headerSearchRef.current.contains(e.target)) {
+        setFormSearchOpen(false);
+        // Ne pas effacer formSearchInput/Query : si l'utilisateur a tape un terme et tap exterieur,
+        // la recherche reste active. Re-tap sur la loupe rouvre l'input avec le texte conserve.
+        // (Le bouton ✕ explicite efface via toggleFormSearch.)
+      }
+    }
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('touchstart', onPointer);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('touchstart', onPointer);
+    };
+  }, [formSearchOpen]);
   function toggleFormSearch() {
     if (formSearchOpen) {
       setFormSearchOpen(false);
@@ -20152,42 +20171,52 @@ function FormView(props) {
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
-      {/* M/2026/05/01/5 — Header dossier nettoyé : icones loupe + Partager + PDF retirees franchement
-          (deplacees dans la barre du bas). Bloc recherche inline juste sous le header (toujours visible). */}
+      {/* M/2026/05/01/5 — Header dossier nettoyé : icones loupe + Partager + PDF retirees franchement.
+          M/2026/05/03/28 — Loupe REINTEGREE dans le header (a droite). Tap = ouvre champ recherche
+          inline dans le header (sur la meme ligne, autoFocus). Tap exterieur ou bouton ✕ ferme.
+          Suppression franche de l'ancienne barre de recherche inline sous le header (M/2026/05/01/5). */}
       <div data-formview-header style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:8}}>
         <BackButton onClick={backToListFlushed}/>
         <OcreLogoButton/>
-      </div>
-      {_peBanner}
-      {/* M/2026/05/01/5 — bloc recherche inline toujours visible (suppression toggle open/closed).
-          M/2026/05/01/28 — M106 : champ recherche desactive si dossier vide (allFieldsEmpty).
-          Pattern Stripe coherent avec barre du bas M105 : opacity 0.45 + pointerEvents none.
-          Saisie sur un dossier vide n a aucun sens metier (rien a chercher). */}
-      <div style={Object.assign(
-          {padding:'10px 14px 8px', background:'#FBF7EF', borderBottom:'1px solid #EDE6DC', transition:'opacity .2s ease-in-out'},
+        <div style={{flex:1, minWidth:0}}/>
+        {/* Loupe + champ inline switchable. Conteneur ref pour detect-tap-exterieur. */}
+        <div ref={headerSearchRef} style={Object.assign(
+          {display:'flex', alignItems:'center', gap:6, flexShrink:0, minWidth:0},
           allFieldsEmpty(d) ? {opacity:0.45, pointerEvents:'none'} : {opacity:1, pointerEvents:'auto'}
         )}>
-        <div style={{position:'relative', display:'flex', alignItems:'center', background:'#fff', border:'1px solid #D9C9A8', borderRadius:10, padding:'10px 14px 10px 38px'}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B7F6E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{position:'absolute', left:14, top:'50%', transform:'translateY(-50%)'}}>
-            <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input type="text"
-            placeholder="Rechercher dans ce dossier…"
-            value={formSearchInput}
-            onChange={e => setFormSearchInput(e.target.value)}
-            autoCapitalize="off" autoCorrect="off" spellCheck="false"
-            style={{flex:1, border:'none', outline:'none', fontSize:14, fontFamily:"'DM Sans', system-ui, sans-serif", color:'#2A2018', background:'transparent', minWidth:0}}/>
-          {formSearchQuery && (
-            <span style={{fontSize:11, color:'#8B7F6E', fontWeight:700, whiteSpace:'nowrap', flexShrink:0, padding:'0 8px'}}>
-              {formMatches.totalMatches} résultat{formMatches.totalMatches > 1 ? 's' : ''}
-            </span>
-          )}
-          {formSearchInput && (
-            <button onClick={() => { setFormSearchInput(''); setFormSearchQuery(''); }} title="Effacer"
-              style={{flexShrink:0, padding:'2px 8px', background:'transparent', border:'none', color:'#8B7F6E', fontSize:14, cursor:'pointer'}}>✕</button>
+          {!formSearchOpen ? (
+            <button type="button" onClick={toggleFormSearch} title="Rechercher dans ce dossier"
+              aria-label="Rechercher dans ce dossier"
+              style={{width:36, height:36, borderRadius:'50%', border:'1.5px solid #D9C9A8', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, color:'#8B5E3C', flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
+          ) : (
+            <div style={{display:'flex', alignItems:'center', background:'#fff', border:'1.5px solid #D9C9A8', borderRadius:10, padding:'4px 8px 4px 32px', position:'relative', minWidth:0, maxWidth:'100%', flex:'1 1 auto'}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7F6E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', flexShrink:0}}>
+                <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text"
+                autoFocus
+                placeholder="Rechercher…"
+                value={formSearchInput}
+                onChange={e => setFormSearchInput(e.target.value)}
+                autoCapitalize="off" autoCorrect="off" spellCheck="false"
+                style={{flex:1, border:'none', outline:'none', fontSize:14, fontFamily:"'DM Sans', system-ui, sans-serif", color:'#2A2018', background:'transparent', minWidth:0, padding:'4px 0'}}/>
+              {formSearchQuery && (
+                <span style={{fontSize:11, color:'#8B7F6E', fontWeight:700, whiteSpace:'nowrap', flexShrink:0, padding:'0 6px'}}>
+                  {formMatches.totalMatches}
+                </span>
+              )}
+              <button type="button" onClick={toggleFormSearch} title="Fermer la recherche"
+                aria-label="Fermer la recherche"
+                style={{flexShrink:0, padding:'2px 8px', background:'transparent', border:'none', color:'#8B7F6E', fontSize:14, cursor:'pointer'}}>✕</button>
+            </div>
           )}
         </div>
       </div>
+      {_peBanner}
 
       {/* M/2026/04/30/31 — DraftSaveIndicator visuel discret juste sous le header FormView,
           au-dessus de la zone scrollable. Affiche 'Enregistrement…' / 'Brouillon enregistré il y a Xs' /
