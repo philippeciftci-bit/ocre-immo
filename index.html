@@ -19456,25 +19456,35 @@ function FormView(props) {
     }
     setProfilPickerOpen(o => !o);
   }
-  // M/2026/05/03/39 — Mission 1B : champs prix Section III (tous profils confondus, approche
-  // conservative : effacer TOUS les champs prix au changement profil pour eviter incoherences
-  // de fourchettes entre profils).
+  // M/2026/05/03/39 — Mission 1B : champs prix Section III (PriceField2Col valueKey verifies via grep).
+  // M/2026/05/04/1 — Mission 39.1 fix : utiliser latestRef.current (anti-closure-stale React) +
+  // markBlurCommit() pour cas changement direct (auto-save M103 deps activeProfil + userBlurredRef).
   const _PRIX_FIELDS_M39 = ['budget_min','budget_max','budget_total','prix_affiche','prix_plancher','prix_liquide','loyer_min','loyer_max','loyer_demande','loyer_plancher'];
   function _hasAnyPriceM39() {
+    const cur = (latestRef && latestRef.current) || d;
     return _PRIX_FIELDS_M39.some(k => {
-      const v = d[k];
+      const v = cur[k];
       return v != null && v !== '' && Number(v) > 0;
     });
   }
   function requestProfilSwitch(targetProfil) {
+    const cur = (latestRef && latestRef.current) || d;
+    const _detected = _PRIX_FIELDS_M39.filter(k => {
+      const v = cur[k];
+      return v != null && v !== '' && Number(v) > 0;
+    });
+    // Log temporaire pour debug Philippe (Safari Web Inspector). A retirer dans une mission suivante.
+    try { console.log('profil_check', { profil_courant: activeProfil, profil_demande: targetProfil, prix_detectes: _detected }); } catch (e) {}
     if (targetProfil === activeProfil) { setProfilPickerOpen(false); return; }
-    if (!_hasAnyPriceM39()) {
-      // Pas de prix saisi -> changement direct sans modal.
+    if (_detected.length === 0) {
+      // Pas de prix saisi -> changement direct sans modal. Trigger auto-save brouillon.
       setActiveProfil(targetProfil);
       setProfilPickerOpen(false);
+      // markBlurCommit + setD via _touch -> useEffect M103 re-run sur activeProfil change + userBlurredRef true -> save scheduled.
+      set('_touch', Date.now(), {commit: true});
       return;
     }
-    // Prix saisi -> demander confirmation.
+    // Prix saisi -> demander confirmation modal.
     setConfirmProfilSwitch(targetProfil);
     setProfilPickerOpen(false);
   }
