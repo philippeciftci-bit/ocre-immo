@@ -8706,15 +8706,69 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
   // M/2026/05/03/11 — E2 : prop sticky pour l'entête Section I (Stage idx 0).
   // M/2026/05/03/14 — sticky sur header bar.
   // M/2026/05/03/15 — sticky REMIS sur le WRAPPER Stage.
-  // M/2026/05/03/23 — sticky DE NOUVEAU sur le HEADER bar (pas le wrapper). Spec Philippe :
-  // sticky ne doit pas s'appliquer au wrapper entier (sinon body Section I bloque le scroll
-  // vers Section II/III/IV quand Section I est ouverte). Sticky sur header bar uniquement -> body
-  // scrolle naturellement, header reste visible. Wrapper overflow:visible si sticky pour ne pas
-  // tronquer le header sticky.
-  const headerStickyStyle = sticky ? {position:'sticky', top:0, zIndex:30} : {};
+  // M/2026/05/03/23 — sticky DE NOUVEAU sur le HEADER bar (pas le wrapper).
+  // M/2026/05/03/26 — REMPLACEMENT sticky -> position:fixed iOS-safe (pattern Stripe/Linear).
+  // Cause root M21 : iPad Safari + body overflow:hidden + flex item scroll container =
+  // sticky non fiable. Fix : header en position:fixed avec dimensions calculees via JS
+  // (useLayoutEffect + ResizeObserver) sur le scroll container. Placeholder invisible
+  // reserve la hauteur du header (evite saut visuel quand header sort du flow).
+  const wrapperRefM26 = React.useRef(null);
+  const headerRefM26 = React.useRef(null);
+  const [fixedDimsM26, setFixedDimsM26] = React.useState(null);
+  React.useLayoutEffect(() => {
+    if (!sticky) { setFixedDimsM26(null); return undefined; }
+    let scrollContainer = null;
+    function findScrollContainer(el) {
+      let p = el && el.parentElement;
+      while (p) {
+        const cs = window.getComputedStyle(p);
+        if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') return p;
+        p = p.parentElement;
+      }
+      return null;
+    }
+    function measure() {
+      if (!wrapperRefM26.current || !headerRefM26.current) return;
+      const formHeader = document.querySelector('[data-formview-header]');
+      const fhBottom = formHeader ? formHeader.getBoundingClientRect().bottom : 0;
+      if (!scrollContainer) scrollContainer = findScrollContainer(wrapperRefM26.current);
+      const sc = scrollContainer;
+      const scRect = sc ? sc.getBoundingClientRect() : null;
+      const cs = sc ? window.getComputedStyle(sc) : null;
+      const padL = cs ? (parseInt(cs.paddingLeft) || 0) : 0;
+      const padR = cs ? (parseInt(cs.paddingRight) || 0) : 0;
+      const headerH = headerRefM26.current.offsetHeight;
+      setFixedDimsM26({
+        top: fhBottom,
+        left: scRect ? (scRect.left + padL) : 0,
+        width: scRect ? Math.max(0, scRect.width - padL - padR) : window.innerWidth,
+        height: headerH,
+      });
+    }
+    measure();
+    requestAnimationFrame(measure);
+    const ro = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(measure) : null;
+    if (ro && wrapperRefM26.current) ro.observe(wrapperRefM26.current);
+    if (!scrollContainer) scrollContainer = findScrollContainer(wrapperRefM26.current);
+    if (ro && scrollContainer) ro.observe(scrollContainer);
+    window.addEventListener('resize', measure);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [sticky, expanded]);
+  const headerFixedStyle = (sticky && fixedDimsM26) ? {
+    position: 'fixed',
+    top: fixedDimsM26.top + 'px',
+    left: fixedDimsM26.left + 'px',
+    width: fixedDimsM26.width + 'px',
+    zIndex: 30,
+    boxSizing: 'border-box',
+  } : {};
   return (
-    <div {...(dataStageAnchor != null ? {'data-stage-anchor': dataStageAnchor} : {})} style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow: sticky ? 'visible' : 'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)'}}>
-      <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s', ...headerStickyStyle}}>
+    <div ref={wrapperRefM26} {...(dataStageAnchor != null ? {'data-stage-anchor': dataStageAnchor} : {})} style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow: sticky ? 'visible' : 'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)'}}>
+      {sticky && fixedDimsM26 && <div aria-hidden="true" style={{height: fixedDimsM26.height + 'px'}}/>}
+      <div ref={headerRefM26} onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s', ...headerFixedStyle}}>
         <div style={{flex:1, minWidth:0}}>
           <div style={{display:'flex', alignItems:'center', gap:8}}>
             {customHeader ? customHeader : (
