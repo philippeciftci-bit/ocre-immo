@@ -20265,7 +20265,7 @@ function FormView(props) {
             Sections II/III/IV conservent leur wrapper externe inchange. */}
         <Stage title={(STAGES[activeProfil] || [])[0] || 'I. Identité'}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
-               status={stageStatus[0].status} summary={stageStatus[0].summary} sticky={!expanded[0]} summaryAlwaysVisible={true}
+               status={stageStatus[0].status} summary={stageStatus[0].summary} sticky={true} summaryAlwaysVisible={true}
                dataStageAnchor="0"
                hideChevron={hasHeadName}>
           {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
