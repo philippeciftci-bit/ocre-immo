@@ -7547,63 +7547,146 @@ function FraisAgenceForfaitPopup({value, onApply}) {
   );
 }
 
-// Bloc Frais notaire 2 cols : popup taux référence pays + résultats EUR/Dhs.
+// M/2026/05/03/5 — A3 : helpers de mappage mode legacy ('pourcent'|'forfait') ↔ UI ('pct'|'forfait').
+// Déclarés ici (avant FraisNotaireBlock2Col et M53FraisAgenceMulti) pour mitiger un risque TDZ
+// signalé par pair-review A3 — les `const` n'ont pas de hoisting, donc éviter qu'un futur appel
+// synchrone top-level avant la fin du <script> les voie undefined.
+const _toUiMode = (m) => m === 'pourcent' ? 'pct' : 'forfait';
+const _toDbMode = (m) => m === 'pct' ? 'pourcent' : 'forfait';
+
+// M/2026/05/03/5 — A3 wirage Frais notaire : utilise S3ActeurRow themeColor='green' +
+// S3PopinMode + S3PopinQuiPaie + S3SplitTotal. Multi-notaires (state local, conforme spec).
+// Persiste un nouveau champ JSON `d.frais_notaire_acteurs[]` (parallèle à `frais_agence_acteurs[]`,
+// pas de migration schéma DB). Maintient `frais_notaire_pct` & `frais_notaire_dossier` synchronisés
+// via `syncLegacy` pour ne pas casser la synthèse globale (lignes 8000+ inchangées) :
+// pct_effectif = sumPct + (baseAmount > 0 ? sumForfait/baseAmount*100 : 0)  → frais_notaire_pct
+// frais_notaire_dossier = 0 (les forfaits sont normalisés dans pct_effectif pour la synthèse).
 function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceUpdate}) {
-  const cur = getCurrencyV5State();
-  const defaultPct = fraisNotaireDefault(paysBien, neufAncien) * 100;
-  const pct = d.frais_notaire_pct != null ? Number(d.frais_notaire_pct) : defaultPct;
-  const dossier = Number(d.frais_notaire_dossier) || 0;
-  const base = Number(baseAmount) || 0;
-  const estLeft = base > 0 ? Math.round(base * pct / 100) + dossier : 0;
-  const estRight = estLeft * (Number(cur.rate) || 1);
-  const [open, setOpen] = React.useState(false);
-  const [pctLocal, setPctLocal] = React.useState(String(pct));
+  const cur = getCurrencyV5State() || {left:'EUR', right:'MAD', rate:11};
+  const acteurs = Array.isArray(d.frais_notaire_acteurs) ? d.frais_notaire_acteurs : [];
+  // Notaire = transaction vente uniquement (pas de notaire en location).
+  const transactionType = 'vente';
+  const defaultPayePar = 'A'; // standard MA : acheteur paie les frais notaire.
+  const [payeParMap, setPayeParMap] = React.useState({});
   const refTexte = paysBien === 'FR' ? (neufAncien === 'neuf' ? 'FR neuf 2,5–3 %' : 'FR ancien 7–8 %')
     : paysBien === 'MA' ? 'MA 4–6 %'
     : paysBien === 'ES' ? (neufAncien === 'neuf' ? 'ES neuf 12,5 %' : 'ES ancien 11–12,5 %')
     : 'Référence pays variable';
-  const apply = () => {
-    const n = parseNumV5(pctLocal);
-    set('frais_notaire_pct', n, {commit: true});
-    setOpen(false);
-  };
+
+  // Migration au mount : si frais_notaire_acteurs vide, init depuis legacy frais_notaire_pct/dossier.
+  React.useEffect(() => {
+    if (acteurs.length > 0) return;
+    const legacyPctRaw = d.frais_notaire_pct != null ? Number(d.frais_notaire_pct) : (fraisNotaireDefault(paysBien, neufAncien) * 100);
+    const legacyDossier = Number(d.frais_notaire_dossier) || 0;
+    const initial = [];
+    if (legacyPctRaw > 0) initial.push({label: 'Notaire principal', mode: 'pct', valeur: legacyPctRaw});
+    if (legacyDossier > 0) initial.push({label: 'Frais dossier', mode: 'forfait', valeur: legacyDossier});
+    if (initial.length === 0) initial.push({label: 'Notaire principal', mode: 'pct', valeur: fraisNotaireDefault(paysBien, neufAncien) * 100});
+    set('frais_notaire_acteurs', initial, {fromUser: false});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const calcLeft = (a) => a.mode === 'forfait' ? (Number(a.valeur) || 0) : Math.round((Number(baseAmount) || 0) * (Number(a.valeur) || 0) / 100);
+  const totalLeft = acteurs.reduce((s, a) => s + calcLeft(a), 0);
+  const totalRight = totalLeft * (Number(cur.rate) || 1);
+
+  // Sync legacy pour ne pas casser la synthèse globale (lignes 8000+ inchangées) :
+  // pct_effectif = sumPct + (forfaits normalisés sur baseAmount) → frais_notaire_pct.
+  // dossier mis à 0 (les forfaits sont déjà comptés dans pct_effectif).
+  function syncLegacy(nextActeurs, ba) {
+    const sumPct = nextActeurs.filter(a => a.mode === 'pct').reduce((s, a) => s + (Number(a.valeur) || 0), 0);
+    const sumForfait = nextActeurs.filter(a => a.mode === 'forfait').reduce((s, a) => s + (Number(a.valeur) || 0), 0);
+    const baseN = Number(ba) || 0;
+    const pctEffectif = sumPct + (baseN > 0 ? (sumForfait / baseN * 100) : 0);
+    set('frais_notaire_pct', pctEffectif, {commit: false});
+    set('frais_notaire_dossier', 0, {commit: false});
+  }
+
+  // Resync quand baseAmount change (switch profil Vendeur ↔ Acheteur).
+  React.useEffect(() => {
+    if (acteurs.length === 0) return;
+    syncLegacy(acteurs, baseAmount);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseAmount]);
+
+  function updateActeur(idx, patch) {
+    const next = acteurs.map((a, i) => i === idx ? {...a, ...patch} : a);
+    set('frais_notaire_acteurs', next, {commit: true});
+    syncLegacy(next, baseAmount);
+  }
+  function removeActeur(idx) {
+    const next = acteurs.filter((_, i) => i !== idx);
+    set('frais_notaire_acteurs', next, {commit: true});
+    syncLegacy(next, baseAmount);
+    setPayeParMap(prev => {
+      const out = {};
+      Object.keys(prev).forEach(k => {
+        const i = Number(k);
+        if (i < idx) out[i] = prev[k];
+        else if (i > idx) out[i - 1] = prev[k];
+      });
+      return out;
+    });
+  }
+  function addActeur() {
+    if (acteurs.length >= 4) return;
+    const next = [...acteurs, {label: 'Notaire', mode: 'pct', valeur: 0}];
+    set('frais_notaire_acteurs', next, {commit: true});
+    syncLegacy(next, baseAmount);
+  }
+
+  // Calcul splitTotals par camp (V/A/V+A en vente — notaire ne sert pas en location en pratique).
+  const splitTotals = {vendeur: 0, acheteur: 0, bailleur: 0, locataire: 0};
+  acteurs.forEach((a, idx) => {
+    const lf = calcLeft(a);
+    const pp = payeParMap[idx] || defaultPayePar;
+    if (pp === 'V') splitTotals.vendeur += lf;
+    else if (pp === 'A') splitTotals.acheteur += lf;
+    else if (pp === 'V+A') { splitTotals.vendeur += lf / 2; splitTotals.acheteur += lf / 2; }
+    else if (pp === 'B') splitTotals.bailleur += lf;
+    else if (pp === 'L') splitTotals.locataire += lf;
+    else if (pp === 'B+L') { splitTotals.bailleur += lf / 2; splitTotals.locataire += lf / 2; }
+  });
+
   return (
     <S3CardRound>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-        <span style={{fontSize:11, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4}}>Frais notaire</span>
-        <div onClick={() => { setPctLocal(String(pct)); setOpen(true); }} style={{padding:'4px 10px', borderRadius:12, border:'1.5px solid #C9B79A', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, color:'#5C3B1E', fontFamily:'inherit'}}>
-          {String(pct).replace('.', ',')} % ✎
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid #2D6B3F40'}}>
+        <span style={{fontSize:11, fontWeight:700, color:'#2D6B3F', textTransform:'uppercase', letterSpacing:.4}}>Frais notaire — total global</span>
+        <div style={{display:'flex', gap:6, alignItems:'center'}}>
+          <span style={{fontSize:13, fontWeight:800, color:'#2D6B3F'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
+          <span style={{fontSize:11, color:'#2D6B3F'}}>·</span>
+          <span style={{fontSize:13, fontWeight:800, color:'#2D6B3F'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
         </div>
       </div>
-      <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:6}}>
-        <div style={{padding:'8px 10px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
-          <span style={{fontSize:14, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
-          <span style={{flex:1, fontSize:13, fontWeight:700, color:'#2A2018', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(estLeft) || '—'}</span>
-          <span style={{fontSize:11, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left]}</span>
-        </div>
-        <div style={{padding:'8px 10px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
-          <span style={{fontSize:14, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
-          <span style={{flex:1, fontSize:13, fontWeight:700, color:'#2A2018', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(estRight) || '—'}</span>
-          <span style={{fontSize:11, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right]}</span>
-        </div>
-      </div>
-      <div style={{marginTop:6, display:'grid', gridTemplateColumns:'minmax(0,1fr)', gap:4}}>
-        <V55Field label="Frais dossier (optionnel)" type="number" value={d.frais_notaire_dossier} onChange={v => set('frais_notaire_dossier', v)} suffix={CURRENCY_SYMBOL_V5[cur.left]} style={{marginBottom:0}}/>
-      </div>
-      <div style={{fontSize:10, color:'#8B7F6E', fontStyle:'italic', marginTop:4}}>{refTexte} · à charge acheteur</div>
-      {open && (
-        <div onClick={() => setOpen(false)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,18,8,0.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
-          <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:14, padding:18, maxWidth:340, width:'100%', boxShadow:'0 8px 24px rgba(0,0,0,0.2)', boxSizing:'border-box'}}>
-            <h3 style={{margin:'0 0 8px', fontSize:14, fontWeight:700, color:'#2A2018', fontFamily:'Cormorant Garamond,serif'}}>Taux frais notaire</h3>
-            <div style={{fontSize:11, color:'#8B7F6E', marginBottom:10, fontStyle:'italic'}}>{refTexte}</div>
-            <input type="number" step="0.1" value={pctLocal} onChange={e => setPctLocal(e.target.value)} style={{width:'100%', padding:'8px 10px', border:'1.5px solid #D6C7AC', borderRadius:6, fontSize:14, fontWeight:700, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box', color:'#2A2018', marginBottom:12}}/>
-            <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
-              <button type="button" onClick={() => setOpen(false)} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
-              <button type="button" onClick={apply} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'#8B5E3C', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
-            </div>
-          </div>
+      {acteurs.length === 0 && (
+        <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', padding:'8px 0'}}>Aucun notaire. Tap + Ajouter un notaire pour commencer.</div>
+      )}
+      {acteurs.map((a, idx) => (
+        <S3ActeurRow
+          key={idx}
+          name={a.label}
+          mode={a.mode === 'forfait' ? 'forfait' : 'pct'}
+          value={a.valeur}
+          payePar={payeParMap[idx] || defaultPayePar}
+          themeColor="green"
+          baseAmount={baseAmount}
+          transactionType={transactionType}
+          onNameChange={(n) => updateActeur(idx, {label: n})}
+          onModeChange={(uiMode, v) => updateActeur(idx, {mode: uiMode === 'pct' ? 'pct' : 'forfait', valeur: v})}
+          onPayeParChange={(pp) => setPayeParMap(prev => ({...prev, [idx]: pp}))}
+          onRemove={acteurs.length > 1 ? () => removeActeur(idx) : null}
+        />
+      ))}
+      {acteurs.length > 0 && (
+        <div style={{marginTop:6}}>
+          <div style={{fontSize:9.5, fontWeight:700, color:'#2D6B3F', textTransform:'uppercase', letterSpacing:.4, marginBottom:3}}>Répartition par camp</div>
+          <S3SplitTotal totals={splitTotals} transactionType={transactionType}/>
         </div>
       )}
+      {acteurs.length < 4 && (
+        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:8, marginTop:8, background:'#fff', border:'1.5px dashed #2D6B3F', borderRadius:8, color:'#2D6B3F', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un notaire ({acteurs.length}/4)</button>
+      )}
+      <div style={{fontSize:10, color:'#8B7F6E', fontStyle:'italic', marginTop:6}}>{refTexte} · à charge acheteur par défaut</div>
     </S3CardRound>
   );
 }
@@ -7612,11 +7695,7 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
 // S3PopinMode + S3PopinQuiPaie + S3SplitTotal (livrés A1). Plus de
 // FraisAgencePillDropdown / FraisAgenceForfaitPopup / toggle %/F custom (legacy
 // laissé en place sans appel — cleanup mort dans mission dédiée).
-// Le mappage mode legacy ('pourcent' ↔ 'forfait') / UI ('pct' ↔ 'forfait') passe par
-// 2 helpers centralisés (anti-régression DB).
-const _toUiMode = (m) => m === 'pourcent' ? 'pct' : 'forfait';
-const _toDbMode = (m) => m === 'pct' ? 'pourcent' : 'forfait';
-
+// M/2026/05/03/5 — A3 : helpers _toUiMode/_toDbMode déplacés en amont (avant FraisNotaireBlock2Col).
 function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
   const cur = getCurrencyV5State() || {left:'EUR', right:'MAD', rate:11};
   const acteurs = Array.isArray(d.frais_agence_acteurs) ? d.frais_agence_acteurs : [];
