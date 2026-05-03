@@ -7771,8 +7771,10 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const _totalA = _bMax + _liqA + _notaireA;
     return (
       <>
-        {/* M/2026/04/30/49 — Sous-bloc Recherche bien en tete. */}
-        <RechercheBienBloc d={d} set={set}/>
+        {/* M/2026/04/30/49 — Sous-bloc Recherche bien en tete.
+            M/2026/05/03/3 — Acheteur deplace en Section II (rôle S2 Le bien cible).
+            Investisseur conserve le bloc en S3 (mission scope). */}
+        {activeProfil === 'Investisseur' && <RechercheBienBloc d={d} set={set}/>}
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills + suppression DEVISE DOSSIER. */}
         <CurrencyBar3Pills forceUpdate={forceUpdate}/>
         <V55Bloc title="Prix" theme="prix">
@@ -20217,6 +20219,8 @@ function FormView(props) {
         ) : (
           activeProfil !== 'Curieux' && <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
                  status={stageStatus[1].status} summary={stageStatus[1].summary}>
+            {/* M/2026/05/03/3 — RechercheBienBloc deplace S3 Acheteur -> S2 Acheteur (semantique : recherche bien = rôle S2 Le bien cible). */}
+            {activeProfil === 'Acheteur' && <RechercheBienBloc d={d} set={set}/>}
             <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
               d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
               showToast={showToast}/>
