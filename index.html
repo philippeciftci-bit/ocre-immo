@@ -20253,12 +20253,39 @@ function FormView(props) {
           const _isPrincipalBar = ['Acheteur','Vendeur','Bailleur','Locataire'].includes(activeProfil);
           const _profilColorBar = _isPrincipalBar ? (PROFILS[activeProfil] || '#8B5E3C') : '#A89882';
           const _profilLabelBar = _isPrincipalBar ? (PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()) : 'BROUILLON';
+          // M/2026/05/03/31 — emails + calendrier ajoutes dans le bloc identite.
+          const _emailsBar = Array.isArray(d.emails) && d.emails.length > 0 ? d.emails : (d.email ? [{valeur: d.email}] : []);
+          const _emailBar = (_emailsBar[0] && _emailsBar[0].valeur) || '';
+          const _iconBtnStyle = {width:28, height:28, borderRadius:'50%', border:'1px solid #C9B79A', background:'#FDF8F0', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, color:'#5C3B1E', flexShrink:0, textDecoration:'none'};
           return (
-            <div style={{display:'flex', alignItems:'center', gap:8, padding:'4px 10px', background:'#FFF8EB', border:'1px solid #E8DDC9', borderRadius:10, minWidth:0}}>
+            <div style={{display:'flex', alignItems:'center', gap:6, padding:'4px 10px', background:'#FFF8EB', border:'1px solid #E8DDC9', borderRadius:10, minWidth:0}}>
               <span style={{flex:1, minWidth:0, fontSize:13.5, fontWeight:700, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontFamily:'inherit'}}>
                 {_displayNameBar}
               </span>
               <PhonePillCollapsible tel={_telBar}/>
+              {_emailBar && (
+                <a href={'mailto:' + _emailBar}
+                  onClick={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}
+                  aria-label="Envoyer un email" title="Envoyer un email"
+                  style={_iconBtnStyle}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                </a>
+              )}
+              <button type="button"
+                onClick={(e) => { e.stopPropagation(); openOnly(3); }}
+                aria-label="Ouvrir Section IV - Activite et documents"
+                title="Activite et documents"
+                style={_iconBtnStyle}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+              </button>
               <span style={{padding:'2px 8px', borderRadius:10, background:_profilColorBar, color:'#fff', fontSize:9.5, fontWeight:700, letterSpacing:0.4, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit'}}>
                 {_profilLabelBar}
               </span>
