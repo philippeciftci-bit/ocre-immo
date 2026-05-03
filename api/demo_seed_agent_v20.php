@@ -49,7 +49,7 @@ $stmt->execute([
     '2027-12-31',
     'AXA Assurances Maroc',
     'RCP-2024-78451',
-    '500 000 €',
+    '500 000 EUR',
     $PID,
 ]);
 

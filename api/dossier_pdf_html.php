@@ -171,30 +171,15 @@ if (!$titreBien) {
 $ville = trim(($bien['ville'] ?? '') . (!empty($bien['quartier']) ? ' — ' . $bien['quartier'] : ''));
 
 $prix = $data['prix_affiche'] ?? $data['prix'] ?? null;
-// M/2026/04/30/22 — fallback decoratif : '$' au lieu de '€' (lisibilite + universalite).
-// La valeur metier reste celle de data.devise si definie ($ MAD £ etc.).
-$devise = $data['devise'] ?? '$';
-// M/2026/05/04/6 — Fix glyph € illisible PDF : Option A spec userMemories.
-// Le glyphe Unicode € s'affiche mal dans le rendu PDF (font fallback browser/Cormorant
-// Garamond manque le sidebearing correct). Solution : remplacer € par un SVG inline
-// quand la devise est €. Autres devises ($, MAD, £, AED, MAD) restent en texte.
-function _ocre_devise_html($d) {
-    if ($d === '€' || $d === 'EUR') {
-        // SVG inline (viewBox 24x24, currentColor, stroke 2). Aligne baseline via
-        // vertical-align translate dans le CSS .devise-symbol parent.
-        // M/2026/05/04/10 — elargir : 0.95em -> 1.15em + padding horizontal pour eviter tronque.
-        return '<svg class="euro-glyph" viewBox="0 0 24 24" width="1.15em" height="1.15em" '
-             . 'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
-             . 'stroke-linejoin="round" style="display:inline-block;vertical-align:-0.16em;'
-             . 'overflow:visible;flex-shrink:0;margin:0 2px">'
-             . '<path d="M18 8a8 8 0 1 0 0 8"/>'
-             . '<line x1="3" y1="10" x2="13" y2="10"/>'
-             . '<line x1="3" y1="14" x2="13" y2="14"/>'
-             . '</svg>';
-    }
-    // Autres devises : texte simple HTMLescape (MAD, $, £, AED, Dhs, CHF, USD, GBP).
-    return htmlspecialchars((string)$d, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-}
+// M/2026/05/04/11 — devise = code ISO 3 lettres texte ('EUR'/'MAD'/'USD'/'GBP'/'AED'/'CHF').
+// Glyph SVG/Unicode supprime franchement. Format : "{montant} {ISO}".
+// Mapping legacy : si data['devise'] vaut un glyph, normaliser en code ISO.
+$devise = $data['devise'] ?? 'EUR';
+if ($devise === 'EUR')  { $devise = 'EUR'; }
+if ($devise === 'MAD' || $devise === 'د.م.') { $devise = 'MAD'; }
+if ($devise === '$')  { $devise = 'USD'; }
+if ($devise === '£')  { $devise = 'GBP'; }
+if ($devise === 'د.إ') { $devise = 'AED'; }
 $honoraires = $data['honoraires_inclus'] ?? true;
 // M/2026/04/29/38 — toggle Prix / Sur demande embedded URL ?mode=price|demand.
 $shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
@@ -413,30 +398,6 @@ header('Content-Type: text/html; charset=utf-8');
   .cover-foot .price { text-align: left; }
   .cover-foot .price .amount { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; overflow: visible; white-space: nowrap; padding-right: 4px; }
   .cover-foot .price .amount b { font-weight: 700; }
-  /* M/2026/04/30/22 — visibilite complete du symbole devise : pas de clipping.
-     M/2026/04/30/52 — font-family fallback DM Sans force (Cormorant Garamond manque souvent
-     le glyphe € sur Safari iOS / sidebearing negatif).
-     M/2026/04/30/57 — fix universel : padding-right 6px + classes parents protegees
-     (.amount, .price-final, .cover-foot, .price-display, .budget-display) overflow visible. */
-  /* M/2026/05/04/10 — elargir le span devise (padding 6/3 -> 12/6) + font fallback Helvetica
-     prioritaire pour le glyphe EUR (cas degrade si helper SVG indisponible). */
-  .devise-symbol,
-  .currency-glyph,
-  [data-currency-glyph] {
-    display: inline-block !important;
-    padding: 0 12px 0 6px !important;
-    overflow: visible !important;
-    white-space: nowrap;
-    font-family: 'Helvetica Neue', Helvetica, Arial, 'DM Sans', system-ui, -apple-system, sans-serif !important;
-    font-weight: inherit;
-    letter-spacing: 0 !important;
-    vertical-align: baseline;
-    font-feature-settings: 'kern' 1;
-  }
-  .amount, .price-final, .cover-foot, .price-display, .budget-display, .price-button, .price-badge {
-    overflow: visible !important;
-    padding-right: 6px;
-  }
   .cover-foot .price .hon { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
   .cover-foot .center-mark { text-align: center; font-family: 'Cormorant Garamond', serif; font-size: 13px; letter-spacing: 4px; color: var(--ocre); }
   .cover-foot .center-mark .sub { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
@@ -606,7 +567,7 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="cover-foot">
       <div class="price">
         <?php if ($prix && !$prixDemand): ?>
-          <div class="amount"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <span class="devise-symbol"><?= _ocre_devise_html($devise) ?></span></div>
+          <div class="amount"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
           <div class="amount" style="font-size:18px; color: var(--muted); font-style: italic;">Sur demande</div>
@@ -787,7 +748,7 @@ header('Content-Type: text/html; charset=utf-8');
       <div class="col" style="text-align: right;">
         <h5>Prix</h5>
         <?php if ($prix && !$prixDemand): ?>
-          <div class="price-final"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <span class="devise-symbol"><?= _ocre_devise_html($devise) ?></span></div>
+          <div class="price-final"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
           <div class="price-final" style="font-size: 18px; color: var(--muted); font-style: italic;">Sur demande</div>
