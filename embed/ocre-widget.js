@@ -43,7 +43,7 @@
       const title = item.titre || '';
       const ville = item.ville || '';
       const surface = item.surface ? `${item.surface} m²` : '';
-      const prix = item.prix ? `${Number(item.prix).toLocaleString('fr-FR')} €` : '';
+      const prix = item.prix ? `${Number(item.prix).toLocaleString('fr-FR')} $` : '';
       return `<div class="card" data-id="${item.id}">
         <img src="${img}" alt="">
         <div class="card-body">

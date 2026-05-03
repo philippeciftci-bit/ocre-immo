@@ -177,11 +177,11 @@ function heuristicExtract($og, $jld, $html) {
     if (!$devise && !empty($og['price:currency'])) { $devise = $og['price:currency']; }
     if (!$prix) {
         $txt = strip_tags($html);
-        if (preg_match('/(\d[\d\s\.\,]{3,})\s*(€|EUR|euros?|DH|MAD|dirhams?)/iu', $txt, $pm)) {
+        if (preg_match('/(\d[\d\s\.\,]{3,})\s*($|EUR|euros?|DH|MAD|dirhams?)/iu', $txt, $pm)) {
             $raw = preg_replace('/[^\d]/', '', $pm[1]);
             if ($raw) $prix = (float)$raw;
             $cur = strtolower($pm[2]);
-            if (str_contains($cur, 'eur') || str_contains($cur, '€')) $devise = 'EUR';
+            if (str_contains($cur, 'eur') || str_contains($cur, '$')) $devise = 'EUR';
             else if (str_contains($cur, 'dh') || str_contains($cur, 'mad') || str_contains($cur, 'dirh')) $devise = 'MAD';
         }
     }
