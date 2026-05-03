@@ -182,10 +182,11 @@ function _ocre_devise_html($d) {
     if ($d === '€' || $d === 'EUR') {
         // SVG inline (viewBox 24x24, currentColor, stroke 2). Aligne baseline via
         // vertical-align translate dans le CSS .devise-symbol parent.
-        return '<svg class="euro-glyph" viewBox="0 0 24 24" width="0.95em" height="0.95em" '
+        // M/2026/05/04/10 — elargir : 0.95em -> 1.15em + padding horizontal pour eviter tronque.
+        return '<svg class="euro-glyph" viewBox="0 0 24 24" width="1.15em" height="1.15em" '
              . 'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
-             . 'stroke-linejoin="round" style="display:inline-block;vertical-align:-0.12em;'
-             . 'overflow:visible;flex-shrink:0">'
+             . 'stroke-linejoin="round" style="display:inline-block;vertical-align:-0.16em;'
+             . 'overflow:visible;flex-shrink:0;margin:0 2px">'
              . '<path d="M18 8a8 8 0 1 0 0 8"/>'
              . '<line x1="3" y1="10" x2="13" y2="10"/>'
              . '<line x1="3" y1="14" x2="13" y2="14"/>'
@@ -417,14 +418,16 @@ header('Content-Type: text/html; charset=utf-8');
      le glyphe € sur Safari iOS / sidebearing negatif).
      M/2026/04/30/57 — fix universel : padding-right 6px + classes parents protegees
      (.amount, .price-final, .cover-foot, .price-display, .budget-display) overflow visible. */
+  /* M/2026/05/04/10 — elargir le span devise (padding 6/3 -> 12/6) + font fallback Helvetica
+     prioritaire pour le glyphe EUR (cas degrade si helper SVG indisponible). */
   .devise-symbol,
   .currency-glyph,
   [data-currency-glyph] {
     display: inline-block !important;
-    padding: 0 6px 0 3px !important;
+    padding: 0 12px 0 6px !important;
     overflow: visible !important;
     white-space: nowrap;
-    font-family: 'DM Sans', 'Helvetica Neue', system-ui, -apple-system, sans-serif !important;
+    font-family: 'Helvetica Neue', Helvetica, Arial, 'DM Sans', system-ui, -apple-system, sans-serif !important;
     font-weight: inherit;
     letter-spacing: 0 !important;
     vertical-align: baseline;
