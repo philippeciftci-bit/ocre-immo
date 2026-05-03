@@ -14581,9 +14581,7 @@ function PdfBottomBar({onBack, showPrice, setShowPrice, showAddress, setShowAddr
       </button>
       <div style={{flex:1, display:'flex', justifyContent:'center', gap:6}}>
         <ToggleBtn active={showPrice} onClick={() => setShowPrice(v => !v)} title={showPrice ? 'Masquer le prix' : 'Afficher le prix'}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 7c-3-2-9-2-12 0"/><path d="M6 12h11"/><path d="M6 16h11"/><path d="M18 21c-3 2-9 2-12 0"/>
-          </svg>
+          <span style={{fontSize:14, fontWeight:700, letterSpacing:.5, fontFamily:"'DM Sans', Helvetica, Arial, sans-serif", color:'inherit'}}>EUR</span>
         </ToggleBtn>
         <ToggleBtn active={showAddress} onClick={() => setShowAddress(v => !v)} title={showAddress ? "Masquer l'adresse" : "Afficher l'adresse"}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
