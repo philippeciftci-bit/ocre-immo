@@ -28,7 +28,7 @@ Si la transcription contient PLUSIEURS intentions distinctes (ex: rencontre nouv
 - additional_actions = [{intent: creer_rdv, data: {...}}]
 Le frontend chaînera automatiquement (création dossier → propagation client_id → création RDV lié).
 
-Exemple : "J'ai rencontré Marc, budget 250k€, achète un Riad à rénover Médina, organiser un RDV demain"
+Exemple : "J'ai rencontré Marc, budget 250k$, achète un Riad à rénover Médina, organiser un RDV demain"
 → intent=creer_dossier, data={prenom:"Marc", profil:"Acheteur", types_bien:["Riad"], budget_max:250000, devise:"EUR", quartier_bien:"Médina", notes_libres:"Riad à rénover"}
 → additional_actions=[{intent:"creer_rdv", data:{client_ref:"Marc", type:"rdv", titre:"RDV avec Marc", when_relatif:"demain"}}]
 
@@ -86,7 +86,7 @@ Règles :
 - Villes MA (Marrakech Casablanca Rabat Tanger Agadir Fès Essaouira) → pays_bien=MA
 - Villes FR (Paris Lyon Nantes Bordeaux Marseille Nice Toulouse) → pays_bien=FR
 - '500k'/'500 000'/'500.000' → 500000 (nombre pur)
-- 'euros'/'€' → devise=EUR ; 'dirhams'/'MAD'/'DH' → devise=MAD
+- 'euros'/'$' → devise=EUR ; 'dirhams'/'MAD'/'DH' → devise=MAD
 - Quartiers Marrakech (Palmeraie Hivernage Gueliz Médina Prestigia Ourika Targa Annakhil) → quartier_bien
 - 'villa'/'maison' → types_bien=[Villa]/[Maison] ; 'riad'→[Riad] ; 'appartement'→[Appartement] ; 'terrain'→[Terrain]
 
@@ -315,7 +315,7 @@ function heuristicExtract($transcript) {
         if ($mult === 'k') $n *= 1000;
         else if ($mult === 'm') $n *= 1000000;
         $out['budget_max'] = (int)$n;
-    } elseif (preg_match('/(\d[\d\s\.]{3,}\d)\s*(euros?|€|dirhams?|MAD|DH|DHs)/iu', $t, $mm)) {
+    } elseif (preg_match('/(\d[\d\s\.]{3,}\d)\s*(euros?|$|dirhams?|MAD|DH|DHs)/iu', $t, $mm)) {
         $raw = preg_replace('/[^\d]/', '', $mm[1]);
         if ($raw) $out['budget_max'] = (int)$raw;
     } elseif (preg_match('/\bbudget\s+(\d[\d\s\.]{2,}\d)/iu', $t, $mm)) {
@@ -323,7 +323,7 @@ function heuristicExtract($transcript) {
         if ($raw) $out['budget_max'] = (int)$raw;
     }
     // Devise
-    if (preg_match('/\b(euros?|€|EUR)\b/iu', $t)) $out['devise'] = 'EUR';
+    if (preg_match('/\b(euros?|$|EUR)\b/iu', $t)) $out['devise'] = 'EUR';
     elseif (preg_match('/\b(dirhams?|MAD|DH|DHs)\b/iu', $t)) $out['devise'] = 'MAD';
 
     // Tel — V17.15 : normalisation FR/MA en E.164.
