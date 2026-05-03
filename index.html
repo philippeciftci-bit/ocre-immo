@@ -20253,7 +20253,7 @@ function FormView(props) {
 
       {/* V28 — Header dossier : pills v27 supprimées, déplacées dans Section I ligne nom. */}
 
-      <div style={{flex:1, minHeight:0, overflowY:'auto', padding:12}}>
+      <div style={{flex:1, minHeight:0, WebkitOverflowScrolling:'touch', overflowY:'auto', padding:12}}>
         {/* M/2026/05/01/12 — Section I Identite TOUJOURS rendue (tronc commun pour tous
             les profils : prenom / nom / tel / email / adresse). Saisie ici avant choix
             profil = trigger commit DB avec projet=null (coherent draft-on-input M90).
