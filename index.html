@@ -19468,16 +19468,25 @@ function FormView(props) {
     });
   }
   function requestProfilSwitch(targetProfil) {
+    // M/2026/05/04/2 — Mission 39.2 : toast visible a l'ecran (Safari Web Inspector pas dispo iPad).
+    // Marker 'M392 v1' permet de confirmer que le bundle servi contient bien cette version.
     const cur = (latestRef && latestRef.current) || d;
     const _detected = _PRIX_FIELDS_M39.filter(k => {
       const v = cur[k];
       return v != null && v !== '' && Number(v) > 0;
     });
-    // Log temporaire pour debug Philippe (Safari Web Inspector). A retirer dans une mission suivante.
-    try { console.log('profil_check', { profil_courant: activeProfil, profil_demande: targetProfil, prix_detectes: _detected }); } catch (e) {}
-    if (targetProfil === activeProfil) { setProfilPickerOpen(false); return; }
+    // Diff diag : latestRef vs d direct. Si different -> closure stale persistante.
+    const _stale = _PRIX_FIELDS_M39.some(k => (cur[k] || 0) !== (d[k] || 0));
+    // Log console.log conserve (M39.1) en plus du toast.
+    try { console.log('profil_check', { profil_courant: activeProfil, profil_demande: targetProfil, prix_detectes: _detected, stale: _stale }); } catch (e) {}
+    if (targetProfil === activeProfil) {
+      showToast && showToast('M392 v1 | profil_check: ' + activeProfil + ' (meme profil) -> close');
+      setProfilPickerOpen(false);
+      return;
+    }
     if (_detected.length === 0) {
       // Pas de prix saisi -> changement direct sans modal. Trigger auto-save brouillon.
+      showToast && showToast('M392 v1 | profil_check: ' + (activeProfil || 'none') + ' -> ' + targetProfil + ' | prix=0 | decision=changement direct');
       setActiveProfil(targetProfil);
       setProfilPickerOpen(false);
       // markBlurCommit + setD via _touch -> useEffect M103 re-run sur activeProfil change + userBlurredRef true -> save scheduled.
@@ -19485,6 +19494,7 @@ function FormView(props) {
       return;
     }
     // Prix saisi -> demander confirmation modal.
+    showToast && showToast('M392 v1 | profil_check: ' + (activeProfil || 'none') + ' -> ' + targetProfil + ' | prix=' + _detected.length + ' (' + _detected.join(',') + ')' + (_stale ? ' [STALE]' : '') + ' | decision=modal devrait s ouvrir');
     setConfirmProfilSwitch(targetProfil);
     setProfilPickerOpen(false);
   }
