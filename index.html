@@ -20377,10 +20377,28 @@ function FormView(props) {
                   clients={clients}
                   currentEditingId={editing && editing.id}
                   onPick={(c) => {
-                    F_AUTOCOMPLETE_COMMON_FIELDS.forEach(k => {
-                      if (c[k] != null) set(k, c[k], {commit: true});
+                    // M/2026/05/03/10 — G2 fix prefill autocomplete F.
+                    // Root cause probable : 21 appels set() sequentiels declenchaient des race
+                    // conditions (markUserAction + multiples setD batch + auto-save M103).
+                    // Fix : single setD batch + commit explicite via _touch + parsing defensif
+                    // tels/emails si stockes en string JSON dans la DB.
+                    const parseMaybeJson = (v) => {
+                      if (typeof v !== 'string') return v;
+                      try { const p = JSON.parse(v); return Array.isArray(p) ? p : v; }
+                      catch (e) { return v; }
+                    };
+                    setD(prev => {
+                      const next = {...prev};
+                      F_AUTOCOMPLETE_COMMON_FIELDS.forEach(k => {
+                        if (c[k] != null && c[k] !== '') {
+                          next[k] = (k === 'tels' || k === 'emails') ? parseMaybeJson(c[k]) : c[k];
+                        }
+                      });
+                      return next;
                     });
                     if (c.profil_type) setProfilType(c.profil_type);
+                    // Force commit DB via _touch (pattern existant commitAndNext).
+                    set('_touch', Date.now(), {commit: true});
                     showToast && showToast('Pré-rempli depuis ' + (c.societe_nom || ((c.prenom || '') + ' ' + (c.nom || '')).trim() || 'client existant'));
                   }}/>
               )}
@@ -20457,10 +20475,28 @@ function FormView(props) {
                   clients={clients}
                   currentEditingId={editing && editing.id}
                   onPick={(c) => {
-                    F_AUTOCOMPLETE_COMMON_FIELDS.forEach(k => {
-                      if (c[k] != null) set(k, c[k], {commit: true});
+                    // M/2026/05/03/10 — G2 fix prefill autocomplete F.
+                    // Root cause probable : 21 appels set() sequentiels declenchaient des race
+                    // conditions (markUserAction + multiples setD batch + auto-save M103).
+                    // Fix : single setD batch + commit explicite via _touch + parsing defensif
+                    // tels/emails si stockes en string JSON dans la DB.
+                    const parseMaybeJson = (v) => {
+                      if (typeof v !== 'string') return v;
+                      try { const p = JSON.parse(v); return Array.isArray(p) ? p : v; }
+                      catch (e) { return v; }
+                    };
+                    setD(prev => {
+                      const next = {...prev};
+                      F_AUTOCOMPLETE_COMMON_FIELDS.forEach(k => {
+                        if (c[k] != null && c[k] !== '') {
+                          next[k] = (k === 'tels' || k === 'emails') ? parseMaybeJson(c[k]) : c[k];
+                        }
+                      });
+                      return next;
                     });
                     if (c.profil_type) setProfilType(c.profil_type);
+                    // Force commit DB via _touch (pattern existant commitAndNext).
+                    set('_touch', Date.now(), {commit: true});
                     showToast && showToast('Pré-rempli depuis ' + (c.societe_nom || ((c.prenom || '') + ' ' + (c.nom || '')).trim() || 'client existant'));
                   }}/>
               )}
