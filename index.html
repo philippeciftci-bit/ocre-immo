@@ -19426,8 +19426,10 @@ function FormView(props) {
   // M/2026/05/03/36 — Mission 1A : popup choix profil dans header Section I.
   // M/2026/05/03/37 — Mission 1A.2 : popup en position:fixed (echappe a overflow:hidden du wrapper
   // Stage) + grille 2x2 + tap-exterieur ferme. Position calculee via ref bouton getBoundingClientRect.
+  // M/2026/05/03/39 — Mission 1B : modal rouge avant changement profil + reset champs prix Section III.
   const [profilPickerOpen, setProfilPickerOpen] = useState(false);
   const [profilPickerPos, setProfilPickerPos] = useState({top:0, right:0});
+  const [confirmProfilSwitch, setConfirmProfilSwitch] = useState(null);
   const profilBtnRef = useRef(null);
   const profilPopupRef = useRef(null);
   useEffect(() => {
@@ -19453,6 +19455,42 @@ function FormView(props) {
       });
     }
     setProfilPickerOpen(o => !o);
+  }
+  // M/2026/05/03/39 — Mission 1B : champs prix Section III (tous profils confondus, approche
+  // conservative : effacer TOUS les champs prix au changement profil pour eviter incoherences
+  // de fourchettes entre profils).
+  const _PRIX_FIELDS_M39 = ['budget_min','budget_max','budget_total','prix_affiche','prix_plancher','prix_liquide','loyer_min','loyer_max','loyer_demande','loyer_plancher'];
+  function _hasAnyPriceM39() {
+    return _PRIX_FIELDS_M39.some(k => {
+      const v = d[k];
+      return v != null && v !== '' && Number(v) > 0;
+    });
+  }
+  function requestProfilSwitch(targetProfil) {
+    if (targetProfil === activeProfil) { setProfilPickerOpen(false); return; }
+    if (!_hasAnyPriceM39()) {
+      // Pas de prix saisi -> changement direct sans modal.
+      setActiveProfil(targetProfil);
+      setProfilPickerOpen(false);
+      return;
+    }
+    // Prix saisi -> demander confirmation.
+    setConfirmProfilSwitch(targetProfil);
+    setProfilPickerOpen(false);
+  }
+  function applyProfilSwitchM39() {
+    const target = confirmProfilSwitch;
+    if (!target) return;
+    // Reset prix + change profil en un seul setD batch (anti double-save).
+    setD(prev => {
+      const next = {...prev};
+      _PRIX_FIELDS_M39.forEach(k => { if (next[k] != null) next[k] = null; });
+      return next;
+    });
+    setActiveProfil(target);
+    // Trigger 1 commit consolide via _touch (pattern auto-save M103).
+    set('_touch', Date.now(), {commit: true});
+    setConfirmProfilSwitch(null);
   }
   const [formSearchInput, setFormSearchInput] = useState('');
   const [formSearchQuery, setFormSearchQuery] = useState('');
@@ -20395,6 +20433,41 @@ function FormView(props) {
             les profils : prenom / nom / tel / email / adresse). Saisie ici avant choix
             profil = trigger commit DB avec projet=null (coherent draft-on-input M90).
             Sections II / III / IV : conditionnelles, verrouillees via LockedSections. */}
+        {/* M/2026/05/03/39 — Mission 1B : modal rouge avertissement avant changement profil
+            (uniquement si prix saisis en Section III). Tap Annuler -> close, garde profil
+            precedent + prix. Tap Valider -> reset _PRIX_FIELDS_M39 + setActiveProfil + commit
+            consolide via _touch (auto-save M103, 1 seul save). Backdrop opaque rgba(0,0,0,0.5). */}
+        {confirmProfilSwitch && (
+          <div onClick={() => setConfirmProfilSwitch(null)}
+            style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20, fontFamily:'inherit'}}>
+            <div onClick={e => e.stopPropagation()}
+              style={{background:'#fff', border:'2px solid #C0392B', borderRadius:12, maxWidth:380, width:'100%', padding:18, boxShadow:'0 8px 24px rgba(0,0,0,0.25)'}}>
+              <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
+                <div style={{width:34, height:34, borderRadius:'50%', background:'#FEEBEB', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                </div>
+                <div style={{fontSize:17, fontWeight:700, color:'#2A2018', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>Profil modifié</div>
+              </div>
+              <div style={{fontSize:13, color:'#5A4E3D', lineHeight:1.5, marginBottom:18}}>
+                Les prix et budgets vont être effacés (les fourchettes ne correspondent pas entre profils).
+              </div>
+              <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+                <button type="button" onClick={() => setConfirmProfilSwitch(null)}
+                  style={{padding:'8px 16px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                  Annuler
+                </button>
+                <button type="button" onClick={applyProfilSwitchM39}
+                  style={{padding:'8px 16px', border:'none', borderRadius:8, background:'#C0392B', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                  Valider
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* M/2026/05/03/37 — Popup choix profil 2x2 en position:fixed (echappe au overflow:hidden
             du wrapper Stage). Rendu hors du Stage idx 0 pour ne pas etre tronque. Ancre via
             profilPickerPos calcule au tap (getBoundingClientRect du bouton). Tap exterieur ferme
@@ -20411,7 +20484,7 @@ function FormView(props) {
               const _selected = p.k === activeProfil;
               return (
                 <button type="button" key={p.k}
-                  onClick={(e) => { e.stopPropagation(); setActiveProfil(p.k); setProfilPickerOpen(false); }}
+                  onClick={(e) => { e.stopPropagation(); requestProfilSwitch(p.k); }}
                   style={{padding:'6px 8px', borderRadius:8, border:'1.5px solid '+p.color, background: _selected ? p.color : '#fff', color: _selected ? '#fff' : p.color, fontSize:11, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', textAlign:'center'}}>
                   {p.l}
                 </button>
