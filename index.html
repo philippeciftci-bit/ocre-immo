@@ -19423,8 +19423,37 @@ function FormView(props) {
   // V18.27 — loupe dans le dossier : filtre live les sections matchées, auto-open, highlight.
   // M/2026/05/03/28 — loupe deplacee dans le header (a droite). Tap exterieur ferme la recherche.
   const [formSearchOpen, setFormSearchOpen] = useState(false);
-  // M/2026/05/03/36 — Mission 1A : accordeon choix profil dans header Section I.
+  // M/2026/05/03/36 — Mission 1A : popup choix profil dans header Section I.
+  // M/2026/05/03/37 — Mission 1A.2 : popup en position:fixed (echappe a overflow:hidden du wrapper
+  // Stage) + grille 2x2 + tap-exterieur ferme. Position calculee via ref bouton getBoundingClientRect.
   const [profilPickerOpen, setProfilPickerOpen] = useState(false);
+  const [profilPickerPos, setProfilPickerPos] = useState({top:0, right:0});
+  const profilBtnRef = useRef(null);
+  const profilPopupRef = useRef(null);
+  useEffect(() => {
+    if (!profilPickerOpen) return undefined;
+    function onPointer(e) {
+      if (profilPopupRef.current && profilPopupRef.current.contains(e.target)) return;
+      if (profilBtnRef.current && profilBtnRef.current.contains(e.target)) return;
+      setProfilPickerOpen(false);
+    }
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('touchstart', onPointer);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('touchstart', onPointer);
+    };
+  }, [profilPickerOpen]);
+  function toggleProfilPicker() {
+    if (profilBtnRef.current) {
+      const r = profilBtnRef.current.getBoundingClientRect();
+      setProfilPickerPos({
+        top: Math.round(r.bottom + 4),
+        right: Math.round(window.innerWidth - r.right),
+      });
+    }
+    setProfilPickerOpen(o => !o);
+  }
   const [formSearchInput, setFormSearchInput] = useState('');
   const [formSearchQuery, setFormSearchQuery] = useState('');
   const headerSearchRef = useRef(null);
@@ -20366,6 +20395,30 @@ function FormView(props) {
             les profils : prenom / nom / tel / email / adresse). Saisie ici avant choix
             profil = trigger commit DB avec projet=null (coherent draft-on-input M90).
             Sections II / III / IV : conditionnelles, verrouillees via LockedSections. */}
+        {/* M/2026/05/03/37 — Popup choix profil 2x2 en position:fixed (echappe au overflow:hidden
+            du wrapper Stage). Rendu hors du Stage idx 0 pour ne pas etre tronque. Ancre via
+            profilPickerPos calcule au tap (getBoundingClientRect du bouton). Tap exterieur ferme
+            via useEffect listener mousedown+touchstart. */}
+        {profilPickerOpen && (
+          <div ref={profilPopupRef} onClick={e => e.stopPropagation()}
+            style={{position:'fixed', top:profilPickerPos.top + 'px', right:profilPickerPos.right + 'px', zIndex:1000, background:'#fff', border:'1px solid #C9B79A', borderRadius:10, boxShadow:'0 6px 16px rgba(60,40,20,.18)', padding:6, display:'grid', gridTemplateColumns:'1fr 1fr', gap:5, fontFamily:'inherit', minWidth:160, maxWidth:240}}>
+            {[
+              {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
+              {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
+              {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
+              {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
+            ].map(p => {
+              const _selected = p.k === activeProfil;
+              return (
+                <button type="button" key={p.k}
+                  onClick={(e) => { e.stopPropagation(); setActiveProfil(p.k); setProfilPickerOpen(false); }}
+                  style={{padding:'6px 8px', borderRadius:8, border:'1.5px solid '+p.color, background: _selected ? p.color : '#fff', color: _selected ? '#fff' : p.color, fontSize:11, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', textAlign:'center'}}>
+                  {p.l}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {/* M/2026/05/03/27 — wrapper data-stage-anchor externe RESTAURE pour Section I (symetrie
             avec Sections II/III/IV). Cleanup sticky/fixed (revert M19). */}
         <div data-stage-anchor="0">
@@ -20393,28 +20446,11 @@ function FormView(props) {
                    <div style={{display:'flex', alignItems:'center', gap:6, flex:1, minWidth:0}}>
                      <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:1, minWidth:0}}>{_titleStage1}</span>
                      <div style={{flex:1}}/>
-                     <div style={{position:'relative', flexShrink:0}}>
-                       <button type="button" onClick={(e) => { e.stopPropagation(); setProfilPickerOpen(o => !o); }}
-                         aria-label="Choisir le profil"
-                         style={{padding:'3px 9px 3px 11px', borderRadius:12, border:'1.5px solid '+_profilColor1A, background: _isPrincipal1A ? _profilColor1A : '#fff', color: _isPrincipal1A ? '#fff' : _profilColor1A, fontSize:10, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4}}>
-                         {_profilLabel1A}<span style={{fontSize:8, opacity:.85}}>▾</span>
-                       </button>
-                       {profilPickerOpen && (
-                         <div onClick={e => e.stopPropagation()}
-                           style={{position:'absolute', top:'calc(100% + 4px)', right:0, zIndex:30, background:'#fff', border:'1px solid #C9B79A', borderRadius:10, boxShadow:'0 4px 12px rgba(60,40,20,.12)', padding:6, display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap'}}>
-                           {_profils1A.map(p => {
-                             const _selected = p.k === activeProfil;
-                             return (
-                               <button type="button" key={p.k}
-                                 onClick={(e) => { e.stopPropagation(); setActiveProfil(p.k); setProfilPickerOpen(false); }}
-                                 style={{padding:'4px 10px', borderRadius:8, border:'1.5px solid '+p.color, background: _selected ? p.color : '#fff', color: _selected ? '#fff' : p.color, fontSize:10.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>
-                                 {p.l}
-                               </button>
-                             );
-                           })}
-                         </div>
-                       )}
-                     </div>
+                     <button ref={profilBtnRef} type="button" onClick={(e) => { e.stopPropagation(); toggleProfilPicker(); }}
+                       aria-label="Choisir le profil"
+                       style={{padding:'3px 9px 3px 11px', borderRadius:12, border:'1.5px solid '+_profilColor1A, background: _isPrincipal1A ? _profilColor1A : '#fff', color: _isPrincipal1A ? '#fff' : _profilColor1A, fontSize:10, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, flexShrink:0}}>
+                       {_profilLabel1A}<span style={{fontSize:8, opacity:.85}}>▾</span>
+                     </button>
                    </div>
                  );
                })()}
