@@ -20253,7 +20253,7 @@ function FormView(props) {
 
       {/* V28 — Header dossier : pills v27 supprimées, déplacées dans Section I ligne nom. */}
 
-      <div style={{flex:1, overflowY:'auto', padding:12}}>
+      <div style={{flex:1, minHeight:0, overflowY:'auto', padding:12}}>
         {/* M/2026/05/01/12 — Section I Identite TOUJOURS rendue (tronc commun pour tous
             les profils : prenom / nom / tel / email / adresse). Saisie ici avant choix
             profil = trigger commit DB avec projet=null (coherent draft-on-input M90).
@@ -20736,7 +20736,7 @@ function FormView(props) {
               background rgba(251,246,236,0.78) + blur(20px) saturate(180%) + border rgba(229,217,194,0.4).
               gap 4 padding 8x10 (au lieu de gap 6 padding 2x10). Coherent avec direction Stripe/Linear/Notion. */}
           <div style={Object.assign(
-              {position:'sticky', bottom:0, left:0, right:0, zIndex:5, display:'flex', gap:4, alignItems:'center', padding:'8px 10px calc(8px + env(safe-area-inset-bottom, 0px))', background:'rgba(251, 246, 236, 0.78)', backdropFilter:'blur(20px) saturate(180%)', WebkitBackdropFilter:'blur(20px) saturate(180%)', borderTop:'1px solid rgba(229, 217, 194, 0.4)', transition:'opacity .2s ease-in-out'},
+              {position:'sticky', bottom:0, left:0, right:0, zIndex:50, display:'flex', gap:4, alignItems:'center', padding:'8px 10px calc(8px + env(safe-area-inset-bottom, 0px))', background:'rgba(251, 246, 236, 0.78)', backdropFilter:'blur(20px) saturate(180%)', WebkitBackdropFilter:'blur(20px) saturate(180%)', borderTop:'1px solid rgba(229, 217, 194, 0.4)', transition:'opacity .2s ease-in-out'},
               allFieldsEmpty(d) ? {opacity:0.45, pointerEvents:'none'} : {opacity:1, pointerEvents:'auto'}
             )}>
             {/* M/2026/05/01/5 + M/2026/05/01/6 — bouton PDF seul rapatrie du header.
