@@ -17,11 +17,11 @@
   function fmtMoney(n, cur){
     var x = Number(n); if (!x) return '';
     cur = cur || 'EUR';
-    var label = cur === 'EUR' ? '€' : (cur === 'MAD' ? 'MAD' : cur);
-    if (label === '€') {
-      if (x >= 1000000) { var v = x/1000000; return (v === Math.floor(v) ? v.toFixed(0) : v.toFixed(1).replace('.', ',')) + ' M€'; }
-      if (x >= 1000) return Math.round(x/1000) + 'k€';
-      return x.toLocaleString('fr-FR') + ' €';
+    var label = cur === 'EUR' ? 'EUR' : (cur === 'MAD' ? 'MAD' : cur);
+    if (label === 'EUR') {
+      if (x >= 1000000) { var v = x/1000000; return (v === Math.floor(v) ? v.toFixed(0) : v.toFixed(1).replace('.', ',')) + ' MEUR'; }
+      if (x >= 1000) return Math.round(x/1000) + 'kEUR';
+      return x.toLocaleString('fr-FR') + ' EUR';
     }
     return x.toLocaleString('fr-FR') + ' ' + label;
   }
