@@ -19354,39 +19354,8 @@ function ProfilSelectorBar({activeProfil, onChange}) {
   );
 }
 
-// M/2026/05/01/22 — SectionLocked : composant placeholder pour Sections II/III tant
-// qu aucun profil principal n est selectionne. Tap = scroll smooth vers selecteur en haut
-// + toast "Choisis un profil...". Pas de hooks → pas de risque React #310 (anti-regression
-// M96). Visuel : cadenas SVG + pill rouge "VERROUILLÉ" alignee a droite. Le composant est
-// rendu directement dans le slot <div data-stage-anchor=N> de FormView, en remplacement
-// du Stage qui inclurait BienForm/SectionFinanciereV55.
-function SectionLocked({title, sectionAnchor, onTap}) {
-  return (
-    <button type="button" onClick={onTap}
-      data-stage-anchor={sectionAnchor}
-      aria-label={title + ' — verrouille, choisis un profil pour activer'}
-      style={{
-        display:'flex', alignItems:'center', gap:10, width:'100%',
-        background:'#FDFAF7', border:'1.5px solid #EDE6DC', borderRadius:12,
-        padding:'14px 16px', marginBottom:12,
-        cursor:'pointer', textAlign:'left', fontFamily:'inherit',
-        transition:'transform .18s ease, background .18s ease',
-      }}
-      onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
-      onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-        stroke="#A89882" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-      </svg>
-      <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:18, color:'#5C4A3A', fontWeight:700, flex:1, opacity:0.7}}>{title}</span>
-      <span style={{flexShrink:0, padding:'3px 10px', borderRadius:6, background:'rgba(183, 62, 62, 0.12)', color:'#B73E3E', fontSize:10, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', whiteSpace:'nowrap', opacity:0.85}}>
-        Verrouillé
-      </span>
-    </button>
-  );
-}
+// M/2026/05/04/4 — placeholder verrou (anciennement gated Sections II/III) supprime franchement
+// (cleanup mort code). Sections II/III deverrouillees depuis M38. Aucun callsite dans le JSX.
 
 // M/2026/05/01/14 — LockedSections supprime franchement (revert M91). Les 4 sections sont
 // toutes saisissables des l ouverture du nouveau dossier (le selecteur profil reste une aide
@@ -20903,14 +20872,12 @@ function FormView(props) {
             le dossier". Title fallback : (STAGES[activeProfil] || STAGES.Acheteur)[i] (lookup
             string only, no side effect). */}
         {/* M/2026/05/01/22 — helper hasProfilPrincipal : Investisseur seul ne deverrouille
-            pas (cumul attendu, pas profil principal). Anti-regression React #310 : SectionLocked
-            est un composant SANS hooks (juste rendu visuel) -> aucun risque de hook count
-            mismatch entre les renders profil null/non-null. */}
+            pas (cumul attendu, pas profil principal). */}
         <div data-stage-anchor="1">
-        {/* M/2026/05/03/38 — SectionLocked SUPPRIME franchement. Section II accessible TOUJOURS,
-            quel que soit le profil (y compris null/Curieux). Auto-save M103 (set commit:true
-            -> userBlurredRef -> debounce save) deja en place via onBlur des inputs en aval
-            (BienForm, etc.). */}
+        {/* M/2026/05/03/38 — placeholder verrou supprime franchement. Section II accessible
+            TOUJOURS, quel que soit le profil (y compris null/Curieux). Auto-save M103 (set
+            commit:true -> userBlurredRef -> debounce save) deja en place via onBlur des inputs
+            en aval (BienForm, etc.). */}
         <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
                status={stageStatus[1].status} summary={stageStatus[1].summary}>
           {/* M/2026/05/03/3 — RechercheBienBloc deplace S3 Acheteur -> S2 Acheteur (semantique : recherche bien = rôle S2 Le bien cible). */}
@@ -20927,7 +20894,7 @@ function FormView(props) {
         {/* V17.6 Section III : FinancementForm pour Acheteur/Investisseur, fields legacy pour Vendeur/Bailleur/Locataire, masqué pour Curieux. */}
         </div>
         <div data-stage-anchor="2">
-        {/* M/2026/05/03/38 — SectionLocked SUPPRIME franchement. Section III accessible TOUJOURS. */}
+        {/* M/2026/05/03/38 — placeholder verrou supprime franchement. Section III accessible TOUJOURS. */}
         <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
                status={stageStatus[2].status} summary={stageStatus[2].summary}>
             {/* M/2026/05/02/39 — M144.H : suppression franche PaymentPlanModule legacy V45.
