@@ -174,6 +174,26 @@ $prix = $data['prix_affiche'] ?? $data['prix'] ?? null;
 // M/2026/04/30/22 — fallback decoratif : '$' au lieu de '€' (lisibilite + universalite).
 // La valeur metier reste celle de data.devise si definie ($ MAD £ etc.).
 $devise = $data['devise'] ?? '$';
+// M/2026/05/04/6 — Fix glyph € illisible PDF : Option A spec userMemories.
+// Le glyphe Unicode € s'affiche mal dans le rendu PDF (font fallback browser/Cormorant
+// Garamond manque le sidebearing correct). Solution : remplacer € par un SVG inline
+// quand la devise est €. Autres devises ($, MAD, £, AED, MAD) restent en texte.
+function _ocre_devise_html($d) {
+    if ($d === '€' || $d === 'EUR') {
+        // SVG inline (viewBox 24x24, currentColor, stroke 2). Aligne baseline via
+        // vertical-align translate dans le CSS .devise-symbol parent.
+        return '<svg class="euro-glyph" viewBox="0 0 24 24" width="0.95em" height="0.95em" '
+             . 'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
+             . 'stroke-linejoin="round" style="display:inline-block;vertical-align:-0.12em;'
+             . 'overflow:visible;flex-shrink:0">'
+             . '<path d="M18 8a8 8 0 1 0 0 8"/>'
+             . '<line x1="3" y1="10" x2="13" y2="10"/>'
+             . '<line x1="3" y1="14" x2="13" y2="14"/>'
+             . '</svg>';
+    }
+    // Autres devises : texte simple HTMLescape (MAD, $, £, AED, Dhs, CHF, USD, GBP).
+    return htmlspecialchars((string)$d, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
 $honoraires = $data['honoraires_inclus'] ?? true;
 // M/2026/04/29/38 — toggle Prix / Sur demande embedded URL ?mode=price|demand.
 $shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
@@ -583,7 +603,7 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="cover-foot">
       <div class="price">
         <?php if ($prix && !$prixDemand): ?>
-          <div class="amount"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <span class="devise-symbol"><?= h($devise) ?></span></div>
+          <div class="amount"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <span class="devise-symbol"><?= _ocre_devise_html($devise) ?></span></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
           <div class="amount" style="font-size:18px; color: var(--muted); font-style: italic;">Sur demande</div>
@@ -764,7 +784,7 @@ header('Content-Type: text/html; charset=utf-8');
       <div class="col" style="text-align: right;">
         <h5>Prix</h5>
         <?php if ($prix && !$prixDemand): ?>
-          <div class="price-final"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <span class="devise-symbol"><?= h($devise) ?></span></div>
+          <div class="price-final"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <span class="devise-symbol"><?= _ocre_devise_html($devise) ?></span></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
           <div class="price-final" style="font-size: 18px; color: var(--muted); font-style: italic;">Sur demande</div>
