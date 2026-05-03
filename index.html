@@ -7488,20 +7488,20 @@ function FraisAgencePillDropdown({value, onChange}) {
   const isPreset = FRAIS_AGENCE_PCT_PRESETS.includes(v);
   return (
     <div style={{position:'relative', display:'inline-block'}}>
-      <div onClick={() => setOpen(!open)} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid #C9B79A', background:'#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color:'#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
+      <div onClick={() => setOpen(!open)} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(v > 0 ? '#1E3A8A' : '#C9B79A'), background: v > 0 ? '#1E3A8A' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: v > 0 ? '#fff' : '#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
         <span>{v > 0 ? String(v).replace('.', ',') + ' %' : '— %'}</span>
-        <span style={{fontSize:9, color:'#8B7F6E'}}>▾</span>
+        <span style={{fontSize:9, color: v > 0 ? '#fff' : '#8B7F6E'}}>▾</span>
       </div>
       {open && (
-        <div style={{position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', border:'1.5px solid #C9B79A', borderRadius:8, zIndex:60, minWidth:160, boxShadow:'0 4px 12px rgba(0,0,0,0.12)'}}>
+        <div style={{position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', border:'1.5px solid #1E3A8A', borderRadius:8, zIndex:60, minWidth:160, boxShadow:'0 4px 12px rgba(0,0,0,0.12)'}}>
           {FRAIS_AGENCE_PCT_PRESETS.map(p => (
-            <div key={p} onClick={() => { onChange(p); setOpen(false); }} style={{padding:'8px 12px', cursor:'pointer', fontSize:12, fontWeight:600, color:'#2A2018', borderBottom:'1px solid #F0E9DC', background: v === p ? '#FBF1E4' : '#fff'}}>
+            <div key={p} onClick={() => { onChange(p); setOpen(false); }} style={{padding:'8px 12px', cursor:'pointer', fontSize:12, fontWeight:600, color: v === p ? '#fff' : '#2A2018', borderBottom:'1px solid #F0E9DC', background: v === p ? '#1E3A8A' : '#fff'}}>
               {String(p).replace('.', ',')} %
             </div>
           ))}
-          <div style={{padding:'8px 10px', borderTop:'1px solid #C9B79A', display:'flex', gap:4, alignItems:'center'}}>
-            <input type="number" step="0.1" value={autre} onChange={e => setAutre(e.target.value)} placeholder="Autre %" style={{flex:1, minWidth:0, padding:'4px 6px', border:'1px solid #D6C7AC', borderRadius:5, fontSize:12, fontFamily:'inherit', boxSizing:'border-box'}}/>
-            <button type="button" onClick={() => { const n = parseNumV5(autre); if (n > 0) { onChange(n); setOpen(false); setAutre(''); } }} style={{padding:'4px 8px', border:'none', borderRadius:5, background:'#8B5E3C', color:'#fff', fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>OK</button>
+          <div style={{padding:'8px 10px', borderTop:'1px solid #1E3A8A', display:'flex', gap:4, alignItems:'center'}}>
+            <input type="number" step="0.1" value={autre} onChange={e => setAutre(e.target.value)} placeholder="Autre %" style={{flex:1, minWidth:0, padding:'4px 6px', border:'1px solid #1E3A8A', borderRadius:5, fontSize:12, fontFamily:'inherit', boxSizing:'border-box'}}/>
+            <button type="button" onClick={() => { const n = parseNumV5(autre); if (n > 0) { onChange(n); setOpen(false); setAutre(''); } }} style={{padding:'4px 8px', border:'none', borderRadius:5, background:'#1E3A8A', color:'#fff', fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>OK</button>
           </div>
         </div>
       )}
@@ -7518,9 +7518,9 @@ function FraisAgenceForfaitPopup({value, onApply}) {
   const preview = v * (Number(cur.rate) || 1);
   return (
     <div style={{position:'relative', display:'inline-block'}}>
-      <div onClick={() => { setMontant(String(Number(value) || 0)); setOpen(true); }} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid #C9B79A', background:'#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color:'#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
+      <div onClick={() => { setMontant(String(Number(value) || 0)); setOpen(true); }} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(value > 0 ? '#1E3A8A' : '#C9B79A'), background: value > 0 ? '#1E3A8A' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: value > 0 ? '#fff' : '#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
         <span>{value > 0 ? fmtNumV5(value) + ' ' + CURRENCY_SYMBOL_V5[cur.left] : 'Forfait'}</span>
-        <span style={{fontSize:9, color:'#8B7F6E'}}>▾</span>
+        <span style={{fontSize:9, color: value > 0 ? '#fff' : '#8B7F6E'}}>▾</span>
       </div>
       {open && (
         <div onClick={() => setOpen(false)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,18,8,0.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
@@ -7538,7 +7538,7 @@ function FraisAgenceForfaitPopup({value, onApply}) {
             </div>
             <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
               <button type="button" onClick={() => setOpen(false)} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
-              <button type="button" onClick={() => { onApply(v); setOpen(false); }} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'#8B5E3C', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
+              <button type="button" onClick={() => { onApply(v); setOpen(false); }} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'#1E3A8A', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
             </div>
           </div>
         </div>
@@ -7646,13 +7646,13 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
     set('frais_agence_acteurs', next, {commit: true});
   }
   return (
-    <S3CardRound>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid #C9B79A40'}}>
-        <span style={{fontSize:11, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4}}>Frais agence — total</span>
+    <S3CardRound style={{background:'transparent', border:'none', padding:0, marginBottom:0}}>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid #1E3A8A40'}}>
+        <span style={{fontSize:11, fontWeight:700, color:'#1E3A8A', textTransform:'uppercase', letterSpacing:.4}}>Frais agence — total</span>
         <div style={{display:'flex', gap:6, alignItems:'center'}}>
-          <span style={{fontSize:13, fontWeight:800, color:'#5C3B1E'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
-          <span style={{fontSize:11, color:'#8B7F6E'}}>·</span>
-          <span style={{fontSize:13, fontWeight:800, color:'#5C3B1E'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
+          <span style={{fontSize:13, fontWeight:800, color:'#1E3A8A'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
+          <span style={{fontSize:11, color:'#1E3A8A'}}>·</span>
+          <span style={{fontSize:13, fontWeight:800, color:'#1E3A8A'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
         </div>
       </div>
       {acteurs.length === 0 && (
@@ -7662,12 +7662,12 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
         const lf = calcLeft(a);
         const rg = lf * (Number(cur.rate) || 1);
         return (
-          <div key={idx} style={{padding:'8px 0', borderBottom: idx < acteurs.length - 1 ? '1px dashed #E8DDC9' : 'none'}}>
+          <div key={idx} style={{padding:'8px 0', borderBottom: idx < acteurs.length - 1 ? '1px dashed #1E3A8A40' : 'none'}}>
             <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:6, flexWrap:'wrap'}}>
               <select value={a.id} onChange={e => {
                 const t = FRAIS_AGENCE_TYPES.find(x => x.v === e.target.value);
                 updateActeur(idx, {id: e.target.value, label: t ? t.l : 'Autre'});
-              }} style={{padding:'4px 6px', border:'1.5px solid #C9B79A', borderRadius:8, fontSize:11.5, background:'#fff', fontFamily:'inherit', color:'#5C3B1E', fontWeight:600, flex:'0 1 auto'}}>
+              }} style={{padding:'4px 6px', border:'1.5px solid #1E3A8A', borderRadius:8, fontSize:11.5, background:'#fff', fontFamily:'inherit', color:'#1E3A8A', fontWeight:600, flex:'0 1 auto'}}>
                 {FRAIS_AGENCE_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
               </select>
               {a.mode === 'pourcent' ? (
@@ -7675,31 +7675,31 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
               ) : (
                 <FraisAgenceForfaitPopup value={a.valeur} onApply={v => updateActeur(idx, {valeur: v})}/>
               )}
-              <div style={{display:'flex', background:'#fff', border:'1.5px solid #C9B79A', borderRadius:8, overflow:'hidden', height:28}}>
-                <div onClick={() => updateActeur(idx, {mode: 'pourcent'})} style={{padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', color: a.mode === 'pourcent' ? '#fff' : '#8B7F6E', background: a.mode === 'pourcent' ? '#8B5E3C' : 'transparent'}}>%</div>
-                <div onClick={() => updateActeur(idx, {mode: 'forfait'})} style={{padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', color: a.mode === 'forfait' ? '#fff' : '#8B7F6E', background: a.mode === 'forfait' ? '#8B5E3C' : 'transparent', borderLeft:'1px solid #C9B79A'}}>F</div>
+              <div style={{display:'flex', background:'#fff', border:'1.5px solid #1E3A8A', borderRadius:8, overflow:'hidden', height:28}}>
+                <div onClick={() => updateActeur(idx, {mode: 'pourcent'})} style={{padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', color: a.mode === 'pourcent' ? '#fff' : '#1E3A8A', background: a.mode === 'pourcent' ? '#1E3A8A' : 'transparent'}}>%</div>
+                <div onClick={() => updateActeur(idx, {mode: 'forfait'})} style={{padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', color: a.mode === 'forfait' ? '#fff' : '#1E3A8A', background: a.mode === 'forfait' ? '#1E3A8A' : 'transparent', borderLeft:'1px solid #1E3A8A'}}>F</div>
               </div>
               {acteurs.length > 1 && (
                 <button type="button" onClick={() => removeActeur(idx)} style={{background:'transparent', border:'none', cursor:'pointer', color:'#8B7F6E', fontSize:14, padding:0, marginLeft:'auto'}}>✕</button>
               )}
             </div>
             <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:6}}>
-              <div style={{padding:'6px 8px', background:'#fff', border:'1px solid #E8DDC9', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
+              <div style={{padding:'6px 8px', background:'#fff', border:'1px solid #1E3A8A', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
                 <span style={{fontSize:13, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
-                <span style={{flex:1, fontSize:12, fontWeight:700, color:'#2A2018', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(lf) || '—'}</span>
-                <span style={{fontSize:10, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left]}</span>
+                <span style={{flex:1, fontSize:12, fontWeight:700, color:'#1E3A8A', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(lf) || '—'}</span>
+                <span style={{fontSize:10, color:'#1E3A8A', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left]}</span>
               </div>
-              <div style={{padding:'6px 8px', background:'#fff', border:'1px solid #E8DDC9', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
+              <div style={{padding:'6px 8px', background:'#fff', border:'1px solid #1E3A8A', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
                 <span style={{fontSize:13, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
-                <span style={{flex:1, fontSize:12, fontWeight:700, color:'#2A2018', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(rg) || '—'}</span>
-                <span style={{fontSize:10, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right]}</span>
+                <span style={{flex:1, fontSize:12, fontWeight:700, color:'#1E3A8A', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(rg) || '—'}</span>
+                <span style={{fontSize:10, color:'#1E3A8A', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right]}</span>
               </div>
             </div>
           </div>
         );
       })}
       {acteurs.length < 4 && (
-        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:8, marginTop:8, background:'#fff', border:'1.5px dashed #C9B79A', borderRadius:8, color:'#8B5E3C', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter une agence ({acteurs.length}/4)</button>
+        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:8, marginTop:8, background:'#fff', border:'1.5px dashed #1E3A8A', borderRadius:8, color:'#1E3A8A', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter une agence ({acteurs.length}/4)</button>
       )}
     </S3CardRound>
   );
