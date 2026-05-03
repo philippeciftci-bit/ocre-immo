@@ -20383,7 +20383,7 @@ function FormView(props) {
         <div data-stage-anchor="0">
         <Stage title={(STAGES[activeProfil] || [])[0] || 'I. Identité'}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
-               status={stageStatus[0].status} summary={stageStatus[0].summary} summaryAlwaysVisible={true}
+               status={stageStatus[0].status}
                hideChevron={hasHeadName}>
           {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
               opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
@@ -20521,7 +20521,7 @@ function FormView(props) {
                   }}
                   autoComplete="address-level2" name="address-level2"
                   style={{marginBottom:0}}/>
-                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
+                <Field label="CP" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
                   autoComplete="postal-code" name="postal-code" inputMode="text"/>
                 <Field label="Quartier" value={d.quartier_residence} onChange={v => set('quartier_residence', v)} style={{marginBottom:0}}
                   placeholder="Optionnel" autoComplete="address-level3" name="address-level3"/>
@@ -20623,7 +20623,7 @@ function FormView(props) {
                   }}
                   autoComplete="section-societe address-level2" name="societe-address-level2"
                   style={{marginBottom:0}}/>
-                <Field label="Code postal" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
+                <Field label="CP" value={d.code_postal} onChange={v => set('code_postal', v)} style={{marginBottom:0}}
                   autoComplete="section-societe postal-code" name="societe-postal-code"/>
                 <Field label="Quartier" value={d.quartier_residence} onChange={v => set('quartier_residence', v)} style={{marginBottom:0}}
                   placeholder="Optionnel" autoComplete="section-societe address-level3" name="societe-address-level3"/>
