@@ -20333,10 +20333,7 @@ function FormView(props) {
           return (
         <Stage title={(STAGES[activeProfil] || [])[0] || 'I. Identité'}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
-               status={stageStatus[0].status} /* M/2026/05/03/8 — Mission G : summary retiré
-               franchement — StageIHeaderBar (customHeader sticky de Mission E) couvre déjà nom + pill
-               profil (ligne 1 toujours) + tel + email + ville + Modifier (ligne 2 mode plié). Le
-               summary sec1Line1+sec1Line2 produisait un doublon visuel évident en mode plié. */
+               status={stageStatus[0].status} summary={stageStatus[0].summary}
                hideChevron={hasHeadName}
                sticky={true}
                customHeader={_stageIHeader}>
