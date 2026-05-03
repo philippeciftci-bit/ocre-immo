@@ -16783,12 +16783,20 @@ function ListView(props) {
       const r = find(d.id);
       (buckets[r] = buckets[r] || []).push(d);
     });
+    // M/2026/05/03/33 — tri robuste : updated_at en priorite, fallback created_at si pas de
+    // updated_at. Resoud les brouillons fraichement crees sans timestamps update qui finissaient
+    // en bas de liste. Spec Philippe : dernier brouillon saisi = premier en haut.
+    const _ts = (d) => {
+      const u = d && d.updated_at ? new Date(d.updated_at).getTime() : 0;
+      const c = d && d.created_at ? new Date(d.created_at).getTime() : 0;
+      return u || c || 0;
+    };
     const groups = Object.values(buckets).map(g => {
-      g.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+      g.sort((a, b) => _ts(b) - _ts(a));
       return {
         ids: g.map(x => x.id),
         dossiers: g,
-        latest: g[0] && g[0].updated_at ? new Date(g[0].updated_at).getTime() : 0,
+        latest: g[0] ? _ts(g[0]) : 0,
       };
     });
     groups.sort((a, b) => b.latest - a.latest);
@@ -17682,15 +17690,13 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                     <circle cx="12" cy="10" r="3"/>
                   </svg>
+                  {/* M/2026/05/03/33 — fusion adresse + ville·quartier dans UN SEUL pill compact.
+                      Avant : pill (adresse) + ligne villeQuartier dessous. Apres : un seul pill
+                      contenant adresse · villeQuartier (ou juste l'un des deux si l'autre absent). */}
                   <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0}}>
-                    {bien.adresse || bien.ville || ''}
+                    {[bien.adresse, villeQuartier].filter(Boolean).join(' · ')}
                   </span>
                 </a>
-              )}
-              {villeQuartier && bien.adresse && (
-                <div style={{fontSize:11, color:'#8B7F6E', marginTop:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-                  {villeQuartier.slice(0, 32)}
-                </div>
               )}
               {/* M/2026/05/02/22 — M134 : ligne 💰 prix de vente affiché (Vendeur/Bailleur).
                   Calculé Prix affiché + Liquide + Commission (sans notaire). Profil-dépendant. */}
