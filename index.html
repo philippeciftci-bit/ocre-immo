@@ -7303,11 +7303,416 @@ function RechercheBienBloc({d, set}) {
   );
 }
 
+// M/2026/05/03/2.1 — Currency v5 UI-only state (pas de DB, pas de localStorage, perdu au reload).
+// Sémantique canonique : la valeur stockée dans d[key] est un nombre nu sans unité. L'unité
+// (= currency gauche) vit en state UI window.__ocreCurrencyV5State. Reload = retour défaut
+// EUR/MAD/10.84. Aucun cur_left/cur_right/cur_rate persiste — anti-dérive M48 absolue.
+function getCurrencyV5State() {
+  if (typeof window === 'undefined') return {left:'EUR', right:'MAD', rate:10.84};
+  if (!window.__ocreCurrencyV5State) window.__ocreCurrencyV5State = {left:'EUR', right:'MAD', rate:10.84};
+  return window.__ocreCurrencyV5State;
+}
+function setCurrencyV5State(patch, forceUpdate) {
+  const cur = getCurrencyV5State();
+  Object.assign(cur, patch);
+  if (typeof forceUpdate === 'function') forceUpdate();
+}
+const CURRENCY_FLAG_V5 = {EUR:'🇪🇺', MAD:'🇲🇦', USD:'🇺🇸', GBP:'🇬🇧', AED:'🇦🇪'};
+const CURRENCY_SYMBOL_V5 = {EUR:'€', MAD:'Dhs', USD:'$', GBP:'£', AED:'د.إ'};
+const CURRENCY_LIST_V5 = ['EUR','MAD','USD','GBP','AED'];
+const RATES_OFFICIAL_V5 = { EUR_MAD: 10.84, EUR_USD: 1.08, EUR_GBP: 0.857, EUR_AED: 3.97 };
+function getOfficialRateV5(left, right) {
+  if (left === right) return 1;
+  if (left === 'EUR') return RATES_OFFICIAL_V5['EUR_'+right] || 1;
+  if (right === 'EUR') return 1 / (RATES_OFFICIAL_V5['EUR_'+left] || 1);
+  const a = RATES_OFFICIAL_V5['EUR_'+left] || 1;
+  const b = RATES_OFFICIAL_V5['EUR_'+right] || 1;
+  return b / a;
+}
+function fmtNumV5(n) {
+  const x = Number(n);
+  if (!isFinite(x) || x === 0) return '';
+  return Math.round(x).toLocaleString('fr-FR').replace(/ /g, ' ');
+}
+function parseNumV5(s) {
+  return parseFloat(String(s).replace(/\s/g, '').replace(',', '.')) || 0;
+}
+
+// Wrapper card sable rond border-radius 14, Section III only.
+function S3CardRound({children, style}) {
+  return (
+    <div style={{borderRadius:14, background:'#FBF1E4', padding:'12px 12px', marginBottom:8, border:'1.2px solid #E8DDC9', boxSizing:'border-box', ...(style || {})}}>
+      {children}
+    </div>
+  );
+}
+
+// Barre 3 pills : [gauche 100px][taux 1fr 17px gras][droite 100px] h44, fond sable.
+function CurrencyBar3Pills({forceUpdate}) {
+  const cur = getCurrencyV5State();
+  const [openSide, setOpenSide] = React.useState(null); // 'left' | 'right' | null
+  const [rateOpen, setRateOpen] = React.useState(false);
+  const pickSide = (side, code) => {
+    if (side === 'left') {
+      const newRight = code === cur.right ? cur.left : cur.right;
+      setCurrencyV5State({left: code, right: newRight, rate: getOfficialRateV5(code, newRight)}, forceUpdate);
+    } else {
+      const newLeft = code === cur.left ? cur.right : cur.left;
+      setCurrencyV5State({left: newLeft, right: code, rate: getOfficialRateV5(newLeft, code)}, forceUpdate);
+    }
+    setOpenSide(null);
+  };
+  const pillBase = {height:44, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:22, background:'#fff', border:'1.5px solid #D6C7AC', cursor:'pointer', fontFamily:'inherit', fontWeight:700, padding:'0 10px', boxSizing:'border-box', position:'relative'};
+  return (
+    <S3CardRound style={{padding:'8px 10px'}}>
+      <div style={{display:'grid', gridTemplateColumns:'100px minmax(0,1fr) 100px', gap:6, alignItems:'center'}}>
+        <div onClick={() => setOpenSide(openSide === 'left' ? null : 'left')} style={pillBase}>
+          <span style={{fontSize:14, marginRight:5}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+          <span style={{fontSize:13, color:'#2A2018'}}>{cur.left}</span>
+          <span style={{fontSize:9, color:'#8B7F6E', marginLeft:4}}>▾</span>
+          {openSide === 'left' && (
+            <div style={{position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, minWidth:100, boxShadow:'0 4px 12px rgba(0,0,0,0.12)'}}>
+              {CURRENCY_LIST_V5.map(c => (
+                <div key={c} onClick={(e) => { e.stopPropagation(); pickSide('left', c); }} style={{padding:'8px 10px', cursor:'pointer', fontSize:12, fontWeight:600, color:'#2A2018', display:'flex', alignItems:'center', gap:6, borderBottom:'1px solid #F0E9DC'}}>
+                  <span style={{fontSize:14}}>{CURRENCY_FLAG_V5[c]}</span><span>{c}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div onClick={() => setRateOpen(true)} style={{...pillBase, fontSize:17, fontWeight:800, color:'#5C3B1E'}}>
+          1 {cur.left} = {Number(cur.rate).toFixed(2)} {cur.right}
+        </div>
+        <div onClick={() => setOpenSide(openSide === 'right' ? null : 'right')} style={pillBase}>
+          <span style={{fontSize:14, marginRight:5}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+          <span style={{fontSize:13, color:'#2A2018'}}>{cur.right}</span>
+          <span style={{fontSize:9, color:'#8B7F6E', marginLeft:4}}>▾</span>
+          {openSide === 'right' && (
+            <div style={{position:'absolute', top:'100%', right:0, marginTop:4, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, minWidth:100, boxShadow:'0 4px 12px rgba(0,0,0,0.12)'}}>
+              {CURRENCY_LIST_V5.map(c => (
+                <div key={c} onClick={(e) => { e.stopPropagation(); pickSide('right', c); }} style={{padding:'8px 10px', cursor:'pointer', fontSize:12, fontWeight:600, color:'#2A2018', display:'flex', alignItems:'center', gap:6, borderBottom:'1px solid #F0E9DC'}}>
+                  <span style={{fontSize:14}}>{CURRENCY_FLAG_V5[c]}</span><span>{c}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {rateOpen && <RatePopup2Col onClose={() => setRateOpen(false)} forceUpdate={forceUpdate}/>}
+    </S3CardRound>
+  );
+}
+
+// Modal 2 cols : Officiel cliquable / Manuel input + preview, bouton Appliquer.
+function RatePopup2Col({onClose, forceUpdate}) {
+  const cur = getCurrencyV5State();
+  const officialRate = getOfficialRateV5(cur.left, cur.right);
+  const [manual, setManual] = React.useState(String(Number(cur.rate || officialRate).toFixed(4)));
+  const manualNum = parseNumV5(manual);
+  const apply = (rate) => {
+    setCurrencyV5State({rate: rate}, forceUpdate);
+    onClose();
+  };
+  return (
+    <div onClick={onClose} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,18,8,0.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:14, padding:18, maxWidth:420, width:'100%', boxShadow:'0 8px 24px rgba(0,0,0,0.2)', boxSizing:'border-box'}}>
+        <h3 style={{margin:'0 0 12px', fontSize:15, fontWeight:700, color:'#2A2018', fontFamily:'Cormorant Garamond,serif'}}>Taux 1 {cur.left} → {cur.right}</h3>
+        <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:10, marginBottom:14}}>
+          <div onClick={() => apply(officialRate)} style={{padding:'10px 8px', borderRadius:10, background:'#FBF1E4', border:'1.5px solid #C9B79A', cursor:'pointer', textAlign:'center'}}>
+            <div style={{fontSize:10, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4, marginBottom:4}}>Officiel</div>
+            <div style={{fontSize:18, fontWeight:800, color:'#5C3B1E'}}>{officialRate.toFixed(4)}</div>
+            <div style={{fontSize:9.5, color:'#8B7F6E', fontStyle:'italic', marginTop:3}}>Tap pour appliquer</div>
+          </div>
+          <div style={{padding:'10px 8px', borderRadius:10, background:'#fff', border:'1.5px solid #D6C7AC'}}>
+            <div style={{fontSize:10, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4, marginBottom:4, textAlign:'center'}}>Manuel</div>
+            <input type="number" step="0.01" value={manual} onChange={e => setManual(e.target.value)} style={{width:'100%', padding:'6px 8px', border:'1px solid #D6C7AC', borderRadius:6, fontSize:14, fontWeight:700, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box', color:'#2A2018', background:'#FFFCF5'}}/>
+            <div style={{fontSize:10, color:'#8B7F6E', fontStyle:'italic', marginTop:5, textAlign:'center'}}>1 {cur.left} = {manualNum > 0 ? manualNum.toFixed(2) : '—'} {cur.right}</div>
+          </div>
+        </div>
+        <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+          <button type="button" onClick={onClose} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+          <button type="button" onClick={() => apply(manualNum > 0 ? manualNum : officialRate)} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'#8B5E3C', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Input prix double 2 cols [gauche-currency drapeau + montant] [droite-currency drapeau + montant].
+// Edit gauche → set canonique = nombre tapé. Edit droite → set canonique = nombre/cur_rate.
+// Conversion bidir live. Drapeaux flexShrink:0. minmax(0,1fr) sur grid (anti M-PAN-FIX1 overflow iPhone).
+function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
+  const cur = getCurrencyV5State();
+  const canonical = Number(d[valueKey]) || 0;
+  const displayLeft = canonical;
+  const displayRight = canonical * (Number(cur.rate) || 1);
+  const handleLeft = (e) => {
+    const v = parseNumV5(e.target.value);
+    set(valueKey, v, {commit: true});
+  };
+  const handleRight = (e) => {
+    const v = parseNumV5(e.target.value);
+    const rate = Number(cur.rate) || 1;
+    set(valueKey, rate > 0 ? v / rate : 0, {commit: true});
+  };
+  const iwBase = {display:'flex', alignItems:'center', background:'#fff', borderRadius:6, padding:'6px 8px', height:38, gap:5, boxSizing:'border-box', minWidth:0, overflow:'hidden'};
+  const iwBorder = warn ? '1px solid #C73E3E' : '1px solid #D6C7AC';
+  const iwBg = warn ? '#FEF6F6' : '#fff';
+  const inputStyle = {flex:1, border:'none', outline:'none', fontSize:13, background:'transparent', minWidth:0, width:'100%', padding:0, fontFamily:'inherit', color:'#2A2018'};
+  return (
+    <div style={{marginBottom:8}}>
+      <div style={{fontSize:11, color:'#5C5550', fontWeight:600, marginBottom:4}}>{label}</div>
+      <div style={{display:'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap:6}}>
+        <div style={{...iwBase, border:iwBorder, background:iwBg}}>
+          <span style={{fontSize:14, lineHeight:1, flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+          <input type="text" inputMode="numeric" value={fmtNumV5(displayLeft)} onChange={handleLeft} placeholder="0" style={inputStyle}/>
+          <span style={{fontSize:11, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
+        </div>
+        <div style={{...iwBase, border:iwBorder, background:iwBg}}>
+          <span style={{fontSize:14, lineHeight:1, flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+          <input type="text" inputMode="numeric" value={fmtNumV5(displayRight)} onChange={handleRight} placeholder="0" style={inputStyle}/>
+          <span style={{fontSize:11, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right] || cur.right}</span>
+        </div>
+      </div>
+      {hint && <div style={{fontSize:10, color:warn ? '#C73E3E' : '#8B7F6E', fontStyle:'italic', textAlign:'center', marginTop:3, fontWeight:warn ? 600 : 400}}>{hint}</div>}
+    </div>
+  );
+}
+
+// Pill % avec dropdown 2/2,5/3/5/8/10 + Autre input.
+const FRAIS_AGENCE_PCT_PRESETS = [2, 2.5, 3, 5, 8, 10];
+function FraisAgencePillDropdown({value, onChange}) {
+  const [open, setOpen] = React.useState(false);
+  const [autre, setAutre] = React.useState('');
+  const v = Number(value) || 0;
+  const isPreset = FRAIS_AGENCE_PCT_PRESETS.includes(v);
+  return (
+    <div style={{position:'relative', display:'inline-block'}}>
+      <div onClick={() => setOpen(!open)} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid #C9B79A', background:'#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color:'#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
+        <span>{v > 0 ? String(v).replace('.', ',') + ' %' : '— %'}</span>
+        <span style={{fontSize:9, color:'#8B7F6E'}}>▾</span>
+      </div>
+      {open && (
+        <div style={{position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', border:'1.5px solid #C9B79A', borderRadius:8, zIndex:60, minWidth:160, boxShadow:'0 4px 12px rgba(0,0,0,0.12)'}}>
+          {FRAIS_AGENCE_PCT_PRESETS.map(p => (
+            <div key={p} onClick={() => { onChange(p); setOpen(false); }} style={{padding:'8px 12px', cursor:'pointer', fontSize:12, fontWeight:600, color:'#2A2018', borderBottom:'1px solid #F0E9DC', background: v === p ? '#FBF1E4' : '#fff'}}>
+              {String(p).replace('.', ',')} %
+            </div>
+          ))}
+          <div style={{padding:'8px 10px', borderTop:'1px solid #C9B79A', display:'flex', gap:4, alignItems:'center'}}>
+            <input type="number" step="0.1" value={autre} onChange={e => setAutre(e.target.value)} placeholder="Autre %" style={{flex:1, minWidth:0, padding:'4px 6px', border:'1px solid #D6C7AC', borderRadius:5, fontSize:12, fontFamily:'inherit', boxSizing:'border-box'}}/>
+            <button type="button" onClick={() => { const n = parseNumV5(autre); if (n > 0) { onChange(n); setOpen(false); setAutre(''); } }} style={{padding:'4px 8px', border:'none', borderRadius:5, background:'#8B5E3C', color:'#fff', fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>OK</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Pill forfait avec popup montant gauche + preview droite + Appliquer.
+function FraisAgenceForfaitPopup({value, onApply}) {
+  const cur = getCurrencyV5State();
+  const [open, setOpen] = React.useState(false);
+  const [montant, setMontant] = React.useState(String(Number(value) || 0));
+  const v = parseNumV5(montant);
+  const preview = v * (Number(cur.rate) || 1);
+  return (
+    <div style={{position:'relative', display:'inline-block'}}>
+      <div onClick={() => { setMontant(String(Number(value) || 0)); setOpen(true); }} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid #C9B79A', background:'#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color:'#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
+        <span>{value > 0 ? fmtNumV5(value) + ' ' + CURRENCY_SYMBOL_V5[cur.left] : 'Forfait'}</span>
+        <span style={{fontSize:9, color:'#8B7F6E'}}>▾</span>
+      </div>
+      {open && (
+        <div onClick={() => setOpen(false)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,18,8,0.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
+          <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:14, padding:18, maxWidth:380, width:'100%', boxShadow:'0 8px 24px rgba(0,0,0,0.2)', boxSizing:'border-box'}}>
+            <h3 style={{margin:'0 0 12px', fontSize:14, fontWeight:700, color:'#2A2018', fontFamily:'Cormorant Garamond,serif'}}>Forfait</h3>
+            <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:8, marginBottom:14}}>
+              <div>
+                <label style={{fontSize:10, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4, display:'block', marginBottom:4}}>Montant ({cur.left})</label>
+                <input type="number" step="1" value={montant} onChange={e => setMontant(e.target.value)} style={{width:'100%', padding:'8px 10px', border:'1.5px solid #D6C7AC', borderRadius:6, fontSize:14, fontWeight:700, fontFamily:'inherit', boxSizing:'border-box', color:'#2A2018'}}/>
+              </div>
+              <div>
+                <label style={{fontSize:10, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4, display:'block', marginBottom:4}}>Aperçu ({cur.right})</label>
+                <div style={{padding:'8px 10px', border:'1.5px solid #E8DDC9', borderRadius:6, fontSize:14, fontWeight:700, color:'#5C3B1E', background:'#FBF1E4', minHeight:38, boxSizing:'border-box', display:'flex', alignItems:'center'}}>{fmtNumV5(preview) || '—'}</div>
+              </div>
+            </div>
+            <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+              <button type="button" onClick={() => setOpen(false)} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button type="button" onClick={() => { onApply(v); setOpen(false); }} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'#8B5E3C', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Bloc Frais notaire 2 cols : popup taux référence pays + résultats EUR/Dhs.
+function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceUpdate}) {
+  const cur = getCurrencyV5State();
+  const defaultPct = fraisNotaireDefault(paysBien, neufAncien) * 100;
+  const pct = d.frais_notaire_pct != null ? Number(d.frais_notaire_pct) : defaultPct;
+  const dossier = Number(d.frais_notaire_dossier) || 0;
+  const base = Number(baseAmount) || 0;
+  const estLeft = base > 0 ? Math.round(base * pct / 100) + dossier : 0;
+  const estRight = estLeft * (Number(cur.rate) || 1);
+  const [open, setOpen] = React.useState(false);
+  const [pctLocal, setPctLocal] = React.useState(String(pct));
+  const refTexte = paysBien === 'FR' ? (neufAncien === 'neuf' ? 'FR neuf 2,5–3 %' : 'FR ancien 7–8 %')
+    : paysBien === 'MA' ? 'MA 4–6 %'
+    : paysBien === 'ES' ? (neufAncien === 'neuf' ? 'ES neuf 12,5 %' : 'ES ancien 11–12,5 %')
+    : 'Référence pays variable';
+  const apply = () => {
+    const n = parseNumV5(pctLocal);
+    set('frais_notaire_pct', n, {commit: true});
+    setOpen(false);
+  };
+  return (
+    <S3CardRound>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+        <span style={{fontSize:11, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4}}>Frais notaire</span>
+        <div onClick={() => { setPctLocal(String(pct)); setOpen(true); }} style={{padding:'4px 10px', borderRadius:12, border:'1.5px solid #C9B79A', background:'#fff', cursor:'pointer', fontSize:12, fontWeight:700, color:'#5C3B1E', fontFamily:'inherit'}}>
+          {String(pct).replace('.', ',')} % ✎
+        </div>
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:6}}>
+        <div style={{padding:'8px 10px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
+          <span style={{fontSize:14, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+          <span style={{flex:1, fontSize:13, fontWeight:700, color:'#2A2018', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(estLeft) || '—'}</span>
+          <span style={{fontSize:11, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left]}</span>
+        </div>
+        <div style={{padding:'8px 10px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
+          <span style={{fontSize:14, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+          <span style={{flex:1, fontSize:13, fontWeight:700, color:'#2A2018', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(estRight) || '—'}</span>
+          <span style={{fontSize:11, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right]}</span>
+        </div>
+      </div>
+      <div style={{marginTop:6, display:'grid', gridTemplateColumns:'minmax(0,1fr)', gap:4}}>
+        <V55Field label="Frais dossier (optionnel)" type="number" value={d.frais_notaire_dossier} onChange={v => set('frais_notaire_dossier', v)} suffix={CURRENCY_SYMBOL_V5[cur.left]} style={{marginBottom:0}}/>
+      </div>
+      <div style={{fontSize:10, color:'#8B7F6E', fontStyle:'italic', marginTop:4}}>{refTexte} · à charge acheteur</div>
+      {open && (
+        <div onClick={() => setOpen(false)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,18,8,0.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
+          <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:14, padding:18, maxWidth:340, width:'100%', boxShadow:'0 8px 24px rgba(0,0,0,0.2)', boxSizing:'border-box'}}>
+            <h3 style={{margin:'0 0 8px', fontSize:14, fontWeight:700, color:'#2A2018', fontFamily:'Cormorant Garamond,serif'}}>Taux frais notaire</h3>
+            <div style={{fontSize:11, color:'#8B7F6E', marginBottom:10, fontStyle:'italic'}}>{refTexte}</div>
+            <input type="number" step="0.1" value={pctLocal} onChange={e => setPctLocal(e.target.value)} style={{width:'100%', padding:'8px 10px', border:'1.5px solid #D6C7AC', borderRadius:6, fontSize:14, fontWeight:700, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box', color:'#2A2018', marginBottom:12}}/>
+            <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+              <button type="button" onClick={() => setOpen(false)} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button type="button" onClick={apply} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'#8B5E3C', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </S3CardRound>
+  );
+}
+
+// Fork de FraisAgenceMultiActeurs : utilise FraisAgencePillDropdown + FraisAgenceForfaitPopup
+// + résultats per-acteur 2 cols EUR/Dhs (drapeaux). Lit/écrit le même `d.frais_agence_acteurs[]`.
+function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
+  const cur = getCurrencyV5State();
+  const acteurs = Array.isArray(d.frais_agence_acteurs) ? d.frais_agence_acteurs : [];
+  React.useEffect(() => {
+    if (acteurs.length > 0) return;
+    let initial = [];
+    if (profil === 'Vendeur') {
+      initial = [
+        {id: 'mandat', label: 'Agent mandat', mode: 'pourcent', valeur: 5},
+        {id: 'contrepartie', label: 'Agent contrepartie', mode: 'pourcent', valeur: 2.5},
+      ];
+    } else if (profil === 'Bailleur') {
+      initial = [{id: 'mandat', label: 'Agent mandat', mode: 'forfait', valeur: Number(baseAmount) || 0}];
+    } else if (profil === 'Acheteur') {
+      initial = [{id: 'contrepartie', label: 'Agent contrepartie', mode: 'pourcent', valeur: 2.5}];
+    }
+    if (initial.length > 0) set('frais_agence_acteurs', initial, {fromUser: false});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const calcLeft = (a) => a.mode === 'forfait' ? (Number(a.valeur) || 0) : Math.round((Number(baseAmount) || 0) * (Number(a.valeur) || 0) / 100);
+  const totalLeft = acteurs.reduce((s, a) => s + calcLeft(a), 0);
+  const totalRight = totalLeft * (Number(cur.rate) || 1);
+  function updateActeur(idx, patch) {
+    const next = acteurs.map((a, i) => i === idx ? {...a, ...patch} : a);
+    set('frais_agence_acteurs', next, {commit: true});
+  }
+  function removeActeur(idx) {
+    const next = acteurs.filter((_, i) => i !== idx);
+    set('frais_agence_acteurs', next, {commit: true});
+  }
+  function addActeur() {
+    if (acteurs.length >= 4) return;
+    const next = [...acteurs, {id: 'autre', label: 'Autre', mode: 'pourcent', valeur: 0}];
+    set('frais_agence_acteurs', next, {commit: true});
+  }
+  return (
+    <S3CardRound>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid #C9B79A40'}}>
+        <span style={{fontSize:11, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.4}}>Frais agence — total</span>
+        <div style={{display:'flex', gap:6, alignItems:'center'}}>
+          <span style={{fontSize:13, fontWeight:800, color:'#5C3B1E'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
+          <span style={{fontSize:11, color:'#8B7F6E'}}>·</span>
+          <span style={{fontSize:13, fontWeight:800, color:'#5C3B1E'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
+        </div>
+      </div>
+      {acteurs.length === 0 && (
+        <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', padding:'8px 0'}}>Aucun acteur. Tap + Ajouter une agence pour commencer.</div>
+      )}
+      {acteurs.map((a, idx) => {
+        const lf = calcLeft(a);
+        const rg = lf * (Number(cur.rate) || 1);
+        return (
+          <div key={idx} style={{padding:'8px 0', borderBottom: idx < acteurs.length - 1 ? '1px dashed #E8DDC9' : 'none'}}>
+            <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:6, flexWrap:'wrap'}}>
+              <select value={a.id} onChange={e => {
+                const t = FRAIS_AGENCE_TYPES.find(x => x.v === e.target.value);
+                updateActeur(idx, {id: e.target.value, label: t ? t.l : 'Autre'});
+              }} style={{padding:'4px 6px', border:'1.5px solid #C9B79A', borderRadius:8, fontSize:11.5, background:'#fff', fontFamily:'inherit', color:'#5C3B1E', fontWeight:600, flex:'0 1 auto'}}>
+                {FRAIS_AGENCE_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
+              </select>
+              {a.mode === 'pourcent' ? (
+                <FraisAgencePillDropdown value={a.valeur} onChange={v => updateActeur(idx, {valeur: v})}/>
+              ) : (
+                <FraisAgenceForfaitPopup value={a.valeur} onApply={v => updateActeur(idx, {valeur: v})}/>
+              )}
+              <div style={{display:'flex', background:'#fff', border:'1.5px solid #C9B79A', borderRadius:8, overflow:'hidden', height:28}}>
+                <div onClick={() => updateActeur(idx, {mode: 'pourcent'})} style={{padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', color: a.mode === 'pourcent' ? '#fff' : '#8B7F6E', background: a.mode === 'pourcent' ? '#8B5E3C' : 'transparent'}}>%</div>
+                <div onClick={() => updateActeur(idx, {mode: 'forfait'})} style={{padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', color: a.mode === 'forfait' ? '#fff' : '#8B7F6E', background: a.mode === 'forfait' ? '#8B5E3C' : 'transparent', borderLeft:'1px solid #C9B79A'}}>F</div>
+              </div>
+              {acteurs.length > 1 && (
+                <button type="button" onClick={() => removeActeur(idx)} style={{background:'transparent', border:'none', cursor:'pointer', color:'#8B7F6E', fontSize:14, padding:0, marginLeft:'auto'}}>✕</button>
+              )}
+            </div>
+            <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:6}}>
+              <div style={{padding:'6px 8px', background:'#fff', border:'1px solid #E8DDC9', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
+                <span style={{fontSize:13, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+                <span style={{flex:1, fontSize:12, fontWeight:700, color:'#2A2018', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(lf) || '—'}</span>
+                <span style={{fontSize:10, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left]}</span>
+              </div>
+              <div style={{padding:'6px 8px', background:'#fff', border:'1px solid #E8DDC9', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
+                <span style={{fontSize:13, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+                <span style={{flex:1, fontSize:12, fontWeight:700, color:'#2A2018', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(rg) || '—'}</span>
+                <span style={{fontSize:10, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right]}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {acteurs.length < 4 && (
+        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:8, marginTop:8, background:'#fff', border:'1.5px dashed #C9B79A', borderRadius:8, color:'#8B5E3C', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter une agence ({acteurs.length}/4)</button>
+      )}
+    </S3CardRound>
+  );
+}
+
 // V55 — Section III pro : selon profil + invest. Stockage dans d (data JSON, pas de migration DB).
 // V62 — réordonné : essentiels (Prix / Frais agence / Frais notaire / Coût total) en haut,
 // détails (Capacité, Mandat, Co-courtage, Répartition, Stratégie, Performance) en bas.
 // M/2026/05/02/35 — M144.D : state global expandedBlocks pour 4 sous-blocs collapsed (Mandat,
 // Plan paiement, Financement, Répartition). Tap chevron ▸ → expand, tap encore → collapse.
+// M/2026/05/03/2.1 — Currency v5 : barre 3 pills + PriceField2Col + M53FraisAgenceMulti
+// + FraisNotaireBlock2Col. Sémantique canonique : valeurs stockées dans d[key] = nombres nus.
+// L'unité gauche-currency vit en state UI window.__ocreCurrencyV5State (perdu au reload).
 function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}) {
   const [expandedBlocks, setExpandedBlocks] = React.useState({
     mandat: false,
@@ -7316,6 +7721,10 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     repartition: false,
   });
   const toggleBlock = (k) => setExpandedBlocks(p => ({...p, [k]: !p[k]}));
+  // M/2026/05/03/2.1 — forceUpdate pour rerender quand window.__ocreCurrencyV5State change
+  // (state UI-only partagé toute Section III, perdu au reload).
+  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+  const cur = getCurrencyV5State();
   const paysBien = (d.bien && d.bien.pays) || (d.pays_residence === 'Maroc' ? 'MA' : 'FR');
   // M/2026/04/30/29 — devise resolue via d.devise utilisateur OU currencyForCountry(pays).
   // Auto-suggestion : si devise vide ET devise_source != 'manual' -> set auto via currencyForCountry.
@@ -7351,86 +7760,55 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const fraisNotEst = budget > 0 ? Math.round(budget * fraisNotPct / 100) : 0;
     const honoEst = Number(d.honoraires_montant_estime) || 0;
     const coutTotal = budget + (honoCharge === 'Acheteur' ? honoEst : 0) + fraisNotEst;
+    // M/2026/05/03/2.1 — sémantique canonique : la valeur stockée dans d[key] est un nombre
+    // nu sans unité. L'unité (gauche-currency) vit en state UI window.__ocreCurrencyV5State.
+    // Reload = retour défaut EUR/MAD/10.84.
+    const _bMin = Number(d.budget_min) || 0;
+    const _bMax = Number(d.budget_max) || 0;
+    const _warnMax = _bMin > 0 && _bMax > 0 && _bMax < _bMin;
+    const _liqA = Number(d.prix_liquide) || 0;
+    const _notaireA = _bMax > 0 ? Math.round(_bMax * (Number(d.frais_notaire_pct) || (fraisNotaireDefault(paysBien, neufAncien) * 100)) / 100) : 0;
+    const _totalA = _bMax + _liqA + _notaireA;
     return (
       <>
-        {/* M/2026/04/30/49 — Sous-bloc Recherche bien en tete (audit M/67 prio normale). */}
+        {/* M/2026/04/30/49 — Sous-bloc Recherche bien en tete. */}
         <RechercheBienBloc d={d} set={set}/>
-        {/* M/2026/04/30/47 — CurrencyPicker + ConversionDisplay live cote Acheteur/Investisseur
-            (etend M/30/29 cote Vendeur). Suffixe dynamique {devise} partout (suppression franche
-            ternaire MAD/€ binaire). */}
+        {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills + suppression DEVISE DOSSIER. */}
+        <CurrencyBar3Pills forceUpdate={forceUpdate}/>
         <V55Bloc title="Prix" theme="prix">
-          {/* M/2026/05/02/43 — M-PAN-INT : Layout 2 — 3 lignes fourchette EUR/MAD pair.
-              Validation Prix max < Prix min : warn rouge live sur la 2e ligne. Liquide dispo = cash hors crédit.
-              Migration : legacy budget_min/budget_max/prix_liquide vers nouveaux keys EUR+MAD. */}
-          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
-            <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise dossier</span>
-            <CurrencyPicker value={devise} onChange={pickDevise}/>
-            {d.devise_source === 'manual' && (
-              <span style={{fontSize:10, color:'#A07842', fontStyle:'italic'}}>(choix manuel)</span>
-            )}
-          </div>
-          <ConversionPair label="Prix min" eurKey="prix_min_eur" madKey="prix_min_mad" legacyKey="budget_min" set={set} d={d} devise={devise} hint="Conversion auto au taux du jour"/>
-          {(() => {
-            const _minRef = Number(d.prix_min_eur) || (Number(d.budget_min) || 0);
-            const _maxRef = Number(d.prix_max_eur) || (Number(d.budget_max) || 0);
-            const warn = _minRef > 0 && _maxRef > 0 && _maxRef < _minRef;
-            return (
-              <ConversionPair label="Prix max" eurKey="prix_max_eur" madKey="prix_max_mad" legacyKey="budget_max" set={set} d={d} devise={devise}
-                hint={warn ? '⚠ Prix max < Prix min' : ''} warn={warn}/>
-            );
-          })()}
-          <ConversionPair label="Liquide dispo" eurKey="liquide_dispo_eur" madKey="liquide_dispo_mad" legacyKey="prix_liquide" set={set} d={d} devise={devise} hint="Cash hors crédit"/>
+          <PriceField2Col label="Budget min" valueKey="budget_min" set={set} d={d} hint="Conversion bidir live" forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Budget max" valueKey="budget_max" set={set} d={d} hint={_warnMax ? '⚠ Budget max < Budget min' : 'Conversion bidir live'} warn={_warnMax} forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Liquide dispo" valueKey="prix_liquide" set={set} d={d} hint="Cash hors crédit" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
         <V55Bloc title="Frais d'agence" theme="agence">
           <V55Field label="Honoraires à charge" type="select" value={d.honoraires_charge} onChange={v => set('honoraires_charge', v)}
             options={['Vendeur','Acheteur','Partagés']}/>
-          {honoCharge === 'Acheteur' && (
-            <V55Field label="Honoraires estimés à votre charge" type="number" value={d.honoraires_montant_estime} onChange={v => set('honoraires_montant_estime', v)} suffix={devise}/>
-          )}
           {honoCharge === 'Vendeur' && (
             <V55ReadOnly label="Honoraires" value="Supportés par le vendeur" hint="Aucun frais d'agence à votre charge"/>
           )}
-          {/* M/2026/05/02/35 — M144.D livrable 1 : Multi-acteurs Frais d'agence Acheteur.
-              Pré-rempli 'Agent contrepartie' 2,5%. Calc auto sur budget_max. */}
-          <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid #C9B79A40'}}>
-            <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={Number(d.budget_max) || 0} profil="Acheteur"/>
-          </div>
+          <M53FraisAgenceMulti d={d} set={set} baseAmount={_bMax} profil="Acheteur" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
-        <V55Bloc title="Frais de notaire (estimation)" theme="notaire">
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <V55Field label={'Taux %' + (paysBien === 'FR' ? (neufAncien === 'neuf' ? ' (FR neuf 3%)' : ' (FR ancien 7,5%)') : ' (MA 6%)')}
-              type="pct" value={d.frais_notaire_pct} onChange={v => set('frais_notaire_pct', v)} suffix="%"
-              placeholder={String(fraisNotaireDefault(paysBien, neufAncien) * 100)}/>
-            <V55ReadOnly label="Montant estimé" value={budget > 0 ? fmtMoneyV55(fraisNotEst, devise) : '—'}/>
-          </div>
-        </V55Bloc>
-
-        {/* M/2026/05/02/34 — M144.C livrable D : Synthèse Acheteur 'Budget total mobilisable'
-            cohérent avec Synthèse Vendeur M144.B (V55Bloc theme=synthese ocre fort font 20). */}
+        {/* M/2026/05/03/2.1 — Réordonnancement : Synthèse Acheteur APRÈS Frais agence,
+            AVANT Frais notaire (point 8 checklist). */}
         <V55Bloc title="📊 Budget total mobilisable" theme="synthese">
           {(() => {
-            const _bMax = Number(d.budget_max) || 0;
-            const _liq = Number(d.prix_liquide) || 0;
-            const _notaire = Number(fraisNotEst) || 0;
-            const _total = _bMax + _liq + _notaire;
-            if (_total <= 0) return <div style={{color:'rgba(255,255,255,0.85)', fontSize:12, fontStyle:'italic'}}>Saisir budget pour calcul (Budget max + Liquide + Notaire estimé)</div>;
+            if (_totalA <= 0) return <div style={{color:'rgba(255,255,255,0.85)', fontSize:12, fontStyle:'italic'}}>Saisir budget pour calcul (Budget max + Liquide + Notaire estimé)</div>;
+            const fmt = (n) => fmtNumV5(n) + ' ' + (CURRENCY_SYMBOL_V5[cur.left] || cur.left);
             return (
               <>
-                <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>
-                  {fmtMoneyV55(_total, devise)}
-                </div>
+                <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>{fmt(_totalA)}</div>
                 <div style={{fontSize:11, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
-                  Budget max {fmtMoneyV55(_bMax, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Notaire estimé {fmtMoneyV55(_notaire, devise)}
+                  Budget max {fmt(_bMax)}{_liqA > 0 ? ' + Liquide ' + fmt(_liqA) : ''} + Notaire estimé {fmt(_notaireA)}
                 </div>
-                <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>
-                  Visible sur fiche dossier et PDF
-                </div>
+                <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>Visible sur fiche dossier et PDF</div>
               </>
             );
           })()}
         </V55Bloc>
+
+        <FraisNotaireBlock2Col d={d} set={set} paysBien={paysBien} neufAncien={neufAncien} baseAmount={_bMax} forceUpdate={forceUpdate}/>
 
         {/* M/2026/05/02/35 — M144.D livrable 2 : Plan de paiement collapsed (Acheteur).
             Acompte / Signature acte / Solde livraison %. Validation total = 100%. */}
@@ -7521,69 +7899,42 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const dateExpAuto = dateSig ? addMonthsISOV55(dateSig, duree) : '';
     return (
       <>
-        {/* V62 — Bloc essentiels en haut */}
+        {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills + suppression DEVISE DOSSIER + DATE DISPO. */}
+        <CurrencyBar3Pills forceUpdate={forceUpdate}/>
+        {/* M/2026/05/03/2.1 — sémantique canonique : prix_affiche / prix_plancher / prix_liquide
+            stockent un nombre nu sans unité ; l'unité (gauche-currency) vit en state UI
+            window.__ocreCurrencyV5State. Reload = retour défaut EUR/MAD/10.84. */}
         <V55Bloc title="Prix" theme="prix">
-          {/* M/2026/05/02/43 — M-PAN-INT : Layout 2 (Cards thématiques colorées) — 3 lignes EUR/MAD pair.
-              Devise dossier reste choisissable pour synthèse/PDF/share. ConversionPair gère affichage live
-              EUR + MAD côte à côte avec bi-directional auto-conversion (TAUX 10.85). Migration douce :
-              les anciens dossiers (prix_affiche/prix_plancher/prix_liquide en devise dossier) restent
-              affichés correctement. Sur edit les 3 keys (eur, mad, legacy) sont écrites en cohérence. */}
-          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
-            <span style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>Devise dossier</span>
-            <CurrencyPicker value={devise} onChange={pickDevise}/>
-            {d.devise_source === 'manual' && (
-              <span style={{fontSize:10, color:'#A07842', fontStyle:'italic'}}>(choix manuel)</span>
-            )}
-          </div>
-          <ConversionPair label="Prix" eurKey="prix_eur" madKey="prix_mad" legacyKey="prix_affiche" set={set} d={d} devise={devise} hint="Conversion auto au taux du jour"/>
-          <ConversionPair label="Prix plancher" eurKey="prix_plancher_eur" madKey="prix_plancher_mad" legacyKey="prix_plancher" set={set} d={d} devise={devise} hint="🔒 Visible agent uniquement (masqué sur PDF partagé)"/>
-          <ConversionPair label="Liquide" eurKey="liquide_eur" madKey="liquide_mad" legacyKey="prix_liquide" set={set} d={d} devise={devise} hint="Partie cash hors compta"/>
-          <V55Field label="Date de disponibilité" type="date_fr" value={d.date_disponibilite} onChange={v => set('date_disponibilite', v)}/>
+          <PriceField2Col label="Prix" valueKey="prix_affiche" set={set} d={d} hint="Conversion bidir live" forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Prix plancher 🔒" valueKey="prix_plancher" set={set} d={d} hint="Visible agent uniquement (masqué sur PDF partagé)" forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Liquide" valueKey="prix_liquide" set={set} d={d} hint="Partie cash hors compta" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
-        {/* M/2026/05/02/40 — M144.I : Bloc Frais d'agence Multi-acteurs UNIQUE.
-            Suppression franche du legacy Honoraires (Mode pourcent/forfait + Taux + Charge + Commission calc + TTC/HT).
-            Multi-acteurs M144.D est désormais la seule source de saisie des frais d'agence Vendeur. */}
         <V55Bloc title="Frais d'agence" theme="agence">
-          <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={prix} profil="Vendeur"/>
+          <M53FraisAgenceMulti d={d} set={set} baseAmount={prix} profil="Vendeur" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
-        {/* M/2026/05/02/40 — M144.I : Synthèse Vendeur. Prix de vente affiché = Prix + Liquide + Total agence
-            (hors notaire = charge acheteur). Calcul live UNIQUEMENT depuis frais_agence_acteurs (Multi-acteurs M144.D).
-            Plus de fallback commCalc legacy (variables Honoraires legacy supprimées M144.I). */}
+        {/* M/2026/05/03/2.1 — Synthèse Vendeur (Prix de vente affiché PDF) reste APRÈS Frais agence
+            ET AVANT Frais notaire (point 8 checklist déjà satisfait pour Vendeur). */}
         {(() => {
           const _prixAff = Number(d.prix_affiche) || 0;
           const _liq = Number(d.prix_liquide) || 0;
           const _comm = totalAgenceMulti;
           const _total = _prixAff + _liq + _comm;
           if (_total <= 0) return null;
+          const fmt = (n) => fmtNumV5(n) + ' ' + (CURRENCY_SYMBOL_V5[cur.left] || cur.left);
           return (
             <V55Bloc title="📊 Prix de vente affiché" theme="synthese">
-              <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>
-                {fmtMoneyV55(_total, devise)}
-              </div>
+              <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>{fmt(_total)}</div>
               <div style={{fontSize:11, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
-                Prix {fmtMoneyV55(_prixAff, devise)}{_liq > 0 ? ' + Liquide ' + fmtMoneyV55(_liq, devise) : ''} + Frais agence {fmtMoneyV55(_comm, devise)} (hors notaire à charge acheteur)
+                Prix {fmt(_prixAff)}{_liq > 0 ? ' + Liquide ' + fmt(_liq) : ''} + Frais agence {fmt(_comm)} (hors notaire à charge acheteur)
               </div>
-              <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>
-                Visible sur fiche dossier et PDF
-              </div>
+              <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>Visible sur fiche dossier et PDF</div>
             </V55Bloc>
           );
         })()}
 
-        {/* M/2026/05/02/40 — M144.I : Bloc Frais notaire Vendeur RÉFONDU avec parité Acheteur.
-            Avant : juste estimation readonly. Après : 3 cols Pourcentage modifiable + Frais dossier optionnel + Total live.
-            Pré-rempli selon GPS pays bien (M144.C livrable B fraisNotaireDefault enrichi 7 pays). */}
-        <V55Bloc title="Frais de notaire (à charge acheteur)" theme="notaire">
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:6}}>
-            <V55Field label={'Taux %' + (paysBien === 'FR' ? (neufAncien === 'neuf' ? ' (FR neuf 2,5%)' : ' (FR ancien 7,5%)') : paysBien === 'MA' ? ' (MA 6%)' : paysBien === 'ES' ? (neufAncien === 'neuf' ? ' (ES neuf 12,5%)' : ' (ES ancien 11%)') : '')}
-              type="pct" value={d.frais_notaire_pct} onChange={v => set('frais_notaire_pct', v)} suffix="%"
-              placeholder={String(fraisNotaireDefault(paysBien, neufAncien) * 100)} style={{marginBottom:0}}/>
-            <V55Field label="Frais dossier (optionnel)" type="number" value={d.frais_notaire_dossier} onChange={v => set('frais_notaire_dossier', v)} suffix={devise} style={{marginBottom:0}}/>
-          </div>
-          <V55ReadOnly label="Total notaire estimé" value={prix > 0 ? fmtMoneyV55(fraisNotTotal, devise) : '—'} hint="Information : ces frais sont supportés par l'acheteur. Hors prix de vente affiché."/>
-        </V55Bloc>
+        <FraisNotaireBlock2Col d={d} set={set} paysBien={paysBien} neufAncien={neufAncien} baseAmount={prix} forceUpdate={forceUpdate}/>
         <V55Bloc title="Mandat" theme="mandat" collapsible expanded={expandedBlocks.mandat} onToggle={() => toggleBlock('mandat')}>
           <V55Field label="Type" type="select" value={d.mandat_type} onChange={v => set('mandat_type', v)}
             options={['Simple','Exclusif','Semi-exclusif','Co-exclusif']}/>
@@ -7651,22 +8002,26 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
       <>
         {/* M/2026/04/30/49 — Sous-bloc Recherche bien aussi pour Locataire. */}
         <RechercheBienBloc d={d} set={set}/>
+        {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills Locataire. */}
+        <CurrencyBar3Pills forceUpdate={forceUpdate}/>
         <V55Bloc title="Loyer recherché" theme="prix">
-          {/* M/2026/05/02/43 — M-PAN-INT : Layout 2 — 3 lignes fourchette EUR/MAD pair.
-              Loyer min / Loyer max (validation min<max warn rouge live) / Caution dispo. */}
-          <ConversionPair label="Loyer min" eurKey="loyer_min_eur" madKey="loyer_min_mad" legacyKey="loyer_min" set={set} d={d} devise={devise} hint="Conversion auto"/>
+          {/* M/2026/05/03/2.1 — sémantique canonique : loyer_min / loyer_max / caution_dispo
+              stockent un nombre nu sans unité ; unité gauche-currency = state UI window.__ocreCurrencyV5State. */}
+          <PriceField2Col label="Loyer min" valueKey="loyer_min" set={set} d={d} hint="Conversion bidir live" forceUpdate={forceUpdate}/>
           {(() => {
-            const _minRef = Number(d.loyer_min_eur) || (Number(d.loyer_min) || 0);
-            const _maxRef = Number(d.loyer_max_eur) || (Number(d.loyer_max) || 0);
-            const warn = _minRef > 0 && _maxRef > 0 && _maxRef < _minRef;
+            const _min = Number(d.loyer_min) || 0;
+            const _max = Number(d.loyer_max) || 0;
+            const warn = _min > 0 && _max > 0 && _max < _min;
             return (
-              <ConversionPair label="Loyer max" eurKey="loyer_max_eur" madKey="loyer_max_mad" legacyKey="loyer_max" set={set} d={d} devise={devise}
-                hint={warn ? '⚠ Loyer max < Loyer min' : 'Charges comprises'} warn={warn}/>
+              <PriceField2Col label="Loyer max" valueKey="loyer_max" set={set} d={d}
+                hint={warn ? '⚠ Loyer max < Loyer min' : 'Charges comprises'} warn={warn} forceUpdate={forceUpdate}/>
             );
           })()}
-          <ConversionPair label="Caution dispo" eurKey="caution_dispo_eur" madKey="caution_dispo_mad" legacyKey="caution_dispo" set={set} d={d} devise={devise} hint="Cash dépôt"/>
+          <PriceField2Col label="Caution dispo" valueKey="caution_dispo" set={set} d={d} hint="Cash dépôt" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
+        {/* M/2026/05/03/2.1 — V55Bloc Honoraires location (estimation) Locataire CONSERVÉ TEL QUEL
+            (anti-dérive M48 absolue, point 10 checklist Option A SAFE). */}
         <V55Bloc title="Honoraires location (estimation)" theme="agence">
           <V55Field label="Honoraires locataire estimés" type="number" value={d.honoraires_locataire_estimes} onChange={v => set('honoraires_locataire_estimes', v)} suffix={devise === 'MAD' ? 'MAD' : '€'} hint={paysBien === 'FR' ? 'Encadré ALUR France ~10-13€/m² selon zone tendue' : 'MA usage variable, souvent payés par bailleur'}/>
           <V55Field label="Frais de dossier" type="number" value={d.frais_dossier} onChange={v => set('frais_dossier', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
@@ -7677,7 +8032,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           </div>
         </V55Bloc>
 
-        {/* M/2026/05/02/34 — M144.C livrable D : Synthèse Locataire 'Effort mensuel maximum'. */}
+        {/* M/2026/05/03/2.1 — Synthèse Locataire en gauche-currency UI state. */}
         <V55Bloc title="📊 Effort mensuel maximum" theme="synthese">
           {(() => {
             const _lMax = Number(d.loyer_max) || 0;
@@ -7685,13 +8040,13 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
             const _chargesEst = _lMax > 0 ? Math.round(_lMax * 0.07) : 0;
             const _total = _lMax + _chargesEst;
             if (_total <= 0) return <div style={{color:'rgba(255,255,255,0.85)', fontSize:12, fontStyle:'italic'}}>Saisir loyer max pour calcul (Loyer max + Charges estimées ~7%)</div>;
+            const sym = CURRENCY_SYMBOL_V5[cur.left] || cur.left;
+            const fmt = (n) => fmtNumV5(n) + ' ' + sym;
             return (
               <>
-                <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>
-                  {fmtMoneyV55(_total, devise)}/mois
-                </div>
+                <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>{fmt(_total)}/mois</div>
                 <div style={{fontSize:11, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
-                  Loyer max {fmtMoneyV55(_lMax, devise)}/mois + Charges estimées {fmtMoneyV55(_chargesEst, devise)} (~7%){_hono > 0 ? '. Honoraires location ' + fmtMoneyV55(_hono, devise) + ' (1 fois)' : ''}
+                  Loyer max {fmt(_lMax)}/mois + Charges estimées {fmt(_chargesEst)} (~7%){_hono > 0 ? '. Honoraires location ' + fmt(_hono) + ' (1 fois)' : ''}
                 </div>
                 <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>
                   Visible sur fiche dossier et PDF
@@ -7733,15 +8088,16 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const rendementBrutAuto = acquisitionPrix > 0 && loyer > 0 ? Math.round((loyer * 12) / acquisitionPrix * 1000) / 10 : null;
     return (
       <>
+        {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills Bailleur. */}
+        <CurrencyBar3Pills forceUpdate={forceUpdate}/>
         <V55Bloc title="Loyer & conditions" theme="prix">
-          {/* M/2026/05/02/43 — M-PAN-INT : Layout 2 — 4 lignes EUR/MAD pair.
-              Loyer / Loyer plancher (confidentiel agent) / Charges récupérables / Caution.
-              Charges non récupérables (côté propriétaire) reste en bas en saisie simple devise dossier. */}
-          <ConversionPair label="Loyer demandé" eurKey="loyer_eur" madKey="loyer_mad" legacyKey="loyer_demande" set={set} d={d} devise={devise} hint="Conversion auto"/>
-          <ConversionPair label="Loyer plancher" eurKey="loyer_plancher_eur" madKey="loyer_plancher_mad" legacyKey="loyer_plancher" set={set} d={d} devise={devise} hint="🔒 Visible agent uniquement"/>
-          <ConversionPair label="Charges" eurKey="charges_eur" madKey="charges_mad" legacyKey="charges_recuperables" set={set} d={d} devise={devise} hint="Mensuelles récupérables"/>
-          <ConversionPair label="Caution" eurKey="caution_eur" madKey="caution_mad" legacyKey="depot_garantie_demande" set={set} d={d} devise={devise} hint={paysBien === 'FR' ? '1-2 mois loyer' : '2-3 mois loyer'}/>
-          <V55Field label="Charges non récupérables (propriétaire)" type="number" value={d.charges_non_recuperables} onChange={v => set('charges_non_recuperables', v)} suffix={devise === 'MAD' ? 'MAD/mois' : '€/mois'}/>
+          {/* M/2026/05/03/2.1 — sémantique canonique : loyer_demande / loyer_plancher /
+              charges_recuperables / depot_garantie_demande stockent un nombre nu sans unité. */}
+          <PriceField2Col label="Loyer" valueKey="loyer_demande" set={set} d={d} hint="Conversion bidir live" forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Loyer plancher 🔒" valueKey="loyer_plancher" set={set} d={d} hint="Visible agent uniquement" forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Charges récupérables" valueKey="charges_recuperables" set={set} d={d} hint="Mensuelles récupérables" forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Caution" valueKey="depot_garantie_demande" set={set} d={d} hint={paysBien === 'FR' ? '1-2 mois loyer' : '2-3 mois loyer'} forceUpdate={forceUpdate}/>
+          <V55Field label="Charges non récupérables (propriétaire)" type="number" value={d.charges_non_recuperables} onChange={v => set('charges_non_recuperables', v)} suffix={(CURRENCY_SYMBOL_V5[cur.left] || cur.left) + '/mois'}/>
         </V55Bloc>
 
         <V55Bloc title="Honoraires de location" theme="agence">
@@ -7750,34 +8106,31 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           {honoMode === '% loyer mensuel' ? (
             <V55Field label="% du loyer mensuel" type="pct" value={d.honoraires_bailleur_taux != null ? d.honoraires_bailleur_taux : 100} onChange={v => set('honoraires_bailleur_taux', v)} suffix="%" hint="100% = 1 mois de loyer"/>
           ) : (
-            <V55Field label="Forfait" type="number" value={d.honoraires_bailleur_forfait} onChange={v => set('honoraires_bailleur_forfait', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+            <V55Field label="Forfait" type="number" value={d.honoraires_bailleur_forfait} onChange={v => set('honoraires_bailleur_forfait', v)} suffix={CURRENCY_SYMBOL_V5[cur.left] || cur.left}/>
           )}
-          <V55ReadOnly label="Honoraires bailleur (auto)" value={fmtMoneyV55(honoMontant, devise)}/>
+          <V55ReadOnly label="Honoraires bailleur (auto)" value={honoMontant > 0 ? fmtNumV5(honoMontant) + ' ' + (CURRENCY_SYMBOL_V5[cur.left] || cur.left) : '—'}/>
           <V55Field label="Honoraires partagés avec locataire" type="toggle" value={!!d.honoraires_locataire_partage_oui} onChange={v => set('honoraires_locataire_partage_oui', v)}/>
           {d.honoraires_locataire_partage_oui && (
-            <V55Field label="Montant à charge locataire" type="number" value={d.honoraires_locataire_montant} onChange={v => set('honoraires_locataire_montant', v)} suffix={devise === 'MAD' ? 'MAD' : '€'}/>
+            <V55Field label="Montant à charge locataire" type="number" value={d.honoraires_locataire_montant} onChange={v => set('honoraires_locataire_montant', v)} suffix={CURRENCY_SYMBOL_V5[cur.left] || cur.left}/>
           )}
-          {/* M/2026/05/02/35 — M144.D livrable 1 : Multi-acteurs Frais d'agence Bailleur.
-              Pré-rempli 'Agent mandat' forfait = 1 mois loyer. Calc auto. */}
-          <div style={{marginTop:10, paddingTop:10, borderTop:'1px solid #C9B79A40'}}>
-            <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={Number(d.loyer_demande) || 0} profil="Bailleur"/>
-          </div>
+          {/* M/2026/05/03/2.1 — Multi-acteurs Frais d'agence Bailleur via M53FraisAgenceMulti. */}
+          <M53FraisAgenceMulti d={d} set={set} baseAmount={Number(d.loyer_demande) || 0} profil="Bailleur" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
-        {/* M/2026/05/02/34 — M144.C livrable D : Synthèse Bailleur 'Loyer affiché au marché'. */}
+        {/* M/2026/05/03/2.1 — Synthèse Bailleur. Display en gauche-currency UI state. */}
         <V55Bloc title="📊 Loyer affiché au marché" theme="synthese">
           {(() => {
             const _loyer = Number(d.loyer_demande) || 0;
             const _charges = Number(d.charges_recuperables != null ? d.charges_recuperables : d.charges) || 0;
             const _total = _loyer + _charges;
             if (_total <= 0) return <div style={{color:'rgba(255,255,255,0.85)', fontSize:12, fontStyle:'italic'}}>Saisir loyer pour calcul (Loyer demandé + Charges récupérables)</div>;
+            const sym = CURRENCY_SYMBOL_V5[cur.left] || cur.left;
+            const fmt = (n) => fmtNumV5(n) + ' ' + sym;
             return (
               <>
-                <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>
-                  {fmtMoneyV55(_total, devise)}/mois
-                </div>
+                <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>{fmt(_total)}/mois</div>
                 <div style={{fontSize:11, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
-                  Loyer demandé {fmtMoneyV55(_loyer, devise)}/mois{_charges > 0 ? ' + Charges ' + fmtMoneyV55(_charges, devise) + '/mois (charges comprises)' : ''}
+                  Loyer demandé {fmt(_loyer)}/mois{_charges > 0 ? ' + Charges ' + fmt(_charges) + '/mois (charges comprises)' : ''}
                 </div>
                 <div style={{fontSize:10, color:'rgba(255,255,255,0.7)', fontStyle:'italic', marginTop:6}}>
                   Visible sur fiche dossier et PDF
