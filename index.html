@@ -8824,6 +8824,23 @@ function PhonePill({tel, size = 'md', style}) {
   );
 }
 
+// M/2026/05/03/30 — PhonePillCollapsible : icone telephone seule par defaut. Tap = deploie le numero.
+// Re-tap sur le numero = ouvre l'app phone (PhonePill href tel:).
+function PhonePillCollapsible({tel}) {
+  const [open, setOpen] = React.useState(false);
+  if (!tel) return null;
+  if (open) return <PhonePill tel={tel} size="sm"/>;
+  return (
+    <button type="button" onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+      aria-label="Afficher le numero de telephone" title="Afficher le numero"
+      style={{width:28, height:28, borderRadius:'50%', border:'1px solid #C9B79A', background:'#FDF8F0', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, color:'#5C3B1E', flexShrink:0}}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+      </svg>
+    </button>
+  );
+}
+
 // V18.36 — pill wrapper cohérent (fond crème + contour ovale) validé Philippe preview-header-v2 B.
 function PillIconButton({icon, onClick, title, active, style}) {
   return (
@@ -20175,7 +20192,11 @@ function FormView(props) {
           M/2026/05/03/28 — Loupe REINTEGREE dans le header (a droite). Tap = ouvre champ recherche
           inline dans le header (sur la meme ligne, autoFocus). Tap exterieur ou bouton ✕ ferme.
           Suppression franche de l'ancienne barre de recherche inline sous le header (M/2026/05/01/5). */}
-      <div data-formview-header style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:8}}>
+      {/* M/2026/05/03/30 — wrapper sticky englobe data-formview-header + nouveau bloc identite.
+          Le sticky interne du data-formview-header est retire (le wrapper assure le collage
+          en haut). Cela permet aux deux blocs de rester FIXES ensemble en haut au scroll. */}
+      <div style={{position:'sticky', top:0, zIndex:10, background:'#fff'}}>
+      <div data-formview-header style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', display:'flex', alignItems:'center', gap:8}}>
         <BackButton onClick={backToListFlushed}/>
         <OcreLogoButton/>
         {/* M/2026/05/03/29 — fix overflow : spacer flex:1 conditionnel (uniquement quand
@@ -20219,6 +20240,32 @@ function FormView(props) {
             </div>
           )}
         </div>
+      </div>
+      {/* M/2026/05/03/30 — bloc identite fixe sous le header. Une ligne : prenom+nom +
+          pill tel collapsible + pill profil colore. Coins arrondis. Compact. */}
+      <div data-identity-bar style={{padding:'6px 12px', background:'#fff', borderBottom:'1px solid #EDE6DC'}}>
+        {(() => {
+          const _telsBar = Array.isArray(d.tels) && d.tels.length > 0 ? d.tels : (d.tel ? [{valeur: d.tel}] : []);
+          const _telBar = (_telsBar[0] && _telsBar[0].valeur) || '';
+          const _displayNameBar = (profilType === 'Société' && d.societe_nom)
+            ? d.societe_nom
+            : (((d.prenom || '') + ' ' + (d.nom || '')).trim() || 'Sans nom');
+          const _isPrincipalBar = ['Acheteur','Vendeur','Bailleur','Locataire'].includes(activeProfil);
+          const _profilColorBar = _isPrincipalBar ? (PROFILS[activeProfil] || '#8B5E3C') : '#A89882';
+          const _profilLabelBar = _isPrincipalBar ? (PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()) : 'BROUILLON';
+          return (
+            <div style={{display:'flex', alignItems:'center', gap:8, padding:'4px 10px', background:'#FFF8EB', border:'1px solid #E8DDC9', borderRadius:10, minWidth:0}}>
+              <span style={{flex:1, minWidth:0, fontSize:13.5, fontWeight:700, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontFamily:'inherit'}}>
+                {_displayNameBar}
+              </span>
+              <PhonePillCollapsible tel={_telBar}/>
+              <span style={{padding:'2px 8px', borderRadius:10, background:_profilColorBar, color:'#fff', fontSize:9.5, fontWeight:700, letterSpacing:0.4, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit'}}>
+                {_profilLabelBar}
+              </span>
+            </div>
+          );
+        })()}
+      </div>
       </div>
       {_peBanner}
 
