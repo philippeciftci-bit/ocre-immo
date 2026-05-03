@@ -20178,10 +20178,14 @@ function FormView(props) {
       <div data-formview-header style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:8}}>
         <BackButton onClick={backToListFlushed}/>
         <OcreLogoButton/>
-        <div style={{flex:1, minWidth:0}}/>
-        {/* Loupe + champ inline switchable. Conteneur ref pour detect-tap-exterieur. */}
+        {/* M/2026/05/03/29 — fix overflow : spacer flex:1 conditionnel (uniquement quand
+            search FERME, sinon le wrapper headerSearchRef prend toute la place dispo).
+            Wrapper flex:'1 1 auto' quand search OUVERT (permet shrink/grow), flexShrink:0
+            quand FERME (loupe rond compacte a droite). */}
+        {!formSearchOpen && <div style={{flex:1, minWidth:0}}/>}
         <div ref={headerSearchRef} style={Object.assign(
-          {display:'flex', alignItems:'center', gap:6, flexShrink:0, minWidth:0},
+          {display:'flex', alignItems:'center', gap:6, minWidth:0},
+          formSearchOpen ? {flex:'1 1 auto', maxWidth:'100%'} : {flexShrink:0},
           allFieldsEmpty(d) ? {opacity:0.45, pointerEvents:'none'} : {opacity:1, pointerEvents:'auto'}
         )}>
           {!formSearchOpen ? (
