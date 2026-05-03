@@ -8691,8 +8691,11 @@ function FinancementForm({activeProfil, d, set, dossierId, showToast}) {
 
 // V18.7 — Stage accordéon strict + status badge + ligne stats compacte fermé.
 // V18.27 — prop highlighted : match loupe → border jaune #F59E0B + bg très léger #FFFBEB.
-function Stage({title, expanded, onToggle, children, status, summary, highlighted, customHeader, hideChevron, sticky, summaryAlwaysVisible, dataStageAnchor}) {
+function Stage({title, expanded, onToggle, children, status, summary, highlighted, customHeader, hideChevron, summaryAlwaysVisible}) {
   // status : 'complete' (✓ vert) | 'partial' (… orange) | 'empty' (— gris)
+  // M/2026/05/03/27 — cleanup total sticky/fixed Section I (revert M11/14/15/19/23/24/25/26).
+  // Retour comportement normal : Stage component sans prop sticky, sans fixedDims state,
+  // sans useLayoutEffect, sans ResizeObserver, sans placeholder. Wrapper Stage en flow normal.
   const badge = status === 'complete'
     ? {char:'✓', color:'#3E8B5E', bg:'#E8F5EC'}
     : status === 'partial'
@@ -8703,72 +8706,9 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
   const headerBg = expanded
     ? (highlighted ? '#FEF3C7' : '#F4ECE3')
     : (highlighted ? '#FFFBEB' : '#FBF7F2');
-  // M/2026/05/03/11 — E2 : prop sticky pour l'entête Section I (Stage idx 0).
-  // M/2026/05/03/14 — sticky sur header bar.
-  // M/2026/05/03/15 — sticky REMIS sur le WRAPPER Stage.
-  // M/2026/05/03/23 — sticky DE NOUVEAU sur le HEADER bar (pas le wrapper).
-  // M/2026/05/03/26 — REMPLACEMENT sticky -> position:fixed iOS-safe (pattern Stripe/Linear).
-  // Cause root M21 : iPad Safari + body overflow:hidden + flex item scroll container =
-  // sticky non fiable. Fix : header en position:fixed avec dimensions calculees via JS
-  // (useLayoutEffect + ResizeObserver) sur le scroll container. Placeholder invisible
-  // reserve la hauteur du header (evite saut visuel quand header sort du flow).
-  const wrapperRefM26 = React.useRef(null);
-  const headerRefM26 = React.useRef(null);
-  const [fixedDimsM26, setFixedDimsM26] = React.useState(null);
-  React.useLayoutEffect(() => {
-    if (!sticky) { setFixedDimsM26(null); return undefined; }
-    let scrollContainer = null;
-    function findScrollContainer(el) {
-      let p = el && el.parentElement;
-      while (p) {
-        const cs = window.getComputedStyle(p);
-        if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') return p;
-        p = p.parentElement;
-      }
-      return null;
-    }
-    function measure() {
-      if (!wrapperRefM26.current || !headerRefM26.current) return;
-      const formHeader = document.querySelector('[data-formview-header]');
-      const fhBottom = formHeader ? formHeader.getBoundingClientRect().bottom : 0;
-      if (!scrollContainer) scrollContainer = findScrollContainer(wrapperRefM26.current);
-      const sc = scrollContainer;
-      const scRect = sc ? sc.getBoundingClientRect() : null;
-      const cs = sc ? window.getComputedStyle(sc) : null;
-      const padL = cs ? (parseInt(cs.paddingLeft) || 0) : 0;
-      const padR = cs ? (parseInt(cs.paddingRight) || 0) : 0;
-      const headerH = headerRefM26.current.offsetHeight;
-      setFixedDimsM26({
-        top: fhBottom,
-        left: scRect ? (scRect.left + padL) : 0,
-        width: scRect ? Math.max(0, scRect.width - padL - padR) : window.innerWidth,
-        height: headerH,
-      });
-    }
-    measure();
-    requestAnimationFrame(measure);
-    const ro = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(measure) : null;
-    if (ro && wrapperRefM26.current) ro.observe(wrapperRefM26.current);
-    if (!scrollContainer) scrollContainer = findScrollContainer(wrapperRefM26.current);
-    if (ro && scrollContainer) ro.observe(scrollContainer);
-    window.addEventListener('resize', measure);
-    return () => {
-      if (ro) ro.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [sticky, expanded]);
-  const headerFixedStyle = (sticky && fixedDimsM26) ? {
-    position: 'fixed',
-    top: fixedDimsM26.top + 'px',
-    left: fixedDimsM26.left + 'px',
-    width: fixedDimsM26.width + 'px',
-    zIndex: 30,
-    boxSizing: 'border-box',
-  } : {};
   return (
-    <div ref={wrapperRefM26} {...(dataStageAnchor != null ? {'data-stage-anchor': dataStageAnchor} : {})} style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow: sticky ? 'visible' : 'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)'}}>
-      {sticky && fixedDimsM26 && <div aria-hidden="true" style={{height: fixedDimsM26.height + 'px'}}/>}
-      <div ref={headerRefM26} onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s', ...headerFixedStyle}}>
+    <div style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow:'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)'}}>
+      <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s'}}>
         <div style={{flex:1, minWidth:0}}>
           <div style={{display:'flex', alignItems:'center', gap:8}}>
             {customHeader ? customHeader : (
@@ -20308,20 +20248,17 @@ function FormView(props) {
 
       {/* V28 — Header dossier : pills v27 supprimées, déplacées dans Section I ligne nom. */}
 
-      <div style={{flex:1, minHeight:0, WebkitOverflowScrolling:'touch', overflowY:'auto', padding:12}}>
+      <div style={{flex:1, overflowY:'auto', padding:12}}>
         {/* M/2026/05/01/12 — Section I Identite TOUJOURS rendue (tronc commun pour tous
             les profils : prenom / nom / tel / email / adresse). Saisie ici avant choix
             profil = trigger commit DB avec projet=null (coherent draft-on-input M90).
             Sections II / III / IV : conditionnelles, verrouillees via LockedSections. */}
-        {/* M/2026/05/03/19 — wrapper data-stage-anchor externe RETIRE pour Section I uniquement.
-            Le data-stage-anchor="0" est applique directement sur le wrapper Stage interne via
-            la nouvelle prop dataStageAnchor. Cela rend le sticky element un direct child du
-            scroll container (comme la bottom bar qui fonctionne) sur iPad Safari.
-            Sections II/III/IV conservent leur wrapper externe inchange. */}
+        {/* M/2026/05/03/27 — wrapper data-stage-anchor externe RESTAURE pour Section I (symetrie
+            avec Sections II/III/IV). Cleanup sticky/fixed (revert M19). */}
+        <div data-stage-anchor="0">
         <Stage title={(STAGES[activeProfil] || [])[0] || 'I. Identité'}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
-               status={stageStatus[0].status} summary={stageStatus[0].summary} sticky={true} summaryAlwaysVisible={true}
-               dataStageAnchor="0"
+               status={stageStatus[0].status} summary={stageStatus[0].summary} summaryAlwaysVisible={true}
                hideChevron={hasHeadName}>
           {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
               opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
@@ -20665,7 +20602,8 @@ function FormView(props) {
               qu'il ne fait que commit() de la section). Validation finale = bouton ✓ sticky footer M108. */}
           {/* V28 — bouton "+ Ajouter une casquette" bas Stage I retiré. */}
         </Stage>
-        {/* M/2026/05/03/19 — </div> wrapper data-stage-anchor externe RETIRE (Section I direct child du scroll container). */}
+        </div>
+        {/* M/2026/05/03/27 — </div> wrapper data-stage-anchor RESTAURE (cleanup sticky/fixed). */}
         {/* M/2026/05/01/17 — Suppression franche du fallback IIFE _profil = activeProfil || 'Acheteur'.
             Cause : sub-composants montes avec activeProfil='Acheteur' fallback declenchent leur
             useEffect (SectionFinanciereV55 set('devise', 'EUR')) qui appelle markUserAction (M90)
