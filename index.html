@@ -8691,7 +8691,7 @@ function FinancementForm({activeProfil, d, set, dossierId, showToast}) {
 
 // V18.7 — Stage accordéon strict + status badge + ligne stats compacte fermé.
 // V18.27 — prop highlighted : match loupe → border jaune #F59E0B + bg très léger #FFFBEB.
-function Stage({title, expanded, onToggle, children, status, summary, highlighted, customHeader, hideChevron, sticky}) {
+function Stage({title, expanded, onToggle, children, status, summary, highlighted, customHeader, hideChevron, sticky, summaryAlwaysVisible}) {
   // status : 'complete' (✓ vert) | 'partial' (… orange) | 'empty' (— gris)
   const badge = status === 'complete'
     ? {char:'✓', color:'#3E8B5E', bg:'#E8F5EC'}
@@ -8719,9 +8719,12 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
             <span title={status === 'complete' ? 'Section complète' : status === 'partial' ? 'Section partielle' : 'Section vide'}
               style={{display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:9, background: badge.bg, color: badge.color, fontSize:11, fontWeight:800, flexShrink:0}}>{badge.char}</span>
           </div>
-          {!expanded && summary && (
+          {(summaryAlwaysVisible || !expanded) && summary && (
             /* V18.26 — summary accepte string (ancien) ou ReactNode riche (nouveau, multiligne
-               avec thumb/emojis/couleurs). On laisse le flow normal (pas de nowrap) pour les nodes. */
+               avec thumb/emojis/couleurs). On laisse le flow normal (pas de nowrap) pour les nodes.
+               M/2026/05/03/13 — summaryAlwaysVisible=true (Section I) : summary affiche aussi quand
+               expanded — la barre identite (nom + pill profil + tel + email) reste visible meme
+               accordeon ouvert. Tap sur la barre toggle l'accordeon (onClick parent). */
             typeof summary === 'string'
               ? <div style={{fontSize:11, color:'#8B7F6E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginTop:2}}>{summary}</div>
               : <div style={{fontSize:12.5, color:'#5A4E3D', lineHeight:1.4, marginTop:4}}>{summary}</div>
@@ -20255,7 +20258,7 @@ function FormView(props) {
         <div data-stage-anchor="0">
         <Stage title={(STAGES[activeProfil] || [])[0] || 'I. Identité'}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
-               status={stageStatus[0].status} summary={stageStatus[0].summary} sticky={true}
+               status={stageStatus[0].status} summary={stageStatus[0].summary} sticky={true} summaryAlwaysVisible={true}
                hideChevron={hasHeadName}>
           {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
               opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
