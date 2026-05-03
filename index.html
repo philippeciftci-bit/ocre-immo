@@ -7705,6 +7705,231 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
   );
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// M/2026/05/03/3 — Section III v5 sous-mission A1 : composants neufs UI-only.
+// 4 briques inertes (NON wirées) : S3PopinMode, S3PopinQuiPaie, S3ActeurRow,
+// S3SplitTotal. A2 wirera S3ActeurRow dans M53FraisAgenceMulti, A3 dans
+// V55BlocNotaire. Aucun composant V5 partagé (S3CardRound, CurrencyBar3Pills,
+// RatePopup2Col, PriceField2Col, FraisAgencePillDropdown, FraisAgenceForfaitPopup,
+// FraisNotaireBlock2Col, M53FraisAgenceMulti, V55BlocNotaire, V55_THEMES.*) n'est
+// touché ici. Triangle popup via div absolute (CSS pseudo-element ::before
+// impossible en inline-style JSX). Outside-click via useEffect document listener.
+// ───────────────────────────────────────────────────────────────────────────
+
+const S3_PCT_PRESETS = [2, 2.5, 3, 5, 8, 10];
+const S3_FORFAIT_PRESETS = [5000, 10000, 15000, 20000, 25000];
+
+const S3_THEME_COLORS = {
+  navy:  {border:'#1E3A8A', bg:'#EFF4FA', label:'#1E3A8A', chip:'#1E3A8A'},
+  green: {border:'#2D6B3F', bg:'#EEF1ED', label:'#2D6B3F', chip:'#2D6B3F'},
+  mauve: {border:'#5F3F8B', bg:'#F1ECF1', label:'#5F3F8B', chip:'#5F3F8B'},
+};
+
+const S3_QUI_PAIE_OPTIONS = {
+  vente: [
+    {key:'V',   label:'Vendeur',  color:'#5C3B1E'},
+    {key:'A',   label:'Acheteur', color:'#2D6B3F'},
+    {key:'V+A', label:'V+A',      color:'#8B5E3C'},
+  ],
+  location: [
+    {key:'B',   label:'Bailleur',  color:'#1F5784'},
+    {key:'L',   label:'Locataire', color:'#5F3F8B'},
+    {key:'B+L', label:'B+L',       color:'#7FAFD3'},
+  ],
+};
+
+// Hook : ferme une popup au mousedown / touchstart hors du conteneur ref.
+function useS3OutsideClose(refContainer, isOpen, onClose) {
+  React.useEffect(() => {
+    if (!isOpen) return undefined;
+    const handler = (e) => {
+      if (refContainer.current && !refContainer.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [isOpen]);
+}
+
+// S3PopinMode — popup inline compacte au tap sur le bouton % d'un acteur.
+// Onglets Pourcentage / Forfait. Mini-résultat live conversion EUR↔Dhs.
+function S3PopinMode({mode, value, baseAmount, onChange, onClose, themeColor='navy'}) {
+  const t = S3_THEME_COLORS[themeColor] || S3_THEME_COLORS.navy;
+  const cur = getCurrencyV5State() || {left:'EUR', right:'MAD', rate:11};
+  const safeRate = Number(cur.rate) > 0 ? Number(cur.rate) : 11;
+  const initTab = (mode === 'forfait') ? 'forfait' : 'pct';
+  const [tab, setTab] = React.useState(initTab);
+  const [pctVal, setPctVal] = React.useState(initTab === 'pct' ? String(value || '').replace('.', ',') : '');
+  const [forVal, setForVal] = React.useState(initTab === 'forfait' ? String(value || '') : '');
+  const ref = React.useRef(null);
+  useS3OutsideClose(ref, true, onClose);
+  const base = Number(baseAmount) || 0;
+  const pctNum = parseNumV5(pctVal);
+  const forNum = parseNumV5(forVal);
+  const computed = tab === 'pct' ? base * pctNum / 100 : forNum;
+  const computedDhs = computed * safeRate;
+  const validate = () => {
+    if (tab === 'pct') onChange({mode:'pct', value: pctNum});
+    else onChange({mode:'forfait', value: forNum});
+    onClose();
+  };
+  const tabBtn = (k, label) => (
+    <div onClick={() => setTab(k)} style={{flex:1, textAlign:'center', padding:'7px 0', fontSize:11, fontWeight:700, cursor:'pointer', borderBottom:'2px solid '+(tab===k?t.border:'transparent'), color:tab===k?t.label:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4}}>{label}</div>
+  );
+  const chipStyle = (selected) => ({padding:'5px 9px', borderRadius:11, border:'1px solid '+(selected?t.border:'#D6C7AC'), background:selected?t.chip:'#fff', color:selected?'#fff':'#2A2018', fontWeight:600, fontSize:11, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'});
+  return (
+    <div ref={ref} style={{position:'relative', width:'100%', padding:10, background:'#fff', border:'1px solid '+t.border, borderRadius:8, marginTop:8, boxSizing:'border-box', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+      <div style={{position:'absolute', top:-7, left:24, width:12, height:12, background:'#fff', borderTop:'1px solid '+t.border, borderLeft:'1px solid '+t.border, transform:'rotate(45deg)'}} aria-hidden="true"></div>
+      <div style={{display:'flex', borderBottom:'1px solid #F0E9DC', marginBottom:8}}>
+        {tabBtn('pct', 'Pourcentage')}
+        {tabBtn('forfait', 'Forfait')}
+      </div>
+      {tab === 'pct' ? (
+        <div style={{display:'flex', flexWrap:'wrap', gap:5, marginBottom:7}}>
+          {S3_PCT_PRESETS.map(p => (
+            <div key={p} onClick={() => setPctVal(String(p).replace('.',','))} style={chipStyle(pctNum === p)}>{String(p).replace('.',',')} %</div>
+          ))}
+          <div style={{...chipStyle(false), padding:0, border:'1px solid #D6C7AC', display:'flex', alignItems:'center'}}>
+            <input type="text" inputMode="decimal" value={pctVal} onChange={e => setPctVal(e.target.value)} placeholder="Libre" style={{border:'none', outline:'none', fontSize:11, padding:'5px 7px', width:60, fontFamily:'inherit', background:'transparent'}}/>
+            <span style={{fontSize:10, color:'#8B7F6E', paddingRight:6}}>%</span>
+          </div>
+        </div>
+      ) : (
+        <div style={{display:'flex', flexWrap:'wrap', gap:5, marginBottom:7}}>
+          {S3_FORFAIT_PRESETS.map(f => (
+            <div key={f} onClick={() => setForVal(String(f))} style={chipStyle(forNum === f)}>{fmtNumV5(f)}</div>
+          ))}
+          <div style={{...chipStyle(false), padding:0, border:'1px solid #D6C7AC', display:'flex', alignItems:'center'}}>
+            <input type="text" inputMode="numeric" value={forVal} onChange={e => setForVal(e.target.value)} placeholder="Libre" style={{border:'none', outline:'none', fontSize:11, padding:'5px 7px', width:80, fontFamily:'inherit', background:'transparent'}}/>
+          </div>
+        </div>
+      )}
+      <div style={{fontSize:10.5, color:'#5C5550', fontStyle:'italic', textAlign:'center', marginBottom:7, padding:'5px 0', background:t.bg, borderRadius:5}}>
+        {tab === 'pct'
+          ? `Sur ${fmtNumV5(base)} ${CURRENCY_SYMBOL_V5[cur.left] || cur.left} → ${fmtNumV5(Math.round(computed))} ${CURRENCY_SYMBOL_V5[cur.left] || cur.left} · ${fmtNumV5(Math.round(computedDhs))} ${CURRENCY_SYMBOL_V5[cur.right] || cur.right}`
+          : `${fmtNumV5(Math.round(forNum))} ${CURRENCY_SYMBOL_V5[cur.left] || cur.left} · ${fmtNumV5(Math.round(forNum * safeRate))} ${CURRENCY_SYMBOL_V5[cur.right] || cur.right}`}
+      </div>
+      <div style={{display:'flex', gap:6, justifyContent:'flex-end'}}>
+        <button type="button" onClick={onClose} style={{padding:'5px 11px', border:'1px solid #D6C7AC', borderRadius:6, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+        <button type="button" onClick={validate} style={{padding:'5px 11px', border:'none', borderRadius:6, background:t.chip, color:'#fff', fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>Valider</button>
+      </div>
+    </div>
+  );
+}
+
+// S3PopinQuiPaie — popup inline 3 cols vente + séparateur + 3 cols location.
+// transactionType='vente' grise location, 'location' grise vente.
+function S3PopinQuiPaie({value, transactionType, onChange, onClose}) {
+  const ref = React.useRef(null);
+  useS3OutsideClose(ref, true, onClose);
+  const isVente = transactionType === 'vente';
+  const pick = (key) => { onChange(key); onClose(); };
+  const Cell = ({opt, disabled, selected}) => (
+    <div onClick={disabled ? undefined : () => pick(opt.key)} style={{display:'flex', alignItems:'center', gap:5, padding:'7px 8px', borderRadius:7, border:'1px solid '+(selected?'#1E3A8A':'#D6C7AC'), background:selected?'#EFF4FA':'#fff', cursor:disabled?'default':'pointer', opacity:disabled?0.4:1, pointerEvents:disabled?'none':'auto', fontSize:11, fontWeight:600, color:'#2A2018', fontFamily:'inherit', minWidth:0}}>
+      <span style={{width:8, height:8, borderRadius:'50%', background:opt.color, flexShrink:0}} aria-hidden="true"></span>
+      <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{opt.label}</span>
+    </div>
+  );
+  return (
+    <div ref={ref} style={{position:'relative', width:'100%', padding:10, background:'#fff', border:'1px solid #1E3A8A', borderRadius:8, marginTop:8, boxSizing:'border-box', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+      <div style={{position:'absolute', top:-7, right:24, width:12, height:12, background:'#fff', borderTop:'1px solid #1E3A8A', borderLeft:'1px solid #1E3A8A', transform:'rotate(45deg)'}} aria-hidden="true"></div>
+      <div style={{fontSize:9.5, fontWeight:700, color:isVente?'#5C3B1E':'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:5}}>Vente</div>
+      <div style={{display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:5, marginBottom:8}}>
+        {S3_QUI_PAIE_OPTIONS.vente.map(o => <Cell key={o.key} opt={o} disabled={!isVente} selected={isVente && value === o.key}/>)}
+      </div>
+      <div style={{textAlign:'center', fontSize:9.5, color:'#8B7F6E', fontStyle:'italic', margin:'4px 0 6px'}}>— ou pour location —</div>
+      <div style={{fontSize:9.5, fontWeight:700, color:!isVente?'#1F5784':'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:5}}>Location</div>
+      <div style={{display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:5}}>
+        {S3_QUI_PAIE_OPTIONS.location.map(o => <Cell key={o.key} opt={o} disabled={isVente} selected={!isVente && value === o.key}/>)}
+      </div>
+    </div>
+  );
+}
+
+// S3ActeurRow — ligne acteur générique. State local activePopup garantit single-popup-open.
+function S3ActeurRow({name, mode, value, payePar, onModeChange, onPayeParChange, onRemove, onNameChange, themeColor='navy', baseAmount, transactionType='vente'}) {
+  const t = S3_THEME_COLORS[themeColor] || S3_THEME_COLORS.navy;
+  const [activePopup, setActivePopup] = React.useState(null); // 'mode' | 'who' | null
+  const cur = getCurrencyV5State() || {left:'EUR', right:'MAD', rate:11};
+  const safeRate = Number(cur.rate) > 0 ? Number(cur.rate) : 11;
+  const base = Number(baseAmount) || 0;
+  const numVal = Number(value) || 0;
+  const computedLeft = mode === 'pct' ? base * numVal / 100 : numVal;
+  const computedRight = computedLeft * safeRate;
+  const modeLabel = mode === 'pct'
+    ? (numVal > 0 ? String(numVal).replace('.', ',') + ' %' : '— %')
+    : (numVal > 0 ? fmtNumV5(numVal) : '—');
+  const allOpts = S3_QUI_PAIE_OPTIONS.vente.concat(S3_QUI_PAIE_OPTIONS.location);
+  const whoOpt = allOpts.find(o => o.key === payePar);
+  return (
+    <div style={{padding:'7px 0', borderBottom:'1px dashed '+t.border}}>
+      <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:5}}>
+        <input type="text" value={name || ''} onChange={e => onNameChange && onNameChange(e.target.value)} placeholder="Nom" style={{flex:1, minWidth:0, padding:'6px 8px', fontSize:12, fontFamily:'inherit', border:'1px solid '+t.border, borderRadius:6, background:'#fff', color:'#2A2018', outline:'none', boxSizing:'border-box'}}/>
+        <div onClick={() => setActivePopup(activePopup === 'mode' ? null : 'mode')} style={{height:34, padding:'0 11px', display:'flex', alignItems:'center', borderRadius:7, border:'1.5px solid '+t.border, background: numVal > 0 ? t.chip : '#fff', color: numVal > 0 ? '#fff' : t.label, fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit'}}>{modeLabel}</div>
+        <div onClick={() => setActivePopup(activePopup === 'who' ? null : 'who')} style={{minWidth:38, height:34, padding:'0 8px', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:7, border:'1.5px solid '+t.border, background:'#fff', cursor:'pointer', fontSize:11, fontWeight:700, color:'#2A2018', whiteSpace:'nowrap', gap:4}}>
+          {whoOpt ? <React.Fragment><span style={{width:6, height:6, borderRadius:'50%', background:whoOpt.color, flexShrink:0}} aria-hidden="true"></span><span>{whoOpt.key}</span></React.Fragment> : <span style={{color:'#8B7F6E'}}>—</span>}
+        </div>
+        {onRemove && (
+          <div onClick={onRemove} style={{width:24, height:24, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background:'#FCEFEC', color:'#C73E3E', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, lineHeight:1}} aria-label="Supprimer">×</div>
+        )}
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap:5, marginBottom:5}}>
+        <div style={{display:'flex', alignItems:'center', gap:4, height:32, padding:'0 8px', border:'1px solid '+t.border, borderRadius:6, background:'#fff', color:'#2A2018', fontSize:12, fontWeight:600, boxSizing:'border-box', overflow:'hidden'}}>
+          <span style={{fontSize:13, flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+          <span style={{flex:1, textAlign:'right', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(Math.round(computedLeft))}</span>
+          <span style={{fontSize:10, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
+        </div>
+        <div style={{display:'flex', alignItems:'center', gap:4, height:32, padding:'0 8px', border:'1px solid '+t.border, borderRadius:6, background:'#fff', color:'#2A2018', fontSize:12, fontWeight:600, boxSizing:'border-box', overflow:'hidden'}}>
+          <span style={{fontSize:13, flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+          <span style={{flex:1, textAlign:'right', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(Math.round(computedRight))}</span>
+          <span style={{fontSize:10, color:'#8B7F6E', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right] || cur.right}</span>
+        </div>
+      </div>
+      {activePopup === 'mode' && (
+        <S3PopinMode mode={mode} value={numVal} baseAmount={base} themeColor={themeColor}
+          onChange={({mode: m, value: v}) => { onModeChange && onModeChange(m, v); }}
+          onClose={() => setActivePopup(null)}/>
+      )}
+      {activePopup === 'who' && (
+        <S3PopinQuiPaie value={payePar} transactionType={transactionType}
+          onChange={(k) => onPayeParChange && onPayeParChange(k)}
+          onClose={() => setActivePopup(null)}/>
+      )}
+    </div>
+  );
+}
+
+// S3SplitTotal — total split par camp en bas d'un bloc Frais. 2 cellules V/A si vente,
+// 2 cellules B/L si location. Cellule grise (#F5F5F5 + color #999) si total = 0.
+function S3SplitTotal({totals, transactionType='vente'}) {
+  const cur = getCurrencyV5State() || {left:'EUR', right:'MAD', rate:11};
+  const safeRate = Number(cur.rate) > 0 ? Number(cur.rate) : 11;
+  const t = totals || {};
+  const cells = transactionType === 'vente'
+    ? [{key:'V', label:'Vendeur', amount:Number(t.vendeur)||0, color:'#5C3B1E'},
+       {key:'A', label:'Acheteur', amount:Number(t.acheteur)||0, color:'#2D6B3F'}]
+    : [{key:'B', label:'Bailleur', amount:Number(t.bailleur)||0, color:'#1F5784'},
+       {key:'L', label:'Locataire', amount:Number(t.locataire)||0, color:'#5F3F8B'}];
+  const Cell = ({c}) => {
+    const empty = c.amount <= 0;
+    return (
+      <div style={{flex:1, padding:'7px 9px', borderLeft:'3px solid '+(empty ? '#D6C7AC' : c.color), background: empty ? '#F5F5F5' : '#fff', color: empty ? '#999' : '#2A2018', borderRadius:'0 6px 6px 0', minWidth:0, boxSizing:'border-box'}}>
+        <div style={{fontSize:9.5, fontWeight:700, textTransform:'uppercase', letterSpacing:.4, color: empty ? '#999' : c.color, marginBottom:2}}>{c.label}</div>
+        <div style={{fontSize:13, fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(Math.round(c.amount))} {CURRENCY_SYMBOL_V5[cur.left] || cur.left}</div>
+        <div style={{fontSize:10, color: empty ? '#999' : '#8B7F6E', fontStyle:'italic'}}>{fmtNumV5(Math.round(c.amount * safeRate))} {CURRENCY_SYMBOL_V5[cur.right] || cur.right}</div>
+      </div>
+    );
+  };
+  return (
+    <div style={{display:'flex', gap:6, marginTop:6}}>
+      {cells.map(c => <Cell key={c.key} c={c}/>)}
+    </div>
+  );
+}
+
 // V55 — Section III pro : selon profil + invest. Stockage dans d (data JSON, pas de migration DB).
 // V62 — réordonné : essentiels (Prix / Frais agence / Frais notaire / Coût total) en haut,
 // détails (Capacité, Mandat, Co-courtage, Répartition, Stratégie, Performance) en bas.
