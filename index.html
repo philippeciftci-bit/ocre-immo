@@ -8704,16 +8704,17 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
     ? (highlighted ? '#FEF3C7' : '#F4ECE3')
     : (highlighted ? '#FFFBEB' : '#FBF7F2');
   // M/2026/05/03/11 — E2 : prop sticky pour l'entête Section I (Stage idx 0).
-  // M/2026/05/03/14 — sticky deplacé sur header bar (mais perdait l'effet quand wrapper sortait du viewport).
-  // M/2026/05/03/15 — sticky REMIS sur le WRAPPER Stage (couvre permanent quand Section II/III/IV ouvertes).
-  // Le wrapper conserve borderRadius:12 (coins arrondis dans tous les etats : replié, déplié, sticky).
-  // Le toggleStage est mutuellement exclusif (V18.7) donc Section I est pliée quand II/III/IV ouvertes
-  // -> wrapper sticky de hauteur compacte (header seul ~80px). Quand Section I ouverte, wrapper
-  // contient header+body (sticky reste actif tant que des Sections II/III/IV suivent).
-  const stickyStyle = sticky ? {position:'sticky', top:0, zIndex:30} : {};
+  // M/2026/05/03/14 — sticky sur header bar.
+  // M/2026/05/03/15 — sticky REMIS sur le WRAPPER Stage.
+  // M/2026/05/03/23 — sticky DE NOUVEAU sur le HEADER bar (pas le wrapper). Spec Philippe :
+  // sticky ne doit pas s'appliquer au wrapper entier (sinon body Section I bloque le scroll
+  // vers Section II/III/IV quand Section I est ouverte). Sticky sur header bar uniquement -> body
+  // scrolle naturellement, header reste visible. Wrapper overflow:visible si sticky pour ne pas
+  // tronquer le header sticky.
+  const headerStickyStyle = sticky ? {position:'sticky', top:0, zIndex:30} : {};
   return (
-    <div {...(dataStageAnchor != null ? {'data-stage-anchor': dataStageAnchor} : {})} style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow:'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)', ...stickyStyle}}>
-      <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s'}}>
+    <div {...(dataStageAnchor != null ? {'data-stage-anchor': dataStageAnchor} : {})} style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow: sticky ? 'visible' : 'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)'}}>
+      <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s', ...headerStickyStyle}}>
         <div style={{flex:1, minWidth:0}}>
           <div style={{display:'flex', alignItems:'center', gap:8}}>
             {customHeader ? customHeader : (
