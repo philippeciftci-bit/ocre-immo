@@ -19088,6 +19088,73 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
 // (nom + pills + "+" rond 20, ✓ si complet) + ligne 2 coordonnées inline (tel · email ·
 // ville flag) + bouton "Modifier ▸" discret. En mode étendu : seule la ligne 1 est
 // conservée en haut de la section pour garder la vue pendant l'édition.
+// M/2026/05/03/7 — Mission F : autocomplete clients sur page création.
+// Trigger 2+ caractères dans prénom/nom (Particulier) ou société_nom (Société).
+// Source : `clients` prop (liste dossiers déjà chargée pour la page liste).
+// Tap résultat = pré-remplissage des champs communs (whitelist) sauf le profil
+// principal (l'agent doit choisir explicitement pour CE dossier).
+// Espace ou Esc = ferme le dropdown.
+const F_AUTOCOMPLETE_COMMON_FIELDS = [
+  'prenom','nom','societe_nom','forme_juridique','siret','numero_societe',
+  'representant_prenom','representant_nom','representant_fonction',
+  'tels','tel','emails','email',
+  'pays_residence','nationalite','adresse','ville','code_postal','quartier_residence',
+  'date_naissance','pays_naissance','profil_type',
+];
+function ClientAutocomplete({prenom, nom, societeNom, profilType, clients, currentEditingId, onPick}) {
+  const [dismissed, setDismissed] = React.useState(false);
+  const query = (profilType === 'Société'
+    ? (societeNom || '')
+    : (((prenom || '') + ' ' + (nom || ''))).trim()
+  ).trim().toLowerCase();
+  React.useEffect(() => { setDismissed(false); }, [query]);
+  React.useEffect(() => {
+    if (dismissed) return undefined;
+    const handler = (e) => {
+      if (e.key === 'Escape' || e.key === ' ') setDismissed(true);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [dismissed]);
+  if (dismissed || query.length < 2) return null;
+  const matches = (clients || [])
+    .filter(c => c && c.id !== currentEditingId)
+    .filter(c => {
+      const isSoc = c.profil_type === 'Société';
+      const target = (isSoc ? (c.societe_nom || '') : (((c.prenom || '') + ' ' + (c.nom || '')))).trim().toLowerCase();
+      return target && target.indexOf(query) !== -1;
+    })
+    .slice(0, 5);
+  if (matches.length === 0) return null;
+  return (
+    <div style={{marginTop:-4, marginBottom:10, border:'1px solid #C9B79A', borderRadius:8, background:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.06)', maxHeight:240, overflowY:'auto'}}>
+      <div style={{padding:'6px 10px', fontSize:10.5, color:'#8B7F6E', fontStyle:'italic', borderBottom:'1px solid #F0E9DC', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+        <span>Clients existants — tap pour pré-remplir (Esc/Espace pour ignorer)</span>
+        <span onClick={() => setDismissed(true)} style={{cursor:'pointer', color:'#5C3B1E', fontWeight:700, padding:'0 4px'}}>✕</span>
+      </div>
+      {matches.map(c => {
+        const isSoc = c.profil_type === 'Société';
+        const displayName = isSoc ? (c.societe_nom || '—') : (((c.prenom || '') + ' ' + (c.nom || '')).trim() || '—');
+        const profil = c.projet || c.profil_principal || '';
+        const color = PROFILS[profil] || '#A89882';
+        const tels = Array.isArray(c.tels) && c.tels.length > 0 ? c.tels : (c.tel ? [{valeur: c.tel}] : []);
+        const tel = (tels[0] && tels[0].valeur) || '';
+        return (
+          <div key={c.id} onClick={() => { onPick && onPick(c); setDismissed(true); }} style={{padding:'8px 10px', cursor:'pointer', borderBottom:'1px solid #F0E9DC', display:'flex', alignItems:'center', gap:8, fontSize:12, fontFamily:'inherit'}}>
+            <span style={{flex:1, minWidth:0, fontWeight:600, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{displayName}</span>
+            {tel && <span style={{fontSize:10.5, color:'#8B7F6E', whiteSpace:'nowrap', flexShrink:0}}>{tel}</span>}
+            {profil && (
+              <span style={{padding:'1px 6px', borderRadius:5, background:color, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0}}>
+                {(typeof PROFILS_LABEL !== 'undefined' && PROFILS_LABEL[profil]) || profil.toUpperCase()}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, onOpenPicker, canAdd, profilType, expanded, stageComplete}) {
   const displayName = (profilType === 'Société' && d && d.societe_nom)
     ? d.societe_nom
@@ -20293,6 +20360,21 @@ function FormView(props) {
                 <Field label="Nom" value={d.nom} onChange={v => set('nom', v)} style={{flex:1}}
                   autoComplete="family-name" name="family-name" autoCapitalize="words"/>
               </div>
+              {/* M/2026/05/03/7 — Mission F : autocomplete clients existants en création uniquement. */}
+              {!(editing && editing.id && !String(editing.id).startsWith('tmp-')) && (
+                <ClientAutocomplete
+                  prenom={d.prenom} nom={d.nom} societeNom={d.societe_nom}
+                  profilType={profilType}
+                  clients={clients}
+                  currentEditingId={editing && editing.id}
+                  onPick={(c) => {
+                    F_AUTOCOMPLETE_COMMON_FIELDS.forEach(k => {
+                      if (c[k] != null) set(k, c[k], {commit: true});
+                    });
+                    if (c.profil_type) setProfilType(c.profil_type);
+                    showToast && showToast('Pré-rempli depuis ' + (c.societe_nom || ((c.prenom || '') + ' ' + (c.nom || '')).trim() || 'client existant'));
+                  }}/>
+              )}
               {/* M/2026/04/28/27 — L2 Tel | Email côte à côte (row-pair). */}
               <div className="row-pair">
                 <div style={{flex:1, minWidth:0}}>
@@ -20358,6 +20440,21 @@ function FormView(props) {
                 <Field label="Raison sociale" value={d.societe_nom} onChange={v => set('societe_nom', v)} style={{flex:1}}
                   autoComplete="organization" name="organization" autoCapitalize="words"/>
               </div>
+              {/* M/2026/05/03/7 — Mission F : autocomplete clients existants en création uniquement (Société). */}
+              {!(editing && editing.id && !String(editing.id).startsWith('tmp-')) && (
+                <ClientAutocomplete
+                  prenom={d.prenom} nom={d.nom} societeNom={d.societe_nom}
+                  profilType={profilType}
+                  clients={clients}
+                  currentEditingId={editing && editing.id}
+                  onPick={(c) => {
+                    F_AUTOCOMPLETE_COMMON_FIELDS.forEach(k => {
+                      if (c[k] != null) set(k, c[k], {commit: true});
+                    });
+                    if (c.profil_type) setProfilType(c.profil_type);
+                    showToast && showToast('Pré-rempli depuis ' + (c.societe_nom || ((c.prenom || '') + ' ' + (c.nom || '')).trim() || 'client existant'));
+                  }}/>
+              )}
               {/* L2 SIRET / ICE | N° société (RC/RCCM) */}
               <div className="row-pair">
                 <Field label="SIRET / ICE" value={d.siret} onChange={v => set('siret', v)} style={{flex:1}}
