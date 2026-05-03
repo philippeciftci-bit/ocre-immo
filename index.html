@@ -17556,6 +17556,8 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
           seul profil affiché par row. Les casquettes secondaires restent utilisées dans
           le dossier ouvert (linked_dossiers intact). */}
       <div className="client-row-head" style={{display:'flex', gap:10, padding:'10px 12px', alignItems:'stretch', background: tint}}>
+        {/* M/2026/05/03/35 — col gauche photo + type bien dessous. */}
+        <div style={{flexShrink:0, display:'flex', flexDirection:'column', gap:4, alignItems:'center', width:54}}>
         {/* Thumb 54×54 — toujours affichée (fallback IconHome si pas de photo).
             M/2026/04/29/46 : tap = ouvre lightbox photos si bien.photos[] non vide,
             sinon comportement actuel openSec photos (placeholder). */}
@@ -17581,6 +17583,12 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             <span style={{position:'absolute', bottom:-1, right:-1, background:'rgba(139,94,60,.85)', color:'#fff', fontSize:9, fontWeight:700, padding:'2px 5px', borderRadius:'6px 0 0 0', fontFamily:'inherit'}}>+{photoCount - 1}</span>
           )}
         </button>
+        {/* Type bien sous la photo. Truncate si long. Cliquable -> openSec(1, e). */}
+        <div onClick={e => { e.stopPropagation(); openSec(1, e); }}
+          style={{fontSize:10, fontWeight:600, color:'#5C3B1E', textAlign:'center', width:54, lineHeight:1.2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', cursor:'pointer'}}>
+          {typeBien ? typeBien.split(' · ')[0].slice(0, 10) : '—'}
+        </div>
+        </div>
         {/* Col 2 lignes à droite — space-between pour répartir verticalement sur la hauteur thumb. */}
         <div style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'space-between', gap:6}}>
           {/* LIGNE 1 : nom + (société italique si Pro) + pill profil à droite */}
@@ -17663,54 +17671,32 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
               Adresse cliquable désormais intégrée inline DANS la zone BIEN ci-dessous (footer
               card colonne 1/3). Composant AdressePill (M131) conservé en code pour réutilisation
               vue détail dossier / vue partagée / PDF — variant 'full' avec capsule. */}
-        </div>
-      </div>
-      <div className="client-row-grid">
-        <div className="client-row-sector" onClick={e => openSec(1, e)}>
-          <div className="client-row-sector-label"><IconHome size={12}/> Bien</div>
-          {/* M/2026/05/02/23 — M135 hotfix : adresse refondue en PILL capsule (style cohérent
-              pills téléphone/email du header). 1 ligne dans la pill (rue OU ville fallback),
-              ellipsis si trop long. Ville · Quartier reste en dessous HORS pill, texte gris.
-              Couleurs/padding/radius alignés sur la pill email ligne 16506+ (background #FDF8F0,
-              border 1px #C9B79A, radius 14). _mapsUrl M131 réutilisé. */}
-          {(typeBien || villeQuartier || bien.adresse) ? (
-            <>
-              {typeBien ? <div className="client-row-sector-l1">{typeBien.slice(0, 22)}</div>
-                        : <div className="client-row-sector-l1" style={{color:'#8B7F6E'}}>—</div>}
-              {(bien.adresse || villeQuartier) && _mapsUrl && (
-                <a href={_mapsUrl} target="_blank" rel="noopener"
-                  onClick={e => e.stopPropagation()}
-                  onTouchStart={e => e.stopPropagation()}
-                  style={{display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px',
-                          background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:14,
-                          color:'#5C3B1E', textDecoration:'none', fontSize:11.5, fontWeight:500,
-                          fontFamily:'inherit', maxWidth:'100%', boxSizing:'border-box',
-                          marginTop:3, overflow:'hidden', minWidth:0}}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                    <circle cx="12" cy="10" r="3"/>
-                  </svg>
-                  {/* M/2026/05/03/33 — fusion adresse + ville·quartier dans UN SEUL pill compact.
-                      Avant : pill (adresse) + ligne villeQuartier dessous. Apres : un seul pill
-                      contenant adresse · villeQuartier (ou juste l'un des deux si l'autre absent). */}
-                  <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0}}>
-                    {[bien.adresse, villeQuartier].filter(Boolean).join(' · ')}
-                  </span>
-                </a>
-              )}
-              {/* M/2026/05/02/22 — M134 : ligne 💰 prix de vente affiché (Vendeur/Bailleur).
-                  Calculé Prix affiché + Liquide + Commission (sans notaire). Profil-dépendant. */}
-              {_prixVenteAffiche && (
-                <div style={{display:'flex', alignItems:'center', gap:4, marginTop:3, fontSize:12, color:'#5C3B1E', fontWeight:600}}>
-                  <span aria-hidden="true">💰</span>
-                  <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{_prixVenteAffiche}</span>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="client-row-sector-empty">+ Définir</div>
+          {/* M/2026/05/03/35 — LIGNE 3 : pill adresse complete (rue + ville + quartier fusionnes)
+              en bas de la col droite. Conserve _mapsUrl ouverture Google Maps. */}
+          {(bien.adresse || villeQuartier) && _mapsUrl && (
+            <a href={_mapsUrl} target="_blank" rel="noopener"
+              onClick={e => e.stopPropagation()}
+              onTouchStart={e => e.stopPropagation()}
+              style={{display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px',
+                      background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:14,
+                      color:'#5C3B1E', textDecoration:'none', fontSize:11, fontWeight:500,
+                      fontFamily:'inherit', maxWidth:'100%', boxSizing:'border-box',
+                      overflow:'hidden', minWidth:0, alignSelf:'flex-start'}}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0}}>
+                {[bien.adresse, villeQuartier].filter(Boolean).join(' · ')}
+              </span>
+            </a>
           )}
         </div>
+      </div>
+      <div className="client-row-grid" style={{gridTemplateColumns:'1fr 1fr'}}>
+        {/* M/2026/05/03/35 — sector Bien SUPPRIME franchement. typeBien deplace sous la photo
+            (col gauche du header). Pill adresse complete deplacee en ligne 3 col droite du header.
+            Prix vente affiche (M134) reporte dans une mission dediee si Philippe le souhaite. */}
         <div className="client-row-sector" onClick={e => openSec(2, e)}>
           <div className="client-row-sector-label"><IconMoney size={12}/> Budget</div>
           {budgetMain ? (
