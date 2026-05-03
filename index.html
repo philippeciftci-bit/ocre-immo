@@ -19423,6 +19423,8 @@ function FormView(props) {
   // V18.27 — loupe dans le dossier : filtre live les sections matchées, auto-open, highlight.
   // M/2026/05/03/28 — loupe deplacee dans le header (a droite). Tap exterieur ferme la recherche.
   const [formSearchOpen, setFormSearchOpen] = useState(false);
+  // M/2026/05/03/36 — Mission 1A : accordeon choix profil dans header Section I.
+  const [profilPickerOpen, setProfilPickerOpen] = useState(false);
   const [formSearchInput, setFormSearchInput] = useState('');
   const [formSearchQuery, setFormSearchQuery] = useState('');
   const headerSearchRef = useRef(null);
@@ -20370,6 +20372,52 @@ function FormView(props) {
         <Stage title={(STAGES[activeProfil] || [])[0] || 'I. Identité'}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status}
+               customHeader={(() => {
+                 // M/2026/05/03/36 — Mission 1A : titre + bouton profil dans le header Section I.
+                 // Tap bouton -> accordeon compact avec 4 choix profil. Tap profil -> setActiveProfil
+                 // + close accordeon. Le profil reste TOUJOURS modifiable (pas de modal askConfirm,
+                 // pas de reset prix - 1B traitera ces aspects). Pas de stopPropagation sur button
+                 // suffisant : le onClick parent du wrapper header (onToggle) se declenche aussi sur
+                 // tap exterieur du bouton.
+                 const _titleStage1 = (STAGES[activeProfil] || [])[0] || 'I. Identité';
+                 const _isPrincipal1A = ['Acheteur','Vendeur','Bailleur','Locataire'].includes(activeProfil);
+                 const _profilColor1A = _isPrincipal1A ? (PROFILS[activeProfil] || '#8B5E3C') : '#A89882';
+                 const _profilLabel1A = _isPrincipal1A ? (PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()) : 'PROFIL';
+                 const _profils1A = [
+                   {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
+                   {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
+                   {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
+                   {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
+                 ];
+                 return (
+                   <div style={{display:'flex', alignItems:'center', gap:6, flex:1, minWidth:0}}>
+                     <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:1, minWidth:0}}>{_titleStage1}</span>
+                     <div style={{flex:1}}/>
+                     <div style={{position:'relative', flexShrink:0}}>
+                       <button type="button" onClick={(e) => { e.stopPropagation(); setProfilPickerOpen(o => !o); }}
+                         aria-label="Choisir le profil"
+                         style={{padding:'3px 9px 3px 11px', borderRadius:12, border:'1.5px solid '+_profilColor1A, background: _isPrincipal1A ? _profilColor1A : '#fff', color: _isPrincipal1A ? '#fff' : _profilColor1A, fontSize:10, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4}}>
+                         {_profilLabel1A}<span style={{fontSize:8, opacity:.85}}>▾</span>
+                       </button>
+                       {profilPickerOpen && (
+                         <div onClick={e => e.stopPropagation()}
+                           style={{position:'absolute', top:'calc(100% + 4px)', right:0, zIndex:30, background:'#fff', border:'1px solid #C9B79A', borderRadius:10, boxShadow:'0 4px 12px rgba(60,40,20,.12)', padding:6, display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap'}}>
+                           {_profils1A.map(p => {
+                             const _selected = p.k === activeProfil;
+                             return (
+                               <button type="button" key={p.k}
+                                 onClick={(e) => { e.stopPropagation(); setActiveProfil(p.k); setProfilPickerOpen(false); }}
+                                 style={{padding:'4px 10px', borderRadius:8, border:'1.5px solid '+p.color, background: _selected ? p.color : '#fff', color: _selected ? '#fff' : p.color, fontSize:10.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+                                 {p.l}
+                               </button>
+                             );
+                           })}
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 );
+               })()}
                hideChevron={hasHeadName}>
           {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
               opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
