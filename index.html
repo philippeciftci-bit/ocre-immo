@@ -17790,6 +17790,21 @@ async function askConfirm(opts) {
 // M/2026/05/01/28 — M106 : rouge plus clair (220,110,110 / #C97070) + position centree
 // strict (left:50% transform:translateX(-50%)) + ombre douce pour profondeur.
 function Toast({msg}) {
+  // M/2026/05/04/3 — fix doublon Toast global. Cause root : <Toast msg={toast}/> rendu a 10
+  // endroits dans le code (ListView, FormView, plusieurs vues). En transition entre vues ou
+  // si 2 vues stackees, 2 instances Toast simultanees -> Philippe voit 2 toasts (1 a droite,
+  // 1 au centre).
+  // Fix : verrou singleton via window.__ocreToastMounted. Le 1er Toast prend le verrou et
+  // s'affiche. Les Toasts suivants montes en parallele voient verrou=true -> return null.
+  const [allowed, setAllowed] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    if (window.__ocreToastMounted) { setAllowed(false); return undefined; }
+    window.__ocreToastMounted = true;
+    setAllowed(true);
+    return () => { window.__ocreToastMounted = false; };
+  }, []);
+  if (!allowed) return null;
   return (
     <div style={{position:'fixed', top:80, left:'50%', transform:'translateX(-50%)',
                  padding:'12px 18px', borderRadius:12,
@@ -19468,38 +19483,24 @@ function FormView(props) {
     });
   }
   function requestProfilSwitch(targetProfil) {
-    // M/2026/05/04/2 — Mission 39.2 : toast visible a l'ecran (Safari Web Inspector pas dispo iPad).
-    // Marker 'M392 v1' permet de confirmer que le bundle servi contient bien cette version.
+    // M/2026/05/04/3 — Mission 39.3 : modal rouge dans 2 cas (avec/sans prix), seul le message change.
+    // Toast diag M392 retire. Console.log retire. confirmProfilSwitch est maintenant un objet
+    // {target, message} pour permettre 2 messages distincts dans le modal.
+    if (targetProfil === activeProfil) { setProfilPickerOpen(false); return; }
     const cur = (latestRef && latestRef.current) || d;
-    const _detected = _PRIX_FIELDS_M39.filter(k => {
+    const _hasPrix = _PRIX_FIELDS_M39.some(k => {
       const v = cur[k];
       return v != null && v !== '' && Number(v) > 0;
     });
-    // Diff diag : latestRef vs d direct. Si different -> closure stale persistante.
-    const _stale = _PRIX_FIELDS_M39.some(k => (cur[k] || 0) !== (d[k] || 0));
-    // Log console.log conserve (M39.1) en plus du toast.
-    try { console.log('profil_check', { profil_courant: activeProfil, profil_demande: targetProfil, prix_detectes: _detected, stale: _stale }); } catch (e) {}
-    if (targetProfil === activeProfil) {
-      showToast && showToast('M392 v1 | profil_check: ' + activeProfil + ' (meme profil) -> close');
-      setProfilPickerOpen(false);
-      return;
-    }
-    if (_detected.length === 0) {
-      // Pas de prix saisi -> changement direct sans modal. Trigger auto-save brouillon.
-      showToast && showToast('M392 v1 | profil_check: ' + (activeProfil || 'none') + ' -> ' + targetProfil + ' | prix=0 | decision=changement direct');
-      setActiveProfil(targetProfil);
-      setProfilPickerOpen(false);
-      // markBlurCommit + setD via _touch -> useEffect M103 re-run sur activeProfil change + userBlurredRef true -> save scheduled.
-      set('_touch', Date.now(), {commit: true});
-      return;
-    }
-    // Prix saisi -> demander confirmation modal.
-    showToast && showToast('M392 v1 | profil_check: ' + (activeProfil || 'none') + ' -> ' + targetProfil + ' | prix=' + _detected.length + ' (' + _detected.join(',') + ')' + (_stale ? ' [STALE]' : '') + ' | decision=modal devrait s ouvrir');
-    setConfirmProfilSwitch(targetProfil);
+    const _message = _hasPrix
+      ? 'Les prix et budgets vont être effacés (les fourchettes ne correspondent pas entre profils).'
+      : 'Confirmer le changement de profil ?';
+    setConfirmProfilSwitch({target: targetProfil, message: _message});
     setProfilPickerOpen(false);
   }
   function applyProfilSwitchM39() {
-    const target = confirmProfilSwitch;
+    // M/2026/05/04/3 — confirmProfilSwitch est maintenant un objet {target, message}.
+    const target = confirmProfilSwitch && confirmProfilSwitch.target;
     if (!target) return;
     // Reset prix + change profil en un seul setD batch (anti double-save).
     setD(prev => {
@@ -20473,7 +20474,7 @@ function FormView(props) {
                 <div style={{fontSize:17, fontWeight:700, color:'#2A2018', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>Profil modifié</div>
               </div>
               <div style={{fontSize:13, color:'#5A4E3D', lineHeight:1.5, marginBottom:18}}>
-                Les prix et budgets vont être effacés (les fourchettes ne correspondent pas entre profils).
+                {(confirmProfilSwitch && confirmProfilSwitch.message) || 'Confirmer le changement de profil ?'}
               </div>
               <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
                 <button type="button" onClick={() => setConfirmProfilSwitch(null)}
