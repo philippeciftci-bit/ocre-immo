@@ -8691,7 +8691,7 @@ function FinancementForm({activeProfil, d, set, dossierId, showToast}) {
 
 // V18.7 — Stage accordéon strict + status badge + ligne stats compacte fermé.
 // V18.27 — prop highlighted : match loupe → border jaune #F59E0B + bg très léger #FFFBEB.
-function Stage({title, expanded, onToggle, children, status, summary, highlighted, customHeader, hideChevron}) {
+function Stage({title, expanded, onToggle, children, status, summary, highlighted, customHeader, hideChevron, sticky}) {
   // status : 'complete' (✓ vert) | 'partial' (… orange) | 'empty' (— gris)
   const badge = status === 'complete'
     ? {char:'✓', color:'#3E8B5E', bg:'#E8F5EC'}
@@ -8703,8 +8703,11 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
   const headerBg = expanded
     ? (highlighted ? '#FEF3C7' : '#F4ECE3')
     : (highlighted ? '#FFFBEB' : '#FBF7F2');
+  // M/2026/05/03/6 — Mission E : prop sticky pour Section I (z-index:20 pour passer au-dessus
+  // des dropdowns/pickers internes éventuels des autres Stages).
+  const stickyStyle = sticky ? {position:'sticky', top:0, zIndex:20} : {};
   return (
-    <div style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow:'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)'}}>
+    <div style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow:'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)', ...stickyStyle}}>
       <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s'}}>
         <div style={{flex:1, minWidth:0}}>
           <div style={{display:'flex', alignItems:'center', gap:8}}>
@@ -19089,7 +19092,11 @@ function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, 
   const displayName = (profilType === 'Société' && d && d.societe_nom)
     ? d.societe_nom
     : (((d && d.prenom) || '') + ' ' + ((d && d.nom) || '')).trim() || 'Nouveau dossier';
-  const activeColor = PROFILS[activeProfil] || '#8B5E3C';
+  // M/2026/05/03/6 — fusion logique BROUILLON ici (déplacée depuis l'IIFE children Stage idx 0).
+  // Pill grise #A89882 + texte 'BROUILLON' si pas de profil principal sélectionné (Curieux,
+  // Investisseur seul, ou null). Pill colorée sinon.
+  const isPrincipal = ['Acheteur','Vendeur','Bailleur','Locataire'].includes(activeProfil);
+  const activeColor = isPrincipal ? (PROFILS[activeProfil] || '#8B5E3C') : '#A89882';
   const total = 1 + linkedDossiers.length;
   const useAbbr = total >= 3 && typeof window !== 'undefined' && window.innerWidth < 420;
   // Ligne 2 : extraction coords compactes.
@@ -19113,9 +19120,11 @@ function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, 
         <span style={{fontFamily:'"Cormorant Garamond", serif', fontSize:17, fontWeight:700, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flexShrink:1}}>
           {displayName}
         </span>
-        {/* Pill ACTIVE */}
+        {/* Pill ACTIVE — colorée si profil principal, grise BROUILLON sinon (fusion M/2026/05/03/6). */}
         <span style={{padding: useAbbr ? '1px 5px' : '1px 6px', borderRadius:5, background:activeColor, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, lineHeight:1.4}}>
-          {useAbbr ? (BADGES[activeProfil] || activeProfil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase())}
+          {!isPrincipal
+            ? 'BROUILLON'
+            : (useAbbr ? (BADGES[activeProfil] || activeProfil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()))}
         </span>
         {/* Pills LIÉES */}
         {linkedDossiers.map(lc => {
@@ -20122,15 +20131,13 @@ function FormView(props) {
       <DraftSaveIndicator/>
 
       {/* M/2026/05/01/10 — ProfilSelectorBar : selecteur 4 pills + toggle investisseur en haut.
-          Toujours visible (creation et changement profil dossier existant). Composant unique DRY. */}
-      {/* M/2026/05/01/25 — M103 : tap pill profil principal ne markUserAction PLUS et ne
-          declenche aucune ligne DB. Le state React local suffit jusqu au premier blur input
-          avec valeur non vide (R1 strict spec Philippe revisee). */}
-      {/* M/2026/05/02/2 — M109.5 : props isInvestisseur/onInvestChange supprimes (toggle deplace
-          dans bloc Profil avance Section I). Sélecteur ne gere plus que le profil principal.
-          M/2026/05/02/4 — M110 Phase A : modale askConfirm si changement profil + champs role-specifiques
-          deja remplis OU toggle Investisseur/Promoteur/Marchand coche. Si Annuler -> revert (aucune
-          modif). Si Continuer -> reset toggles + champs role-specifiques (whitelist commune preservee). */}
+          M/2026/05/03/6 — Mission E : verrouillage profil après création — sélecteur visible
+          UNIQUEMENT sur dossier en création (id null ou tmp-XXX). En édition (dossier persisté),
+          le profil est figé et affiché en read-only via le badge dans <StageIHeaderBar>.
+          Le composant + sa modale askConfirm "Changer de profil ?" restent dans le code mais
+          ne sont plus rendus en page édition (suppression UI franche, le composant n'est pas
+          appelable depuis l'agent quand le dossier est persisté). */}
+      {!(editing && editing.id && !String(editing.id).startsWith('tmp-')) && (
       <ProfilSelectorBar
         activeProfil={activeProfil}
         onChange={async (p) => {
@@ -20187,6 +20194,7 @@ function FormView(props) {
           }
           setActiveProfil(p);
         }}/>
+      )}
 
       {/* V18.17/V18.18 — banner mode staging. URL → lien origine. Image → thumbnail + contexte. */}
       {isStaged && (
@@ -20226,6 +20234,8 @@ function FormView(props) {
       )}
 
       {/* V28 — Header dossier : pills v27 supprimées, déplacées dans Section I ligne nom. */}
+      {/* M/2026/05/03/6 — Mission E : Section I devient sticky compact via customHeader=
+          <StageIHeaderBar/>, calculé dans une IIFE juste avant le <Stage> Stage idx 0. */}
 
       <div style={{flex:1, overflowY:'auto', padding:12}}>
         {/* M/2026/05/01/12 — Section I Identite TOUJOURS rendue (tronc commun pour tous
@@ -20233,55 +20243,36 @@ function FormView(props) {
             profil = trigger commit DB avec projet=null (coherent draft-on-input M90).
             Sections II / III / IV : conditionnelles, verrouillees via LockedSections. */}
         <div data-stage-anchor="0">
+        {(() => {
+          // M/2026/05/03/6 — Mission E : linkedOpen + isExistingDossier extraits pour customHeader.
+          const _linkedOpenE = (Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
+            .map(id => (clients || []).find(cc => cc.id === id))
+            .filter(Boolean)
+            .sort((a, b) => {
+              const ta = a.created_at ? Date.parse(String(a.created_at).replace(' ', 'T')) : 0;
+              const tb = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
+              return (ta || a.id || 0) - (tb || b.id || 0);
+            });
+          const _isExistingDossier = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+          const _stageIHeader = <StageIHeaderBar
+            d={d} activeProfil={activeProfil}
+            linkedDossiers={_linkedOpenE}
+            openExistingDossier={openExistingDossier}
+            onOpenPicker={() => setAddCasquetteOpen(true)}
+            canAdd={_isExistingDossier}
+            profilType={profilType}
+            expanded={expanded[0]}
+            stageComplete={stageStatus[0].status === 'complete'}/>;
+          return (
         <Stage title={(STAGES[activeProfil] || [])[0] || 'I. Identité'}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status} summary={stageStatus[0].summary}
-               hideChevron={hasHeadName}>
-          {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
-              opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
-              bouton "+" rond pour ouvrir le modal multi-select Variante C v30. */}
-          {(() => {
-            const linkedOpen = (Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
-              .map(id => (clients || []).find(cc => cc.id === id))
-              .filter(Boolean)
-              .sort((a, b) => {
-                const ta = a.created_at ? Date.parse(String(a.created_at).replace(' ', 'T')) : 0;
-                const tb = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
-                return (ta || a.id || 0) - (tb || b.id || 0);
-              });
-            const activeColorOpen = activeProfil ? (PROFILS[activeProfil] || '#8B5E3C') : '#A89882';
-            const canAdd = editing && editing.id && !String(editing.id).startsWith('tmp-');
-            // M/2026/05/01/12 — pill activeProfil tolere null : affiche "BROUILLON" gris si pas
-            // encore de profil principal selectionne (Section I accessible avant choix profil).
-            return (
-              <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:10, padding:'2px 0'}}>
-                <span style={{padding:'2px 6px', borderRadius:6, background:activeColorOpen, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', opacity:1}}>
-                  {activeProfil ? (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()) : 'BROUILLON'}
-                </span>
-                {linkedOpen.map(lc => {
-                  const lp = lc.projet || 'Acheteur';
-                  const lcol = PROFILS[lp] || '#8B5E3C';
-                  return (
-                    <button key={'open-pill-' + lc.id} type="button"
-                      onClick={() => openExistingDossier && openExistingDossier(lc)}
-                      title={'Ouvrir la casquette ' + lp}
-                      style={{padding:'2px 6px', borderRadius:6, border:'1px solid '+lcol, background:'transparent', color:lcol, fontSize:9, fontWeight:600, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer', opacity:0.55}}>
-                      {PROFILS_LABEL[lp] || lp.toUpperCase()}
-                    </button>
-                  );
-                })}
-                {canAdd && (
-                  <button type="button"
-                    onClick={() => setAddCasquetteOpen(true)}
-                    title="Ajouter une casquette"
-                    aria-label="Ajouter une casquette"
-                    style={{width:24, height:24, borderRadius:'50%', border:'1px solid #C9B79A', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, color:'#8B5E3C'}}>
-                    <IconPlus size={14}/>
-                  </button>
-                )}
-              </div>
-            );
-          })()}
+               hideChevron={hasHeadName}
+               sticky={true}
+               customHeader={_stageIHeader}>
+          {/* M/2026/05/03/6 — Mission E : bloc IIFE pills + bouton + ascendant supprimé franchement.
+              Logique BROUILLON + linkedOpen + bouton + casquette portée dans <StageIHeaderBar>
+              (customHeader ci-dessus). Suppression franche selon règle Philippe (pas de désactivation). */}
           <div style={{display:'flex', gap:6, marginBottom:12}}>
             {['Particulier', 'Société'].map(t => (
               <button key={t} onClick={() => { setProfilType(t); commit('profil_type', t); }}
@@ -20513,6 +20504,8 @@ function FormView(props) {
               qu'il ne fait que commit() de la section). Validation finale = bouton ✓ sticky footer M108. */}
           {/* V28 — bouton "+ Ajouter une casquette" bas Stage I retiré. */}
         </Stage>
+          );
+        })()}
 
         </div>
         {/* M/2026/05/01/17 — Suppression franche du fallback IIFE _profil = activeProfil || 'Acheteur'.
