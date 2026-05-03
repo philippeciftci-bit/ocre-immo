@@ -7608,11 +7608,23 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
   );
 }
 
-// Fork de FraisAgenceMultiActeurs : utilise FraisAgencePillDropdown + FraisAgenceForfaitPopup
-// + résultats per-acteur 2 cols EUR/Dhs (drapeaux). Lit/écrit le même `d.frais_agence_acteurs[]`.
+// M/2026/05/03/4 — A2 wirage : M53FraisAgenceMulti consomme désormais S3ActeurRow +
+// S3PopinMode + S3PopinQuiPaie + S3SplitTotal (livrés A1). Plus de
+// FraisAgencePillDropdown / FraisAgenceForfaitPopup / toggle %/F custom (legacy
+// laissé en place sans appel — cleanup mort dans mission dédiée).
+// Le mappage mode legacy ('pourcent' ↔ 'forfait') / UI ('pct' ↔ 'forfait') passe par
+// 2 helpers centralisés (anti-régression DB).
+const _toUiMode = (m) => m === 'pourcent' ? 'pct' : 'forfait';
+const _toDbMode = (m) => m === 'pct' ? 'pourcent' : 'forfait';
+
 function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
-  const cur = getCurrencyV5State();
+  const cur = getCurrencyV5State() || {left:'EUR', right:'MAD', rate:11};
   const acteurs = Array.isArray(d.frais_agence_acteurs) ? d.frais_agence_acteurs : [];
+  // transactionType dérivé du profil (Bailleur/Locataire = location, le reste vente).
+  const transactionType = (profil === 'Bailleur' || profil === 'Locataire') ? 'location' : 'vente';
+  const defaultPayePar = transactionType === 'vente' ? 'V' : 'B';
+  // State local payePar par index (Phase 1 UI-only, perdu au reload — conforme spec A2).
+  const [payeParMap, setPayeParMap] = React.useState({});
   React.useEffect(() => {
     if (acteurs.length > 0) return;
     let initial = [];
@@ -7639,16 +7651,38 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
   function removeActeur(idx) {
     const next = acteurs.filter((_, i) => i !== idx);
     set('frais_agence_acteurs', next, {commit: true});
+    // Reindex payeParMap : indices > idx décalés de -1, indice idx supprimé.
+    setPayeParMap(prev => {
+      const out = {};
+      Object.keys(prev).forEach(k => {
+        const i = Number(k);
+        if (i < idx) out[i] = prev[k];
+        else if (i > idx) out[i - 1] = prev[k];
+      });
+      return out;
+    });
   }
   function addActeur() {
     if (acteurs.length >= 4) return;
     const next = [...acteurs, {id: 'autre', label: 'Autre', mode: 'pourcent', valeur: 0}];
     set('frais_agence_acteurs', next, {commit: true});
   }
+  // Calcul totaux par camp pour S3SplitTotal.
+  const splitTotals = {vendeur: 0, acheteur: 0, bailleur: 0, locataire: 0};
+  acteurs.forEach((a, idx) => {
+    const lf = calcLeft(a);
+    const pp = payeParMap[idx] || defaultPayePar;
+    if (pp === 'V') splitTotals.vendeur += lf;
+    else if (pp === 'A') splitTotals.acheteur += lf;
+    else if (pp === 'V+A') { splitTotals.vendeur += lf / 2; splitTotals.acheteur += lf / 2; }
+    else if (pp === 'B') splitTotals.bailleur += lf;
+    else if (pp === 'L') splitTotals.locataire += lf;
+    else if (pp === 'B+L') { splitTotals.bailleur += lf / 2; splitTotals.locataire += lf / 2; }
+  });
   return (
     <S3CardRound style={{background:'transparent', border:'none', padding:0, marginBottom:0}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid #1E3A8A40'}}>
-        <span style={{fontSize:11, fontWeight:700, color:'#1E3A8A', textTransform:'uppercase', letterSpacing:.4}}>Frais agence — total</span>
+        <span style={{fontSize:11, fontWeight:700, color:'#1E3A8A', textTransform:'uppercase', letterSpacing:.4}}>Total global</span>
         <div style={{display:'flex', gap:6, alignItems:'center'}}>
           <span style={{fontSize:13, fontWeight:800, color:'#1E3A8A'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
           <span style={{fontSize:11, color:'#1E3A8A'}}>·</span>
@@ -7658,46 +7692,28 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
       {acteurs.length === 0 && (
         <div style={{fontSize:12, color:'#8B7F6E', fontStyle:'italic', textAlign:'center', padding:'8px 0'}}>Aucun acteur. Tap + Ajouter une agence pour commencer.</div>
       )}
-      {acteurs.map((a, idx) => {
-        const lf = calcLeft(a);
-        const rg = lf * (Number(cur.rate) || 1);
-        return (
-          <div key={idx} style={{padding:'8px 0', borderBottom: idx < acteurs.length - 1 ? '1px dashed #1E3A8A40' : 'none'}}>
-            <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:6, flexWrap:'wrap'}}>
-              <select value={a.id} onChange={e => {
-                const t = FRAIS_AGENCE_TYPES.find(x => x.v === e.target.value);
-                updateActeur(idx, {id: e.target.value, label: t ? t.l : 'Autre'});
-              }} style={{padding:'4px 6px', border:'1.5px solid #1E3A8A', borderRadius:8, fontSize:11.5, background:'#fff', fontFamily:'inherit', color:'#1E3A8A', fontWeight:600, flex:'0 1 auto'}}>
-                {FRAIS_AGENCE_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
-              </select>
-              {a.mode === 'pourcent' ? (
-                <FraisAgencePillDropdown value={a.valeur} onChange={v => updateActeur(idx, {valeur: v})}/>
-              ) : (
-                <FraisAgenceForfaitPopup value={a.valeur} onApply={v => updateActeur(idx, {valeur: v})}/>
-              )}
-              <div style={{display:'flex', background:'#fff', border:'1.5px solid #1E3A8A', borderRadius:8, overflow:'hidden', height:28}}>
-                <div onClick={() => updateActeur(idx, {mode: 'pourcent'})} style={{padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', color: a.mode === 'pourcent' ? '#fff' : '#1E3A8A', background: a.mode === 'pourcent' ? '#1E3A8A' : 'transparent'}}>%</div>
-                <div onClick={() => updateActeur(idx, {mode: 'forfait'})} style={{padding:'4px 10px', fontSize:11, fontWeight:700, cursor:'pointer', color: a.mode === 'forfait' ? '#fff' : '#1E3A8A', background: a.mode === 'forfait' ? '#1E3A8A' : 'transparent', borderLeft:'1px solid #1E3A8A'}}>F</div>
-              </div>
-              {acteurs.length > 1 && (
-                <button type="button" onClick={() => removeActeur(idx)} style={{background:'transparent', border:'none', cursor:'pointer', color:'#8B7F6E', fontSize:14, padding:0, marginLeft:'auto'}}>✕</button>
-              )}
-            </div>
-            <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:6}}>
-              <div style={{padding:'6px 8px', background:'#fff', border:'1px solid #1E3A8A', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
-                <span style={{fontSize:13, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
-                <span style={{flex:1, fontSize:12, fontWeight:700, color:'#1E3A8A', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(lf) || '—'}</span>
-                <span style={{fontSize:10, color:'#1E3A8A', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left]}</span>
-              </div>
-              <div style={{padding:'6px 8px', background:'#fff', border:'1px solid #1E3A8A', borderRadius:6, display:'flex', alignItems:'center', gap:5, minWidth:0}}>
-                <span style={{fontSize:13, flexShrink:0}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
-                <span style={{flex:1, fontSize:12, fontWeight:700, color:'#1E3A8A', textAlign:'right', minWidth:0, overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(rg) || '—'}</span>
-                <span style={{fontSize:10, color:'#1E3A8A', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right]}</span>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {acteurs.map((a, idx) => (
+        <S3ActeurRow
+          key={idx}
+          name={a.label}
+          mode={_toUiMode(a.mode)}
+          value={a.valeur}
+          payePar={payeParMap[idx] || defaultPayePar}
+          themeColor="navy"
+          baseAmount={baseAmount}
+          transactionType={transactionType}
+          onNameChange={(n) => updateActeur(idx, {label: n})}
+          onModeChange={(uiMode, v) => updateActeur(idx, {mode: _toDbMode(uiMode), valeur: v})}
+          onPayeParChange={(pp) => setPayeParMap(prev => ({...prev, [idx]: pp}))}
+          onRemove={acteurs.length > 1 ? () => removeActeur(idx) : null}
+        />
+      ))}
+      {acteurs.length > 0 && (
+        <div style={{marginTop:6}}>
+          <div style={{fontSize:9.5, fontWeight:700, color:'#1E3A8A', textTransform:'uppercase', letterSpacing:.4, marginBottom:3}}>Répartition par camp</div>
+          <S3SplitTotal totals={splitTotals} transactionType={transactionType}/>
+        </div>
+      )}
       {acteurs.length < 4 && (
         <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:8, marginTop:8, background:'#fff', border:'1.5px dashed #1E3A8A', borderRadius:8, color:'#1E3A8A', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter une agence ({acteurs.length}/4)</button>
       )}
