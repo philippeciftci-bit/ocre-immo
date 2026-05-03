@@ -271,7 +271,7 @@
 
     const recap = el('div', { style: 'background:#F0E8D8;padding:10px 12px;border-radius:6px;margin-bottom:12px;font-size:13px' },
       el('strong', {}, dossier.client_nom || ''),
-      el('div', { style: 'color:#6B5E4A;font-size:12px;margin-top:3px' }, [(dossier.type_bien || ''), (dossier.prix ? Number(dossier.prix).toLocaleString('fr-FR') + ' $' : '')].filter(Boolean).join(' · ')));
+      el('div', { style: 'color:#6B5E4A;font-size:12px;margin-top:3px' }, [(dossier.type_bien || ''), (dossier.prix ? Number(dossier.prix).toLocaleString('fr-FR') + ' €' : '')].filter(Boolean).join(' · ')));
 
     async function submit() {
       btn.disabled = true; btn.textContent = '…';

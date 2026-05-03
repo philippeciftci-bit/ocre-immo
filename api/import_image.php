@@ -160,7 +160,7 @@ function claudeExtractFromImage(string $base64, string $mime, string $apiKey): ?
          . "}\n\n"
          . "RÈGLES DE NORMALISATION :\n"
          . "- null si vraiment introuvable, mais cherche d'abord intensivement.\n"
-         . "- '500k'→500000, '1,8M'→1800000, '60 000 DH'→60000 (devise MAD), '$'/'EUR'→'EUR'.\n"
+         . "- '500k'→500000, '1,8M'→1800000, '60 000 DH'→60000 (devise MAD), '€'/'EUR'→'EUR'.\n"
          . "- Si 'À LOUER' / 'EN LOCATION' visible → transaction.type='location_longue' (sauf si 'courte durée'/'à la nuit'/'Airbnb').\n"
          . "- Si 'À VENDRE' / 'EN VENTE' visible → transaction.type='vente'.\n"
          . "- Si '60 000 DH/mois' → prix_meta.montant=60000, prix_meta.devise=MAD, prix_meta.periode=mois.\n"
