@@ -65,6 +65,14 @@ CREATE TABLE IF NOT EXISTS `clients` (
   `is_demo` tinyint(4) NOT NULL DEFAULT 0,
   `deleted_at` datetime DEFAULT NULL,
   `seed_id` varchar(64) DEFAULT NULL,
+  `is_promoteur` tinyint(1) NOT NULL DEFAULT 0,
+  `is_marchand_de_biens` tinyint(1) NOT NULL DEFAULT 0,
+  `phone_country` varchar(2) DEFAULT NULL,
+  `phone_e164` varchar(20) DEFAULT NULL,
+  `id_country` varchar(2) DEFAULT NULL,
+  `id_type` varchar(20) DEFAULT NULL,
+  `id_number` varchar(50) DEFAULT NULL,
+  `bien_country` varchar(2) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_public_slug` (`public_slug`),
   UNIQUE KEY `uniq_user_seed` (`user_id`,`seed_id`),
@@ -249,3 +257,17 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 SET FOREIGN_KEY_CHECKS=1;
+
+
+-- M/2026/05/04/20 — ALTER idempotents pour upgrades en place (DBs existantes pre-M109).
+-- IF NOT EXISTS sur ADD COLUMN supporte par MariaDB 10.0+. Si plain MySQL 5.7 sans support :
+-- les erreurs Duplicate column sont silencieuses via le mysql client si on les routes via stored proc.
+-- Ici on suppose MariaDB (deploy actuel ocre-immo).
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `is_promoteur` tinyint(1) NOT NULL DEFAULT 0;
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `is_marchand_de_biens` tinyint(1) NOT NULL DEFAULT 0;
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `phone_country` varchar(2) NULL;
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `phone_e164` varchar(20) NULL;
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `id_country` varchar(2) NULL;
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `id_type` varchar(20) NULL;
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `id_number` varchar(50) NULL;
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `bien_country` varchar(2) NULL;
