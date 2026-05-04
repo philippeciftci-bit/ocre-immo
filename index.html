@@ -10773,13 +10773,15 @@ function App() {
     // commitDraft() est appele une fois. Plus de fenetre ou un brouillon Sans nom peut leak.
     // V18.17 — si staged, mettre à jour le tableau staged (pas clients principaux).
     const isStagedSave = !!(editing && editing.is_staged);
+    // M/2026/05/04/17 — track tmpId genere pour matching post-save (anti-fantome).
+    const tmpId = incoming.id || 'tmp-' + Date.now();
     if (isStagedSave) {
       setStaged(prev => prev.map(c => (c.id === incoming.id ? {...c, ...incoming} : c)));
     } else {
       setClients(prev => {
         const exists = prev.find(c => c.id === incoming.id && incoming.id);
         if (exists) return prev.map(c => c.id === incoming.id ? {...c, ...incoming} : c);
-        return [{...incoming, id: incoming.id || 'tmp-' + Date.now()}, ...prev];
+        return [{...incoming, id: tmpId}, ...prev];
       });
     }
     setEditing(incoming);
@@ -10798,11 +10800,26 @@ function App() {
         saved = await apiSaveClient(incoming);
       } catch (e) { saveError = e; }
       if (saved && saved.id) editingIdRef.current = saved.id;
+      // M/2026/05/04/17 — anti-fantome : si saved retourne sans id (skipped_empty M16) OU saveError,
+      // RETIRER la card tmpId optimiste de la liste plutot que la laisser orpheline.
+      if (saved && !saved.id) {
+        if (isStagedSave) setStaged(prev => prev.filter(c => c.id !== tmpId));
+        else setClients(prev => prev.filter(c => c.id !== tmpId));
+        setEditing(null);
+        try { window.dispatchEvent(new CustomEvent('ocre-draft-saved', {detail: {skipped: true}})); } catch (e) {}
+        return saved;
+      }
+      if (saveError) {
+        if (isStagedSave) setStaged(prev => prev.filter(c => c.id !== tmpId));
+        else setClients(prev => prev.filter(c => c.id !== tmpId));
+        try { window.dispatchEvent(new CustomEvent('ocre-draft-error', {detail: {message: saveError.message || 'Echec sauvegarde'}})); } catch (e) {}
+        return null;
+      }
       if (saved) {
         if (isStagedSave) {
-          setStaged(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
+          setStaged(prev => prev.map(c => (c === incoming || c.id === incoming.id || c.id === tmpId) ? saved : c));
         } else {
-          setClients(prev => prev.map(c => (c === incoming || c.id === incoming.id) ? saved : c));
+          setClients(prev => prev.map(c => (c === incoming || c.id === incoming.id || c.id === tmpId) ? saved : c));
         }
         setEditing(saved);
         try { window.dispatchEvent(new CustomEvent('ocre-draft-saved', {detail: {at: Date.now()}})); } catch (e) {}
