@@ -180,6 +180,9 @@ if ($devise === 'MAD' || $devise === 'د.م.') { $devise = 'MAD'; }
 if ($devise === '$')  { $devise = 'USD'; }
 if ($devise === '£')  { $devise = 'GBP'; }
 if ($devise === 'د.إ') { $devise = 'AED'; }
+// M/2026/05/04/13 — override devise via GET ?currency=XXX (preview agent live picker).
+$_devOverride = preg_replace('/[^A-Z]/', '', strtoupper((string)($_GET['currency'] ?? '')));
+if (in_array($_devOverride, ['EUR','MAD','USD','GBP','AED','CHF'], true)) { $devise = $_devOverride; }
 $honoraires = $data['honoraires_inclus'] ?? true;
 // M/2026/04/29/38 — toggle Prix / Sur demande embedded URL ?mode=price|demand.
 $shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
