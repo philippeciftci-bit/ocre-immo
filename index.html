@@ -21466,41 +21466,66 @@ function FormView(props) {
               if (!window.confirm('Supprimer définitivement ce dossier ?')) return;
               handleDelete(editing.id);
             };
-            const BTN_BASE = {flex:'1 1 0', minWidth:0, padding:'2px 2px', background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3};
+            // M/2026/05/04/31 — flag M31_BOTTOMBAR_PILL : ON = pill flottant N°10 (#7A5132 capsule), OFF = ancien rectangle M27/M29.
+            const _flagM31 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M31_BOTTOMBAR_PILL'))
+              ? !!window.__ocreFlags.M31_BOTTOMBAR_PILL : true;
             const ICON_DEFAULT = '#F4EDDC', ICON_SAVE = '#FFD89A', ICON_DEL = '#F4A89A';
-            const LABEL_BASE = {fontFamily:"'DM Sans', sans-serif", fontSize:11, fontWeight:500, letterSpacing:'0.02em', marginTop:0};
-            return (
-              <div className="ocre-bottombar-v27" style={{position:'fixed', bottom:0, left:0, right:0, zIndex:50, display:'flex', justifyContent:'space-around', alignItems:'center', padding:'8px 6px calc(8px + env(safe-area-inset-bottom, 0px))', background:'#85583A', borderRadius:'18px 18px 0 0'}}>
+            // Tailles + labels selon variant (M27 rectangle vs M31 pill).
+            const ICON_SIZE = _flagM31 ? 22 : 24;
+            const STROKE_W = _flagM31 ? 1.7 : 1.6;
+            const LABEL_FS = _flagM31 ? 10 : 11;
+            const LABEL_LS = _flagM31 ? '0.01em' : '0.02em';
+            const LABEL_MT = _flagM31 ? 3 : 0;
+            const BTN_BASE = _flagM31
+              ? {flex:'1 1 0', minWidth:0, padding:'4px 4px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}
+              : {flex:'1 1 0', minWidth:0, padding:'2px 2px', background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3};
+            const LABEL_BASE = {fontFamily:"'DM Sans', sans-serif", fontSize:LABEL_FS, fontWeight:500, letterSpacing:LABEL_LS, marginTop:LABEL_MT};
+            const buttons = (
+              <>
                 <button type="button" onClick={onSave} title="Enregistrer le dossier" style={BTN_BASE}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_SAVE} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke={ICON_SAVE} strokeWidth={STROKE_W} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>
                   </svg>
                   <span style={{...LABEL_BASE, color: ICON_SAVE, opacity:1}}>Enregistrer</span>
                 </button>
                 <button type="button" onClick={onScan} title="Scan internet" style={BTN_BASE}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_DEFAULT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke={ICON_DEFAULT} strokeWidth={STROKE_W} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="11.5" cy="11.5" r="3"/><path d="m13.6 13.6 2.4 2.4"/>
                   </svg>
-                  <span style={{...LABEL_BASE, color: ICON_DEFAULT, opacity:0.92}}>Scanner</span>
+                  <span style={{...LABEL_BASE, color: ICON_DEFAULT, opacity: _flagM31 ? 0.85 : 0.92}}>Scanner</span>
                 </button>
                 <button type="button" onClick={onPdf} title="Aperçu PDF" style={BTN_BASE}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_DEFAULT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke={ICON_DEFAULT} strokeWidth={STROKE_W} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h1.5a1.5 1.5 0 0 1 0 3H9zM14 13h2v3M14 13v3"/>
                   </svg>
-                  <span style={{...LABEL_BASE, color: ICON_DEFAULT, opacity:0.92}}>PDF</span>
+                  <span style={{...LABEL_BASE, color: ICON_DEFAULT, opacity: _flagM31 ? 0.85 : 0.92}}>PDF</span>
                 </button>
                 <button type="button" onClick={onArchive} title={d.archived ? 'Désarchiver' : 'Archiver'} style={BTN_BASE}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_DEFAULT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke={ICON_DEFAULT} strokeWidth={STROKE_W} strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="4" width="20" height="5" rx="2"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>
                   </svg>
-                  <span style={{...LABEL_BASE, color: ICON_DEFAULT, opacity:0.92}}>{d.archived ? 'Désarch.' : 'Archiver'}</span>
+                  <span style={{...LABEL_BASE, color: ICON_DEFAULT, opacity: _flagM31 ? 0.85 : 0.92}}>{d.archived ? 'Désarch.' : 'Archiver'}</span>
                 </button>
                 <button type="button" onClick={onTrash} title="Supprimer définitivement" style={BTN_BASE}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_DEL} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke={ICON_DEL} strokeWidth={STROKE_W} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
                   </svg>
                   <span style={{...LABEL_BASE, color: ICON_DEL, opacity:1}}>Supprimer</span>
                 </button>
+              </>
+            );
+            if (_flagM31) {
+              return (
+                <div className="ocre-bottombar-v31-wrap" style={{position:'fixed', left:0, right:0, bottom:0, padding:'0 12px calc(8px + env(safe-area-inset-bottom, 0px))', display:'flex', justifyContent:'center', pointerEvents:'none', zIndex:50}}>
+                  <div className="ocre-bottombar-v31-pill" style={{pointerEvents:'auto', display:'flex', alignItems:'center', justifyContent:'space-around', padding:'8px 8px', background:'#7A5132', borderRadius:24, boxShadow:'0 4px 16px rgba(45,32,24,0.20)', width:'100%', maxWidth:340, color:'#F4EDDC'}}>
+                    {buttons}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="ocre-bottombar-v27" style={{position:'fixed', bottom:0, left:0, right:0, zIndex:50, display:'flex', justifyContent:'space-around', alignItems:'center', padding:'8px 6px calc(8px + env(safe-area-inset-bottom, 0px))', background:'#85583A', borderRadius:'18px 18px 0 0'}}>
+                {buttons}
               </div>
             );
           })()}
