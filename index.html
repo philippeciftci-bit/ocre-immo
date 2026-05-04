@@ -255,6 +255,16 @@
 .profile-chip--locataire.active{background:var(--profile-locataire-fg);color:#fff}
 .profile-chip--curieux{background:var(--profile-curieux-bg);color:var(--profile-curieux-fg);border:1px solid var(--profile-curieux-accent)}
 .profile-chip--curieux.active{background:var(--profile-curieux-fg);color:#fff}
+/* M/2026/05/04/42 — Galerie photos carrousel horizontal scrollable (PhotosGalleryV28). */
+.photos-carousel-wrap{position:relative}
+.photos-carousel{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:4px 4px 8px;scrollbar-width:none}
+.photos-carousel::-webkit-scrollbar{display:none}
+.photos-carousel-item{flex:0 0 auto;width:110px;height:110px;border-radius:8px;overflow:hidden;scroll-snap-align:start;position:relative;background:#F0E8D8;cursor:pointer;transition:transform 0.15s ease,background 120ms,border-color 120ms,opacity 120ms;border:2px solid transparent}
+.photos-carousel-item:hover{transform:scale(1.02)}
+.photos-carousel-item img{width:100%;height:100%;object-fit:cover;display:block}
+@media (max-width:480px){.photos-carousel-item{width:96px;height:96px}}
+@media (min-width:768px){.photos-carousel-item{width:130px;height:130px}}
+.photos-carousel-wrap::after{content:'';position:absolute;top:0;right:0;bottom:8px;width:24px;background:linear-gradient(to left,#FBF1E4,transparent);pointer-events:none;opacity:0.85}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden;overscroll-behavior:none}
 @keyframes ocreSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
@@ -19935,12 +19945,14 @@ function PhotosGalleryV28({dossier, showToast}) {
                onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}/>
       </div>
       {uuids.length > 0 && (
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:8, position:'relative'}}>
+        <div className="photos-carousel-wrap" style={{position:'relative'}}>
+        <div className="photos-carousel">
           {uuids.map((u, idx) => {
             const isDragging = draggingIdx === idx;
             const isHover = hoverIdx === idx && draggingIdx !== null && draggingIdx !== idx;
             return (
               <div key={u} data-photo-idx={idx}
+                className="photos-carousel-item"
                 draggable={reorderFlagOn ? 'true' : undefined}
                 onDragStart={(e) => onDragStart(e, idx)}
                 onDragOver={(e) => onDragOverItem(e, idx)}
@@ -19950,16 +19962,16 @@ function PhotosGalleryV28({dossier, showToast}) {
                 onTouchMove={onTouchMove}
                 onTouchEnd={(e) => onTouchEnd(e, idx)}
                 onTouchCancel={(e) => onTouchEnd(e, idx)}
-                style={{position:'relative', aspectRatio:'1', borderRadius:8, overflow:'hidden',
+                style={{
                   background: isHover ? 'rgba(122,82,53,0.1)' : '#F0E8D8',
-                  border: isHover ? '2px dashed #7A5132' : '2px solid transparent',
+                  borderColor: isHover ? '#7A5132' : 'transparent',
+                  borderStyle: isHover ? 'dashed' : 'solid',
                   opacity: isDragging ? 0.5 : 1,
-                  cursor: reorderFlagOn ? (draggingIdx !== null ? 'grabbing' : 'grab') : 'default',
-                  transition: 'background 120ms, border-color 120ms, opacity 120ms',
+                  cursor: reorderFlagOn ? (draggingIdx !== null ? 'grabbing' : 'grab') : 'pointer',
                   touchAction: reorderFlagOn ? 'none' : 'auto'}}>
                 <img src={photoUrl(u)} loading="lazy" alt=""
                      onClick={() => { if (!touchStateRef.current.isDragging) setLightboxIdx(idx); }}
-                     style={{width:'100%', height:'100%', objectFit:'cover', cursor:'zoom-in', display:'block', pointerEvents: draggingIdx !== null ? 'none' : 'auto'}}
+                     style={{cursor:'zoom-in', pointerEvents: draggingIdx !== null ? 'none' : 'auto'}}
                      draggable="false"/>
                 <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(u); }} title="Supprimer"
                   style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', opacity:0.85, display:'flex', alignItems:'center', justifyContent:'center', padding:0, zIndex:2}}>
@@ -19968,9 +19980,10 @@ function PhotosGalleryV28({dossier, showToast}) {
               </div>
             );
           })}
-          {savedFlash && (
-            <div style={{position:'absolute', top:-22, right:0, fontSize:10, color:'#3D7A3D', fontStyle:'italic', fontWeight:600, opacity:0.85, pointerEvents:'none'}}>Enregistré</div>
-          )}
+        </div>
+        {savedFlash && (
+          <div style={{position:'absolute', top:-22, right:0, fontSize:10, color:'#3D7A3D', fontStyle:'italic', fontWeight:600, opacity:0.85, pointerEvents:'none'}}>Enregistré</div>
+        )}
         </div>
       )}
       {lightboxIdx !== null && uuids[lightboxIdx] && (
