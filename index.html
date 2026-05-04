@@ -265,6 +265,53 @@
 @media (max-width:480px){.photos-carousel-item{width:96px;height:96px}}
 @media (min-width:768px){.photos-carousel-item{width:130px;height:130px}}
 .photos-carousel-wrap::after{content:'';position:absolute;top:0;right:0;bottom:8px;width:24px;background:linear-gradient(to left,#FBF1E4,transparent);pointer-events:none;opacity:0.85}
+/* M/2026/05/04/44 — Page Detail du match (V3 dual + V2 carrousel + lightbox). */
+.mv44-cv2{position:relative;aspect-ratio:16/8;overflow:hidden;background:#1a1714;border-radius:10px;margin-bottom:12px}
+.mv44-cv2-track{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.mv44-cv2-track::-webkit-scrollbar{display:none}
+.mv44-cv2-slide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:start;cursor:zoom-in}
+.mv44-cv2-slide img{width:100%;height:100%;object-fit:cover;display:block}
+.mv44-cv2-slide-empty{display:flex;align-items:center;justify-content:center;color:#8C8275;font-family:'Cormorant Garamond',serif;font-size:14px;font-style:italic;background:#2A2520;width:100%;height:100%}
+.mv44-cv2-chevron{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5));border:none;background:none;padding:0}
+.mv44-cv2-chevron-prev{left:8px}
+.mv44-cv2-chevron-next{right:8px}
+.mv44-cv2-counter{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:#fff;background:rgba(0,0,0,0.32);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:4px 14px;border-radius:100px;white-space:nowrap}
+.mv44-cv2-counter .cur{font-weight:700}
+.mv44-cv2-score{position:absolute;top:16px;right:18px;text-align:right;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5)}
+.mv44-cv2-score .vu{font-family:'DM Sans',sans-serif;font-size:9.5px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.92);background:rgba(255,255,255,0.18);padding:2px 8px;border-radius:100px;display:inline-block;margin-bottom:4px}
+.mv44-cv2-score .pct{font-family:'Cormorant Garamond',serif;font-size:42px;line-height:1;font-weight:700;color:#fff}
+.mv44-cv2-score .lbl{font-family:'DM Sans',sans-serif;font-size:9.5px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.92);margin-top:2px}
+@media (max-width:480px){.mv44-cv2-chevron{width:28px;height:28px}.mv44-cv2-score .pct{font-size:28px}}
+.mv44-bien-meta{padding:0 4px 14px}
+.mv44-bien-meta h2{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;color:#1A1714;line-height:1.2;margin:0 0 4px}
+.mv44-bien-meta p{font-family:'DM Sans',sans-serif;font-size:13px;color:#8C8275;margin:0}
+.mv44-section-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:#5C4530;margin:14px 0 8px;text-align:center}
+.mv44-dual{display:grid;grid-template-columns:1fr 1fr;column-gap:24px;position:relative;padding-bottom:14px}
+.mv44-dual::before,.mv44-dual::after{content:'';position:absolute;top:0;bottom:14px;background:#fff;border:1px solid #E5E0D8;border-radius:6px;z-index:0}
+.mv44-dual::before{left:0;right:calc(50% + 12px)}
+.mv44-dual::after{right:0;left:calc(50% + 12px)}
+.mv44-dual > *{position:relative;z-index:1}
+.mv44-dossier-head{padding:10px 12px;border-bottom:1px solid #F0EBE2}
+.mv44-dossier-head .badge{font-family:'DM Sans',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 8px;border-radius:10px;color:#fff;display:inline-block;margin-bottom:5px}
+.mv44-dossier-head .nom{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:#1A1714;line-height:1.2}
+.mv44-dossier-head .meta{font-size:11px;color:#8C8275;margin-top:2px}
+.mv44-dual-section-h{font-family:'DM Sans',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5C4530;padding:8px 12px 4px;border-top:1px solid #F0EBE2}
+.mv44-cell{padding:5px 12px;border-bottom:1px solid #F0EBE2}
+.mv44-cell:last-child{border-bottom:none}
+.mv44-cell .lbl{font-size:10px;color:#8C8275;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px}
+.mv44-cell .val{font-size:12.5px;color:#1A1714}
+.mv44-cell[data-status="match"] .val{background:#E8F2EA;padding:2px 7px;border-radius:3px;display:inline-block}
+.mv44-cell[data-status="diff"] .val{background:#F5E4E0;padding:2px 7px;border-radius:3px;display:inline-block}
+.mv44-cell[data-status="close"] .val{background:#F8EAD8;padding:2px 7px;border-radius:3px;display:inline-block}
+@media (max-width:480px){.mv44-dual{column-gap:10px}.mv44-dual::before{right:calc(50% + 5px)}.mv44-dual::after{left:calc(50% + 5px)}.mv44-cell{padding:5px 8px}.mv44-cell .val{font-size:11.5px}}
+.mv44-lb{position:fixed;inset:0;background:rgba(10,8,6,0.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:0 60px}
+.mv44-lb img{max-width:100%;max-height:90vh;object-fit:contain}
+.mv44-lb-counter{position:absolute;top:16px;left:50%;transform:translateX(-50%);font-family:'Cormorant Garamond',serif;font-size:17px;color:#fff}
+.mv44-lb-close{position:absolute;top:14px;right:14px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.mv44-lb-arrow{position:absolute;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.mv44-lb-arrow-prev{left:14px}
+.mv44-lb-arrow-next{right:14px}
+@media (max-width:480px){.mv44-lb{padding:0 16px}.mv44-lb-arrow{width:40px;height:40px}}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden;overscroll-behavior:none}
 @keyframes ocreSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
@@ -16051,7 +16098,24 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
   const [match, setMatch] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
+  // M/2026/05/04/44 — state carrousel + lightbox V2.
+  const [carouselIdx, setCarouselIdx] = React.useState(0);
+  const [lightboxIdx, setLightboxIdx] = React.useState(null);
+  const carouselTrackRef = React.useRef(null);
   const token = () => localStorage.getItem('ocre_token') || '';
+
+  // M/2026/05/04/44 — listener clavier lightbox (ESC ferme, flèches navigue).
+  React.useEffect(() => {
+    if (lightboxIdx === null) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLightboxIdx(null);
+      else if (e.key === 'ArrowLeft' && lightboxIdx > 0) setLightboxIdx(i => i - 1);
+      else if (e.key === 'ArrowRight') setLightboxIdx(i => (i !== null ? i + 1 : i));
+    };
+    window.addEventListener('keyup', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keyup', onKey); document.body.style.overflow = ''; };
+  }, [lightboxIdx]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -16238,74 +16302,176 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px calc(env(safe-area-inset-bottom, 0px) + 100px)'}}>
         {loading && <div style={{textAlign:'center', color:'#8B7F6E', padding:30}}>Chargement…</div>}
         {!loading && !match && <div style={{textAlign:'center', color:'#8B7F6E', padding:30, fontSize:13}}>Match introuvable.</div>}
-        {!loading && match && (
-          <>
-            <div style={{textAlign:'center', marginBottom:14}}>
-              <div style={{display:'inline-block', padding:'14px 24px', background: scoreBg, color: scoreColor, borderRadius:18, fontFamily:'Cormorant Garamond,serif', fontWeight:700}}>
-                <div style={{fontSize:48, lineHeight:1}}>{score}<span style={{fontSize:22}}>%</span></div>
-                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.6, marginTop:2, fontWeight:700}}>Score</div>
-              </div>
-            </div>
-            {dossierBlock(match.dossier_a, 'Dossier A')}
-            {dossierBlock(match.dossier_b, 'Dossier B')}
-            {(matched.length + divergent.length > 0) && (
-              <div style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10}}>
-                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8, fontWeight:700}}>Synthèse critères</div>
-                <div style={{display:'flex', flexWrap:'wrap', gap:5}}>
-                  {matched.map((c,i) => (
-                    <span key={'m'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', background:'#E6F3E1', color:'#2F7D32', borderRadius:11, fontSize:12, fontWeight:600}}>{ICONS.check}{c}</span>
-                  ))}
-                  {divergent.map((c,i) => (
-                    <span key={'d'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', background:'#FBE9E7', color:'#C0392B', borderRadius:11, fontSize:12, fontWeight:600}}>{ICONS.cross}{c}</span>
-                  ))}
-                </div>
-              </div>
-            )}
+        {!loading && match && (() => {
+          // M/2026/05/04/44 — refonte V3 dual + V2 carrousel + lightbox.
+          // Photos owner (Vendeur/Bailleur) prioritaires, fallback dossier_a.
+          const ownerData = (() => {
+            if (dA && dA.projet && (dA.projet === 'Vendeur' || dA.projet === 'Bailleur')) return {d: dA, da: daA, b: bA};
+            if (dB && dB.projet && (dB.projet === 'Vendeur' || dB.projet === 'Bailleur')) return {d: dB, da: daB, b: bB};
+            return {d: dA, da: daA, b: bA};
+          })();
+          const photos = (() => {
+            const arr = [];
+            const src = (ownerData.b && ownerData.b.photos) || [];
+            if (Array.isArray(src)) {
+              for (const p of src) {
+                if (typeof p === 'string' && p) arr.push(p);
+                else if (p && typeof p === 'object' && p.url) arr.push(p.url);
+              }
+            }
+            return arr;
+          })();
+          const titreType = ownerData.b.type || (Array.isArray(ownerData.b.types) ? ownerData.b.types[0] : '') || ownerData.d.projet || 'Bien';
+          const titre = [titreType, ownerData.b.ville, ownerData.b.quartier].filter(Boolean).join(' · ');
+          const surfaceLbl = ownerData.b.surface ? ownerData.b.surface + ' m²' : '';
+          const chambresLbl = ownerData.b.chambres ? ownerData.b.chambres + ' chambres' : '';
+          const prixLbl = ownerData.da.prix_affiche ? Number(ownerData.da.prix_affiche).toLocaleString('fr-FR') + ' MAD'
+                       : ownerData.da.loyer_demande ? Number(ownerData.da.loyer_demande).toLocaleString('fr-FR') + ' MAD/mois' : '';
+          const meta = [surfaceLbl, chambresLbl, prixLbl].filter(Boolean).join(' · ');
 
-            {/* M/2026/04/28/53 — table 10 critères canoniques A vs B avec icône compatibilité. */}
-            <div style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10}}>
-              <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8, fontWeight:700}}>Critères détaillés</div>
-              <div style={{fontSize:12.5}}>
-                {CRITERIA.map(c => (
-                  <div key={c.k} style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 28px', padding:'6px 0', borderBottom:'1px solid #F4EFE6', alignItems:'center'}}>
-                    <div style={{color:'#8B7F6E', textTransform:'uppercase', fontSize:10.5, letterSpacing:.4}}>{c.l}</div>
-                    <div style={{color:'#2A2018'}}>{fmtVal(c.fA, c.suf)}</div>
-                    <div style={{color:'#2A2018'}}>{fmtVal(c.fB, c.suf)}</div>
-                    <div style={{textAlign:'right', fontWeight:700}}>{critereIcon(c)}</div>
-                  </div>
-                ))}
+          // DossierHead helpers : badge + nom + meta court.
+          function dossierHead(d, da) {
+            if (!d) return null;
+            const role = String(d.projet || '').toLowerCase();
+            const nom = d.societe_nom || ((d.prenom || '') + ' ' + (d.nom || '')).trim() || '—';
+            const profil = da.profil_type || '';
+            const tel = d.tel || '';
+            return (
+              <div className="mv44-dossier-head">
+                <span className={'badge profile-badge--' + role}>{(d.projet || '').toUpperCase()}</span>
+                <div className="nom">{nom}</div>
+                <div className="meta">{[profil, tel].filter(Boolean).join(' · ')}</div>
               </div>
-            </div>
+            );
+          }
 
-            {/* Comparaison côte-à-côte tous champs (sections I/II/III). */}
-            {sections.map(sec => (
-              <div key={sec.title} style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10}}>
-                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8, fontWeight:700}}>{sec.title}</div>
-                <div style={{fontSize:12.5}}>
-                  {sec.rows.map((r, i) => (
-                    <div key={i} style={{display:'grid', gridTemplateColumns:'130px 1fr 1fr', gap:8, padding:'5px 0', borderBottom: i === sec.rows.length - 1 ? 'none' : '1px solid #F4EFE6'}}>
-                      <div style={{color:'#8B7F6E'}}>{r.l}</div>
-                      <div style={{color:'#2A2018'}}>{fmtVal(r.vA, r.suf)}</div>
-                      <div style={{color:'#2A2018'}}>{fmtVal(r.vB, r.suf)}</div>
+          // Statut cellule : match / diff / close / null.
+          function cellStatus(vA, vB, num) {
+            if (vA == null || vA === '' || vA === '—') return null;
+            if (vB == null || vB === '' || vB === '—') return null;
+            if (num) {
+              const a = Number(vA), b = Number(vB);
+              if (!a || !b) return null;
+              const ratio = Math.min(a, b) / Math.max(a, b);
+              if (ratio >= 0.95) return 'match';
+              if (ratio >= 0.75) return 'close';
+              return 'diff';
+            }
+            const sa = String(vA).toLowerCase(), sb = String(vB).toLowerCase();
+            if (sa === sb) return 'match';
+            if (sa.includes(sb) || sb.includes(sa)) return 'close';
+            return 'diff';
+          }
+
+          // Filtrer rows : skip si A vide OU B vide.
+          const visibleSections = sections.map(sec => ({
+            ...sec,
+            rows: sec.rows.filter(r => {
+              const va = r.vA, vb = r.vB;
+              const empty = (v) => v == null || v === '' || v === '—' || (Array.isArray(v) && v.length === 0);
+              return !empty(va) && !empty(vb);
+            }),
+          })).filter(sec => sec.rows.length > 0);
+
+          return (
+            <>
+              {/* Carrousel V2 photo + score Cormorant overlay. */}
+              <div className="mv44-cv2">
+                <div ref={carouselTrackRef} className="mv44-cv2-track"
+                     onScroll={(e) => {
+                       const w = e.target.clientWidth;
+                       const idx = Math.round(e.target.scrollLeft / w);
+                       if (idx !== carouselIdx) setCarouselIdx(idx);
+                     }}>
+                  {photos.length === 0 ? (
+                    <div className="mv44-cv2-slide"><div className="mv44-cv2-slide-empty">Aucune photo disponible</div></div>
+                  ) : photos.map((p, i) => (
+                    <div key={i} className="mv44-cv2-slide" onClick={() => setLightboxIdx(i)}>
+                      <img src={p} alt="" loading="lazy"/>
                     </div>
                   ))}
                 </div>
+                {photos.length > 1 && carouselIdx > 0 && (
+                  <button type="button" className="mv44-cv2-chevron mv44-cv2-chevron-prev"
+                    onClick={() => { const t = carouselTrackRef.current; if (t) t.scrollTo({left: t.clientWidth * (carouselIdx - 1), behavior:'smooth'}); }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                )}
+                {photos.length > 1 && carouselIdx < photos.length - 1 && (
+                  <button type="button" className="mv44-cv2-chevron mv44-cv2-chevron-next"
+                    onClick={() => { const t = carouselTrackRef.current; if (t) t.scrollTo({left: t.clientWidth * (carouselIdx + 1), behavior:'smooth'}); }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                )}
+                {photos.length > 1 && (
+                  <div className="mv44-cv2-counter"><span className="cur">{carouselIdx + 1}</span> / {photos.length}</div>
+                )}
+                <div className="mv44-cv2-score">
+                  <div className="vu">Vu</div>
+                  <div className="pct">{score}<span style={{fontSize:'0.55em'}}>%</span></div>
+                  <div className="lbl">Match</div>
+                </div>
               </div>
-            ))}
 
-            {distKm !== null && (
-              <div style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10, textAlign:'center'}}>
-                <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:6, fontWeight:700}}>Distance</div>
-                <div style={{fontSize:24, fontFamily:'Cormorant Garamond,serif', fontWeight:700, color:'#8B5E3C'}}>{distKm.toFixed(1)} km</div>
-                <div style={{fontSize:11, color:'#8B7F6E'}}>à vol d'oiseau (Haversine)</div>
+              {/* Bien meta. */}
+              <div className="mv44-bien-meta">
+                <h2>{titre}</h2>
+                {meta && <p>{meta}</p>}
               </div>
-            )}
 
-            <button disabled style={{width:'100%', padding:'10px', background:'transparent', color:'#8B5E3C', border:'1.5px dashed #B89968', borderRadius:8, fontFamily:'inherit', fontSize:12, cursor:'not-allowed', opacity:.7, marginBottom:6}}>
-              Contacter les 2 parties (à venir)
-            </button>
-          </>
-        )}
+              {/* Section comparaison dossier V3 dual. */}
+              <div className="mv44-section-title">Comparaison dossier</div>
+              <div className="mv44-dual">
+                {dossierHead(dA, daA)}
+                {dossierHead(dB, daB)}
+                {visibleSections.map(sec => [
+                  <div key={'th-l-'+sec.title} className="mv44-dual-section-h">{sec.title}</div>,
+                  <div key={'th-r-'+sec.title} className="mv44-dual-section-h">{sec.title}</div>,
+                  ...sec.rows.flatMap((r, i) => {
+                    const status = cellStatus(r.vA, r.vB, r.num);
+                    return [
+                      <div key={'cell-l-'+sec.title+'-'+i} className="mv44-cell" data-status={status || undefined}>
+                        <div className="lbl">{r.l}</div><div className="val">{fmtVal(r.vA, r.suf)}</div>
+                      </div>,
+                      <div key={'cell-r-'+sec.title+'-'+i} className="mv44-cell" data-status={status || undefined}>
+                        <div className="lbl">{r.l}</div><div className="val">{fmtVal(r.vB, r.suf)}</div>
+                      </div>,
+                    ];
+                  }),
+                ])}
+              </div>
+
+              {distKm !== null && (
+                <div style={{padding:12, background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:10, textAlign:'center'}}>
+                  <div style={{fontSize:11, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:6, fontWeight:700}}>Distance</div>
+                  <div style={{fontSize:24, fontFamily:'Cormorant Garamond,serif', fontWeight:700, color:'#8B5E3C'}}>{distKm.toFixed(1)} km</div>
+                  <div style={{fontSize:11, color:'#8B7F6E'}}>à vol d'oiseau</div>
+                </div>
+              )}
+
+              {/* Lightbox V2 plein ecran. */}
+              {lightboxIdx !== null && photos[lightboxIdx] && (
+                <div className="mv44-lb" onClick={() => setLightboxIdx(null)}>
+                  <div className="mv44-lb-counter">{lightboxIdx + 1} / {photos.length}</div>
+                  <button type="button" className="mv44-lb-close" onClick={(e) => { e.stopPropagation(); setLightboxIdx(null); }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                  <img src={photos[lightboxIdx]} alt="" onClick={(e) => e.stopPropagation()}/>
+                  {lightboxIdx > 0 && (
+                    <button type="button" className="mv44-lb-arrow mv44-lb-arrow-prev" onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx - 1); }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                  )}
+                  {lightboxIdx < photos.length - 1 && (
+                    <button type="button" className="mv44-lb-arrow mv44-lb-arrow-next" onClick={(e) => { e.stopPropagation(); setLightboxIdx(lightboxIdx + 1); }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {!loading && match && (
