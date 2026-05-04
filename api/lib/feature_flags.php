@@ -106,4 +106,65 @@ function ff_overrides(string $flagKey): array {
     return $st->fetchAll();
 }
 
+// M/2026/05/04/19 — wrapper email -> user_id (mapping whitelist email sur overrides existants).
+function ff_enabled_for_email(string $flagKey, string $email): bool {
+    if (!$email) return ff_enabled($flagKey);
+    $pdo = ff_pdo();
+    $st = $pdo->prepare("SELECT id FROM users WHERE email = ? AND archived_at IS NULL LIMIT 1");
+    $st->execute([strtolower(trim($email))]);
+    $uid = $st->fetchColumn();
+    return ff_enabled($flagKey, $uid ? (int)$uid : null);
+}
+
+// Snapshot effectif tous flags pour un user (pour /api/flags_for_user.php).
+function ff_snapshot_for_user(?int $userId): array {
+    ff_ensure_schema();
+    $rows = ff_pdo()->query("SELECT flag_key FROM feature_flags")->fetchAll();
+    $out = [];
+    foreach ($rows as $f) $out[$f['flag_key']] = ff_enabled($f['flag_key'], $userId);
+    return $out;
+}
+
+// Synchronise les overrides user_id depuis CSV emails (pour panel admin).
+function ff_sync_email_whitelist(string $flagKey, array $emails, int $actorUid): array {
+    ff_ensure_schema();
+    $pdo = ff_pdo();
+    $emailsLc = array_values(array_filter(array_map(fn($e) => strtolower(trim((string)$e)), $emails)));
+    $userIds = []; $unknown = [];
+    foreach ($emailsLc as $em) {
+        if ($em === '') continue;
+        $st = $pdo->prepare("SELECT id FROM users WHERE email = ? AND archived_at IS NULL LIMIT 1");
+        $st->execute([$em]);
+        $uid = $st->fetchColumn();
+        if ($uid) $userIds[] = (int)$uid; else $unknown[] = $em;
+    }
+    $userIds = array_values(array_unique($userIds));
+    $exStmt = $pdo->prepare("SELECT user_id FROM feature_flags_overrides WHERE flag_key = ? AND user_id IS NOT NULL");
+    $exStmt->execute([$flagKey]);
+    $existing = array_map('intval', array_column($exStmt->fetchAll(), 'user_id'));
+    $toAdd = array_diff($userIds, $existing);
+    $toRemove = array_diff($existing, $userIds);
+    $insert = $pdo->prepare("INSERT INTO feature_flags_overrides (flag_key, user_id, enabled, created_by) VALUES (?, ?, 1, ?)
+                             ON DUPLICATE KEY UPDATE enabled = 1, created_by = VALUES(created_by)");
+    foreach ($toAdd as $uid) $insert->execute([$flagKey, $uid, $actorUid]);
+    if ($toRemove) {
+        $in = implode(',', array_map('intval', $toRemove));
+        $pdo->exec("DELETE FROM feature_flags_overrides WHERE flag_key = " . $pdo->quote($flagKey) . " AND user_id IN ($in)");
+    }
+    return ['added' => count($toAdd), 'removed' => count($toRemove), 'unknown_emails' => $unknown, 'total_active' => count($userIds)];
+}
+
+// Liste emails active pour un flag (UI panel admin).
+function ff_emails_for_flag(string $flagKey): array {
+    ff_ensure_schema();
+    $st = ff_pdo()->prepare(
+        "SELECT u.email FROM feature_flags_overrides o
+         JOIN users u ON u.id = o.user_id
+         WHERE o.flag_key = ? AND o.user_id IS NOT NULL AND o.enabled = 1
+         ORDER BY u.email"
+    );
+    $st->execute([$flagKey]);
+    return array_column($st->fetchAll(), 'email');
+}
+
 }
