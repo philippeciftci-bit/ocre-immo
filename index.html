@@ -15814,13 +15814,17 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
 
   // M/2026/05/01 — Maquette A : photo hero + score top-right + tableau comparatif 2 cols 5 rows.
   // Suppression franche dossierCard 56x56 (M/30/38) remplace par layout enrichi.
+  // M/2026/05/04/41 — Palette deduite des CSS variables --profile-*-fg/bg M40 (SSOT).
+  // Couleurs alignees avec PROFILS / PROFILS_TINT globaux = coherence avec liste dossiers.
+  // Avant : palette locale orange/jaune generique (Vendeur row #FFF6E1, Acheteur row #FFE9D9)
+  // ne correspondait pas aux couleurs profil de la liste. Fix : refleter PROFILS_TINT.
   const PROFIL_PALETTE = {
-    Vendeur:      {badge:'#1F3A5F', row:'#FFF6E1'},
-    Bailleur:     {badge:'#7B9D5D', row:'#E8F1E0'},
-    Acheteur:     {badge:'#7B5E3C', row:'#FFE9D9'},
-    Locataire:    {badge:'#8A7B3C', row:'#F0E8DC'},
-    Investisseur: {badge:'#6B4F8B', row:'#EDE5F5'},
-    Curieux:      {badge:'#888888', row:'#F0F0F0'},
+    Vendeur:      {badge: PROFILS.Vendeur,      row: PROFILS_TINT.Vendeur},
+    Bailleur:     {badge: PROFILS.Bailleur,     row: PROFILS_TINT.Bailleur},
+    Acheteur:     {badge: PROFILS.Acheteur,     row: PROFILS_TINT.Acheteur},
+    Locataire:    {badge: PROFILS.Locataire,    row: PROFILS_TINT.Locataire},
+    Investisseur: {badge: PROFILS.Investisseur, row: PROFILS_TINT.Investisseur},
+    Curieux:      {badge: PROFILS.Curieux,      row: PROFILS_TINT.Curieux},
   };
   function isOwnerProfile(p) { return p === 'Vendeur' || p === 'Bailleur'; }
 
