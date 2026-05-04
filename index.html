@@ -21095,14 +21095,110 @@ function FormView(props) {
           /* V32 — PublishButton full-width supprimé. Chip PUBLIER intégré dans la barre
              footer entre la loupe ambre et Enregistrer (offres uniquement). */
           <>
-          {/* V32 — Footer dossier : [Loupe] [Chip PUBLIER offres] [Enregistrer flex:1] [Archiver] [Supprimer].
-              paddingBottom = safe-area only, marginBottom 0 → collé au bas.
-              M/2026/05/01/27 — M105 : 4 boutons listes (CrossSearch, Chip PUBLIER, Enregistrer, Archiver, Supprimer)
-              passent en mode disabled visuel (opacity 0.35 + pointerEvents none) si dossier vide
-              (allFieldsEmpty). PDF reste avec sa logique disabled propre. Stripe pattern. */}
-          {/* M/2026/05/01/30 — M108 Partie B : style glass Proposition 01 (Notion gray + glass leger).
-              background rgba(251,246,236,0.78) + blur(20px) saturate(180%) + border rgba(229,217,194,0.4).
-              gap 4 padding 8x10 (au lieu de gap 6 padding 2x10). Coherent avec direction Stripe/Linear/Notion. */}
+          {/* M/2026/05/04/27 — Wrap conditionnel flag M27_BOTTOMBAR_REFONTE :
+              ON (default) -> nouvelle BottomBar #85583A 5 boutons (Save/Scan/PDF/Archiver/Supprimer).
+              OFF -> ancienne barre glass V32 conservee pour rollback instantane via /admin/flags. */}
+          {(() => {
+            const _flagM27 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M27_BOTTOMBAR_REFONTE'))
+              ? !!window.__ocreFlags.M27_BOTTOMBAR_REFONTE : true;
+            const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+            if (!_flagM27) return null;
+            const onSave = () => {
+              if (allFieldsEmpty(latestRef.current)) { showToast && showToast('Aucune information à enregistrer'); return; }
+              markUserAction();
+              userBlurredRef.current = true;
+              const next = {...latestRef.current, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur, is_draft: 0};
+              setD(next); handleSaveLocal(next);
+              showToast && showToast('Dossier enregistré');
+            };
+            const onScan = async () => {
+              if (!_hasRealId) { showToast && showToast("Enregistrez d'abord le dossier"); return; }
+              const isOffre = ['Vendeur','Bailleur','Investisseur'].includes(activeProfil);
+              if (!isOffre) { showToast && showToast('Scan internet réservé Vendeur / Bailleur / Investisseur'); return; }
+              showToast && showToast('Scan internet en cours…');
+              try {
+                const tk = localStorage.getItem('ocre_token') || '';
+                const r = await fetch(API + '/cross_search.php?action=search&id=' + encodeURIComponent(editing.id),
+                  {method:'POST', headers:{'X-Session-Token': tk}});
+                const j = await r.json();
+                if (j && j.ok) {
+                  const next = {...d, cross_matches: j.matches || [], cross_search_last_at: j.searched_at};
+                  setD(next); handleSaveLocal(next);
+                  showToast && showToast('Scan terminé : ' + ((j.matches || []).length) + ' résultats');
+                } else showToast && showToast((j && j.error) || 'Erreur scan');
+              } catch (e) { showToast && showToast('Erreur réseau'); }
+            };
+            const onPdf = () => {
+              if (!_hasRealId) { showToast && showToast("Enregistrez d'abord le dossier"); return; }
+              if (props.openDossierPdf) props.openDossierPdf(editing.id);
+            };
+            const onArchive = async () => {
+              if (!_hasRealId) { showToast && showToast("Saisis d'abord quelques champs"); return; }
+              const targetState = !d.archived;
+              if (!targetState) {
+                try {
+                  const tk = localStorage.getItem('ocre_token') || '';
+                  const r = await fetch(API + '/clients.php?action=unarchive', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({id: editing.id})});
+                  const j = await r.json();
+                  if (j && j.ok) { commit('archived', false); showToast && showToast('Dossier désarchivé'); setTimeout(() => { window.location.reload(); }, 300); }
+                  else showToast && showToast((j && j.error) || 'Échec désarchivage');
+                } catch (e) { showToast && showToast('Erreur réseau'); }
+                return;
+              }
+              if (!(await askConfirm({title: 'Archiver ce dossier ?', message: 'Le dossier sera retiré de la liste principale mais restera accessible dans Archives. Tu pourras le restaurer à tout moment.', danger:false, confirmLabel:'Archiver'}))) return;
+              try {
+                const tk = localStorage.getItem('ocre_token') || '';
+                const r = await fetch(API + '/clients.php?action=archive', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({id: editing.id, archived:1})});
+                const j = await r.json();
+                if (j && j.ok) { commit('archived', true); showToast && showToast('Dossier archivé'); setTimeout(() => backToList && backToList(), 250); }
+                else showToast && showToast((j && j.error) || 'Échec archivage');
+              } catch (e) { showToast && showToast('Erreur réseau'); }
+            };
+            const onTrash = () => {
+              if (!_hasRealId) { showToast && showToast("Aucun dossier à supprimer"); return; }
+              if (!window.confirm('Supprimer définitivement ce dossier ?')) return;
+              handleDelete(editing.id);
+            };
+            const BTN_BASE = {flex:'1 1 0', minWidth:0, padding:'4px 2px', background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5};
+            const ICON_DEFAULT = '#F4EDDC', ICON_SAVE = '#FFD89A', ICON_DEL = '#F4A89A';
+            const LABEL_BASE = {fontFamily:"'DM Sans', sans-serif", fontSize:11, fontWeight:500, letterSpacing:'0.02em', marginTop:0};
+            return (
+              <div className="ocre-bottombar-v27" style={{position:'sticky', bottom:0, left:0, right:0, zIndex:50, display:'flex', justifyContent:'space-around', alignItems:'center', padding:'13px 6px calc(13px + env(safe-area-inset-bottom, 0px))', background:'#85583A'}}>
+                <button type="button" onClick={onSave} title="Enregistrer le dossier" style={BTN_BASE}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_SAVE} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>
+                  </svg>
+                  <span style={{...LABEL_BASE, color: ICON_SAVE, opacity:1}}>Enregistrer</span>
+                </button>
+                <button type="button" onClick={onScan} title="Scan internet" style={BTN_BASE}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_DEFAULT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="11.5" cy="11.5" r="3"/><path d="m13.6 13.6 2.4 2.4"/>
+                  </svg>
+                  <span style={{...LABEL_BASE, color: ICON_DEFAULT, opacity:0.92}}>Scanner</span>
+                </button>
+                <button type="button" onClick={onPdf} title="Aperçu PDF" style={BTN_BASE}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_DEFAULT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h1.5a1.5 1.5 0 0 1 0 3H9zM14 13h2v3M14 13v3"/>
+                  </svg>
+                  <span style={{...LABEL_BASE, color: ICON_DEFAULT, opacity:0.92}}>PDF</span>
+                </button>
+                <button type="button" onClick={onArchive} title={d.archived ? 'Désarchiver' : 'Archiver'} style={BTN_BASE}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_DEFAULT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="5" rx="2"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>
+                  </svg>
+                  <span style={{...LABEL_BASE, color: ICON_DEFAULT, opacity:0.92}}>{d.archived ? 'Désarch.' : 'Archiver'}</span>
+                </button>
+                <button type="button" onClick={onTrash} title="Supprimer définitivement" style={BTN_BASE}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_DEL} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
+                  </svg>
+                  <span style={{...LABEL_BASE, color: ICON_DEL, opacity:1}}>Supprimer</span>
+                </button>
+              </div>
+            );
+          })()}
+          {/* Ancienne barre glass V32 — affichee UNIQUEMENT si flag M27 OFF (rollback). */}
+          {(typeof window !== 'undefined' && window.__ocreFlags && window.__ocreFlags.M27_BOTTOMBAR_REFONTE === false) && (
           <div style={Object.assign(
               {position:'sticky', bottom:0, left:0, right:0, zIndex:50, display:'flex', gap:4, alignItems:'center', padding:'8px 10px calc(8px + env(safe-area-inset-bottom, 0px))', background:'rgba(251, 246, 236, 0.78)', backdropFilter:'blur(20px) saturate(180%)', WebkitBackdropFilter:'blur(20px) saturate(180%)', borderTop:'1px solid rgba(229, 217, 194, 0.4)', transition:'opacity .2s ease-in-out'},
               allFieldsEmpty(d) ? {opacity:0.45, pointerEvents:'none'} : {opacity:1, pointerEvents:'auto'}
@@ -21287,6 +21383,7 @@ function FormView(props) {
               );
             })()}
           </div>
+          )}
           {/* V23 — Note discrète pour profils demande (Acheteur/Locataire/Curieux). */}
           {['Acheteur','Locataire','Curieux'].includes(activeProfil) && (
             <div style={{fontSize:10.5, color:'#A89882', textAlign:'center', padding:'0 8px 6px', lineHeight:1.4, fontStyle:'italic'}}>
