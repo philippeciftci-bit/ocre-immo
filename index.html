@@ -14500,9 +14500,11 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
   }
   async function fetchHtml() {
     setLoading(true);
+    setHtml('');
     try {
-      const r = await fetch('/api/dossier_pdf_html.php?dossier_id=' + dossierId + buildQueryParams(),
-        {headers:{'X-Session-Token': token()}});
+      // M/2026/05/04/14 — cache-buster _t pour eviter cache navigateur sur refetch live (devise/flags).
+      const r = await fetch('/api/dossier_pdf_html.php?dossier_id=' + dossierId + buildQueryParams() + '&_t=' + Date.now(),
+        {headers:{'X-Session-Token': token()}, cache:'no-store'});
       const t = await r.text();
       if (r.ok) setHtml(t);
       else showToast && showToast('Erreur chargement apercu');
@@ -14557,8 +14559,9 @@ function CurrencyPickerSheet({current, onSelect, onClose}) {
   const labels = {EUR:'Euro', MAD:'Dirham marocain', USD:'Dollar US', GBP:'Livre sterling', AED:'Dirham EAU', CHF:'Franc suisse'};
   return (
     <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:9000, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
-      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:480, background:'#fff', borderTopLeftRadius:18, borderTopRightRadius:18,
-            padding:'18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px)', boxShadow:'0 -4px 18px rgba(0,0,0,.12)'}}>
+      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:420, marginLeft:'auto', marginRight:'auto', background:'#fff', borderTopLeftRadius:16, borderTopRightRadius:16,
+            padding:'18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px)', boxShadow:'0 -4px 18px rgba(0,0,0,.12)',
+            animation:'pdfShareScaleIn 200ms ease-out'}}>
         <div style={{textAlign:'center', fontFamily:"'Cormorant Garamond', serif", fontSize:20, fontWeight:700, color:'#2D2018', marginBottom:10}}>Devise</div>
         {list.map(c => (
           <div key={c} onClick={() => onSelect(c)}
@@ -14632,11 +14635,18 @@ function PdfBottomBar({onBack, currency, onCurrencyClick, showPrice, setShowPric
           {currency || 'EUR'}
         </button>
         <ToggleBtn active={showPrice} onClick={() => setShowPrice(v => !v)} title={showPrice ? 'Masquer le prix' : 'Afficher le prix'}>
-          {/* Icone Tag (lucide-style). */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-            <line x1="7" y1="7" x2="7.01" y2="7"/>
-          </svg>
+          {/* M/2026/05/04/14 — icones Eye / EyeOff (convention universelle visibilite). */}
+          {showPrice ? (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          )}
         </ToggleBtn>
         <ToggleBtn active={showAddress} onClick={() => setShowAddress(v => !v)} title={showAddress ? "Masquer l'adresse" : "Afficher l'adresse"}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
