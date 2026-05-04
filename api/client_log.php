@@ -36,8 +36,8 @@ $entry = [
     'url' => substr((string)($data['url'] ?? ''), 0, 500),
 ];
 
-// /var/log/ocre est root-only. Utilise /var/lib/ocre (cree en M28, writable par www-ocre).
-$logDir = '/var/lib/ocre';
+// /var/log/ocre + /var/lib/ocre sont root-only. /var/lib/ocre/uploads est writable www-ocre.
+$logDir = '/var/lib/ocre/uploads/_logs';
 if (!is_dir($logDir)) @mkdir($logDir, 0775, true);
 $logFile = $logDir . '/client-errors.log';
 @file_put_contents($logFile, json_encode($entry, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND | LOCK_EX);
