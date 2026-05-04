@@ -19489,6 +19489,133 @@ function ProfilSelectorBar({activeProfil, onChange}) {
 // toutes saisissables des l ouverture du nouveau dossier (le selecteur profil reste une aide
 // UX, pas un gate). Tronc commun en mode draft via fallback profil "Acheteur" cote rendu.
 
+// M/2026/05/04/28 — M28 PhotosGalleryV28 : upload multi + webp serveur + grid + lightbox + suppression.
+// Wrap dans flag M137_GALLERY_ENRICHED. Apparait au bottom de FormView avant la BottomBar.
+function PhotosGalleryV28({dossier, showToast}) {
+  const [uuids, setUuids] = React.useState(() => {
+    if (!dossier || !dossier.photos_uuids) return [];
+    if (typeof dossier.photos_uuids === 'string') {
+      try { return JSON.parse(dossier.photos_uuids) || []; } catch (e) { return []; }
+    }
+    return Array.isArray(dossier.photos_uuids) ? dossier.photos_uuids : [];
+  });
+  const [uploading, setUploading] = React.useState(0);
+  const [dragOver, setDragOver] = React.useState(false);
+  const [lightboxIdx, setLightboxIdx] = React.useState(null);
+  const fileInputRef = React.useRef(null);
+  const dossierId = dossier && dossier.id;
+
+  async function uploadOne(file) {
+    if (!dossierId || String(dossierId).startsWith('tmp-')) {
+      showToast && showToast("Enregistrez d'abord le dossier"); return null;
+    }
+    const tk = localStorage.getItem('ocre_token') || '';
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('dossier_id', String(dossierId));
+    try {
+      const r = await fetch('/api/photo_upload.php', {method:'POST', headers:{'X-Session-Token': tk}, body: fd});
+      const j = await r.json();
+      if (j && j.ok && j.uuid) return j.uuid;
+      showToast && showToast((j && j.error) || 'Echec upload');
+      return null;
+    } catch (e) { showToast && showToast('Erreur reseau'); return null; }
+  }
+
+  async function handleFiles(files) {
+    if (!files || !files.length) return;
+    setUploading(files.length);
+    const added = [];
+    for (let i = 0; i < files.length; i++) {
+      const u = await uploadOne(files[i]);
+      if (u) added.push(u);
+      setUploading(files.length - i - 1);
+    }
+    if (added.length) setUuids(prev => [...prev, ...added]);
+    setUploading(0);
+  }
+
+  async function handleDelete(uuid) {
+    if (!window.confirm('Supprimer cette photo ?')) return;
+    const tk = localStorage.getItem('ocre_token') || '';
+    try {
+      const r = await fetch('/api/photo_delete.php', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': tk}, body: JSON.stringify({dossier_id: dossierId, uuid})});
+      const j = await r.json();
+      if (j && j.ok) setUuids(prev => prev.filter(u => u !== uuid));
+      else showToast && showToast((j && j.error) || 'Echec suppression');
+    } catch (e) { showToast && showToast('Erreur reseau'); }
+  }
+
+  function photoUrl(u) { return '/api/photo_serve.php?u=' + u + '&d=' + dossierId; }
+
+  React.useEffect(() => {
+    if (lightboxIdx === null) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLightboxIdx(null);
+      else if (e.key === 'ArrowLeft') setLightboxIdx(i => i > 0 ? i - 1 : i);
+      else if (e.key === 'ArrowRight') setLightboxIdx(i => i < uuids.length - 1 ? i + 1 : i);
+    };
+    window.addEventListener('keyup', onKey);
+    return () => window.removeEventListener('keyup', onKey);
+  }, [lightboxIdx, uuids.length]);
+
+  return (
+    <div style={{margin:'12px 10px', padding:'10px 12px', background:'#FBF1E4', borderRadius:10, border:'1px solid #E8DDC9'}}>
+      <div style={{fontSize:11, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.6, marginBottom:8}}>
+        Photos {uuids.length > 0 ? '· ' + uuids.length : ''}
+      </div>
+      <div onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+           onDragLeave={() => setDragOver(false)}
+           onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+           onClick={() => fileInputRef.current && fileInputRef.current.click()}
+           style={{border:'2px dashed ' + (dragOver ? '#8B5E3C' : '#C9B79A'), borderRadius:8, padding:'14px', textAlign:'center', cursor:'pointer', background: dragOver ? '#FFF4E0' : 'transparent', marginBottom:10, transition:'all 150ms'}}>
+        <div style={{fontSize:13, color:'#5C3B1E', fontWeight:600}}>
+          {uploading > 0 ? 'Upload… (' + uploading + ' restant·e·s)' : 'Glisser des photos ici ou cliquer pour choisir'}
+        </div>
+        <div style={{fontSize:11, color:'#8B7F6E', marginTop:4}}>JPG / PNG / HEIC · converties en WebP · 20 MB max</div>
+        <input ref={fileInputRef} type="file" accept="image/*" multiple style={{display:'none'}}
+               onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}/>
+      </div>
+      {uuids.length > 0 && (
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:8}}>
+          {uuids.map((u, idx) => (
+            <div key={u} style={{position:'relative', aspectRatio:'1', borderRadius:8, overflow:'hidden', background:'#F0E8D8'}}>
+              <img src={photoUrl(u)} loading="lazy" alt="" onClick={() => setLightboxIdx(idx)}
+                   style={{width:'100%', height:'100%', objectFit:'cover', cursor:'zoom-in', display:'block'}}/>
+              <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(u); }} title="Supprimer"
+                style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', opacity:0.85, display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {lightboxIdx !== null && uuids[lightboxIdx] && (
+        <div onClick={() => setLightboxIdx(null)}
+          style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.95)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <img src={photoUrl(uuids[lightboxIdx])} alt="" onClick={(e) => e.stopPropagation()}
+               style={{maxWidth:'100%', maxHeight:'100%', objectFit:'contain'}}/>
+          {lightboxIdx > 0 && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); setLightboxIdx(i => i - 1); }}
+              style={{position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', width:44, height:44, borderRadius:22, border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+          )}
+          {lightboxIdx < uuids.length - 1 && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); setLightboxIdx(i => i + 1); }}
+              style={{position:'absolute', right:16, top:'50%', transform:'translateY(-50%)', width:44, height:44, borderRadius:22, border:'none', background:'rgba(255,255,255,0.15)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          )}
+          <div style={{position:'absolute', bottom:20, left:0, right:0, textAlign:'center', color:'#fff', fontSize:14, fontFamily:"'DM Sans', sans-serif"}}>
+            {(lightboxIdx + 1)} / {uuids.length}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FormView(props) {
   const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          isPromoteur, setIsPromoteur, isMarchandDeBiens, setIsMarchandDeBiens,
@@ -21095,6 +21222,14 @@ function FormView(props) {
           /* V32 — PublishButton full-width supprimé. Chip PUBLIER intégré dans la barre
              footer entre la loupe ambre et Enregistrer (offres uniquement). */
           <>
+          {/* M/2026/05/04/28 — M28 PhotosGalleryV28 wrappee dans flag M137_GALLERY_ENRICHED. */}
+          {(() => {
+            const _flagM137 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M137_GALLERY_ENRICHED'))
+              ? !!window.__ocreFlags.M137_GALLERY_ENRICHED : false;
+            const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+            if (!_flagM137 || !_hasRealId) return null;
+            return <PhotosGalleryV28 dossier={editing} showToast={showToast}/>;
+          })()}
           {/* M/2026/05/04/27 — Wrap conditionnel flag M27_BOTTOMBAR_REFONTE :
               ON (default) -> nouvelle BottomBar #85583A 5 boutons (Save/Scan/PDF/Archiver/Supprimer).
               OFF -> ancienne barre glass V32 conservee pour rollback instantane via /admin/flags. */}

@@ -276,3 +276,6 @@ ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `bien_country` varchar(2) NULL;
 ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `status_final` varchar(20) DEFAULT 'brouillon';
 ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `validated_at` datetime NULL;
 ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `validated_by` int NULL;
+
+-- M/2026/05/04/28 — M28 galerie photos enrichie (upload multi + webp + lightbox).
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `photos_uuids` JSON NULL;
