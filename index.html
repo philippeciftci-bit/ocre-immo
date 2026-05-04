@@ -14484,20 +14484,24 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
   const [showPrice, setShowPrice] = React.useState(true);
   const [showAddress, setShowAddress] = React.useState(true);
   const [showIdentity, setShowIdentity] = React.useState(true);
+  // M/2026/05/04/13 — devise picker live : refetch PHP avec ?currency=XXX a chaque changement.
+  const [currency, setCurrency] = React.useState('EUR');
+  const [currencyPickerOpen, setCurrencyPickerOpen] = React.useState(false);
   const refetchTimerRef = React.useRef(null);
   const token = () => localStorage.getItem('ocre_token') || '';
 
-  function buildHideParams() {
+  function buildQueryParams() {
     const p = [];
     if (!showPrice) p.push('hide_price=1');
     if (!showAddress) p.push('hide_address=1');
     if (!showIdentity) p.push('hide_identity=1');
+    if (currency) p.push('currency=' + encodeURIComponent(currency));
     return p.length ? ('&' + p.join('&')) : '';
   }
   async function fetchHtml() {
     setLoading(true);
     try {
-      const r = await fetch('/api/dossier_pdf_html.php?dossier_id=' + dossierId + buildHideParams(),
+      const r = await fetch('/api/dossier_pdf_html.php?dossier_id=' + dossierId + buildQueryParams(),
         {headers:{'X-Session-Token': token()}});
       const t = await r.text();
       if (r.ok) setHtml(t);
@@ -14510,7 +14514,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
     if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
     refetchTimerRef.current = setTimeout(() => { fetchHtml(); }, 250);
     return () => { if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current); };
-  }, [showPrice, showAddress, showIdentity]);
+  }, [showPrice, showAddress, showIdentity, currency]);
 
   const profil = (dossierProfil || '').toLowerCase() || 'contrepartie';
 
@@ -14522,13 +14526,22 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
       </div>
       <PdfBottomBar
         onBack={onBack}
+        currency={currency}
+        onCurrencyClick={() => setCurrencyPickerOpen(true)}
         showPrice={showPrice} setShowPrice={setShowPrice}
         showAddress={showAddress} setShowAddress={setShowAddress}
         showIdentity={showIdentity} setShowIdentity={setShowIdentity}
         onShare={() => setShareOpen(true)}/>
+      {currencyPickerOpen && (
+        <CurrencyPickerSheet
+          current={currency}
+          onSelect={(c) => { setCurrency(c); setCurrencyPickerOpen(false); }}
+          onClose={() => setCurrencyPickerOpen(false)}/>
+      )}
       {shareOpen && (
         <PdfShareModal
           dossierId={dossierId}
+          currency={currency}
           showPrice={showPrice} showAddress={showAddress} showIdentity={showIdentity}
           profil={profil}
           onClose={() => setShareOpen(false)}
@@ -14538,8 +14551,36 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
   );
 }
 
-// M/2026/04/30/8 — barre PDF avec 3 toggles centres + trait rouge diagonal si masque.
-function PdfBottomBar({onBack, showPrice, setShowPrice, showAddress, setShowAddress, showIdentity, setShowIdentity, onShare}) {
+// M/2026/05/04/13 — bottom sheet picker devise (EUR / MAD / USD / GBP / AED / CHF).
+function CurrencyPickerSheet({current, onSelect, onClose}) {
+  const list = ['EUR','MAD','USD','GBP','AED','CHF'];
+  const labels = {EUR:'Euro', MAD:'Dirham marocain', USD:'Dollar US', GBP:'Livre sterling', AED:'Dirham EAU', CHF:'Franc suisse'};
+  return (
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:9000, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
+      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:480, background:'#fff', borderTopLeftRadius:18, borderTopRightRadius:18,
+            padding:'18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px)', boxShadow:'0 -4px 18px rgba(0,0,0,.12)'}}>
+        <div style={{textAlign:'center', fontFamily:"'Cormorant Garamond', serif", fontSize:20, fontWeight:700, color:'#2D2018', marginBottom:10}}>Devise</div>
+        {list.map(c => (
+          <div key={c} onClick={() => onSelect(c)}
+            style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 12px',
+                    borderBottom:'1px solid #F0E8D8', cursor:'pointer', minHeight:44}}>
+            <div>
+              <span style={{fontSize:15, fontWeight:700, color:'#2D2018', letterSpacing:.5}}>{c}</span>
+              <span style={{fontSize:12, color:'#8B7F6E', marginLeft:8}}>{labels[c]}</span>
+            </div>
+            <span style={{width:18, height:18, borderRadius:9, border:'1.5px solid #B89968',
+                          display:'flex', alignItems:'center', justifyContent:'center'}}>
+              {current === c && <span style={{width:10, height:10, borderRadius:5, background:'#8B5E3C'}}/>}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// M/2026/05/04/13 — barre PDF avec 4 toggles : devise picker + 3 toggles Prix/Adresse/Identite.
+function PdfBottomBar({onBack, currency, onCurrencyClick, showPrice, setShowPrice, showAddress, setShowAddress, showIdentity, setShowIdentity, onShare}) {
   // M/2026/05/02/24 — M136 : palette adaptée au fond blanc (était #F5EFE6 sur brun #5C4530).
   // Toggle actif = ocre soft #FBF1E4, inactif = blanc cassé #FDFAF7. Icône #8B5E3C lisible.
   const ICON_COLOR = '#8B5E3C';
@@ -14580,8 +14621,22 @@ function PdfBottomBar({onBack, showPrice, setShowPrice, showAddress, setShowAddr
         </svg>
       </button>
       <div style={{flex:1, display:'flex', justifyContent:'center', gap:6}}>
+        {/* Devise picker (n'est pas un toggle on/off : ouvre bottom sheet). */}
+        <button type="button" onClick={onCurrencyClick} title="Choisir la devise"
+          style={{width:52, height:52, borderRadius:14, border:'1.5px solid #B26D3A', background:'#FBF1E4',
+                  color: ICON_COLOR, cursor:'pointer', fontFamily:'inherit',
+                  display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, letterSpacing:.5}}
+          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.94)'; }}
+          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}>
+          {currency || 'EUR'}
+        </button>
         <ToggleBtn active={showPrice} onClick={() => setShowPrice(v => !v)} title={showPrice ? 'Masquer le prix' : 'Afficher le prix'}>
-          <span style={{fontSize:14, fontWeight:700, letterSpacing:.5, fontFamily:"'DM Sans', Helvetica, Arial, sans-serif", color:'inherit'}}>EUR</span>
+          {/* Icone Tag (lucide-style). */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+            <line x1="7" y1="7" x2="7.01" y2="7"/>
+          </svg>
         </ToggleBtn>
         <ToggleBtn active={showAddress} onClick={() => setShowAddress(v => !v)} title={showAddress ? "Masquer l'adresse" : "Afficher l'adresse"}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -14610,7 +14665,7 @@ function PdfBottomBar({onBack, showPrice, setShowPrice, showAddress, setShowAddr
 
 // M/2026/04/30/8 — modale Partager centree ecran (pas bottom-sheet) avec recap des 3 choix.
 
-function PdfShareModal({dossierId, showPrice: initShowPrice = true, showAddress: initShowAddress = true, showIdentity: initShowIdentity = true, profil, onClose, showToast}) {
+function PdfShareModal({dossierId, currency = 'EUR', showPrice: initShowPrice = true, showAddress: initShowAddress = true, showIdentity: initShowIdentity = true, profil, onClose, showToast}) {
   // M/2026/04/30/16 — verrou lightbox.
   useLightboxLock(true);
   // M/2026/05/01/5 — toggles internes cliquables + pills Validite du lien.
@@ -14651,6 +14706,7 @@ function PdfShareModal({dossierId, showPrice: initShowPrice = true, showAddress:
     if (!showPrice) p.push('hide_price=1');
     if (!showAddress) p.push('hide_address=1');
     if (!showIdentity) p.push('hide_identity=1');
+    if (currency && currency !== 'EUR') p.push('currency=' + encodeURIComponent(currency));
     return p.join('&');
   }
   async function send() {
@@ -14663,6 +14719,7 @@ function PdfShareModal({dossierId, showPrice: initShowPrice = true, showAddress:
           hide_price: !showPrice,
           hide_address: !showAddress,
           hide_identity: !showIdentity,
+          currency: currency,
           expires_in: expiresIn,
           single_use: singleUse,
         }),
