@@ -27,7 +27,7 @@ ROOT_PWD=$(cat /root/.secrets/mysql-root.pwd)
 DB_AGENT="ocre_wsp_${SLUG}"
 DB_TEST="ocre_wsp_${SLUG}_test"
 APP_USER="ocre_app"
-SCHEMA="$(cd "$(dirname "$0")/.." && pwd)/migrations/tenant-schema-v1.sql"
+SCHEMA="$(cd "$(dirname "$0")/.." && pwd)/migrations/tenant-schema-v2.sql"
 
 if [[ ! -f "$SCHEMA" ]]; then
   echo "Schéma canonique introuvable : $SCHEMA" >&2
