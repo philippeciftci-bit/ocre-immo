@@ -76,6 +76,41 @@
   });
 })();
 </script>
+<script>
+// M/2026/05/04/36 — Instrumentation client error logging vers /api/client_log.php.
+// Capture window.onerror + unhandledrejection + fetch failures. Heartbeat au boot.
+(function setupClientLogging() {
+  if (window.__ocreClientLog) return;
+  window.__ocreClientLog = true;
+  function send(entry) {
+    try {
+      var payload = JSON.stringify(entry);
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/client_log.php', new Blob([payload], {type: 'application/json'}));
+      } else {
+        fetch('/api/client_log.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: payload, keepalive: true});
+      }
+    } catch (e) {}
+  }
+  window.addEventListener('error', function(e) {
+    send({type:'error', msg: e.message || 'unknown', src: e.filename, line: e.lineno, col: e.colno, stack: (e.error && e.error.stack) || '', url: location.href});
+  });
+  window.addEventListener('unhandledrejection', function(e) {
+    var r = e.reason || {};
+    send({type:'unhandled_rejection', msg: String(r.message || r), stack: r.stack || '', url: location.href});
+  });
+  var _fetch = window.fetch.bind(window);
+  window.fetch = function() {
+    var args = arguments;
+    var u = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url);
+    return _fetch.apply(window, args).catch(function(err) {
+      send({type:'fetch_error', msg: String((err && err.message) || err), src: String(u || ''), stack: (err && err.stack) || '', url: location.href});
+      throw err;
+    });
+  };
+  send({type:'heartbeat', msg:'client_logging_active', url: location.href});
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
