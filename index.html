@@ -47,10 +47,20 @@
   // Couche 4 : force registration.update() + check periodique /api/version.php.
   // Safari iOS est réticent à re-fetch sw.js même avec no-cache headers. update()
   // force le navigateur à check la nouvelle version sur le réseau.
+  // M/2026/05/04/39 — Bug 1 fix : reg.update() retourne une Promise qui peut reject
+  // avec 'newestWorker is null' sur Safari iOS quand le SW n est pas pleinement ready.
+  // Le try/catch sync ne capture pas la promise rejection -> unhandled_rejection logged.
+  // Garde + .catch sur la Promise + check newestWorker explicite.
   function forceSwUpdate() {
     if (!navigator.serviceWorker || !navigator.serviceWorker.getRegistration) return;
     navigator.serviceWorker.getRegistration().then(function(reg) {
-      if (reg) { try { reg.update(); } catch (e) {} }
+      if (!reg) return;
+      var hasWorker = reg.installing || reg.waiting || reg.active;
+      if (!hasWorker) return; // SW pas encore ready, skip ce tick
+      try {
+        var p = reg.update();
+        if (p && typeof p.catch === 'function') p.catch(function() {});
+      } catch (e) {}
     }).catch(function() {});
   }
 
@@ -99,13 +109,23 @@
     var r = e.reason || {};
     send({type:'unhandled_rejection', msg: String(r.message || r), stack: r.stack || '', url: location.href});
   });
+  // M/2026/05/04/39 — Bug 3 fix : retry 1x apres 800ms sur fetch_error transitoire
+  // (Safari iOS ITP, 4G qui decroche, fetch kill arriere-plan). Reduit drastiquement
+  // les 'Load failed' sur /api/auth_v20.php?action=me et autres endpoints critiques.
   var _fetch = window.fetch.bind(window);
   window.fetch = function() {
     var args = arguments;
     var u = (typeof args[0] === 'string') ? args[0] : (args[0] && args[0].url);
     return _fetch.apply(window, args).catch(function(err) {
-      send({type:'fetch_error', msg: String((err && err.message) || err), src: String(u || ''), stack: (err && err.stack) || '', url: location.href});
-      throw err;
+      // Premier echec : on retry une fois apres 800ms.
+      return new Promise(function(resolve, reject) {
+        setTimeout(function() {
+          _fetch.apply(window, args).then(resolve).catch(function(err2) {
+            send({type:'fetch_error', msg: String((err2 && err2.message) || err2), src: String(u || ''), stack: (err2 && err2.stack) || '', url: location.href, retried: true});
+            reject(err2);
+          });
+        }, 800);
+      });
     });
   };
   send({type:'heartbeat', msg:'client_logging_active', url: location.href});
@@ -10476,7 +10496,14 @@ function PublishSuccessModal({result, onClose}) {
       setTimeout(() => window.dispatchEvent(new CustomEvent('ocre:sw-update')), 200);
     }
     reg.addEventListener('updatefound', () => armDetection(reg.installing));
-    setInterval(() => { try { reg.update(); } catch (e) {} }, 60000);
+    setInterval(() => {
+      // M/2026/05/04/39 — guard newestWorker null (Safari iOS) + .catch promise rejection.
+      try {
+        if (!(reg.installing || reg.waiting || reg.active)) return;
+        const p = reg.update();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch (e) {}
+    }, 60000);
     let reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (reloaded) return; reloaded = true;
@@ -10706,7 +10733,7 @@ function App() {
     // V52.5 DIAG — beacon TRES TOT pour confirmer que cette version du SPA tourne
     // bien sur le device. Logged dans _diag.log via api/_v52_5_ping.php.
     try {
-      fetch('/app/api/_v52_5_ping.php?stage=boot&ua=' + encodeURIComponent(navigator.userAgent.slice(0, 60)) + '&href=' + encodeURIComponent(window.location.href.slice(0, 120)),
+      fetch('/api/_v52_5_ping.php?stage=boot&ua=' + encodeURIComponent(navigator.userAgent.slice(0, 60)) + '&href=' + encodeURIComponent(window.location.href.slice(0, 120)),
             {cache: 'no-store', credentials: 'omit'}).catch(() => {});
     } catch (e) {}
     // V52.4.2 — fallback magic link : si ?mt_token=<session> dans l'URL, PURGE TOTAL
