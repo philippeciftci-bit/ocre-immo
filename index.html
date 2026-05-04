@@ -21222,6 +21222,12 @@ function FormView(props) {
           /* V32 — PublishButton full-width supprimé. Chip PUBLIER intégré dans la barre
              footer entre la loupe ambre et Enregistrer (offres uniquement). */
           <>
+          {/* M/2026/05/04/29 — Spacer compensation BottomBar fixed (M27 + M29) pour eviter masquage contenu. */}
+          {(() => {
+            const _flagM27 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M27_BOTTOMBAR_REFONTE'))
+              ? !!window.__ocreFlags.M27_BOTTOMBAR_REFONTE : true;
+            return _flagM27 ? <div style={{height:80, flexShrink:0}}/> : null;
+          })()}
           {/* M/2026/05/04/28 — M28 PhotosGalleryV28 wrappee dans flag M137_GALLERY_ENRICHED. */}
           {(() => {
             const _flagM137 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M137_GALLERY_ENRICHED'))
@@ -21294,11 +21300,11 @@ function FormView(props) {
               if (!window.confirm('Supprimer définitivement ce dossier ?')) return;
               handleDelete(editing.id);
             };
-            const BTN_BASE = {flex:'1 1 0', minWidth:0, padding:'4px 2px', background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:5};
+            const BTN_BASE = {flex:'1 1 0', minWidth:0, padding:'2px 2px', background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3};
             const ICON_DEFAULT = '#F4EDDC', ICON_SAVE = '#FFD89A', ICON_DEL = '#F4A89A';
             const LABEL_BASE = {fontFamily:"'DM Sans', sans-serif", fontSize:11, fontWeight:500, letterSpacing:'0.02em', marginTop:0};
             return (
-              <div className="ocre-bottombar-v27" style={{position:'sticky', bottom:0, left:0, right:0, zIndex:50, display:'flex', justifyContent:'space-around', alignItems:'center', padding:'13px 6px calc(13px + env(safe-area-inset-bottom, 0px))', background:'#85583A'}}>
+              <div className="ocre-bottombar-v27" style={{position:'fixed', bottom:0, left:0, right:0, zIndex:50, display:'flex', justifyContent:'space-around', alignItems:'center', padding:'8px 6px calc(8px + env(safe-area-inset-bottom, 0px))', background:'#85583A', borderRadius:'18px 18px 0 0'}}>
                 <button type="button" onClick={onSave} title="Enregistrer le dossier" style={BTN_BASE}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ICON_SAVE} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>
