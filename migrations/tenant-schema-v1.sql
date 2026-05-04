@@ -271,3 +271,8 @@ ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `id_country` varchar(2) NULL;
 ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `id_type` varchar(20) NULL;
 ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `id_number` varchar(50) NULL;
 ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `bien_country` varchar(2) NULL;
+
+-- M/2026/05/04/24 — M24 Valider dossier (status_final + validated_at + validated_by).
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `status_final` varchar(20) DEFAULT 'brouillon';
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `validated_at` datetime NULL;
+ALTER TABLE `clients` ADD COLUMN IF NOT EXISTS `validated_by` int NULL;

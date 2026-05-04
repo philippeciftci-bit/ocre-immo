@@ -140,6 +140,10 @@
 html,body{margin:0;padding:0;overflow-x:hidden;overscroll-behavior:none}
 @keyframes ocreSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 body{font-family:'DM Sans',sans-serif;background:#F0E8D8;color:#2A2018;overflow:hidden;height:100vh;height:100dvh;font-size:13px}
+/* M/2026/05/04/24 — M24 lock edition apres validation finale dossier. */
+body.ocre-fiche-locked input:not([type=button]):not([type=submit]),
+body.ocre-fiche-locked textarea,
+body.ocre-fiche-locked select {pointer-events:none !important;opacity:0.7 !important;background:#F5F5F5 !important;cursor:not-allowed !important}
 #root{height:100dvh;min-height:100dvh}
 ::-webkit-scrollbar{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -19489,6 +19493,109 @@ function ProfilSelectorBar({activeProfil, onChange}) {
 // toutes saisissables des l ouverture du nouveau dossier (le selecteur profil reste une aide
 // UX, pas un gate). Tronc commun en mode draft via fallback profil "Acheteur" cote rendu.
 
+// M/2026/05/04/24 — M24 Validation finale dossier (bouton + modal recap + lock edition).
+// Wrap dans flag M130_VALIDATE_DOSSIER. Si status_final='valide' : badge vert + lock CSS.
+function ValidateDossierBlock({dossier, d, activeProfil, showToast, onValidated}) {
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const flagOn = (typeof window !== 'undefined' && typeof window.flag === 'function')
+    ? (window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M130_VALIDATE_DOSSIER') ? window.flag('M130_VALIDATE_DOSSIER') : true)
+    : true;
+  const isValidated = (dossier && dossier.status_final === 'valide');
+  // CSS lock global : apply class ocre-fiche-locked sur le body si valide.
+  React.useEffect(() => {
+    if (isValidated) document.body.classList.add('ocre-fiche-locked');
+    else document.body.classList.remove('ocre-fiche-locked');
+    return () => document.body.classList.remove('ocre-fiche-locked');
+  }, [isValidated]);
+  if (!flagOn && !isValidated) return null;
+  if (isValidated) {
+    const dt = dossier.validated_at ? new Date(String(dossier.validated_at).replace(' ', 'T')) : null;
+    const dtStr = dt && !isNaN(dt) ? dt.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric'}) : '';
+    const byName = dossier.validated_by_name || ('agent #' + (dossier.validated_by || ''));
+    return (
+      <div style={{margin:'12px 10px', padding:'10px 14px', background:'#E8F5E9', border:'1px solid #C8E6C9', borderRadius:8, color:'#2E7D32', fontWeight:600, fontSize:13, display:'flex', alignItems:'center', gap:8}}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span>Validé{dtStr ? ' le ' + dtStr : ''}{byName ? ' par ' + byName : ''} — Lecture seule</span>
+      </div>
+    );
+  }
+  return (
+    <>
+      <button type="button" onClick={() => setModalOpen(true)}
+        style={{display:'block', width:'calc(100% - 20px)', margin:'12px 10px', padding:'14px 16px', background:'#2D2018', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:15, fontWeight:700, cursor:'pointer', letterSpacing:.3}}>
+        Valider le dossier
+      </button>
+      {modalOpen && (
+        <ValidateDossierModal dossier={dossier} d={d} activeProfil={activeProfil} busy={busy}
+          onClose={() => setModalOpen(false)}
+          onConfirm={async () => {
+            setBusy(true);
+            try {
+              const tk = localStorage.getItem('ocre_token') || '';
+              const r = await fetch('/api/dossier_validate.php', {
+                method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': tk},
+                body: JSON.stringify({dossier_id: dossier.id}),
+              }).then(r => r.json());
+              if (r && r.ok) {
+                showToast && showToast('Dossier validé');
+                setModalOpen(false);
+                onValidated && onValidated(r);
+              } else {
+                showToast && showToast((r && r.error) || 'Echec validation');
+              }
+            } catch (e) { showToast && showToast('Erreur reseau'); }
+            setBusy(false);
+          }}/>
+      )}
+    </>
+  );
+}
+
+function ValidateDossierModal({dossier, d, activeProfil, busy, onClose, onConfirm}) {
+  const fullName = ((d && (d.prenom || d.nom)) ? ((d.prenom || '') + ' ' + (d.nom || '')).trim() : (d && d.societe_nom)) || '—';
+  const bien = (d && d.bien) || {};
+  const adresse = bien.adresse || bien.ville || '—';
+  const ville = bien.ville || '';
+  const pays = bien.pays || '';
+  const mandatType = d && (d.mandat_type || d.vertical || (activeProfil === 'Locataire' || activeProfil === 'Bailleur' ? 'location' : 'vente')) || '—';
+  const mandatSign = d && (d.mandat_date_signature || d.mandat_signe_le) || '—';
+  const mandatFin = d && (d.mandat_date_fin || d.mandat_echeance) || '—';
+  const prix = d && (d.prix_affiche || d.budget_max || d.loyer_demande || d.budget_min) || '—';
+  const cur = (typeof window !== 'undefined' && window.__ocreCurrencyV5State && window.__ocreCurrencyV5State.left) || 'EUR';
+  return (
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:9500, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
+      <div onClick={e => e.stopPropagation()} style={{maxWidth:440, width:'100%', background:'#fff', borderRadius:14, padding:'20px 18px', boxShadow:'0 12px 40px rgba(0,0,0,0.25)'}}>
+        <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:22, fontWeight:700, color:'#2D2018', marginBottom:6}}>Valider ce dossier ?</div>
+        <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14, lineHeight:1.5}}>
+          Une fois validé, ce dossier ne pourra plus être modifié. Cette action est définitive.
+        </div>
+        <div style={{background:'#FBF5EB', borderRadius:10, padding:'10px 12px', marginBottom:14, fontSize:13, lineHeight:1.7}}>
+          <div><span style={{color:'#8B7F6E', display:'inline-block', width:80}}>Profil</span><b>{activeProfil || '—'}</b></div>
+          <div><span style={{color:'#8B7F6E', display:'inline-block', width:80}}>Client</span><b>{fullName}</b></div>
+          <div><span style={{color:'#8B7F6E', display:'inline-block', width:80}}>Bien</span><b>{adresse}{ville && adresse !== ville ? ', ' + ville : ''}{pays ? ' (' + pays + ')' : ''}</b></div>
+          <div><span style={{color:'#8B7F6E', display:'inline-block', width:80}}>Mandat</span><b>{mandatType}</b></div>
+          <div><span style={{color:'#8B7F6E', display:'inline-block', width:80}}>Sign.</span>{String(mandatSign).slice(0, 10)}</div>
+          <div><span style={{color:'#8B7F6E', display:'inline-block', width:80}}>Fin</span>{String(mandatFin).slice(0, 10)}</div>
+          <div><span style={{color:'#8B7F6E', display:'inline-block', width:80}}>Prix</span><b>{prix !== '—' ? Number(prix).toLocaleString('fr-FR') : '—'} {cur}</b></div>
+        </div>
+        <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+          <button type="button" onClick={onClose} disabled={busy}
+            style={{padding:'10px 16px', background:'#F0E8D8', color:'#5C4530', border:'none', borderRadius:6, cursor:'pointer', fontFamily:'inherit', fontWeight:600, fontSize:13}}>
+            Annuler
+          </button>
+          <button type="button" onClick={onConfirm} disabled={busy}
+            style={{padding:'10px 16px', background:'#2D2018', color:'#fff', border:'none', borderRadius:6, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit', fontWeight:700, fontSize:13, opacity: busy ? 0.7 : 1}}>
+            {busy ? 'Validation…' : 'Confirmer la validation'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FormView(props) {
   const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          isPromoteur, setIsPromoteur, isMarchandDeBiens, setIsMarchandDeBiens,
@@ -21095,6 +21202,13 @@ function FormView(props) {
           /* V32 — PublishButton full-width supprimé. Chip PUBLIER intégré dans la barre
              footer entre la loupe ambre et Enregistrer (offres uniquement). */
           <>
+          {/* M/2026/05/04/24 — M24 Bouton Valider dossier + modal recap + lock edition. */}
+          {editing && editing.id && !String(editing.id).startsWith('tmp-') && (
+            <ValidateDossierBlock dossier={editing} d={d} activeProfil={activeProfil} showToast={showToast} onValidated={() => {
+              // Recharge la fiche pour refleter status_final + lock UI.
+              try { window.location.reload(); } catch (e) {}
+            }}/>
+          )}
           {/* V32 — Footer dossier : [Loupe] [Chip PUBLIER offres] [Enregistrer flex:1] [Archiver] [Supprimer].
               paddingBottom = safe-area only, marginBottom 0 → collé au bas.
               M/2026/05/01/27 — M105 : 4 boutons listes (CrossSearch, Chip PUBLIER, Enregistrer, Archiver, Supprimer)
