@@ -7283,8 +7283,10 @@ function RechercheBienBloc({d, set}) {
 // (= currency gauche) vit en state UI window.__ocreCurrencyV5State. Reload = retour défaut
 // EUR/MAD/10.84. Aucun cur_left/cur_right/cur_rate persiste — anti-dérive M48 absolue.
 function getCurrencyV5State() {
-  if (typeof window === 'undefined') return {left:'EUR', right:'MAD', rate:10.84};
-  if (!window.__ocreCurrencyV5State) window.__ocreCurrencyV5State = {left:'EUR', right:'MAD', rate:10.84};
+  // M/2026/05/04/16 — init null/null/null : aucune devise pre-selectionnee a l'ouverture.
+  // Le bandeau "1 X = Y Z" ne s'affiche QUE si left ET right sont definies ET differentes.
+  if (typeof window === 'undefined') return {left:null, right:null, rate:null};
+  if (!window.__ocreCurrencyV5State) window.__ocreCurrencyV5State = {left:null, right:null, rate:null};
   return window.__ocreCurrencyV5State;
 }
 function setCurrencyV5State(patch, forceUpdate) {
@@ -7327,23 +7329,27 @@ function CurrencyBar3Pills({forceUpdate}) {
   const cur = getCurrencyV5State();
   const [openSide, setOpenSide] = React.useState(null); // 'left' | 'right' | null
   const [rateOpen, setRateOpen] = React.useState(false);
+  // M/2026/05/04/16 — pas d'inversion forcee : si l'autre cote est null, on garde null.
+  // Si l'autre cote == code selectionne (collision), on l'inverse pour eviter doublon.
   const pickSide = (side, code) => {
     if (side === 'left') {
-      const newRight = code === cur.right ? cur.left : cur.right;
+      let newRight = cur.right;
+      if (newRight === code) newRight = cur.left; // collision -> swap
       setCurrencyV5State({left: code, right: newRight, rate: getOfficialRateV5(code, newRight)}, forceUpdate);
     } else {
-      const newLeft = code === cur.left ? cur.right : cur.left;
+      let newLeft = cur.left;
+      if (newLeft === code) newLeft = cur.right; // collision -> swap
       setCurrencyV5State({left: newLeft, right: code, rate: getOfficialRateV5(newLeft, code)}, forceUpdate);
     }
     setOpenSide(null);
   };
+  const showRateBar = cur.left && cur.right && cur.left !== cur.right;
   const pillBase = {height:44, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:22, background:'#fff', border:'1.5px solid #D6C7AC', cursor:'pointer', fontFamily:'inherit', fontWeight:700, padding:'0 10px', boxSizing:'border-box', position:'relative'};
   return (
     <S3CardRound style={{padding:'8px 10px'}}>
       <div style={{display:'grid', gridTemplateColumns:'100px minmax(0,1fr) 100px', gap:6, alignItems:'center'}}>
         <div onClick={() => setOpenSide(openSide === 'left' ? null : 'left')} style={pillBase}>
-          <span style={{fontSize:14, marginRight:5}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
-          <span style={{fontSize:13, color:'#2A2018'}}>{cur.left}</span>
+          <span style={{fontSize:13, color: cur.left ? '#2A2018' : '#8B7F6E', fontStyle: cur.left ? 'normal' : 'italic'}}>{cur.left || 'Devise'}</span>
           <span style={{fontSize:9, color:'#8B7F6E', marginLeft:4}}>▾</span>
           {openSide === 'left' && (
             <div style={{position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, minWidth:100, boxShadow:'0 4px 12px rgba(0,0,0,0.12)'}}>
@@ -7355,12 +7361,11 @@ function CurrencyBar3Pills({forceUpdate}) {
             </div>
           )}
         </div>
-        <div onClick={() => setRateOpen(true)} style={{...pillBase, fontSize:17, fontWeight:800, color:'#5C3B1E'}}>
-          1 {cur.left} = {Number(cur.rate).toFixed(2)} {cur.right}
+        <div onClick={() => showRateBar && setRateOpen(true)} style={{...pillBase, fontSize: showRateBar ? 17 : 12, fontWeight: showRateBar ? 800 : 500, color: showRateBar ? '#5C3B1E' : '#8B7F6E', cursor: showRateBar ? 'pointer' : 'default', fontStyle: showRateBar ? 'normal' : 'italic'}}>
+          {showRateBar ? `1 ${cur.left} = ${Number(cur.rate).toFixed(2)} ${cur.right}` : 'Choisir 2 devises'}
         </div>
         <div onClick={() => setOpenSide(openSide === 'right' ? null : 'right')} style={pillBase}>
-          <span style={{fontSize:14, marginRight:5}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
-          <span style={{fontSize:13, color:'#2A2018'}}>{cur.right}</span>
+          <span style={{fontSize:13, color: cur.right ? '#2A2018' : '#8B7F6E', fontStyle: cur.right ? 'normal' : 'italic'}}>{cur.right || 'Devise'}</span>
           <span style={{fontSize:9, color:'#8B7F6E', marginLeft:4}}>▾</span>
           {openSide === 'right' && (
             <div style={{position:'absolute', top:'100%', right:0, marginTop:4, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, minWidth:100, boxShadow:'0 4px 12px rgba(0,0,0,0.12)'}}>
