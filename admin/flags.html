@@ -3,109 +3,95 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Feature Flags — Ocre Immo</title>
+<title>Feature Flags — OCRE Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/admin.css">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:#F4EEE6;color:#2A2018;min-height:100vh;padding:24px}
-.wrap{max-width:960px;margin:0 auto}
-h1{font-family:'Cormorant Garamond',serif;font-size:32px;color:#8B5E3C;font-weight:700;margin-bottom:6px}
-.sub{font-size:13px;color:#8B7F6E;margin-bottom:20px}
-.gate{background:#fff;padding:24px;border-radius:12px;border:1px solid #EDE6DC;max-width:420px;margin:60px auto}
-.gate input{width:100%;padding:10px 12px;border:1px solid #D6C7AC;border-radius:6px;font-size:14px;font-family:inherit;margin-bottom:10px}
-.gate button{width:100%;padding:12px;background:#8B5E3C;color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-family:inherit}
-.gate .err{color:#C73E3E;font-size:12px;margin-top:8px;text-align:center;min-height:18px}
-.flag-card{background:#fff;border:1px solid #EDE6DC;border-radius:12px;padding:16px;margin-bottom:12px}
-.flag-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}
-.flag-key{font-family:'DM Sans',monospace;font-size:14px;font-weight:700;color:#2A2018;letter-spacing:.3px}
-.flag-desc{font-size:12px;color:#8B7F6E;margin-bottom:10px;line-height:1.5}
-.toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:600}
-.toggle input{appearance:none;width:42px;height:24px;background:#D6C7AC;border-radius:12px;position:relative;cursor:pointer;transition:background 200ms}
-.toggle input:checked{background:#8B5E3C}
-.toggle input::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:10px;transition:transform 200ms}
-.toggle input:checked::after{transform:translateX(18px)}
-.emails-row{margin-top:8px}
-.emails-row label{display:block;font-size:11px;color:#8B7F6E;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;font-weight:600}
-.emails-row textarea{width:100%;min-height:48px;padding:8px 10px;border:1px solid #D6C7AC;border-radius:6px;font-size:12px;font-family:'DM Sans',monospace;resize:vertical}
-.emails-row .hint{font-size:10px;color:#A89884;margin-top:4px;font-style:italic}
-.btn-row{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
-.btn{padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:inherit}
-.btn.save{background:#8B5E3C;color:#fff}
-.btn.save:hover{background:#6B4429}
-.status{font-size:11px;color:#3D7A3D;margin-right:auto;align-self:center;font-style:italic}
-.status.error{color:#C73E3E}
-.loader{text-align:center;padding:60px;color:#8B7F6E}
+.flag-card { background:#fff; border:1px solid var(--admin-border); border-radius:var(--admin-radius); padding:16px; margin-bottom:12px; box-shadow:var(--admin-shadow); }
+.flag-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px; flex-wrap:wrap; }
+.flag-key { font-family:'DM Sans', monospace; font-size:14px; font-weight:700; color:var(--admin-fg); letter-spacing:.3px; }
+.flag-desc { font-size:12px; color:var(--admin-fg-dim); margin-bottom:10px; line-height:1.5; }
+.toggle { display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:600; color:var(--admin-fg-dim); }
+.toggle input { appearance:none; width:42px; height:24px; background:#D6C7AC; border-radius:12px; position:relative; cursor:pointer; transition:background 200ms; }
+.toggle input:checked { background:var(--admin-accent); }
+.toggle input::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; background:#fff; border-radius:10px; transition:transform 200ms; }
+.toggle input:checked::after { transform:translateX(18px); }
+.emails-row { margin-top:8px; }
+.emails-row label { display:block; font-size:11px; color:var(--admin-fg-dim); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; font-weight:600; }
+.emails-row textarea { width:100%; min-height:48px; padding:8px 10px; border:1px solid var(--admin-border); border-radius:6px; font-size:12px; font-family:'DM Sans', monospace; resize:vertical; background:var(--admin-bg-light); color:var(--admin-fg); }
+.emails-row .hint { font-size:10px; color:var(--admin-fg-dim); margin-top:4px; font-style:italic; opacity:0.85; }
+.btn-row { display:flex; gap:8px; margin-top:10px; justify-content:flex-end; align-items:center; }
+.flag-status { font-size:11px; color:var(--admin-success); margin-right:auto; align-self:center; font-style:italic; }
+.flag-status.error { color:var(--admin-danger); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Feature Flags</h1>
-  <div class="sub">Trunk-based development · toggle global + whitelist par email · super-admin only</div>
-  <div id="gate" class="gate" style="display:none">
-    <div style="font-weight:600;margin-bottom:8px">Authentification super-admin</div>
-    <input id="login_email" type="email" placeholder="email" autocomplete="email">
-    <input id="login_pwd" type="password" placeholder="code agent">
-    <button id="login_btn">Se connecter</button>
-    <div id="login_err" class="err"></div>
-  </div>
-  <div id="root" style="display:none"></div>
-  <div id="loading" class="loader">Chargement…</div>
+
+<div id="admin-shell" class="admin-shell" data-page="flags" hidden>
+
+  <aside class="admin-sidebar" id="admin-sidebar">
+    <div class="admin-sidebar-title">Super-admin</div>
+    <a href="/admin/" class="admin-nav-item" data-page="dashboard"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V9.5z"/></svg><span>Dashboard</span></a>
+    <a href="#" class="admin-nav-item" data-page="agents" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Agents</span></a>
+    <a href="#" class="admin-nav-item" data-page="workspaces" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span>Workspaces</span></a>
+    <a href="#" class="admin-nav-item" data-page="invitations" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg><span>Invitations</span></a>
+    <a href="#" class="admin-nav-item" data-page="logs" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>Logs</span></a>
+    <a href="#" class="admin-nav-item" data-page="stats" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><span>Stats</span></a>
+    <a href="#" class="admin-nav-item" data-page="devises" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>Devises</span></a>
+    <a href="/admin/flags.html" class="admin-nav-item" data-page="flags"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg><span>Flags</span></a>
+    <a href="#" class="admin-nav-item" data-page="backups" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg><span>Backups</span></a>
+    <div class="admin-sidebar-footer">v1 — A1/2026-05-04</div>
+  </aside>
+  <div class="admin-sidebar-overlay" id="admin-sidebar-overlay"></div>
+
+  <header class="admin-header">
+    <div class="admin-header-brand">
+      <button class="admin-burger" id="admin-burger-btn" aria-label="Menu"><svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <div class="admin-logo">OCRE immo</div>
+      <div class="admin-badge">Admin</div>
+    </div>
+    <div class="admin-header-right">
+      <span class="admin-header-user" id="admin-header-user">Philippe</span>
+      <button class="admin-header-logout" id="admin-logout-btn">Deconnexion</button>
+    </div>
+  </header>
+
+  <main class="admin-content" id="admin-content">
+
+    <div class="admin-page-header">
+      <div class="admin-page-title">Feature flags</div>
+      <div class="admin-page-sub">Trunk-based development · toggle global + whitelist par email · super-admin only</div>
+    </div>
+
+    <div id="flags-loading" class="admin-loading">Chargement…</div>
+    <div id="flags-root"></div>
+
+  </main>
+
 </div>
+
+<script src="/admin/admin-shell.js"></script>
 <script>
-const API = '';
-let token = localStorage.getItem('ocre_token') || '';
-
-async function req(url, opts) {
-  const headers = {'Content-Type': 'application/json'};
-  if (token) headers['X-Session-Token'] = token;
-  const res = await fetch(url, Object.assign({}, opts, {headers: Object.assign(headers, (opts && opts.headers) || {})}));
-  return res.json();
-}
-
-async function ensureAuth() {
-  if (!token) return showGate();
-  const me = await req('/api/auth_v20.php?action=me').catch(() => ({ok:false}));
-  if (!me.ok) return showGate();
-  if (!me.user || me.user.role !== 'super_admin') {
-    document.getElementById('loading').textContent = 'Acces refuse : super_admin requis.';
-    return;
-  }
-  loadFlags();
-}
-
-function showGate() {
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('gate').style.display = 'block';
-  document.getElementById('login_btn').onclick = async () => {
-    const email = document.getElementById('login_email').value.trim();
-    const password = document.getElementById('login_pwd').value;
-    const r = await req('/api/auth_v20.php?action=login', {method:'POST', body: JSON.stringify({email, password, accept_cgu: true})});
-    if (r.ok && r.token) {
-      token = r.token; localStorage.setItem('ocre_token', token);
-      document.getElementById('gate').style.display = 'none';
-      document.getElementById('loading').style.display = 'block';
-      ensureAuth();
-    } else {
-      document.getElementById('login_err').textContent = r.error || 'Echec login';
-    }
-  };
-}
+document.addEventListener('admin:shell-ready', async () => {
+  await loadFlags();
+});
 
 async function loadFlags() {
-  const r = await req('/admin/api/flags_set_overrides.php?action=list');
-  if (!r.ok) {
-    document.getElementById('loading').textContent = 'Erreur: ' + (r.error || 'inconnue');
-    return;
-  }
-  document.getElementById('loading').style.display = 'none';
-  const root = document.getElementById('root');
-  root.style.display = 'block';
+  const loading = document.getElementById('flags-loading');
+  const root = document.getElementById('flags-root');
+  let r;
+  try { r = await window.AdminShell.req('/admin/api/flags_set_overrides.php?action=list'); }
+  catch (e) { loading.textContent = 'Erreur reseau'; return; }
+  if (!r.ok) { loading.textContent = 'Erreur: ' + (r.error || 'inconnue'); return; }
+  loading.style.display = 'none';
   root.innerHTML = '';
   r.flags.forEach(f => root.appendChild(renderFlag(f)));
 }
 
 function renderFlag(f) {
-  const card = document.createElement('div'); card.className = 'flag-card';
+  const esc = window.AdminShell.esc;
+  const card = document.createElement('div');
+  card.className = 'flag-card';
   card.innerHTML = `
     <div class="flag-head">
       <div class="flag-key">${esc(f.flag_key)}</div>
@@ -121,29 +107,39 @@ function renderFlag(f) {
       <div class="hint">Emails inconnus seront ignores. Vider la zone supprime tous les overrides email pour ce flag.</div>
     </div>
     <div class="btn-row">
-      <span class="status" data-status></span>
-      <button class="btn save" data-save>Enregistrer</button>
+      <span class="flag-status" data-status></span>
+      <button class="admin-btn admin-btn-primary" data-save>Enregistrer</button>
     </div>
   `;
   card.querySelector('[data-save]').onclick = async () => {
     const def = card.querySelector('[data-default]').checked ? 1 : 0;
     const emails = card.querySelector('[data-emails]').value;
     const status = card.querySelector('[data-status]');
-    status.textContent = 'Enregistrement…'; status.classList.remove('error');
-    const r = await req('/admin/api/flags_set_overrides.php', {method:'POST', body: JSON.stringify({action:'sync', flag_key: f.flag_key, default_value: def, emails_csv: emails})});
+    status.textContent = 'Enregistrement…';
+    status.classList.remove('error');
+    let r;
+    try {
+      r = await window.AdminShell.req('/admin/api/flags_set_overrides.php', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'sync', flag_key: f.flag_key, default_value: def, emails_csv: emails })
+      });
+    } catch (e) {
+      status.textContent = 'Erreur reseau';
+      status.classList.add('error');
+      return;
+    }
     if (r.ok) {
-      status.textContent = `OK (${r.sync.added} ajoute(s), ${r.sync.removed} retire(s)${r.sync.unknown_emails.length ? ', ' + r.sync.unknown_emails.length + ' email(s) inconnu(s)' : ''})`;
+      const unk = (r.sync.unknown_emails && r.sync.unknown_emails.length) ? `, ${r.sync.unknown_emails.length} email(s) inconnu(s)` : '';
+      status.textContent = `OK (${r.sync.added} ajoute(s), ${r.sync.removed} retire(s)${unk})`;
       setTimeout(() => { status.textContent = ''; }, 5000);
     } else {
-      status.textContent = 'Erreur: ' + (r.error || 'inconnue'); status.classList.add('error');
+      status.textContent = 'Erreur: ' + (r.error || 'inconnue');
+      status.classList.add('error');
     }
   };
   return card;
 }
-
-function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-ensureAuth();
 </script>
+
 </body>
 </html>

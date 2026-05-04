@@ -3,11 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tableau de bord — OCRE Admin</title>
+<title>OCRE Admin — Layout template</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/admin/admin.css">
 </head>
 <body>
+<!--
+  =====================================================================
+  TEMPLATE PARTAGE — /admin/_layout.html
+  =====================================================================
+  Reference layout pour toutes les pages super-admin Ocre Immo.
+
+  USAGE pour creer une nouvelle page admin :
+    1. Copier ce fichier en /admin/<page>.html
+    2. Sur le <div id="admin-shell"> mettre data-page="<key>" (cf. liste sidebar)
+    3. Remplacer le contenu du <main class="admin-content"> par celui de la page
+    4. admin-shell.js gere : auth super-admin, active state, burger mobile, logout
+    5. window.AdminShell.req(url, opts) -> fetch + X-Session-Token auto
+    6. Event 'admin:shell-ready' dispatch sur document quand shell pret + auth OK
+
+  CSS variables centralisees dans /admin/admin.css : voir :root.
+  =====================================================================
+-->
 
 <div id="admin-shell" class="admin-shell" data-page="dashboard" hidden>
 
@@ -41,66 +58,13 @@
   <main class="admin-content" id="admin-content">
 
     <div class="admin-page-header">
-      <div class="admin-page-title">Tableau de bord super-admin</div>
-      <div class="admin-page-sub">Vue d'ensemble de la plateforme Ocre Immo</div>
-    </div>
-
-    <div class="admin-stats-grid">
-      <div class="admin-stat">
-        <div class="admin-stat-label">Agents actifs</div>
-        <div class="admin-stat-value" id="stat-agents">5</div>
-        <div class="admin-stat-hint">ozkan, mehdi, ophelie, valerie, philippe</div>
-      </div>
-      <div class="admin-stat">
-        <div class="admin-stat-label">Workspaces</div>
-        <div class="admin-stat-value" id="stat-workspaces">10</div>
-        <div class="admin-stat-hint">Espaces de travail actifs</div>
-      </div>
-      <div class="admin-stat">
-        <div class="admin-stat-label">Dossiers totaux</div>
-        <div class="admin-stat-value" id="stat-dossiers">~10</div>
-        <div class="admin-stat-hint">Tous workspaces confondus</div>
-      </div>
-      <div class="admin-stat">
-        <div class="admin-stat-label">Flags actifs</div>
-        <div class="admin-stat-value" id="stat-flags">…</div>
-        <div class="admin-stat-hint">Feature flags configures</div>
-      </div>
+      <div class="admin-page-title">Page exemple</div>
+      <div class="admin-page-sub">Sous-titre optionnel</div>
     </div>
 
     <div class="admin-card">
-      <h2 class="admin-serif" style="font-size:18px;margin-bottom:14px">Acces rapide</h2>
-      <div class="admin-quicklinks">
-        <a href="/admin/flags.html" class="admin-quicklink">
-          <svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-          <span>Feature flags</span>
-        </a>
-        <a href="#" class="admin-quicklink" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible">
-          <svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-          <span>Agents (bientôt)</span>
-        </a>
-        <a href="#" class="admin-quicklink" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible">
-          <svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-          <span>Workspaces (bientôt)</span>
-        </a>
-        <a href="#" class="admin-quicklink" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible">
-          <svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>
-          <span>Logs (bientôt)</span>
-        </a>
-        <a href="#" class="admin-quicklink" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible">
-          <svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-          <span>Stats (bientôt)</span>
-        </a>
-        <a href="#" class="admin-quicklink" onclick="event.preventDefault();" style="opacity:0.55;cursor:not-allowed" title="Bientot disponible">
-          <svg class="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
-          <span>Backups (bientôt)</span>
-        </a>
-      </div>
-    </div>
-
-    <div class="admin-card" style="background:var(--admin-bg-light);border-style:dashed">
-      <h2 class="admin-serif" style="font-size:16px;margin-bottom:6px;color:var(--admin-fg-dim)">A1/2026-05-04 · Refonte admin</h2>
-      <p style="font-size:13px;color:var(--admin-fg-dim)">Dashboard placeholder. Les compteurs Agents / Workspaces / Dossiers sont statiques en attendant les endpoints dedies (futurs onglets). Le compteur Flags est lu en direct depuis <code>/admin/api/flags_set_overrides.php</code>.</p>
+      <h2 class="admin-serif" style="font-size:18px;margin-bottom:8px">Bloc exemple</h2>
+      <p>Ceci est un bloc de contenu place dans le slot du template. Pour creer une nouvelle page admin, copier ce fichier et remplacer ce contenu.</p>
     </div>
 
   </main>
@@ -108,20 +72,5 @@
 </div>
 
 <script src="/admin/admin-shell.js"></script>
-<script>
-document.addEventListener('admin:shell-ready', async () => {
-  try {
-    const r = await window.AdminShell.req('/admin/api/flags_set_overrides.php?action=list');
-    if (r && r.ok && Array.isArray(r.flags)) {
-      document.getElementById('stat-flags').textContent = r.flags.length;
-    } else {
-      document.getElementById('stat-flags').textContent = '?';
-    }
-  } catch (e) {
-    document.getElementById('stat-flags').textContent = '?';
-  }
-});
-</script>
-
 </body>
 </html>
