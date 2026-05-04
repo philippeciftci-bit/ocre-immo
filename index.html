@@ -14794,12 +14794,15 @@ function CurrencyPickerSheet({current, onSelect, onClose}) {
 // Adaptation contextuelle : les 2 vues partagent layout + design tokens, mais semantique des 4
 // boutons centraux differe (toggle vs scroll-to). Validable Philippe.
 function PdfBottomBar({onBack, currency, onCurrencyClick, showPrice, setShowPrice, showAddress, setShowAddress, showIdentity, setShowIdentity, onShare}) {
+  // M/2026/05/05/2 — M-Bottombar-Pill-Fix : aucun fond permanent sur les 4 boutons centraux.
+  // L etat off des 3 toggles reste lisible via le slash overlay rouge (pas de active permanent).
+  // Devise affiche le label de devise courante (EUR/MAD/...) sans active permanent.
   const items = [
     { key:'back', icon: BB_ICONS.BACK, label:'Retour', onClick: onBack, separatorAfter: true, title:'Retour' },
-    { key:'currency', currencyLabel: currency || 'EUR', label:'Devise', onClick: onCurrencyClick, active: true, title:'Choisir la devise' },
-    { key:'price', icon: BB_ICONS.EYE, label:'Prix', onClick: () => setShowPrice(v => !v), active: showPrice, slash: !showPrice, title: showPrice ? 'Masquer le prix' : 'Afficher le prix' },
-    { key:'address', icon: BB_ICONS.PIN, label:'Adresse', onClick: () => setShowAddress(v => !v), active: showAddress, slash: !showAddress, title: showAddress ? "Masquer l'adresse" : "Afficher l'adresse" },
-    { key:'identity', icon: BB_ICONS.USER, label:'Identite', onClick: () => setShowIdentity(v => !v), active: showIdentity, slash: !showIdentity, separatorAfter: true, title: showIdentity ? "Masquer l'identite" : "Afficher l'identite" },
+    { key:'currency', currencyLabel: currency || 'EUR', label:'Devise', onClick: onCurrencyClick, title:'Choisir la devise' },
+    { key:'price', icon: BB_ICONS.EYE, label:'Prix', onClick: () => setShowPrice(v => !v), slash: !showPrice, title: showPrice ? 'Masquer le prix' : 'Afficher le prix' },
+    { key:'address', icon: BB_ICONS.PIN, label:'Adresse', onClick: () => setShowAddress(v => !v), slash: !showAddress, title: showAddress ? "Masquer l'adresse" : "Afficher l'adresse" },
+    { key:'identity', icon: BB_ICONS.USER, label:'Identite', onClick: () => setShowIdentity(v => !v), slash: !showIdentity, separatorAfter: true, title: showIdentity ? "Masquer l'identite" : "Afficher l'identite" },
     { key:'share', icon: BB_ICONS.SHARE, label:'Partager', onClick: onShare, accent:'gold', title:'Partager' },
   ];
   return <OcrePill items={items} layout="fixed"/>;
