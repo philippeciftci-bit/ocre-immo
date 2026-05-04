@@ -18024,52 +18024,50 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
           SUPPR. (right:120, #DC2626 trash) + ARCHIV. (right:60, #C9B698 archive) + APERÇU (right:0, #8B6F4E eye).
           Reveles si swipeX <= -90 (threshold 50% de 180). PARTAGER retire du swipe (accessible via
           APERCU -> fiche PDF -> Partager interne PdfShareModal M/25). */}
-      <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX <= -60) doDelete(e); }}
-        disabled={swipeX > -60}
-        title="Supprimer"
-        style={{position:'absolute', right:120, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#DC2626', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="3 6 5 6 21 6"/>
-          <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
-          <path d="M10 11v6"/><path d="M14 11v6"/>
-          <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-        </svg>
-        <span>SUPPR.</span>
-      </button>
-      <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX <= -60) doArchive(e); }}
-        disabled={swipeX > -60}
-        title="Archiver"
-        style={{position:'absolute', right:80, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#C9B698', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="21 8 21 21 3 21 3 8"/>
-          <rect x="1" y="3" width="22" height="5"/>
-          <line x1="10" y1="12" x2="14" y2="12"/>
-        </svg>
-        <span>ARCHIV.</span>
-      </button>
-      <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX <= -60 && props.openDossierPdf) { props.openDossierPdf(c.id); setSwipeX(0); } }}
-        disabled={swipeX > -60}
-        title="Aperçu"
-        style={{position:'absolute', right:40, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#8B6F4E', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-        <span>APERÇU</span>
-      </button>
-      {/* M/2026/05/05/5 — M-Partage-Acces : 4e action swipe Partager (ocre #7A5132). Sera refondu en grille 2x3 par M-Swipe. */}
-      {/* M/2026/05/05/6 — M-Partage-Menu : ouvre ShareMenu via event global. */}
-      <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX <= -60) { try { window.dispatchEvent(new CustomEvent('ocre-open-share', {detail: {dossierId: c.id, dossier: c}})); } catch(_) {} setSwipeX(0); } }}
-        disabled={swipeX > -60}
-        title="Partager"
-        style={{position:'absolute', right:0, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#7A5132', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html: BB_ICONS.SHARE}}/>
-        <span>PART.</span>
-      </button>
+      {/* M/2026/05/05/8 — M-Swipe-Dupliquer-Confreres : grille 2 lignes x 3 colonnes (5 actions + 1 vide).
+          Ligne 1 : Supprimer / Archiver / Apercu     Ligne 2 : Partager / Dupliquer / (vide)
+          Largeur revelee = 162px (3 cols x 50 + 2 gaps x 3 + 2 padding x 3). */}
+      {(() => {
+        const enabled = swipeX <= -60;
+        const cellStyle = (bg) => ({display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2, padding:'6px 4px', borderRadius:9, background:bg, color:'#fff', fontSize:8, fontWeight:600, border:'none', cursor: enabled ? 'pointer' : 'default', fontFamily:'inherit', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: enabled ? 'auto' : 'none'});
+        const onDuplicate = async (e) => {
+          e.stopPropagation();
+          if (!enabled) return;
+          try {
+            const tk = localStorage.getItem('ocre_token') || '';
+            const r = await fetch('/api/dossier_duplicate.php', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({source_id: c.id})});
+            const j = await r.json();
+            if (j && j.ok && j.new_dossier_id && props.openClient) { props.openClient(j.new_dossier_id); }
+            else if (props.showToast) props.showToast((j && j.error) || 'Erreur duplication');
+          } catch (_) { if (props.showToast) props.showToast('Erreur reseau'); }
+          setSwipeX(0);
+        };
+        return (
+          <div className="swipe-actions" style={{position:'absolute', right:0, top:0, bottom:0, width:162, display:'grid', gridTemplateColumns:'repeat(3, 50px)', gridTemplateRows:'1fr 1fr', gap:3, padding:3}}>
+            <button type="button" className="a" onClick={e => { e.stopPropagation(); if (enabled) doDelete(e); }} disabled={!enabled} title="Supprimer" style={cellStyle('#B85542')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+              <span>Suppr.</span>
+            </button>
+            <button type="button" className="a" onClick={e => { e.stopPropagation(); if (enabled) doArchive(e); }} disabled={!enabled} title="Archiver" style={cellStyle('#A87C5F')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              <span>Archiv.</span>
+            </button>
+            <button type="button" className="a" onClick={e => { e.stopPropagation(); if (enabled && props.openDossierPdf) { props.openDossierPdf(c.id); setSwipeX(0); } }} disabled={!enabled} title="Aperçu" style={cellStyle('#C9A876')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>Aperçu</span>
+            </button>
+            <button type="button" className="a" onClick={e => { e.stopPropagation(); if (enabled) { try { window.dispatchEvent(new CustomEvent('ocre-open-share', {detail: {dossierId: c.id, dossier: c}})); } catch(_) {} setSwipeX(0); } }} disabled={!enabled} title="Partager" style={cellStyle('#7A5132')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html: BB_ICONS.SHARE}}/>
+              <span>Partager</span>
+            </button>
+            <button type="button" className="a" onClick={onDuplicate} disabled={!enabled} title="Dupliquer" style={cellStyle('#5A7A8E')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Dupliquer</span>
+            </button>
+            <div aria-hidden="true"/>
+          </div>
+        );
+      })()}
     <div className="client-row-card"
       onClick={e => { if (swipeX !== 0) { setSwipeX(0); return; } if (onClick) onClick(e); }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
