@@ -9,8 +9,52 @@ $action = $_GET['action'] ?? '';
 $input = getInput();
 
 // V17.15 I3 : plus de whitelist — toute URL https valide acceptée (domaine FQDN).
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
+// M/2026/05/04/25 — hardening anti-SSRF + DoS + rate limit + content-type whitelist.
+const UA = 'OcreImmoBot/1.0 (+https://app.ocre.immo)';
+const FETCH_MAX_BYTES = 10485760; // 10 MB hard cap.
+const FETCH_TIMEOUT_TOTAL = 30;
+const FETCH_TIMEOUT_CONNECT = 10;
+const FETCH_MAX_REDIRECTS = 3;
+const FETCH_RATE_PER_MINUTE = 10;
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
+
+// Detection IP privee/loopback/link-local + metadata cloud (AWS/GCP/Azure/Alibaba).
+function _ocre_is_private_ip(string $ip): bool {
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) return true;
+    if ($ip === '169.254.169.254' || $ip === '100.100.100.200') return true;
+    return !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+}
+
+// Resolve hostname et bloque si une seule IP est privee (anti-DNS rebinding partiel).
+function _ocre_resolve_and_check_ssrf(string $host): array {
+    if (filter_var($host, FILTER_VALIDATE_IP)) {
+        if (_ocre_is_private_ip($host)) return ['blocked' => true, 'reason' => 'private_ip'];
+        return ['blocked' => false, 'ip' => $host];
+    }
+    $ipv4 = @gethostbynamel($host) ?: [];
+    foreach ($ipv4 as $ip) {
+        if (_ocre_is_private_ip($ip)) return ['blocked' => true, 'reason' => 'resolves_to_private_ip', 'ip' => $ip];
+    }
+    if (!$ipv4) return ['blocked' => true, 'reason' => 'dns_unresolvable'];
+    return ['blocked' => false, 'ip' => $ipv4[0]];
+}
+
+// Rate limit : max 10 imports/min par user. State file /tmp/ocre_import_rate_<uid>.json.
+function _ocre_rate_limit_check(int $userId): bool {
+    $path = '/tmp/ocre_import_rate_' . $userId . '.json';
+    $now = time();
+    $window = $now - 60;
+    $hits = [];
+    if (is_readable($path)) {
+        $raw = @file_get_contents($path);
+        $hits = json_decode($raw, true) ?: [];
+    }
+    $hits = array_values(array_filter($hits, fn($t) => (int)$t > $window));
+    if (count($hits) >= FETCH_RATE_PER_MINUTE) return false;
+    $hits[] = $now;
+    @file_put_contents($path, json_encode($hits), LOCK_EX);
+    return true;
+}
 
 function getAnthropicKey() {
     $k = getSetting('anthropic_api_key', '');
@@ -39,15 +83,23 @@ function urlValid($url) {
 }
 
 function fetchHtml($url) {
+    // M/2026/05/04/25 — Hardening : SSRF block + size cap + content-type whitelist + redirects 3.
+    $host = parse_url($url, PHP_URL_HOST);
+    if (!$host) return ['error' => 'URL invalide'];
+    $ssrf = _ocre_resolve_and_check_ssrf($host);
+    if (!empty($ssrf['blocked'])) return ['error' => 'ssrf_blocked', 'reason' => $ssrf['reason'] ?? 'unknown'];
     $ch = curl_init($url);
+    $bytesRead = 0;
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS => 5,
-        CURLOPT_TIMEOUT => 20,
-        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_MAXREDIRS => FETCH_MAX_REDIRECTS,
+        CURLOPT_TIMEOUT => FETCH_TIMEOUT_TOTAL,
+        CURLOPT_CONNECTTIMEOUT => FETCH_TIMEOUT_CONNECT,
         CURLOPT_USERAGENT => UA,
         CURLOPT_ENCODING => '',
+        CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+        CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
         CURLOPT_HTTPHEADER => [
             'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language: fr-FR,fr;q=0.9,en;q=0.8',
@@ -57,15 +109,28 @@ function fetchHtml($url) {
             'Upgrade-Insecure-Requests: 1',
         ],
         CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_NOPROGRESS => false,
+        CURLOPT_PROGRESSFUNCTION => function ($r, $dlTotal, $dlNow) {
+            return ($dlNow > FETCH_MAX_BYTES) ? 1 : 0; // 1 = abort
+        },
     ]);
     $body = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $sizeDl = curl_getinfo($ch, CURLINFO_SIZE_DOWNLOAD);
     $err = curl_error($ch);
+    $errno = curl_errno($ch);
     curl_close($ch);
-    if ($err) return ['error' => 'Erreur réseau : ' . $err];
+    if ($errno === CURLE_ABORTED_BY_CALLBACK || $sizeDl > FETCH_MAX_BYTES) return ['error' => 'too_large', 'detail' => 'max ' . FETCH_MAX_BYTES . ' bytes'];
+    if ($err) return ['error' => 'fetch_error', 'detail' => $err];
     if ($code === 403 || $code === 429) return ['error' => 'Site bloque l\'extraction automatique (HTTP ' . $code . '), copier-coller manuel nécessaire', 'http_code' => $code];
     if ($code >= 400) return ['error' => 'Page indisponible (HTTP ' . $code . ')', 'http_code' => $code];
     if (!$body) return ['error' => 'Contenu vide'];
+    $allowedTypes = ['text/html', 'application/xhtml+xml'];
+    $ctMain = strtolower(trim(explode(';', (string)$contentType)[0] ?? ''));
+    if ($ctMain && !in_array($ctMain, $allowedTypes, true)) {
+        return ['error' => 'content_type_invalid', 'detail' => $ctMain];
+    }
     return ['html' => $body, 'http_code' => $code];
 }
 
@@ -397,6 +462,8 @@ switch ($action) {
         require_once __DIR__ . '/_security.php';
         // V18.39 — rate limit 30 / heure par user.
         checkRateLimit('import_url', 30, 3600, (int) $user['id']);
+        // M/2026/05/04/25 — rate limit fin 10/min (anti-abuse en plus du 30/h _security.php).
+        if (!_ocre_rate_limit_check((int) $user['id'])) jsonError('rate_limited', 429);
         $url = trim((string)($input['url'] ?? ''));
         // V17.15 I3 : plus de whitelist, toute URL http/https FQDN valide acceptée.
         if (!$url || !urlValid($url)) jsonError('URL invalide');
