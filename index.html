@@ -241,11 +241,15 @@
 .pill{display:inline-flex;align-items:center;gap:var(--pill-gap);background:var(--pill-bg);padding:var(--pill-padding);border-radius:var(--pill-border-radius);box-shadow:var(--pill-shadow);max-width:100%;overflow:hidden}
 .pill-btn{position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:var(--pill-btn-min-width);padding:var(--pill-btn-padding);background:transparent;border:none;border-radius:var(--pill-btn-radius);color:var(--pill-btn-color-inactive);cursor:pointer;font-family:inherit;font-size:var(--pill-label-size);transition:var(--pill-transition);gap:1px}
 .pill-btn:hover{color:var(--pill-btn-color-active);background:rgba(255,255,255,0.08)}
-.pill-btn--active{color:var(--pill-btn-color-active);background:var(--pill-btn-bg-active)}
+/* REGLE STRUCTURELLE M/2026/05/05/4 — .pill-btn--tab-active s applique UNIQUEMENT aux onglets de
+   navigation (un seul actif a la fois, state exclusif). NE JAMAIS l utiliser pour des toggles
+   d option (plusieurs on/off possibles). Pour les toggles, l etat off est signifie par le slash
+   overlay sur l icone, PAS par un fond. Cf. doc inline OcrePill ci-dessous. */
+.pill-btn--tab-active{color:var(--pill-btn-color-active);background:var(--pill-btn-bg-active)}
 .pill-btn[disabled]{opacity:.5;cursor:not-allowed}
 .pill-btn svg{width:var(--pill-icon-size);height:var(--pill-icon-size);display:block;stroke:currentColor;stroke-width:var(--pill-icon-stroke);fill:none;stroke-linecap:round;stroke-linejoin:round}
 .pill-btn .pill-label{font-size:var(--pill-label-size);font-weight:var(--pill-label-weight);letter-spacing:var(--pill-label-letter-spacing);color:var(--pill-label-color);margin-top:var(--pill-label-mt);text-align:center;white-space:nowrap}
-.pill-btn--active .pill-label{color:var(--pill-btn-color-active)}
+.pill-btn--tab-active .pill-label{color:var(--pill-btn-color-active)}
 .pill-btn--accent-gold{color:var(--pill-accent-gold)}
 .pill-btn--accent-gold .pill-label{color:var(--pill-accent-gold)}
 .pill-btn--accent-rose{color:var(--pill-accent-rose)}
@@ -19637,10 +19641,35 @@ const BB_ICONS = {
   SHARE: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
 };
 // M/2026/05/05/1 — OcrePill : composant pill universel V2. Tokens centralises --pill-*.
-// items = [{ key, icon, label, onClick, active, accent, disabled, separatorAfter, currencyLabel, slash, title }]
-// separatorAfter:true insere un .pill-sep apres ce bouton.
-// currencyLabel:'EUR' affiche le texte au lieu de l icone (pour devise picker).
-// slash:true affiche overlay barre rouge (pour toggle off).
+// M/2026/05/05/4 — Distinction structurelle TAB vs TOGGLE (cf. M-Pill-Toggle-vs-Tab).
+//
+// API items = [{ key, icon, label, onClick, accent, disabled, separatorAfter, currencyLabel,
+//                tabActive, slash, title }]
+//
+// REGLE SEMANTIQUE STRICTE — un meme bouton n est JAMAIS a la fois un tab et un toggle :
+//
+//   tabActive: bool — UNIQUEMENT pour onglets de NAVIGATION exclusive (un seul actif a la fois).
+//                     Applique .pill-btn--tab-active (fond rgba(255,255,255,0.14) visible).
+//                     Usage : shared.html scroll-spy, ListView tabs, DownloadsView tabs.
+//                     INTERDIT : sur boutons toggle d option (multiple on/off possibles).
+//
+//   slash: bool     — UNIQUEMENT pour TOGGLES d option desactivee (option masquee).
+//                     Applique overlay barre rouge sur l icone, AUCUN fond.
+//                     Usage : PdfBottomBar Prix/Adresse/Identite (toggles independants).
+//                     INTERDIT : sur tabs de navigation (toujours mutuellement exclusifs).
+//
+//   separatorAfter: bool — separateur visuel apres ce bouton.
+//   currencyLabel: string — texte au lieu de l icone (devise EUR/MAD/...).
+//   accent: 'gold'|'rose' — coloration accent.
+//
+// Exemples corrects :
+//   shared.html scroll-spy  : { key:'budget', icon, label:'Budget', tabActive: <observer> }   ← tab
+//   PdfBottomBar Prix       : { key:'price', icon:EYE, slash: !showPrice }                  ← toggle
+//   PdfBottomBar Photos     : { key:'photos', icon, onClick: openSheet }                    ← action (ni tab ni toggle)
+//   ListView Nouveau        : { key:'new', icon, label:'Nouveau', accent:'gold' }           ← action (ni tab ni toggle)
+//
+// Si vous ajoutez un nouveau bouton, demandez-vous : NAVIGATION exclusive ou OPTION on/off ?
+// Si NI l un NI l autre (ex: action ouvrant une sheet), n utilisez NI tabActive NI slash.
 function OcrePill({items, layout}) {
   const wrapCls = 'pill-wrap' + (layout === 'inline' ? ' pill-wrap--inline' : layout === 'fixed' ? ' pill-wrap--fixed' : '');
   return (
@@ -19650,7 +19679,7 @@ function OcrePill({items, layout}) {
           <React.Fragment key={b.key || idx}>
             <button type="button" disabled={!!b.disabled} title={b.title || b.label || ''} aria-label={b.label || b.title || ''}
               data-pill-key={b.key}
-              className={'pill-btn' + (b.active ? ' pill-btn--active' : '') + (b.accent ? ' pill-btn--accent-' + b.accent : '')}
+              className={'pill-btn' + (b.tabActive ? ' pill-btn--tab-active' : '') + (b.accent ? ' pill-btn--accent-' + b.accent : '')}
               onClick={b.onClick}>
               {b.currencyLabel ? (
                 <span className="pill-currency">{b.currencyLabel}</span>

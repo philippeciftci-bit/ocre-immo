@@ -75,10 +75,12 @@ h2{font-family:'Cormorant Garamond',serif;font-size:18px;color:#8B5E3C;margin-bo
 .pill{display:inline-flex;align-items:center;gap:var(--pill-gap);background:var(--pill-bg);padding:var(--pill-padding);border-radius:var(--pill-border-radius);box-shadow:var(--pill-shadow);max-width:100%;overflow:hidden}
 .pill-btn{position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:var(--pill-btn-min-width);padding:var(--pill-btn-padding);background:transparent;border:none;border-radius:var(--pill-btn-radius);color:var(--pill-btn-color-inactive);cursor:pointer;font-family:inherit;font-size:var(--pill-label-size);transition:var(--pill-transition);gap:1px}
 .pill-btn:hover{color:var(--pill-btn-color-active);background:rgba(255,255,255,0.08)}
-.pill-btn.active{color:var(--pill-btn-color-active);background:var(--pill-btn-bg-active)}
+/* M/2026/05/05/4 — REGLE STRUCTURELLE : .pill-btn--tab-active UNIQUEMENT pour onglets nav exclusive
+   (un seul actif a la fois). JAMAIS pour toggles d option (utiliser slash overlay). */
+.pill-btn.pill-btn--tab-active{color:var(--pill-btn-color-active);background:var(--pill-btn-bg-active)}
 .pill-btn svg{width:var(--pill-icon-size);height:var(--pill-icon-size);display:block;stroke:currentColor;stroke-width:var(--pill-icon-stroke);fill:none;stroke-linecap:round;stroke-linejoin:round}
 .pill-btn .pill-label{font-size:var(--pill-label-size);font-weight:var(--pill-label-weight);letter-spacing:var(--pill-label-letter-spacing);color:var(--pill-label-color);margin-top:var(--pill-label-mt);text-align:center;white-space:nowrap}
-.pill-btn.active .pill-label{color:var(--pill-btn-color-active)}
+.pill-btn.pill-btn--tab-active .pill-label{color:var(--pill-btn-color-active)}
 .pill-sep{width:var(--pill-sep-width);height:var(--pill-sep-height);background:var(--pill-sep-color);margin:var(--pill-sep-margin);flex-shrink:0}
 </style>
 </head>
@@ -447,7 +449,8 @@ function renderBottomBar() {
   const targets = ['h2-budget','h2-photos','h2-bien','h2-contact'].map(id => document.getElementById(id)).filter(Boolean);
   if (targets.length && 'IntersectionObserver' in window) {
     const setActive = (id) => {
-      Object.keys(tabRefs).forEach(k => tabRefs[k].classList.toggle('active', k === id));
+      // M/2026/05/05/4 — pill-btn--tab-active : navigation tabs (exclusive, un seul a la fois).
+      Object.keys(tabRefs).forEach(k => tabRefs[k].classList.toggle('pill-btn--tab-active', k === id));
     };
     const io = new IntersectionObserver((entries) => {
       const visible = entries.filter(en => en.isIntersecting).sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
