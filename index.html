@@ -314,6 +314,15 @@
 @media (max-width:480px){.mv44-lb{padding:0 16px}.mv44-lb-arrow{width:40px;height:40px}}
 /* M/2026/05/04/M-Partager — animation entree ShareDropdown. */
 @keyframes shareDropdownIn{from{opacity:0;transform:translateY(-4px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+/* M/2026/05/04/48 — animation entree ConfirmModal popup adoption position. */
+@keyframes mv48ConfirmIn{from{opacity:0}to{opacity:1}}
+/* M/2026/05/04/48 — modal carte agrandie 90vh + croix close. */
+.mv48-mapmodal{position:fixed;inset:0;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1500;display:flex;align-items:center;justify-content:center;animation:mv48MapBackdropIn 200ms ease-out}
+.mv48-mapmodal-inner{position:relative;width:90vw;height:90vh;background:#fff;border-radius:14px;box-shadow:0 24px 60px -12px rgba(0,0,0,0.5);overflow:hidden;animation:mv48MapInnerIn 250ms cubic-bezier(0.2,0.7,0.2,1)}
+.mv48-mapmodal-close{position:absolute;top:12px;right:12px;z-index:10;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.96);border:1px solid #E5E0D8;box-shadow:0 2px 8px rgba(0,0,0,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+@media (max-width:480px){.mv48-mapmodal-inner{width:92vw;height:88vh}}
+@keyframes mv48MapBackdropIn{from{opacity:0}to{opacity:1}}
+@keyframes mv48MapInnerIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden;overscroll-behavior:none}
 @keyframes ocreSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
@@ -6288,10 +6297,10 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
   async function confirmAndApplyPin(newLat, newLng, prevPos) {
     if (!locFieldsHaveContent()) { applyPin(newLat, newLng); return; }
     const ok = await askConfirm({
-      title: 'Adopter cette nouvelle position ?',
-      message: "L'adresse saisie sera remplacée par la position détectée sur la carte. Vos saisies actuelles (pays, ville, quartier, adresse) seront mises à jour.",
-      confirmLabel: 'Mettre à jour',
-      cancelLabel: 'Garder mes saisies',
+      title: 'Adopter cette position ?',
+      message: "L'adresse saisie sera remplacée par la position détectée.",
+      confirmLabel: 'Adopter',
+      cancelLabel: 'Annuler',
       danger: false,
     });
     if (ok) { applyPin(newLat, newLng); return; }
@@ -6315,6 +6324,18 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
   // M/2026/04/30/10 — carte retractable via bouton Carte (toggle).
   // Mini-indicateur GPS sous la barre L3 si carte repliee + position connue.
   const [mapOpen, setMapOpen] = React.useState(false);
+  // M/2026/05/04/48 — modal carte agrandie 90vw x 90vh.
+  const [mapFullscreen, setMapFullscreen] = React.useState(false);
+  React.useEffect(() => {
+    if (!mapFullscreen) return;
+    // ESC ferme.
+    const onKey = (e) => { if (e.key === 'Escape') setMapFullscreen(false); };
+    document.addEventListener('keydown', onKey);
+    // Reflow Leaflet apres ouverture.
+    const tid = setTimeout(() => { try { leafletRef.current.map && leafletRef.current.map.invalidateSize(); } catch (e) {} }, 300);
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); clearTimeout(tid); document.body.style.overflow = ''; };
+  }, [mapFullscreen]);
 
   const CIRCLE_STYLE = {color:'#B26D3A', fillColor:'#FBF1E4', fillOpacity:.25, weight:2};
   // M/2026/04/30/6 — cercle proximite rouge tres clair (zone de recherche/proximite 500m).
@@ -6684,9 +6705,32 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
             showToast={showToast}/>
         </div>
       )}
-      <div style={{maxHeight: mapOpen ? 360 : 0, overflow:'hidden', transition:'max-height 250ms ease-out'}}>
-        <div ref={mapRef} style={{height:300, width:'100%', borderRadius:10, border:'1px solid #EDE6DC', overflow:'hidden'}}/>
-      </div>
+      {/* M/2026/05/04/48 — Si mapFullscreen : carte rendu dans modal 90vh fixed. Sinon : inline 300px. */}
+      {mapFullscreen ? (
+        <>
+          <div style={{maxHeight: mapOpen ? 360 : 0, overflow:'hidden', transition:'max-height 250ms ease-out'}}/>
+          <div className="mv48-mapmodal" onClick={() => setMapFullscreen(false)}>
+            <div className="mv48-mapmodal-inner" onClick={e => e.stopPropagation()}>
+              <button type="button" className="mv48-mapmodal-close" onClick={() => setMapFullscreen(false)} aria-label="Fermer la carte">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1714" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </button>
+              <div ref={mapRef} style={{width:'100%', height:'100%'}}/>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{maxHeight: mapOpen ? 360 : 0, overflow:'hidden', transition:'max-height 250ms ease-out', position:'relative'}}>
+          <div ref={mapRef} style={{height:300, width:'100%', borderRadius:10, border:'1px solid #EDE6DC', overflow:'hidden'}}/>
+          {mapOpen && (
+            <button type="button" onClick={() => setMapFullscreen(true)} aria-label="Agrandir la carte" title="Agrandir"
+              style={{position:'absolute', top:8, right:8, zIndex:5, width:36, height:36, borderRadius:8, background:'rgba(255,255,255,0.96)', border:'1px solid #E5E0D8', boxShadow:'0 2px 6px rgba(0,0,0,0.12)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1714" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
       {mapOpen && bien.gps_lat && bien.gps_lng && (
         <div style={{fontSize:11, color:'#8B7F6E', marginTop:4, fontFamily:'monospace'}}>{bien.gps_lat}, {bien.gps_lng}</div>
       )}
@@ -18173,18 +18217,18 @@ function ConfirmModal({title, message, danger, confirmLabel, cancelLabel, onConf
   }, [onConfirm, onCancel]);
   return (
     <div onClick={onCancel}
-      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'mv48ConfirmIn 200ms cubic-bezier(0.2, 0.7, 0.2, 1)'}}>
       <div onClick={e => e.stopPropagation()}
-        style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:20, width:'100%', maxWidth:340, boxShadow:'0 20px 50px rgba(0,0,0,.25)'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color: danger ? '#C04B20' : '#8B5E3C', marginBottom:8}}>{title}</div>
-        {message && <div style={{fontSize:13, color:'#2A2018', lineHeight:1.5, marginBottom:16}}>{message}</div>}
+        style={{background:'#fff', border:'1px solid #E5E0D8', borderRadius:10, padding:16, width:'100%', maxWidth:320, boxShadow:'0 8px 24px -6px rgba(0,0,0,0.20), 0 4px 8px -3px rgba(0,0,0,0.10)'}}>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:500, color: danger ? '#C04B20' : '#1A1714', marginBottom:8}}>{title}</div>
+        {message && <div style={{fontFamily:"'DM Sans', sans-serif", fontSize:12.5, color:'#5A5046', lineHeight:1.5, marginBottom:16}}>{message}</div>}
         <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
           <button onClick={onCancel}
-            style={{padding:'10px 14px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:9, fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+            style={{padding:'8px 16px', background:'#F0EBE2', color:'#5A5046', border:'none', borderRadius:100, fontWeight:500, fontSize:12.5, cursor:'pointer', fontFamily:"'DM Sans', sans-serif"}}>
             {cancelLabel || 'Annuler'}
           </button>
           <button onClick={onConfirm}
-            style={{padding:'10px 14px', background: danger ? '#C04B20' : 'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+            style={{padding:'8px 16px', background: danger ? '#C04B20' : '#7A5132', color:'#fff', border:'none', borderRadius:100, fontWeight:500, fontSize:12.5, cursor:'pointer', fontFamily:"'DM Sans', sans-serif"}}>
             {confirmLabel || (danger ? 'Supprimer' : 'Confirmer')}
           </button>
         </div>
