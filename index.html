@@ -14736,6 +14736,26 @@ function CurrencyPickerSheet({current, onSelect, onClose}) {
 
 // M/2026/05/04/13 — barre PDF avec 4 toggles : devise picker + 3 toggles Prix/Adresse/Identite.
 function PdfBottomBar({onBack, currency, onCurrencyClick, showPrice, setShowPrice, showAddress, setShowAddress, showIdentity, setShowIdentity, onShare}) {
+  // M/2026/05/04/38 — Migration PdfBottomBar vers OcreBottomBar (SSOT C1 strict 6 boutons unifiees).
+  // Avant : Retour detache + 4 capsules carrees ToggleBtn + Partager CTA marron detache (pattern M136).
+  // Maintenant : UNE seule pill #7A5132 flottante avec 6 boutons inline. Coherence avec FormView (M32),
+  // ListView (M33), DownloadsView (M33), shared.html (M37). Toggle visuel off via accent rose au lieu de
+  // barre diagonale rouge (pattern OcreBottomBar standard, pas d'override).
+  const _flagM32 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M32_BOTTOMBAR_UNIFORM'))
+    ? !!window.__ocreFlags.M32_BOTTOMBAR_UNIFORM : true;
+  if (_flagM32) {
+    return (
+      <OcreBottomBar buttons={[
+        { key:'back', icon: BB_ICONS.BACK, label:'Retour', onClick: onBack, title:'Retour' },
+        { key:'currency', icon: BB_ICONS.EUR, label: (currency || 'EUR'), onClick: onCurrencyClick, accent:'gold', title:'Choisir la devise' },
+        { key:'price', icon: showPrice ? BB_ICONS.EYE : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+          label:'Voir', onClick: () => setShowPrice(v => !v), accent: showPrice ? undefined : 'rose', title: showPrice ? 'Masquer le prix' : 'Afficher le prix' },
+        { key:'address', icon: BB_ICONS.PIN, label:'Lieu', onClick: () => setShowAddress(v => !v), accent: showAddress ? undefined : 'rose', title: showAddress ? "Masquer l'adresse" : "Afficher l'adresse" },
+        { key:'identity', icon: BB_ICONS.USER, label:'Profil', onClick: () => setShowIdentity(v => !v), accent: showIdentity ? undefined : 'rose', title: showIdentity ? "Masquer l'identite" : "Afficher l'identite" },
+        { key:'share', icon: BB_ICONS.SHARE, label:'Partager', onClick: onShare, title:'Partager' },
+      ]}/>
+    );
+  }
   // M/2026/05/02/24 — M136 : palette adaptée au fond blanc (était #F5EFE6 sur brun #5C4530).
   // Toggle actif = ocre soft #FBF1E4, inactif = blanc cassé #FDFAF7. Icône #8B5E3C lisible.
   const ICON_COLOR = '#8B5E3C';
