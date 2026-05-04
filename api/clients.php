@@ -266,6 +266,22 @@ switch ($action) {
         $c = $input['client'] ?? [];
         if (!is_array($c)) jsonError('client invalide');
         $id = isset($c['id']) ? (int)$c['id'] : 0;
+        // M/2026/05/04/16 — anti-fantome : si pas d'id ET aucune donnee utile, retourner ok
+        // sans creer de row. Le frontend doit n'appeler save qu'au premier onChange reel.
+        if ($id === 0) {
+            $hasContent = false;
+            foreach (['prenom','nom','societe_nom','tel','email','profil_type'] as $k) {
+                if (!empty($c[$k]) && trim((string)$c[$k]) !== '') { $hasContent = true; break; }
+            }
+            if (!$hasContent && isset($c['bien']) && is_array($c['bien'])) {
+                foreach (['ville','quartier','type','pays'] as $k) {
+                    if (!empty($c['bien'][$k])) { $hasContent = true; break; }
+                }
+            }
+            if (!$hasContent) {
+                jsonOk(['client' => ['id' => null, 'is_draft' => true, 'archived' => false, 'is_staged' => false, 'skipped_empty' => true]]);
+            }
+        }
         $projet = (string)($c['projet'] ?? 'Acheteur');
         $is_investisseur = !empty($c['is_investisseur']) ? 1 : 0;
         $archived = !empty($c['archived']) ? 1 : 0;
