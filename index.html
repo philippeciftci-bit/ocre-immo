@@ -19490,7 +19490,8 @@ function ProfilSelectorBar({activeProfil, onChange}) {
 // UX, pas un gate). Tronc commun en mode draft via fallback profil "Acheteur" cote rendu.
 
 // M/2026/05/04/28 — M28 PhotosGalleryV28 : upload multi + webp serveur + grid + lightbox + suppression.
-// Wrap dans flag M137_GALLERY_ENRICHED. Apparait au bottom de FormView avant la BottomBar.
+// M/2026/05/04/30 — M30 drag-drop reorder photos (HTML5 desktop + touch mobile long-press 350ms).
+// Wrap dans flag M137_GALLERY_ENRICHED. Reorder wrap dans flag M30_PHOTOS_REORDER.
 function PhotosGalleryV28({dossier, showToast}) {
   const [uuids, setUuids] = React.useState(() => {
     if (!dossier || !dossier.photos_uuids) return [];
@@ -19500,10 +19501,150 @@ function PhotosGalleryV28({dossier, showToast}) {
     return Array.isArray(dossier.photos_uuids) ? dossier.photos_uuids : [];
   });
   const [uploading, setUploading] = React.useState(0);
-  const [dragOver, setDragOver] = React.useState(false);
+  const [dragOverZone, setDragOverZone] = React.useState(false);
   const [lightboxIdx, setLightboxIdx] = React.useState(null);
+  const [draggingIdx, setDraggingIdx] = React.useState(null);
+  const [hoverIdx, setHoverIdx] = React.useState(null);
+  const [savedFlash, setSavedFlash] = React.useState(false);
   const fileInputRef = React.useRef(null);
   const dossierId = dossier && dossier.id;
+  const reorderTimerRef = React.useRef(null);
+  const touchStateRef = React.useRef({startTime:0, longPressTimer:null, isDragging:false, srcIdx:null, cloneEl:null});
+
+  const reorderFlagOn = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M30_PHOTOS_REORDER'))
+    ? !!window.__ocreFlags.M30_PHOTOS_REORDER : true;
+
+  // Persist reorder backend (debounce 500ms).
+  function persistOrder(newOrder) {
+    if (reorderTimerRef.current) clearTimeout(reorderTimerRef.current);
+    reorderTimerRef.current = setTimeout(async () => {
+      const tk = localStorage.getItem('ocre_token') || '';
+      const doFetch = async () => {
+        const r = await fetch('/api/photo_reorder.php', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': tk}, body: JSON.stringify({dossier_id: dossierId, photos_uuids: newOrder})});
+        return r.json();
+      };
+      try {
+        let j = await doFetch();
+        if (!j || !j.ok) {
+          await new Promise(r => setTimeout(r, 2000));
+          j = await doFetch();
+        }
+        if (j && j.ok) {
+          setSavedFlash(true);
+          setTimeout(() => setSavedFlash(false), 1000);
+        } else {
+          showToast && showToast((j && j.error) || 'Echec sauvegarde ordre');
+        }
+      } catch (e) { showToast && showToast('Erreur reseau reorder'); }
+    }, 500);
+  }
+
+  function moveItem(srcIdx, destIdx) {
+    if (srcIdx === destIdx || srcIdx == null || destIdx == null) return;
+    setUuids(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(srcIdx, 1);
+      next.splice(destIdx, 0, moved);
+      persistOrder(next);
+      return next;
+    });
+  }
+
+  // ---- Touch handlers (mobile long-press 350ms) ----
+  function onTouchStart(e, idx) {
+    if (!reorderFlagOn) return;
+    const t = touchStateRef.current;
+    t.startTime = Date.now();
+    t.srcIdx = idx;
+    t.isDragging = false;
+    if (t.longPressTimer) clearTimeout(t.longPressTimer);
+    t.longPressTimer = setTimeout(() => {
+      t.isDragging = true;
+      try { if (navigator.vibrate) navigator.vibrate(30); } catch (_) {}
+      // Clone visuel
+      const tgt = e.target.closest('[data-photo-idx]');
+      if (!tgt) return;
+      const rect = tgt.getBoundingClientRect();
+      const clone = tgt.cloneNode(true);
+      clone.style.position = 'fixed';
+      clone.style.left = rect.left + 'px';
+      clone.style.top = rect.top + 'px';
+      clone.style.width = rect.width + 'px';
+      clone.style.height = rect.height + 'px';
+      clone.style.pointerEvents = 'none';
+      clone.style.zIndex = '9998';
+      clone.style.opacity = '0.85';
+      clone.style.transform = 'scale(1.05)';
+      clone.style.boxShadow = '0 8px 24px rgba(45,32,24,0.25)';
+      clone.style.transition = 'none';
+      document.body.appendChild(clone);
+      t.cloneEl = clone;
+      setDraggingIdx(idx);
+    }, 350);
+  }
+  function onTouchMove(e) {
+    const t = touchStateRef.current;
+    if (!t.isDragging || !t.cloneEl) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    e.preventDefault();
+    const rect = t.cloneEl.getBoundingClientRect();
+    t.cloneEl.style.left = (touch.clientX - rect.width / 2) + 'px';
+    t.cloneEl.style.top = (touch.clientY - rect.height / 2) + 'px';
+    // Detection survol des autres thumbs.
+    const elBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    const photoEl = elBelow && elBelow.closest && elBelow.closest('[data-photo-idx]');
+    if (photoEl) {
+      const targetIdx = parseInt(photoEl.getAttribute('data-photo-idx'), 10);
+      if (!isNaN(targetIdx)) setHoverIdx(targetIdx);
+    } else setHoverIdx(null);
+  }
+  function onTouchEnd(e, idx) {
+    const t = touchStateRef.current;
+    if (t.longPressTimer) { clearTimeout(t.longPressTimer); t.longPressTimer = null; }
+    if (t.isDragging && t.cloneEl) {
+      try { document.body.removeChild(t.cloneEl); } catch (_) {}
+      t.cloneEl = null;
+      const dest = hoverIdx;
+      if (dest !== null && dest !== t.srcIdx) moveItem(t.srcIdx, dest);
+      setDraggingIdx(null);
+      setHoverIdx(null);
+      t.isDragging = false;
+      t.srcIdx = null;
+      e.preventDefault();
+      e.stopPropagation();
+    } else {
+      // Tap court : ouvre lightbox (comportement normal).
+      const dt = Date.now() - t.startTime;
+      if (dt < 350 && t.srcIdx !== null) setLightboxIdx(t.srcIdx);
+      t.srcIdx = null;
+    }
+  }
+
+  // ---- HTML5 drag-drop desktop ----
+  function onDragStart(e, idx) {
+    if (!reorderFlagOn) return;
+    e.dataTransfer.setData('text/plain', String(idx));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingIdx(idx);
+  }
+  function onDragOverItem(e, idx) {
+    if (!reorderFlagOn || draggingIdx === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setHoverIdx(idx);
+  }
+  function onDropItem(e, destIdx) {
+    if (!reorderFlagOn || draggingIdx === null) return;
+    e.preventDefault();
+    moveItem(draggingIdx, destIdx);
+    setDraggingIdx(null);
+    setHoverIdx(null);
+  }
+  function onDragEnd() {
+    setDraggingIdx(null);
+    setHoverIdx(null);
+  }
 
   async function uploadOne(file) {
     if (!dossierId || String(dossierId).startsWith('tmp-')) {
@@ -19564,11 +19705,11 @@ function PhotosGalleryV28({dossier, showToast}) {
       <div style={{fontSize:11, fontWeight:700, color:'#8B5E3C', textTransform:'uppercase', letterSpacing:.6, marginBottom:8}}>
         Photos {uuids.length > 0 ? '· ' + uuids.length : ''}
       </div>
-      <div onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-           onDragLeave={() => setDragOver(false)}
-           onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+      <div onDragOver={(e) => { e.preventDefault(); setDragOverZone(true); }}
+           onDragLeave={() => setDragOverZone(false)}
+           onDrop={(e) => { e.preventDefault(); setDragOverZone(false); handleFiles(e.dataTransfer.files); }}
            onClick={() => fileInputRef.current && fileInputRef.current.click()}
-           style={{border:'2px dashed ' + (dragOver ? '#8B5E3C' : '#C9B79A'), borderRadius:8, padding:'14px', textAlign:'center', cursor:'pointer', background: dragOver ? '#FFF4E0' : 'transparent', marginBottom:10, transition:'all 150ms'}}>
+           style={{border:'2px dashed ' + (dragOverZone ? '#8B5E3C' : '#C9B79A'), borderRadius:8, padding:'14px', textAlign:'center', cursor:'pointer', background: dragOverZone ? '#FFF4E0' : 'transparent', marginBottom:10, transition:'all 150ms'}}>
         <div style={{fontSize:13, color:'#5C3B1E', fontWeight:600}}>
           {uploading > 0 ? 'Upload… (' + uploading + ' restant·e·s)' : 'Glisser des photos ici ou cliquer pour choisir'}
         </div>
@@ -19577,17 +19718,42 @@ function PhotosGalleryV28({dossier, showToast}) {
                onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}/>
       </div>
       {uuids.length > 0 && (
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:8}}>
-          {uuids.map((u, idx) => (
-            <div key={u} style={{position:'relative', aspectRatio:'1', borderRadius:8, overflow:'hidden', background:'#F0E8D8'}}>
-              <img src={photoUrl(u)} loading="lazy" alt="" onClick={() => setLightboxIdx(idx)}
-                   style={{width:'100%', height:'100%', objectFit:'cover', cursor:'zoom-in', display:'block'}}/>
-              <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(u); }} title="Supprimer"
-                style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', opacity:0.85, display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-          ))}
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:8, position:'relative'}}>
+          {uuids.map((u, idx) => {
+            const isDragging = draggingIdx === idx;
+            const isHover = hoverIdx === idx && draggingIdx !== null && draggingIdx !== idx;
+            return (
+              <div key={u} data-photo-idx={idx}
+                draggable={reorderFlagOn ? 'true' : undefined}
+                onDragStart={(e) => onDragStart(e, idx)}
+                onDragOver={(e) => onDragOverItem(e, idx)}
+                onDrop={(e) => onDropItem(e, idx)}
+                onDragEnd={onDragEnd}
+                onTouchStart={(e) => onTouchStart(e, idx)}
+                onTouchMove={onTouchMove}
+                onTouchEnd={(e) => onTouchEnd(e, idx)}
+                onTouchCancel={(e) => onTouchEnd(e, idx)}
+                style={{position:'relative', aspectRatio:'1', borderRadius:8, overflow:'hidden',
+                  background: isHover ? 'rgba(122,82,53,0.1)' : '#F0E8D8',
+                  border: isHover ? '2px dashed #7A5132' : '2px solid transparent',
+                  opacity: isDragging ? 0.5 : 1,
+                  cursor: reorderFlagOn ? (draggingIdx !== null ? 'grabbing' : 'grab') : 'default',
+                  transition: 'background 120ms, border-color 120ms, opacity 120ms',
+                  touchAction: reorderFlagOn ? 'none' : 'auto'}}>
+                <img src={photoUrl(u)} loading="lazy" alt=""
+                     onClick={() => { if (!touchStateRef.current.isDragging) setLightboxIdx(idx); }}
+                     style={{width:'100%', height:'100%', objectFit:'cover', cursor:'zoom-in', display:'block', pointerEvents: draggingIdx !== null ? 'none' : 'auto'}}
+                     draggable="false"/>
+                <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(u); }} title="Supprimer"
+                  style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(0,0,0,0.55)', color:'#fff', cursor:'pointer', opacity:0.85, display:'flex', alignItems:'center', justifyContent:'center', padding:0, zIndex:2}}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            );
+          })}
+          {savedFlash && (
+            <div style={{position:'absolute', top:-22, right:0, fontSize:10, color:'#3D7A3D', fontStyle:'italic', fontWeight:600, opacity:0.85, pointerEvents:'none'}}>Enregistré</div>
+          )}
         </div>
       )}
       {lightboxIdx !== null && uuids[lightboxIdx] && (
