@@ -291,6 +291,48 @@ input, select, textarea, button { font-size:13px }
 const {useState, useEffect, useRef} = React;
 const API = '/api';
 
+// M/2026/05/04/19 — Feature flags helper : window.flag(name) synchrone + bootFlags() async.
+// Init defensif window.__ocreFlags = {} (toutes OFF) pour eviter crash avant boot.
+if (typeof window !== 'undefined' && !window.__ocreFlags) window.__ocreFlags = {};
+window.flag = function(name) { return !!(window.__ocreFlags && window.__ocreFlags[name]); };
+window.bootFlags = async function(force) {
+  try {
+    const email = (window.__ocreUserEmail || '').toLowerCase();
+    const cacheKey = 'ocre_flags_' + email;
+    if (!force) {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) {
+        try {
+          const cached = JSON.parse(raw);
+          if (cached && cached.flags && (Date.now() - (cached.ts || 0)) < 30000) {
+            window.__ocreFlags = cached.flags;
+            window.dispatchEvent(new CustomEvent('ocre-flags-updated'));
+            return cached.flags;
+          }
+        } catch (e) {}
+      }
+    }
+    const tk = localStorage.getItem('ocre_token') || '';
+    const res = await fetch('/api/flags_for_user.php', {headers: tk ? {'X-Session-Token': tk} : {}, cache: 'no-store'});
+    const data = await res.json();
+    const flags = (data && data.flags) || {};
+    window.__ocreFlags = flags;
+    try { localStorage.setItem(cacheKey, JSON.stringify({flags, ts: Date.now()})); } catch (e) {}
+    window.dispatchEvent(new CustomEvent('ocre-flags-updated'));
+    return flags;
+  } catch (e) {
+    window.__ocreFlags = window.__ocreFlags || {};
+    return window.__ocreFlags;
+  }
+};
+// Override URL ?reloadFlags=1 force le fetch + clear cache.
+try {
+  if (typeof location !== 'undefined' && /[?&]reloadFlags=1/.test(location.search)) {
+    Object.keys(localStorage).forEach(k => { if (k.indexOf('ocre_flags_') === 0) localStorage.removeItem(k); });
+    window.bootFlags(true);
+  }
+} catch (e) {}
+
 // M/2026/05/01/15 — fetchWithTimeout : tous les fetchs critiques (auth, init App, login)
 // doivent passer par ce helper pour eviter le spinner infini sur Safari iOS (ITP latency,
 // reseau flaky, handshake bloque). Default 5s. AbortError catchable cote appelant.
@@ -7283,10 +7325,16 @@ function RechercheBienBloc({d, set}) {
 // (= currency gauche) vit en state UI window.__ocreCurrencyV5State. Reload = retour défaut
 // EUR/MAD/10.84. Aucun cur_left/cur_right/cur_rate persiste — anti-dérive M48 absolue.
 function getCurrencyV5State() {
-  // M/2026/05/04/18 — restauration pre-selection EUR/MAD/10.84 (default Marrakech, identique
-  // a l etat pre-M16). Cherry-pick depuis b3841fb (M15) avant init null casse.
-  if (typeof window === 'undefined') return {left:'EUR', right:'MAD', rate:10.84};
-  if (!window.__ocreCurrencyV5State) window.__ocreCurrencyV5State = {left:'EUR', right:'MAD', rate:10.84};
+  // M/2026/05/04/19 — feature flag NEW_CURRENCY_PICKER_V5 :
+  //   actif (default 1)  -> pre-selection EUR/MAD/10.84 (default Marrakech, M18)
+  //   desactive (toggle admin) -> init null/null/null (rollback comportement M16).
+  // Le flag se lit live via window.flag(). Si non encore boot ou indispo, fallback ON.
+  const flagOn = (typeof window !== 'undefined' && typeof window.flag === 'function')
+    ? (window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'NEW_CURRENCY_PICKER_V5') ? window.flag('NEW_CURRENCY_PICKER_V5') : true)
+    : true;
+  const defaults = flagOn ? {left:'EUR', right:'MAD', rate:10.84} : {left:null, right:null, rate:null};
+  if (typeof window === 'undefined') return defaults;
+  if (!window.__ocreCurrencyV5State) window.__ocreCurrencyV5State = {...defaults};
   return window.__ocreCurrencyV5State;
 }
 function setCurrencyV5State(patch, forceUpdate) {
@@ -7298,7 +7346,17 @@ function setCurrencyV5State(patch, forceUpdate) {
 // Distinction explicite avec la regle "zero decorative emoji UI" : ces drapeaux servent l'utilite
 // (lecture rapide de la devise dans le picker), pas la decoration. Le code ISO 3 lettres reste
 // l'unique identifiant ailleurs dans l'app (PDF, dossier list, montants formates).
-const CURRENCY_FLAG_V5 = {EUR:'🇪🇺', MAD:'🇲🇦', USD:'🇺🇸', GBP:'🇬🇧', AED:'🇦🇪', CHF:'🇨🇭'};
+const _CURRENCY_FLAG_RAW_V5 = {EUR:'🇪🇺', MAD:'🇲🇦', USD:'🇺🇸', GBP:'🇬🇧', AED:'🇦🇪', CHF:'🇨🇭'};
+// M/2026/05/04/19 — proxy via flag NEW_CURRENCY_PICKER_V5. Si flag OFF (toggle admin),
+// retourne '' pour cacher le drapeau. Sinon renvoie l'emoji depuis la map raw.
+const CURRENCY_FLAG_V5 = new Proxy(_CURRENCY_FLAG_RAW_V5, {
+  get(target, prop) {
+    const flagOn = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'NEW_CURRENCY_PICKER_V5'))
+      ? !!window.__ocreFlags.NEW_CURRENCY_PICKER_V5
+      : true; // default ON tant que flags pas charges
+    return flagOn ? (target[prop] || '') : '';
+  }
+});
 const CURRENCY_SYMBOL_V5 = {EUR:'EUR', MAD:'MAD', USD:'USD', GBP:'GBP', AED:'AED', CHF:'CHF'};
 const CURRENCY_LIST_V5 = ['EUR','MAD','USD','GBP','AED','CHF'];
 const RATES_OFFICIAL_V5 = { EUR_MAD: 10.84, EUR_USD: 1.08, EUR_GBP: 0.857, EUR_AED: 3.97 };
@@ -10634,6 +10692,8 @@ function App() {
         }
         if (!me || !me.ok) { localStorage.removeItem('ocre_token'); window.location = '/login/'; return; }
         setCurrentUser(me.user);
+        // M/2026/05/04/19 — boot feature flags apres me.user etabli (email pour cache key + override email).
+        try { window.__ocreUserEmail = (me.user && me.user.email) || ''; window.bootFlags && window.bootFlags(); } catch (e) {}
         const st = await fetchWithTimeout(API + '/auth.php?action=status', {}, 5000).then(r => r.json()).catch(() => null);
         if (st && st.ok) setAppSettings(st);
         const cl = await fetchWithTimeout(API + '/clients.php?action=list', {headers: {'X-Session-Token': token}}, 8000).then(r => r.json());
