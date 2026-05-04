@@ -11150,7 +11150,7 @@ function App() {
     // M/2026/04/30/8 — passe profil dossier (vendeur/acheteur/...) pour libelle dynamique modale partage.
     const _pdfDossier = clients.find(c => c.id === pdfDossierId);
     const _pdfProfil = _pdfDossier ? (_pdfDossier.projet || _pdfDossier.profil_type || '') : '';
-    return <DossierPdfView dossierId={pdfDossierId} dossierProfil={_pdfProfil} onBack={() => setView('list')} showToast={showToast}/>;
+    return <DossierPdfView dossierId={pdfDossierId} dossierProfil={_pdfProfil} dossier={findClientById ? findClientById(pdfDossierId) : null} onBack={() => setView('list')} showToast={showToast}/>;
   }
   if (view === 'dictation') {
     return <DictationView onBack={() => setView('list')}
@@ -14682,7 +14682,7 @@ function ExportPage({onBack, showToast}) {
 // PDF refondue avec 3 toggles centres (prix/adresse/identite) trait rouge diagonal si masques.
 // State LIVE refetch dossier_pdf_html.php avec query params hide_price/hide_address/hide_identity.
 // Share URL inclut les memes flags pour appliquer cote destinataire (shared.html).
-function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
+function DossierPdfView({dossierId, onBack, showToast, dossierProfil, dossier}) {
   const [html, setHtml] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [shareOpen, setShareOpen] = React.useState(false);
@@ -14692,6 +14692,18 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
   // M/2026/05/04/13 — devise picker live : refetch PHP avec ?currency=XXX a chaque changement.
   const [currency, setCurrency] = React.useState('EUR');
   const [currencyPickerOpen, setCurrencyPickerOpen] = React.useState(false);
+  // M/2026/05/05/3 — M-Photos-Bouton : selection des photos a inclure dans le PDF partage.
+  const [photosSheetOpen, setPhotosSheetOpen] = React.useState(false);
+  const _initHidden = (dossier && Array.isArray(dossier.hidden_photos)) ? dossier.hidden_photos : [];
+  const [hiddenPhotos, setHiddenPhotos] = React.useState(_initHidden);
+  function persistHiddenPhotos(list) {
+    setHiddenPhotos(list);
+    try {
+      const tk = localStorage.getItem('ocre_token') || '';
+      fetch('/api/clients.php?action=update', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk},
+        body: JSON.stringify({id: dossierId, hidden_photos: list})}).catch(() => {});
+    } catch (_) {}
+  }
   const refetchTimerRef = React.useRef(null);
   const token = () => localStorage.getItem('ocre_token') || '';
 
@@ -14738,12 +14750,20 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
         showPrice={showPrice} setShowPrice={setShowPrice}
         showAddress={showAddress} setShowAddress={setShowAddress}
         showIdentity={showIdentity} setShowIdentity={setShowIdentity}
+        onPhotosClick={() => setPhotosSheetOpen(true)}
         onShare={() => setShareOpen(true)}/>
       {currencyPickerOpen && (
         <CurrencyPickerSheet
           current={currency}
           onSelect={(c) => { setCurrency(c); setCurrencyPickerOpen(false); }}
           onClose={() => setCurrencyPickerOpen(false)}/>
+      )}
+      {photosSheetOpen && (
+        <PhotosSheet
+          dossier={dossier || {id: dossierId}}
+          hiddenPhotos={hiddenPhotos}
+          onChange={persistHiddenPhotos}
+          onClose={() => setPhotosSheetOpen(false)}/>
       )}
       {shareOpen && (
         <PdfShareModal
@@ -14754,6 +14774,75 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
           onClose={() => setShareOpen(false)}
           showToast={showToast}/>
       )}
+    </div>
+  );
+}
+
+// M/2026/05/05/3 — M-Photos-Bouton : bottom sheet selection des photos a masquer dans le PDF partage.
+function PhotosSheet({dossier, hiddenPhotos, onChange, onClose}) {
+  const photos = (() => {
+    const u = dossier && dossier.photos_uuids;
+    if (!u) return [];
+    if (typeof u === 'string') { try { return JSON.parse(u) || []; } catch (_) { return []; } }
+    return Array.isArray(u) ? u : [];
+  })();
+  const [hidden, setHidden] = React.useState(() => Array.isArray(hiddenPhotos) ? [...hiddenPhotos] : []);
+  function toggle(uuid) {
+    setHidden(h => h.includes(uuid) ? h.filter(x => x !== uuid) : [...h, uuid]);
+  }
+  function valider() { onChange && onChange(hidden); onClose && onClose(); }
+  const total = photos.length;
+  const selected = total - hidden.length;
+  const photoUrl = (uuid) => '/api/photo_serve.php?uuid=' + encodeURIComponent(uuid) + '&size=thumb';
+  return (
+    <div onClick={onClose} data-testid="photos-sheet" style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:9000, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
+      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:520, marginLeft:'auto', marginRight:'auto', background:'#fff', borderTopLeftRadius:16, borderTopRightRadius:16,
+            padding:'18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px)', boxShadow:'0 -4px 18px rgba(0,0,0,.12)', maxHeight:'85vh', display:'flex', flexDirection:'column'}}>
+        <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:6}}>
+          <div>
+            <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:20, fontWeight:700, color:'#2D2018'}}>Selection des photos</div>
+            <div style={{fontSize:11, color:'#8B7F6E', marginTop:2}}>Toutes cochees par defaut. Tape pour masquer.</div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Fermer" style={{width:32, height:32, borderRadius:'50%', border:'1px solid #E5E0D8', background:'#fff', color:'#1A1714', cursor:'pointer', fontSize:16, fontFamily:'inherit'}}>×</button>
+        </div>
+        <div style={{flex:1, overflowY:'auto', marginTop:10, marginBottom:10}}>
+          {total === 0 ? (
+            <div style={{textAlign:'center', padding:'40px 20px', color:'#8B7F6E', fontSize:13}}>Aucune photo dans ce dossier.</div>
+          ) : (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:6}}>
+              {photos.map((uuid, idx) => {
+                const isHidden = hidden.includes(uuid);
+                const isSelected = !isHidden;
+                return (
+                  <div key={uuid} onClick={() => toggle(uuid)} data-photo-idx={idx} data-photo-selected={isSelected ? '1' : '0'}
+                    style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden', cursor:'pointer',
+                            border: '2px solid ' + (isSelected ? 'var(--pill-bg, #7A5132)' : 'transparent'),
+                            background:'#F4EEE6'}}>
+                    <img src={photoUrl(uuid)} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+                    <div style={{position:'absolute', top:6, right:6, width:18, height:18, borderRadius:'50%',
+                                  background: isSelected ? '#7A5132' : '#fff',
+                                  border: isSelected ? 'none' : '1.5px solid #E5DCC9',
+                                  display:'flex', alignItems:'center', justifyContent:'center'}}>
+                      {isSelected && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div style={{borderTop:'1px solid #F0E8D8', paddingTop:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10}}>
+          <div style={{fontSize:12, color: selected === 0 ? '#C04B20' : '#8B7F6E', fontWeight:600}}>
+            {total === 0 ? '0 photo' : (selected + ' / ' + total + ' photo' + (total > 1 ? 's' : '') + ' selectionnee' + (selected > 1 ? 's' : ''))}
+            {total > 0 && selected === 0 && <span style={{display:'block', fontSize:10, fontWeight:500, marginTop:2}}>Au moins 1 photo doit etre selectionnee</span>}
+          </div>
+          <div style={{display:'flex', gap:8}}>
+            <button type="button" onClick={onClose} style={{padding:'8px 14px', borderRadius:100, border:'1px solid #E5E0D8', background:'#F0EBE2', color:'#1A1714', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+            <button type="button" onClick={valider} disabled={total > 0 && selected === 0}
+              style={{padding:'8px 16px', borderRadius:100, border:'none', background: (total > 0 && selected === 0) ? '#C9B79A' : '#7A5132', color:'#fff', fontSize:13, fontWeight:600, cursor: (total > 0 && selected === 0) ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>Valider</button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -14793,16 +14882,16 @@ function CurrencyPickerSheet({current, onSelect, onClose}) {
 // Note : sur viewer public shared.html, les 4 slots sont Budget/Photos/Lieu/Contact (tab nav).
 // Adaptation contextuelle : les 2 vues partagent layout + design tokens, mais semantique des 4
 // boutons centraux differe (toggle vs scroll-to). Validable Philippe.
-function PdfBottomBar({onBack, currency, onCurrencyClick, showPrice, setShowPrice, showAddress, setShowAddress, showIdentity, setShowIdentity, onShare}) {
+function PdfBottomBar({onBack, currency, onCurrencyClick, showPrice, setShowPrice, showAddress, setShowAddress, showIdentity, setShowIdentity, onPhotosClick, onShare}) {
   // M/2026/05/05/2 — M-Bottombar-Pill-Fix : aucun fond permanent sur les 4 boutons centraux.
-  // L etat off des 3 toggles reste lisible via le slash overlay rouge (pas de active permanent).
-  // Devise affiche le label de devise courante (EUR/MAD/...) sans active permanent.
+  // M/2026/05/05/3 — M-Photos-Bouton : ajout 5e bouton Photos avant Partager. Action ouvre PhotosSheet.
   const items = [
     { key:'back', icon: BB_ICONS.BACK, label:'Retour', onClick: onBack, separatorAfter: true, title:'Retour' },
     { key:'currency', currencyLabel: currency || 'EUR', label:'Devise', onClick: onCurrencyClick, title:'Choisir la devise' },
     { key:'price', icon: BB_ICONS.EYE, label:'Prix', onClick: () => setShowPrice(v => !v), slash: !showPrice, title: showPrice ? 'Masquer le prix' : 'Afficher le prix' },
     { key:'address', icon: BB_ICONS.PIN, label:'Adresse', onClick: () => setShowAddress(v => !v), slash: !showAddress, title: showAddress ? "Masquer l'adresse" : "Afficher l'adresse" },
-    { key:'identity', icon: BB_ICONS.USER, label:'Identite', onClick: () => setShowIdentity(v => !v), slash: !showIdentity, separatorAfter: true, title: showIdentity ? "Masquer l'identite" : "Afficher l'identite" },
+    { key:'identity', icon: BB_ICONS.USER, label:'Identite', onClick: () => setShowIdentity(v => !v), slash: !showIdentity, title: showIdentity ? "Masquer l'identite" : "Afficher l'identite" },
+    { key:'photos', icon: BB_ICONS.IMAGE, label:'Photos', onClick: onPhotosClick, separatorAfter: true, title:'Selection des photos' },
     { key:'share', icon: BB_ICONS.SHARE, label:'Partager', onClick: onShare, accent:'gold', title:'Partager' },
   ];
   return <OcrePill items={items} layout="fixed"/>;
