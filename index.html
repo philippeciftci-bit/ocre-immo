@@ -135,7 +135,35 @@
   --ocre-brand:#8B5E3C;
   --ocre-bg-soft:#FBF1E4;
   --ocre-bg-ultralight:#FDF8F0;
+  /* M/2026/05/04/32 — BottomBar design tokens (SSOT pour toutes les BottomBar du site). */
+  --ocre-bb-bg:#7A5132;
+  --ocre-bb-fg:#F4EDDC;
+  --ocre-bb-fg-dim:rgba(244,237,220,0.88);
+  --ocre-bb-radius:24px;
+  --ocre-bb-shadow:0 4px 16px rgba(45,32,24,0.20);
+  --ocre-bb-padding-x:8px;
+  --ocre-bb-padding-y:8px;
+  --ocre-bb-icon-size:22px;
+  --ocre-bb-icon-stroke:1.7;
+  --ocre-bb-label-size:10px;
+  --ocre-bb-label-weight:500;
+  --ocre-bb-label-mt:3px;
+  --ocre-bb-accent-gold:#FFD89A;
+  --ocre-bb-accent-rose:#F4A89A;
+  --ocre-bb-bottom-offset:calc(8px + env(safe-area-inset-bottom, 0px));
+  --ocre-bb-side-margin:12px;
+  --ocre-bb-max-width:360px;
 }
+.ocre-bb-wrap{position:fixed;left:0;right:0;bottom:0;padding:0 var(--ocre-bb-side-margin) var(--ocre-bb-bottom-offset);display:flex;justify-content:center;pointer-events:none;z-index:50}
+.ocre-bb-pill{pointer-events:auto;background:var(--ocre-bb-bg);color:var(--ocre-bb-fg);border-radius:var(--ocre-bb-radius);box-shadow:var(--ocre-bb-shadow);padding:var(--ocre-bb-padding-y) var(--ocre-bb-padding-x);display:flex;align-items:center;justify-content:space-around;width:100%;max-width:var(--ocre-bb-max-width)}
+.ocre-bb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;background:none;border:none;color:var(--ocre-bb-fg);cursor:pointer;padding:4px 4px;font-family:inherit;flex:1;min-width:0}
+.ocre-bb-btn[disabled]{opacity:0.5;cursor:not-allowed}
+.ocre-bb-icon{width:var(--ocre-bb-icon-size);height:var(--ocre-bb-icon-size);stroke:currentColor;stroke-width:var(--ocre-bb-icon-stroke);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.ocre-bb-label{font-size:var(--ocre-bb-label-size);font-weight:var(--ocre-bb-label-weight);letter-spacing:0.02em;margin-top:var(--ocre-bb-label-mt);color:var(--ocre-bb-fg-dim)}
+.ocre-bb-btn--accent-gold{color:var(--ocre-bb-accent-gold)}
+.ocre-bb-btn--accent-gold .ocre-bb-label{color:var(--ocre-bb-accent-gold);opacity:1}
+.ocre-bb-btn--accent-rose{color:var(--ocre-bb-accent-rose)}
+.ocre-bb-btn--accent-rose .ocre-bb-label{color:var(--ocre-bb-accent-rose);opacity:1}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden;overscroll-behavior:none}
 @keyframes ocreSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
@@ -19489,6 +19517,46 @@ function ProfilSelectorBar({activeProfil, onChange}) {
 // toutes saisissables des l ouverture du nouveau dossier (le selecteur profil reste une aide
 // UX, pas un gate). Tronc commun en mode draft via fallback profil "Acheteur" cote rendu.
 
+// M/2026/05/04/32 — M32 SSOT BottomBar : OcreBottomBar + BB_ICONS. Une seule source de design.
+// Modifier les variables CSS --ocre-bb-* dans :root suffit pour repercuter sur toutes les pages.
+const BB_ICONS = {
+  SAVE: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>',
+  SCAN: '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="11.5" cy="11.5" r="3"/><path d="m13.6 13.6 2.4 2.4"/>',
+  PDF: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h1.5a1.5 1.5 0 0 1 0 3H9zM14 13h2v3M14 13v3"/>',
+  ARCHIVE: '<rect x="2" y="4" width="20" height="5" rx="2"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
+  TRASH: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+  DOWNLOAD: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+  MIC: '<rect x="9" y="2" width="6" height="13" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>',
+  GRID: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
+  PLUS: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  BACK: '<polyline points="15 18 9 12 15 6"/>',
+  LINK: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.71"/>',
+  CAMERA: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  IMAGE: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+  FOLDER: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  EUR: '<path d="M16 4a8 8 0 1 0 0 16"/><line x1="3" y1="9" x2="13" y2="9"/><line x1="3" y1="14" x2="11" y2="14"/>',
+  EYE: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  PIN: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  USER: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  SHARE: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+};
+function OcreBottomBar({buttons}) {
+  return (
+    <div className="ocre-bb-wrap">
+      <div className="ocre-bb-pill">
+        {(buttons || []).map(b => (
+          <button key={b.key} type="button" disabled={!!b.disabled}
+            className={'ocre-bb-btn' + (b.accent ? ' ocre-bb-btn--accent-' + b.accent : '')}
+            onClick={b.onClick} title={b.title || b.label || ''}>
+            <svg className="ocre-bb-icon" viewBox="0 0 24 24" dangerouslySetInnerHTML={{__html: b.icon}}/>
+            {b.label && <span className="ocre-bb-label">{b.label}</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // M/2026/05/04/28 — M28 PhotosGalleryV28 : upload multi + webp serveur + grid + lightbox + suppression.
 // M/2026/05/04/30 — M30 drag-drop reorder photos (HTML5 desktop + touch mobile long-press 350ms).
 // Wrap dans flag M137_GALLERY_ENRICHED. Reorder wrap dans flag M30_PHOTOS_REORDER.
@@ -21466,6 +21534,20 @@ function FormView(props) {
               if (!window.confirm('Supprimer définitivement ce dossier ?')) return;
               handleDelete(editing.id);
             };
+            // M/2026/05/04/32 — flag M32_BOTTOMBAR_UNIFORM : ON = nouveau composant OcreBottomBar (SSOT design tokens).
+            const _flagM32 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M32_BOTTOMBAR_UNIFORM'))
+              ? !!window.__ocreFlags.M32_BOTTOMBAR_UNIFORM : true;
+            if (_flagM32) {
+              return (
+                <OcreBottomBar buttons={[
+                  { key:'save', icon: BB_ICONS.SAVE, label:'Enregistrer', onClick:onSave, accent:'gold', title:'Enregistrer le dossier' },
+                  { key:'scan', icon: BB_ICONS.SCAN, label:'Scanner', onClick:onScan, title:'Scan internet' },
+                  { key:'pdf', icon: BB_ICONS.PDF, label:'PDF', onClick:onPdf, title:'Aperçu PDF' },
+                  { key:'archive', icon: BB_ICONS.ARCHIVE, label: d.archived ? 'Désarch.' : 'Archiver', onClick:onArchive, title: d.archived ? 'Désarchiver' : 'Archiver' },
+                  { key:'delete', icon: BB_ICONS.TRASH, label:'Supprimer', onClick:onTrash, accent:'rose', title:'Supprimer définitivement' },
+                ]}/>
+              );
+            }
             // M/2026/05/04/31 — flag M31_BOTTOMBAR_PILL : ON = pill flottant N°10 (#7A5132 capsule), OFF = ancien rectangle M27/M29.
             const _flagM31 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M31_BOTTOMBAR_PILL'))
               ? !!window.__ocreFlags.M31_BOTTOMBAR_PILL : true;
