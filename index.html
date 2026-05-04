@@ -219,6 +219,42 @@
 .ocre-bb-btn--accent-gold .ocre-bb-label{color:var(--ocre-bb-accent-gold);opacity:1}
 .ocre-bb-btn--accent-rose{color:var(--ocre-bb-accent-rose)}
 .ocre-bb-btn--accent-rose .ocre-bb-label{color:var(--ocre-bb-accent-rose);opacity:1}
+/* M/2026/05/04/40 — Profile color tokens (SSOT couleurs profil client). Valeurs extraites
+ * du code existant (constantes JS PROFILS + PROFILS_TINT lignes 435-443). Modifier UNE
+ * variable ici = changement propage partout (cartes liste, page cible, fiche dossier, filtres). */
+:root{
+  --profile-acheteur-fg:#8B5E3C;     --profile-acheteur-bg:#F4ECE3;     --profile-acheteur-accent:#A87434;
+  --profile-vendeur-fg:#1E3A5F;      --profile-vendeur-bg:#E8EBEF;      --profile-vendeur-accent:#3E5C82;
+  --profile-investisseur-fg:#6B4E8B; --profile-investisseur-bg:#EFE9F2; --profile-investisseur-accent:#8B6FAA;
+  --profile-bailleur-fg:#2D6B3F;     --profile-bailleur-bg:#E8EFE9;     --profile-bailleur-accent:#4F8B5C;
+  --profile-locataire-fg:#8B6B1E;    --profile-locataire-bg:#F4EFE5;    --profile-locataire-accent:#A8842F;
+  --profile-curieux-fg:#757575;      --profile-curieux-bg:#F0F0F0;      --profile-curieux-accent:#8E8E8E;
+}
+.profile-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#fff;font-family:inherit}
+.profile-badge--acheteur{background:var(--profile-acheteur-fg)}
+.profile-badge--vendeur{background:var(--profile-vendeur-fg)}
+.profile-badge--investisseur{background:var(--profile-investisseur-fg)}
+.profile-badge--bailleur{background:var(--profile-bailleur-fg)}
+.profile-badge--locataire{background:var(--profile-locataire-fg)}
+.profile-badge--curieux{background:var(--profile-curieux-fg)}
+.profile-card-header--acheteur{background:var(--profile-acheteur-bg)}
+.profile-card-header--vendeur{background:var(--profile-vendeur-bg)}
+.profile-card-header--investisseur{background:var(--profile-investisseur-bg)}
+.profile-card-header--bailleur{background:var(--profile-bailleur-bg)}
+.profile-card-header--locataire{background:var(--profile-locataire-bg)}
+.profile-card-header--curieux{background:var(--profile-curieux-bg)}
+.profile-chip--acheteur{background:var(--profile-acheteur-bg);color:var(--profile-acheteur-fg);border:1px solid var(--profile-acheteur-accent)}
+.profile-chip--acheteur.active{background:var(--profile-acheteur-fg);color:#fff}
+.profile-chip--vendeur{background:var(--profile-vendeur-bg);color:var(--profile-vendeur-fg);border:1px solid var(--profile-vendeur-accent)}
+.profile-chip--vendeur.active{background:var(--profile-vendeur-fg);color:#fff}
+.profile-chip--investisseur{background:var(--profile-investisseur-bg);color:var(--profile-investisseur-fg);border:1px solid var(--profile-investisseur-accent)}
+.profile-chip--investisseur.active{background:var(--profile-investisseur-fg);color:#fff}
+.profile-chip--bailleur{background:var(--profile-bailleur-bg);color:var(--profile-bailleur-fg);border:1px solid var(--profile-bailleur-accent)}
+.profile-chip--bailleur.active{background:var(--profile-bailleur-fg);color:#fff}
+.profile-chip--locataire{background:var(--profile-locataire-bg);color:var(--profile-locataire-fg);border:1px solid var(--profile-locataire-accent)}
+.profile-chip--locataire.active{background:var(--profile-locataire-fg);color:#fff}
+.profile-chip--curieux{background:var(--profile-curieux-bg);color:var(--profile-curieux-fg);border:1px solid var(--profile-curieux-accent)}
+.profile-chip--curieux.active{background:var(--profile-curieux-fg);color:#fff}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden;overscroll-behavior:none}
 @keyframes ocreSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
@@ -448,6 +484,23 @@ const PROFILS_LABEL = {
   Acheteur:'ACHETEUR', Vendeur:'VENDEUR', Investisseur:'INVESTISSEUR',
   Bailleur:'BAILLEUR', Locataire:'LOCATAIRE', Curieux:'CURIEUX'
 };
+// M/2026/05/04/40 — Helper SSOT couleurs profil. Utilise les CSS variables --profile-*-bg/fg/accent.
+// Permet de migrer progressivement les sites existants (ClientRow, MatchView, FormView, filtres).
+function profileSlug(p) { return String(p || '').toLowerCase(); }
+function profileClass(p, prefix) {
+  const role = profileSlug(p);
+  const valid = ['acheteur','vendeur','investisseur','bailleur','locataire','curieux'];
+  return valid.includes(role) ? (prefix + ' ' + prefix + '--' + role) : prefix;
+}
+function ProfileBadge({profile, label, className}) {
+  const role = profileSlug(profile);
+  if (!PROFILS_LABEL[profile] && !PROFILS_LABEL[role.charAt(0).toUpperCase() + role.slice(1)]) return null;
+  return (
+    <span className={'profile-badge profile-badge--' + role + (className ? ' ' + className : '')}>
+      {label || PROFILS_LABEL[profile] || PROFILS_LABEL[role.charAt(0).toUpperCase() + role.slice(1)] || ''}
+    </span>
+  );
+}
 // V18.26 — titres sections adaptés par profil. Section II varie (ciblé/en vente/à louer/recherché).
 // Section III : "Budget & rendement" pour Investisseur, "Budget & financement" pour les autres.
 // Section IV : "Suivi & notes" pour tous (renommé depuis "Infos complémentaires").
