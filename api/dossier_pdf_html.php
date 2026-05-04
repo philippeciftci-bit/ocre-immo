@@ -180,9 +180,22 @@ if ($devise === 'MAD' || $devise === 'د.م.') { $devise = 'MAD'; }
 if ($devise === '$')  { $devise = 'USD'; }
 if ($devise === '£')  { $devise = 'GBP'; }
 if ($devise === 'د.إ') { $devise = 'AED'; }
+$_nativeDevise = $devise;
 // M/2026/05/04/13 — override devise via GET ?currency=XXX (preview agent live picker).
 $_devOverride = preg_replace('/[^A-Z]/', '', strtoupper((string)($_GET['currency'] ?? '')));
 if (in_array($_devOverride, ['EUR','MAD','USD','GBP','AED','CHF'], true)) { $devise = $_devOverride; }
+// M/2026/05/04/15 — conversion FX EUR pivot. Taux alignes sur RATES_OFFICIAL_V5 (index.html ligne 7298).
+$_FX_VS_EUR = ['EUR' => 1.00, 'MAD' => 10.84, 'USD' => 1.08, 'GBP' => 0.857, 'AED' => 3.97, 'CHF' => 0.93];
+function _ocre_fx_convert($amount, $from, $to, $rates) {
+    if ($from === $to || !is_numeric($amount)) return $amount;
+    if (!isset($rates[$from]) || !isset($rates[$to])) return $amount;
+    $eur = ((float)$amount) / $rates[$from];
+    return $eur * $rates[$to];
+}
+if ($prix !== null && is_numeric($prix) && $devise !== $_nativeDevise) {
+    $prix = _ocre_fx_convert((float)$prix, $_nativeDevise, $devise, $_FX_VS_EUR);
+    $prix = (int) round($prix);
+}
 $honoraires = $data['honoraires_inclus'] ?? true;
 // M/2026/04/29/38 — toggle Prix / Sur demande embedded URL ?mode=price|demand.
 $shareMode = ($_GET['mode'] ?? 'price') === 'demand' ? 'demand' : 'price';
