@@ -170,25 +170,58 @@
   --ocre-brand:#8B5E3C;
   --ocre-bg-soft:#FBF1E4;
   --ocre-bg-ultralight:#FDF8F0;
-  /* M/2026/05/04/32 — BottomBar design tokens (SSOT pour toutes les BottomBar du site). */
-  /* M/2026/05/04/21 — M-Uniform-Bottombar : radius 100px (capsule), padding 8/6, shadow ocre brief. */
-  --ocre-bb-bg:#7A5132;
-  --ocre-bb-fg:#F4EDDC;
-  --ocre-bb-fg-dim:rgba(244,237,220,0.88);
-  --ocre-bb-radius:100px;
-  --ocre-bb-shadow:0 4px 14px -4px rgba(122,81,50,0.4);
+  /* M/2026/05/05/1 — M-Bottombar-Pill-V2 : tokens design SSOT centralises. AUCUNE valeur en dur. */
+  --pill-bg:#7A5132;
+  --pill-shadow:0 4px 14px -4px rgba(122,81,50,0.4);
+  --pill-padding:8px 10px 10px;
+  --pill-border-radius:32px;
+  --pill-gap:4px;
+  --pill-btn-min-width:52px;
+  --pill-btn-radius:18px;
+  --pill-btn-padding:6px 4px 4px;
+  --pill-btn-color-inactive:rgba(255,255,255,0.92);
+  --pill-btn-color-active:#FFFFFF;
+  --pill-btn-bg-active:rgba(255,255,255,0.14);
+  --pill-icon-size:18px;
+  --pill-icon-stroke:1.7;
+  --pill-label-size:9px;
+  --pill-label-weight:500;
+  --pill-label-letter-spacing:0.3px;
+  --pill-label-color:rgba(255,255,255,0.85);
+  --pill-label-mt:3px;
+  --pill-sep-width:1px;
+  --pill-sep-height:30px;
+  --pill-sep-color:rgba(255,255,255,0.25);
+  --pill-sep-margin:0 4px;
+  --pill-transition:all .15s;
+  --pill-accent-gold:#FFD89A;
+  --pill-accent-rose:#F4A89A;
+  --pill-bottom-offset:calc(10px + env(safe-area-inset-bottom, 0px));
+  /* Compat retro temporaire — anciennes BottomBars consomment encore ces vars (M-Uniform layout 3-zone) */
+  --ocre-bb-bg:var(--pill-bg);
+  --ocre-bb-fg:var(--pill-btn-color-inactive);
+  --ocre-bb-fg-dim:var(--pill-label-color);
+  --ocre-bb-radius:var(--pill-border-radius);
+  --ocre-bb-shadow:var(--pill-shadow);
   --ocre-bb-padding-x:6px;
   --ocre-bb-padding-y:8px;
-  --ocre-bb-icon-size:22px;
-  --ocre-bb-icon-stroke:1.7;
-  --ocre-bb-label-size:10px;
-  --ocre-bb-label-weight:500;
-  --ocre-bb-label-mt:3px;
-  --ocre-bb-accent-gold:#FFD89A;
-  --ocre-bb-accent-rose:#F4A89A;
-  --ocre-bb-bottom-offset:calc(8px + env(safe-area-inset-bottom, 0px));
+  --ocre-bb-icon-size:var(--pill-icon-size);
+  --ocre-bb-icon-stroke:var(--pill-icon-stroke);
+  --ocre-bb-label-size:var(--pill-label-size);
+  --ocre-bb-label-weight:var(--pill-label-weight);
+  --ocre-bb-label-mt:var(--pill-label-mt);
+  --ocre-bb-accent-gold:var(--pill-accent-gold);
+  --ocre-bb-accent-rose:var(--pill-accent-rose);
+  --ocre-bb-bottom-offset:var(--pill-bottom-offset);
   --ocre-bb-side-margin:12px;
   --ocre-bb-max-width:360px;
+}
+@media (max-width:768px){
+  :root{
+    --pill-btn-min-width:44px;
+    --pill-icon-size:16px;
+    --pill-gap:2px;
+  }
 }
 .ocre-bb-wrap{position:fixed;left:0;right:0;bottom:0;padding:0 var(--ocre-bb-side-margin) var(--ocre-bb-bottom-offset);display:flex;justify-content:center;pointer-events:none;z-index:50}
 .ocre-bb-pill{pointer-events:auto;background:var(--ocre-bb-bg);color:var(--ocre-bb-fg);border-radius:var(--ocre-bb-radius);box-shadow:var(--ocre-bb-shadow);padding:var(--ocre-bb-padding-y) var(--ocre-bb-padding-x);display:flex;align-items:center;justify-content:space-around;width:100%;max-width:var(--ocre-bb-max-width)}
@@ -200,26 +233,26 @@
 .ocre-bb-btn--accent-gold .ocre-bb-label{color:var(--ocre-bb-accent-gold);opacity:1}
 .ocre-bb-btn--accent-rose{color:var(--ocre-bb-accent-rose)}
 .ocre-bb-btn--accent-rose .ocre-bb-label{color:var(--ocre-bb-accent-rose);opacity:1}
-/* M/2026/05/04/21 — M-Uniform-Bottombar : layout 3-zone (back side / cluster pill / share side). */
-.ocre-bb-layout{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) 14px;background:#fff;border-top:1px solid #E8DDC9}
-.ocre-bb-side{display:inline-flex;align-items:center;justify-content:center;height:44px;border-radius:14px;border:1px solid #E5E0D8;background:#F4EAD8;color:#1A1714;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .15s;text-decoration:none;padding:0 14px;gap:6px}
-.ocre-bb-side:hover{background:#EBDFC8}
-.ocre-bb-side:disabled{opacity:.5;cursor:not-allowed}
-.ocre-bb-side--share{background:var(--ocre-bb-bg);color:#fff;border-color:var(--ocre-bb-bg);box-shadow:var(--ocre-bb-shadow)}
-.ocre-bb-side--share:hover{background:#693f24}
-.ocre-bb-cluster{display:inline-flex;align-items:center;gap:4px;background:var(--ocre-bb-bg);padding:8px 6px;border-radius:100px;box-shadow:var(--ocre-bb-shadow)}
-.ocre-bb-cluster-btn{position:relative;width:36px;height:36px;border-radius:50%;border:none;background:transparent;color:rgba(255,255,255,0.85);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;padding:0;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.3px}
-.ocre-bb-cluster-btn:hover{color:#fff;background:rgba(255,255,255,0.10)}
-.ocre-bb-cluster-btn--active{color:#fff;background:rgba(255,255,255,0.18)}
-.ocre-bb-cluster-btn svg{width:18px;height:18px;display:block}
-.ocre-bb-cluster-btn .ocre-bb-slash{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-@media (max-width:540px){
-  .ocre-bb-cluster{gap:2px;padding:6px 4px}
-  .ocre-bb-cluster-btn{width:32px;height:32px}
-  .ocre-bb-cluster-btn svg{width:16px;height:16px}
-  .ocre-bb-side{padding:0 10px;font-size:12px}
-  .ocre-bb-side--share .ocre-bb-side-label{display:none}
-}
+/* M/2026/05/05/1 — M-Bottombar-Pill-V2 : pill universel SSOT (Retour + actions + Partager dans 1 pill). */
+.pill-wrap{display:flex;justify-content:center;align-items:center;padding:8px 14px var(--pill-bottom-offset);pointer-events:none}
+.pill-wrap > *{pointer-events:auto}
+.pill-wrap--inline{padding:0;pointer-events:auto}
+.pill-wrap--fixed{position:fixed;left:0;right:0;bottom:0;z-index:50;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,#fff 60%)}
+.pill{display:inline-flex;align-items:center;gap:var(--pill-gap);background:var(--pill-bg);padding:var(--pill-padding);border-radius:var(--pill-border-radius);box-shadow:var(--pill-shadow);max-width:100%;overflow:hidden}
+.pill-btn{position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:var(--pill-btn-min-width);padding:var(--pill-btn-padding);background:transparent;border:none;border-radius:var(--pill-btn-radius);color:var(--pill-btn-color-inactive);cursor:pointer;font-family:inherit;font-size:var(--pill-label-size);transition:var(--pill-transition);gap:1px}
+.pill-btn:hover{color:var(--pill-btn-color-active);background:rgba(255,255,255,0.08)}
+.pill-btn--active{color:var(--pill-btn-color-active);background:var(--pill-btn-bg-active)}
+.pill-btn[disabled]{opacity:.5;cursor:not-allowed}
+.pill-btn svg{width:var(--pill-icon-size);height:var(--pill-icon-size);display:block;stroke:currentColor;stroke-width:var(--pill-icon-stroke);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.pill-btn .pill-label{font-size:var(--pill-label-size);font-weight:var(--pill-label-weight);letter-spacing:var(--pill-label-letter-spacing);color:var(--pill-label-color);margin-top:var(--pill-label-mt);text-align:center;white-space:nowrap}
+.pill-btn--active .pill-label{color:var(--pill-btn-color-active)}
+.pill-btn--accent-gold{color:var(--pill-accent-gold)}
+.pill-btn--accent-gold .pill-label{color:var(--pill-accent-gold)}
+.pill-btn--accent-rose{color:var(--pill-accent-rose)}
+.pill-btn--accent-rose .pill-label{color:var(--pill-accent-rose)}
+.pill-btn .pill-slash{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.pill-btn .pill-currency{font-size:11px;font-weight:700;letter-spacing:.3px;line-height:1}
+.pill-sep{width:var(--pill-sep-width);height:var(--pill-sep-height);background:var(--pill-sep-color);margin:var(--pill-sep-margin);flex-shrink:0}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden;overscroll-behavior:none}
 @keyframes ocreSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
@@ -14755,49 +14788,21 @@ function CurrencyPickerSheet({current, onSelect, onClose}) {
   );
 }
 
-// M/2026/05/04/13 — barre PDF avec 4 toggles : devise picker + 3 toggles Prix/Adresse/Identite.
-// M/2026/05/04/21 — M-Uniform-Bottombar : refactor vers layout 3-zone SSOT (back side / cluster pill 4 icones / share side).
+// M/2026/05/05/1 — M-Bottombar-Pill-V2 : pill unique integrant Retour + 4 actions PDF + Partager.
+// 4 actions PDF (preview interne) : Devise (currency picker) / Prix / Adresse / Identite (3 toggles).
+// Note : sur viewer public shared.html, les 4 slots sont Budget/Photos/Lieu/Contact (tab nav).
+// Adaptation contextuelle : les 2 vues partagent layout + design tokens, mais semantique des 4
+// boutons centraux differe (toggle vs scroll-to). Validable Philippe.
 function PdfBottomBar({onBack, currency, onCurrencyClick, showPrice, setShowPrice, showAddress, setShowAddress, showIdentity, setShowIdentity, onShare}) {
-  function ClusterBtn({active, onClick, title, label, iconKey, isCurrency}) {
-    const cls = 'ocre-bb-cluster-btn' + (active || isCurrency ? ' ocre-bb-cluster-btn--active' : '');
-    return (
-      <button type="button" onClick={onClick} title={title} aria-pressed={!active}
-        className={cls} data-bb-action={iconKey || (isCurrency ? 'currency' : '')}>
-        {isCurrency ? (
-          <span style={{lineHeight:1}}>{label || 'EUR'}</span>
-        ) : (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
-               dangerouslySetInnerHTML={{__html: BB_ICONS[iconKey]}}/>
-        )}
-        {!isCurrency && !active && (
-          <svg className="ocre-bb-slash" viewBox="0 0 24 24">
-            <line x1="4" y1="20" x2="20" y2="4" stroke="#F4A89A" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        )}
-      </button>
-    );
-  }
-  return (
-    <div className="ocre-bb-layout" data-testid="pdf-bottombar" style={{position:'sticky', bottom:0, zIndex:50}}>
-      <button type="button" onClick={onBack} title="Retour" className="ocre-bb-side" data-testid="bb-back">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
-        <span className="ocre-bb-side-label">Retour</span>
-      </button>
-      <div className="ocre-bb-cluster" data-testid="bb-pill">
-        <ClusterBtn isCurrency active onClick={onCurrencyClick} title="Choisir la devise" label={currency || 'EUR'}/>
-        <ClusterBtn active={showPrice} onClick={() => setShowPrice(v => !v)} title={showPrice ? 'Masquer le prix' : 'Afficher le prix'} iconKey="EYE"/>
-        <ClusterBtn active={showAddress} onClick={() => setShowAddress(v => !v)} title={showAddress ? "Masquer l'adresse" : "Afficher l'adresse"} iconKey="PIN"/>
-        <ClusterBtn active={showIdentity} onClick={() => setShowIdentity(v => !v)} title={showIdentity ? "Masquer l'identite" : "Afficher l'identite"} iconKey="USER"/>
-      </div>
-      <button type="button" onClick={onShare} title="Partager" className="ocre-bb-side ocre-bb-side--share" data-testid="bb-share">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"
-             dangerouslySetInnerHTML={{__html: BB_ICONS.SHARE}}/>
-        <span className="ocre-bb-side-label">Partager</span>
-      </button>
-    </div>
-  );
+  const items = [
+    { key:'back', icon: BB_ICONS.BACK, label:'Retour', onClick: onBack, separatorAfter: true, title:'Retour' },
+    { key:'currency', currencyLabel: currency || 'EUR', label:'Devise', onClick: onCurrencyClick, active: true, title:'Choisir la devise' },
+    { key:'price', icon: BB_ICONS.EYE, label:'Prix', onClick: () => setShowPrice(v => !v), active: showPrice, slash: !showPrice, title: showPrice ? 'Masquer le prix' : 'Afficher le prix' },
+    { key:'address', icon: BB_ICONS.PIN, label:'Adresse', onClick: () => setShowAddress(v => !v), active: showAddress, slash: !showAddress, title: showAddress ? "Masquer l'adresse" : "Afficher l'adresse" },
+    { key:'identity', icon: BB_ICONS.USER, label:'Identite', onClick: () => setShowIdentity(v => !v), active: showIdentity, slash: !showIdentity, separatorAfter: true, title: showIdentity ? "Masquer l'identite" : "Afficher l'identite" },
+    { key:'share', icon: BB_ICONS.SHARE, label:'Partager', onClick: onShare, accent:'gold', title:'Partager' },
+  ];
+  return <OcrePill items={items} layout="fixed"/>;
 }
 
 // M/2026/04/30/8 — modale Partager centree ecran (pas bottom-sheet) avec recap des 3 choix.
@@ -17187,9 +17192,9 @@ function ListView(props) {
         if (_flagM32) {
           return (
             <OcreBottomBar buttons={[
-              { key:'down', icon: BB_ICONS.DOWNLOAD, label:'Téléch.' + (stagedCount > 0 ? ' (' + stagedCount + ')' : ''), onClick: () => props.openDownloads && props.openDownloads(), title:'Téléchargements' },
+              { key:'down', icon: BB_ICONS.DOWNLOAD, label:'Telech.' + (stagedCount > 0 ? ' (' + stagedCount + ')' : ''), onClick: () => props.openDownloads && props.openDownloads(), title:'Telechargements' },
               { key:'audio', icon: BB_ICONS.MIC, label:'Audio', onClick: () => props.openDictation && props.openDictation(), title:'Dicter un dossier' },
-              { key:'grid', icon: BB_ICONS.GRID, label:'Tableau', onClick: () => props.openSheet && props.openSheet(), title:'Vue tableau' },
+              { key:'grid', icon: BB_ICONS.GRID, label:'Tableau', onClick: () => props.openSheet && props.openSheet(), separatorAfter: true, title:'Vue tableau' },
               { key:'new', icon: BB_ICONS.PLUS, label:'Nouveau', onClick: openNew, accent:'gold', title:'Saisir un dossier' },
             ]}/>
           );
@@ -19144,29 +19149,20 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
           </div>
         )}
 
-        {/* V18.35 — zone import compactée : 4 icônes simples inline (+ / 📷 / 🖼 / 📁), pas
-            de texte. Les 4 déclenchent le même input file — iOS/Android affichent leur action
-            sheet natif au tap. Les émojis restent pour les 3 sources (pas de SVG équivalents). */}
+        {/* M/2026/05/05/1 — M-Bottombar-Pill-V2 : pill V2 inline integre dans le flux page,
+            remplace ancienne rangee emojis ➕📷🖼📁. NON-fixed pour ne pas etre masque par
+            le clavier iPad. SUPPRESSION franche des 4 cards individuelles. */}
         {!result && !loading && (
-          <div style={{marginBottom:14}}>
+          <div style={{marginBottom:14, display:'flex', justifyContent:'center'}}>
             <input ref={refFile} type="file" accept="image/*,application/pdf" style={{display:'none'}}
               onChange={e => handlePicked(e.target.files && e.target.files[0])}/>
-            <div style={{background:'#FDFAF4', border:'1px solid #E0CDAE', borderRadius:10, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'center', gap:20}}>
-              <button type="button" onClick={() => refFile.current && refFile.current.click()}
-                title="Ajouter"
-                style={{background:'none', border:'none', cursor:'pointer', padding:4, color:'#5C3B1E', display:'inline-flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit'}}>
-                <IconPlus size={26}/>
-              </button>
-              <button type="button" onClick={() => refFile.current && refFile.current.click()}
-                title="Photo" aria-label="Photo"
-                style={{background:'none', border:'none', cursor:'pointer', padding:4, fontSize:26, lineHeight:1, color:'#5C3B1E', fontFamily:'inherit'}}>📷</button>
-              <button type="button" onClick={() => refFile.current && refFile.current.click()}
-                title="Galerie" aria-label="Galerie"
-                style={{background:'none', border:'none', cursor:'pointer', padding:4, fontSize:26, lineHeight:1, color:'#5C3B1E', fontFamily:'inherit'}}>🖼</button>
-              <button type="button" onClick={() => refFile.current && refFile.current.click()}
-                title="Fichier" aria-label="Fichier"
-                style={{background:'none', border:'none', cursor:'pointer', padding:4, fontSize:26, lineHeight:1, color:'#5C3B1E', fontFamily:'inherit'}}>📁</button>
-            </div>
+            <OcrePill layout="inline" items={[
+              { key:'back', icon: BB_ICONS.BACK, label:'Retour', onClick: onBack, separatorAfter: true, title:'Retour' },
+              { key:'url', icon: BB_ICONS.LINK, label:'URL', onClick: () => { try { urlRef.current && urlRef.current.focus(); } catch (_) {} }, title:'Coller une URL' },
+              { key:'photo', icon: BB_ICONS.CAMERA, label:'Photo', onClick: () => refFile.current && refFile.current.click(), title:'Photo' },
+              { key:'gallery', icon: BB_ICONS.IMAGE, label:'Galerie', onClick: () => refFile.current && refFile.current.click(), title:'Galerie' },
+              { key:'folder', icon: BB_ICONS.FOLDER, label:'Dossier', onClick: () => refFile.current && refFile.current.click(), title:'Fichier' },
+            ]}/>
           </div>
         )}
 
@@ -19267,21 +19263,9 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
           ))
         )}
       </div>
-      {/* M/2026/05/04/33 — M33 BottomBar Telechargements via OcreBottomBar (SSOT M32). */}
-      {(() => {
-        const _flagM32 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M32_BOTTOMBAR_UNIFORM'))
-          ? !!window.__ocreFlags.M32_BOTTOMBAR_UNIFORM : true;
-        if (!_flagM32) return null;
-        return (
-          <OcreBottomBar buttons={[
-            { key:'back', icon: BB_ICONS.BACK, label:'Retour', onClick: onBack, title:'Retour' },
-            { key:'url', icon: BB_ICONS.LINK, label:'URL', onClick: () => { try { urlRef.current && urlRef.current.focus(); } catch (_) {} }, title:'Coller une URL' },
-            { key:'photo', icon: BB_ICONS.CAMERA, label:'Photo', onClick: () => refFile.current && refFile.current.click(), title:'Photo' },
-            { key:'gallery', icon: BB_ICONS.IMAGE, label:'Galerie', onClick: () => refFile.current && refFile.current.click(), title:'Galerie' },
-            { key:'folder', icon: BB_ICONS.FOLDER, label:'Dossier', onClick: () => refFile.current && refFile.current.click(), title:'Fichier' },
-          ]}/>
-        );
-      })()}
+      {/* M/2026/05/05/1 — M-Bottombar-Pill-V2 : OcreBottomBar fixed en bas SUPPRIMEE.
+          Doublon avec le pill inline integre dans la zone import (ci-dessus). Suppression franche
+          pour ne plus etre masque par le clavier iPad. */}
       {toast && <Toast msg={toast}/>}
     </div>
   );
@@ -19560,21 +19544,44 @@ const BB_ICONS = {
   USER: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   SHARE: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
 };
-function OcreBottomBar({buttons}) {
+// M/2026/05/05/1 — OcrePill : composant pill universel V2. Tokens centralises --pill-*.
+// items = [{ key, icon, label, onClick, active, accent, disabled, separatorAfter, currencyLabel, slash, title }]
+// separatorAfter:true insere un .pill-sep apres ce bouton.
+// currencyLabel:'EUR' affiche le texte au lieu de l icone (pour devise picker).
+// slash:true affiche overlay barre rouge (pour toggle off).
+function OcrePill({items, layout}) {
+  const wrapCls = 'pill-wrap' + (layout === 'inline' ? ' pill-wrap--inline' : layout === 'fixed' ? ' pill-wrap--fixed' : '');
   return (
-    <div className="ocre-bb-wrap">
-      <div className="ocre-bb-pill">
-        {(buttons || []).map(b => (
-          <button key={b.key} type="button" disabled={!!b.disabled}
-            className={'ocre-bb-btn' + (b.accent ? ' ocre-bb-btn--accent-' + b.accent : '')}
-            onClick={b.onClick} title={b.title || b.label || ''}>
-            <svg className="ocre-bb-icon" viewBox="0 0 24 24" dangerouslySetInnerHTML={{__html: b.icon}}/>
-            {b.label && <span className="ocre-bb-label">{b.label}</span>}
-          </button>
+    <div className={wrapCls}>
+      <div className="pill" data-testid="pill">
+        {(items || []).map((b, idx) => (
+          <React.Fragment key={b.key || idx}>
+            <button type="button" disabled={!!b.disabled} title={b.title || b.label || ''} aria-label={b.label || b.title || ''}
+              data-pill-key={b.key}
+              className={'pill-btn' + (b.active ? ' pill-btn--active' : '') + (b.accent ? ' pill-btn--accent-' + b.accent : '')}
+              onClick={b.onClick}>
+              {b.currencyLabel ? (
+                <span className="pill-currency">{b.currencyLabel}</span>
+              ) : (
+                <svg viewBox="0 0 24 24" dangerouslySetInnerHTML={{__html: b.icon}}/>
+              )}
+              {b.label && <span className="pill-label">{b.label}</span>}
+              {b.slash && (
+                <svg className="pill-slash" viewBox="0 0 24 24">
+                  <line x1="4" y1="20" x2="20" y2="4" stroke="#F4A89A" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              )}
+            </button>
+            {b.separatorAfter && <div className="pill-sep" aria-hidden="true"/>}
+          </React.Fragment>
         ))}
       </div>
     </div>
   );
+}
+// Backward-compat wrapper : OcreBottomBar({buttons}) -> OcrePill({items, layout:'fixed'}).
+function OcreBottomBar({buttons}) {
+  return <OcrePill items={buttons} layout="fixed"/>;
 }
 
 // M/2026/05/04/28 — M28 PhotosGalleryV28 : upload multi + webp serveur + grid + lightbox + suppression.
@@ -21554,17 +21561,18 @@ function FormView(props) {
               if (!window.confirm('Supprimer définitivement ce dossier ?')) return;
               handleDelete(editing.id);
             };
-            // M/2026/05/04/32 — flag M32_BOTTOMBAR_UNIFORM : ON = nouveau composant OcreBottomBar (SSOT design tokens).
+            // M/2026/05/04/32 — flag M32_BOTTOMBAR_UNIFORM : ON = pill V2 universel SSOT.
+            // M/2026/05/05/1 — M-Bottombar-Pill-V2 : Retour ajoute en 1er + separateur, bouton Save retire (auto-save M103/M129 deja actif).
             const _flagM32 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M32_BOTTOMBAR_UNIFORM'))
               ? !!window.__ocreFlags.M32_BOTTOMBAR_UNIFORM : true;
             if (_flagM32) {
               return (
                 <OcreBottomBar buttons={[
-                  { key:'save', icon: BB_ICONS.SAVE, label:'Enregistrer', onClick:onSave, accent:'gold', title:'Enregistrer le dossier' },
+                  { key:'back', icon: BB_ICONS.BACK, label:'Retour', onClick: () => backToList && backToList(), separatorAfter: true, title:'Retour a la liste' },
                   { key:'scan', icon: BB_ICONS.SCAN, label:'Scanner', onClick:onScan, title:'Scan internet' },
-                  { key:'pdf', icon: BB_ICONS.PDF, label:'PDF', onClick:onPdf, title:'Aperçu PDF' },
-                  { key:'archive', icon: BB_ICONS.ARCHIVE, label: d.archived ? 'Désarch.' : 'Archiver', onClick:onArchive, title: d.archived ? 'Désarchiver' : 'Archiver' },
-                  { key:'delete', icon: BB_ICONS.TRASH, label:'Supprimer', onClick:onTrash, accent:'rose', title:'Supprimer définitivement' },
+                  { key:'pdf', icon: BB_ICONS.PDF, label:'PDF', onClick:onPdf, title:'Apercu PDF' },
+                  { key:'archive', icon: BB_ICONS.ARCHIVE, label: d.archived ? 'Desarch.' : 'Archiver', onClick:onArchive, title: d.archived ? 'Desarchiver' : 'Archiver' },
+                  { key:'delete', icon: BB_ICONS.TRASH, label:'Supprimer', onClick:onTrash, accent:'rose', title:'Supprimer definitivement' },
                 ]}/>
               );
             }

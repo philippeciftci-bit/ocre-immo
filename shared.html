@@ -35,26 +35,51 @@ h2{font-family:'Cormorant Garamond',serif;font-size:18px;color:#8B5E3C;margin-bo
 .row,.row .v,.badge,.chip,h1,h2{overflow:visible}
 .row .v,h1,h2{padding-right:4px}
 
-/* M/2026/05/04/20 — BottomBar pill ocre cluster 4 icones. */
-.bb-spacer{height:88px}
-.bb-wrap{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;padding:10px 14px calc(10px + env(safe-area-inset-bottom)) 14px;background:linear-gradient(180deg,rgba(244,238,230,0) 0%,#F4EEE6 32%);z-index:80;pointer-events:none}
-.bb-wrap > *{pointer-events:auto}
-.bb-side{display:inline-flex;align-items:center;justify-content:center;height:44px;border-radius:14px;border:1px solid #E5E0D8;background:#F4EAD8;color:#1A1714;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .15s;text-decoration:none;padding:0 14px;gap:6px}
-.bb-side:hover{background:#EBDFC8}
-.bb-side.bb-share{background:#7A5132;color:#fff;border-color:#7A5132;box-shadow:0 4px 14px -4px rgba(122,81,50,0.4)}
-.bb-side.bb-share:hover{background:#693f24}
-.bb-pill{display:inline-flex;align-items:center;gap:4px;background:#7A5132;padding:8px 6px;border-radius:100px;box-shadow:0 4px 14px -4px rgba(122,81,50,0.4)}
-.bb-pill button{width:36px;height:36px;border-radius:50%;border:none;background:transparent;color:rgba(255,255,255,0.85);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;padding:0}
-.bb-pill button:hover{color:#fff;background:rgba(255,255,255,0.10)}
-.bb-pill button.active{color:#fff;background:rgba(255,255,255,0.18)}
-.bb-pill svg{width:18px;height:18px;display:block}
-@media (max-width:540px){
-  .bb-pill{gap:2px;padding:6px 4px}
-  .bb-pill button{width:32px;height:32px}
-  .bb-pill svg{width:16px;height:16px}
-  .bb-side{padding:0 10px;font-size:12px}
-  .bb-side .bb-share-label{display:none}
+/* M/2026/05/05/1 — M-Bottombar-Pill-V2 : tokens design SSOT centralises (memes vars que index.html). */
+:root{
+  --pill-bg:#7A5132;
+  --pill-shadow:0 4px 14px -4px rgba(122,81,50,0.4);
+  --pill-padding:8px 10px 10px;
+  --pill-border-radius:32px;
+  --pill-gap:4px;
+  --pill-btn-min-width:52px;
+  --pill-btn-radius:18px;
+  --pill-btn-padding:6px 4px 4px;
+  --pill-btn-color-inactive:rgba(255,255,255,0.92);
+  --pill-btn-color-active:#FFFFFF;
+  --pill-btn-bg-active:rgba(255,255,255,0.14);
+  --pill-icon-size:18px;
+  --pill-icon-stroke:1.7;
+  --pill-label-size:9px;
+  --pill-label-weight:500;
+  --pill-label-letter-spacing:0.3px;
+  --pill-label-color:rgba(255,255,255,0.85);
+  --pill-label-mt:3px;
+  --pill-sep-width:1px;
+  --pill-sep-height:30px;
+  --pill-sep-color:rgba(255,255,255,0.25);
+  --pill-sep-margin:0 4px;
+  --pill-transition:all .15s;
+  --pill-bottom-offset:calc(10px + env(safe-area-inset-bottom, 0px));
 }
+@media (max-width:768px){
+  :root{
+    --pill-btn-min-width:44px;
+    --pill-icon-size:16px;
+    --pill-gap:2px;
+  }
+}
+.bb-spacer{height:88px}
+.pill-wrap{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:center;padding:8px 14px var(--pill-bottom-offset);background:linear-gradient(180deg,rgba(244,238,230,0) 0%,#F4EEE6 60%);z-index:80;pointer-events:none}
+.pill-wrap > *{pointer-events:auto}
+.pill{display:inline-flex;align-items:center;gap:var(--pill-gap);background:var(--pill-bg);padding:var(--pill-padding);border-radius:var(--pill-border-radius);box-shadow:var(--pill-shadow);max-width:100%;overflow:hidden}
+.pill-btn{position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:var(--pill-btn-min-width);padding:var(--pill-btn-padding);background:transparent;border:none;border-radius:var(--pill-btn-radius);color:var(--pill-btn-color-inactive);cursor:pointer;font-family:inherit;font-size:var(--pill-label-size);transition:var(--pill-transition);gap:1px}
+.pill-btn:hover{color:var(--pill-btn-color-active);background:rgba(255,255,255,0.08)}
+.pill-btn.active{color:var(--pill-btn-color-active);background:var(--pill-btn-bg-active)}
+.pill-btn svg{width:var(--pill-icon-size);height:var(--pill-icon-size);display:block;stroke:currentColor;stroke-width:var(--pill-icon-stroke);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.pill-btn .pill-label{font-size:var(--pill-label-size);font-weight:var(--pill-label-weight);letter-spacing:var(--pill-label-letter-spacing);color:var(--pill-label-color);margin-top:var(--pill-label-mt);text-align:center;white-space:nowrap}
+.pill-btn.active .pill-label{color:var(--pill-btn-color-active)}
+.pill-sep{width:var(--pill-sep-width);height:var(--pill-sep-height);background:var(--pill-sep-color);margin:var(--pill-sep-margin);flex-shrink:0}
 </style>
 </head>
 <body>
@@ -364,26 +389,18 @@ function render(data) {
   renderBottomBar();
 }
 
-// M/2026/05/04/20 — BottomBar pill ocre : ← retour | pill 4 icones (€/œil/pin/personne) | Partager.
-// 4 icones = tab navigation entre sections (Budget / Photos / Bien / Contact). Active state via IntersectionObserver.
+// M/2026/05/05/1 — M-Bottombar-Pill-V2 : pill UNIQUE [Retour | sep | Budget · Photos · Lieu · Contact | sep | Partager].
+// 6 boutons, 2 separateurs. Tab navigation vers sections via IntersectionObserver. Tokens --pill-* SSOT.
 function renderBottomBar() {
-  // M/2026/05/04/21 — SVG strictement aligne sur BB_ICONS (index.html M32) pour cohérence cross-vue.
-  const _SVG_ATTR = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+  const _SVG = 'viewBox="0 0 24 24"';
   const ICONS = {
-    eur: '<svg ' + _SVG_ATTR + '><path d="M16 4a8 8 0 1 0 0 16"/><line x1="3" y1="9" x2="13" y2="9"/><line x1="3" y1="14" x2="11" y2="14"/></svg>',
-    eye: '<svg ' + _SVG_ATTR + '><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
-    pin: '<svg ' + _SVG_ATTR + '><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
-    person: '<svg ' + _SVG_ATTR + '><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-    arrow: '<svg ' + _SVG_ATTR + '><polyline points="15 18 9 12 15 6"/></svg>',
-    share: '<svg ' + _SVG_ATTR + '><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>',
+    back: '<svg ' + _SVG + '><polyline points="15 18 9 12 15 6"/></svg>',
+    eur: '<svg ' + _SVG + '><path d="M16 4a8 8 0 1 0 0 16"/><line x1="3" y1="9" x2="13" y2="9"/><line x1="3" y1="14" x2="11" y2="14"/></svg>',
+    eye: '<svg ' + _SVG + '><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+    pin: '<svg ' + _SVG + '><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    person: '<svg ' + _SVG + '><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    share: '<svg ' + _SVG + '><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>',
   };
-  const TABS = [
-    {id:'eur', target:'h2-budget', label:'Budget'},
-    {id:'eye', target:'h2-photos', label:'Photos'},
-    {id:'pin', target:'h2-bien', label:'Bien'},
-    {id:'person', target:'h2-contact', label:'Contact'},
-  ];
-
   // Tag les sections h2 pour scroll
   const h2s = document.querySelectorAll('.container h2');
   h2s.forEach(h => {
@@ -394,51 +411,50 @@ function renderBottomBar() {
     else if (t.startsWith('le contact')) h.id = 'h2-contact';
   });
 
-  const wrap = e('div', {class:'bb-wrap', 'data-testid':'shared-bottombar'});
-  const back = e('button', {class:'bb-side', 'aria-label':'Retour', 'data-testid':'bb-back', html:ICONS.arrow + '<span>Retour</span>'});
-  back.onclick = () => { if (history.length > 1) history.back(); else location.href = 'https://app.ocre.immo'; };
-
-  const pill = e('div', {class:'bb-pill', 'data-testid':'bb-pill'});
-  const tabBtns = {};
-  TABS.forEach(t => {
-    const b = e('button', {'aria-label':t.label, 'data-tab':t.id, html:ICONS[t.id]});
-    b.onclick = () => {
-      const tgt = document.getElementById(t.target);
+  // Items du pill : Retour | sep | 4 sections | sep | Partager
+  const items = [
+    {key:'back', label:'Retour', icon:ICONS.back, onClick: () => { if (history.length > 1) history.back(); else location.href = 'https://app.ocre.immo'; }, separatorAfter:true},
+    {key:'eur', label:'Budget', icon:ICONS.eur, target:'h2-budget'},
+    {key:'eye', label:'Photos', icon:ICONS.eye, target:'h2-photos'},
+    {key:'pin', label:'Lieu', icon:ICONS.pin, target:'h2-bien'},
+    {key:'person', label:'Contact', icon:ICONS.person, target:'h2-contact', separatorAfter:true},
+    {key:'share', label:'Partager', icon:ICONS.share, onClick: async () => {
+      const url = location.href;
+      if (navigator.share) { try { await navigator.share({title:document.title, url}); } catch (_) {} }
+      else if (navigator.clipboard) { try { await navigator.clipboard.writeText(url); } catch (_) {} }
+    }},
+  ];
+  const wrap = e('div', {class:'pill-wrap', 'data-testid':'shared-bottombar'});
+  const pill = e('div', {class:'pill', 'data-testid':'pill'});
+  const tabRefs = {};
+  items.forEach(it => {
+    const btn = e('button', {class:'pill-btn', 'data-pill-key':it.key, 'aria-label':it.label, html: it.icon + '<span class="pill-label">' + it.label + '</span>'});
+    btn.onclick = it.onClick || (() => {
+      const tgt = document.getElementById(it.target);
       if (tgt) tgt.scrollIntoView({behavior:'smooth', block:'start'});
-    };
-    pill.appendChild(b);
-    tabBtns[t.target] = b;
-  });
-
-  const share = e('button', {class:'bb-side bb-share', 'aria-label':'Partager', 'data-testid':'bb-share', html:ICONS.share + '<span class="bb-share-label">Partager</span>'});
-  share.onclick = async () => {
-    const url = location.href;
-    if (navigator.share) {
-      try { await navigator.share({title:document.title, url}); } catch (_) {}
-    } else if (navigator.clipboard) {
-      try { await navigator.clipboard.writeText(url); share.querySelector('.bb-share-label') && (share.querySelector('.bb-share-label').textContent = 'Copié'); setTimeout(() => { const l = share.querySelector('.bb-share-label'); if (l) l.textContent = 'Partager'; }, 1500); } catch (_) {}
+    });
+    pill.appendChild(btn);
+    if (it.target) tabRefs[it.target] = btn;
+    if (it.separatorAfter) {
+      const sep = e('div', {class:'pill-sep', 'aria-hidden':'true'});
+      pill.appendChild(sep);
     }
-  };
-
-  wrap.appendChild(back);
+  });
   wrap.appendChild(pill);
-  wrap.appendChild(share);
   document.body.appendChild(wrap);
 
-  // Active state via IntersectionObserver — section visible = onglet actif
-  const targets = TABS.map(t => document.getElementById(t.target)).filter(Boolean);
+  // Active state via IntersectionObserver pour les 4 sections
+  const targets = ['h2-budget','h2-photos','h2-bien','h2-contact'].map(id => document.getElementById(id)).filter(Boolean);
   if (targets.length && 'IntersectionObserver' in window) {
     const setActive = (id) => {
-      pill.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+      Object.keys(tabRefs).forEach(k => tabRefs[k].classList.toggle('active', k === id));
     };
-    const tabByTarget = {h2_budget:'eur', h2_photos:'eye', h2_bien:'pin', h2_contact:'person'};
-    const map = {'h2-budget':'eur', 'h2-photos':'eye', 'h2-bien':'pin', 'h2-contact':'person'};
     const io = new IntersectionObserver((entries) => {
       const visible = entries.filter(en => en.isIntersecting).sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (visible) setActive(map[visible.target.id]);
+      if (visible) setActive(visible.target.id);
     }, {rootMargin:'-20% 0px -60% 0px', threshold:[0, 0.25, 0.5, 1]});
     targets.forEach(t => io.observe(t));
-    setActive(map[targets[0].id]);
+    setActive(targets[0].id);
   }
 }
 
