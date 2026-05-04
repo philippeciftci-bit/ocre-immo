@@ -11165,7 +11165,7 @@ function App() {
     // M/2026/04/30/8 — passe profil dossier (vendeur/acheteur/...) pour libelle dynamique modale partage.
     const _pdfDossier = clients.find(c => c.id === pdfDossierId);
     const _pdfProfil = _pdfDossier ? (_pdfDossier.projet || _pdfDossier.profil_type || '') : '';
-    return <DossierPdfView dossierId={pdfDossierId} dossierProfil={_pdfProfil} dossier={findClientById ? findClientById(pdfDossierId) : null} onBack={() => setView('list')} showToast={showToast}/>;
+    return <DossierPdfView dossierId={pdfDossierId} dossierProfil={_pdfProfil} dossier={_pdfDossier || null} onBack={() => setView('list')} showToast={showToast}/>;
   }
   if (view === 'dictation') {
     return <DictationView onBack={() => setView('list')}
@@ -11308,7 +11308,7 @@ function App() {
   {shareMenuTarget && (
     <ShareMenu
       dossierId={shareMenuTarget.dossierId}
-      dossier={shareMenuTarget.dossier || (findClientById ? findClientById(shareMenuTarget.dossierId) : null)}
+      dossier={shareMenuTarget.dossier || (clients ? clients.find(c => c.id === shareMenuTarget.dossierId) : null)}
       currency={shareMenuTarget.currency || 'EUR'}
       showPrice={shareMenuTarget.showPrice !== false}
       showAddress={shareMenuTarget.showAddress !== false}
