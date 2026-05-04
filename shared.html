@@ -34,6 +34,34 @@ h2{font-family:'Cormorant Garamond',serif;font-size:18px;color:#8B5E3C;margin-bo
 /* M/2026/04/30/57 — fix universel symbole devise tronque (Safari iOS Cormorant side-bearing negatif). */
 .row,.row .v,.badge,.chip,h1,h2{overflow:visible}
 .row .v,h1,h2{padding-right:4px}
+/* M/2026/05/04/37 — BottomBar uniforme (design tokens identiques a index.html SSOT M32). */
+:root{
+  --ocre-bb-bg:#7A5132;
+  --ocre-bb-fg:#F4EDDC;
+  --ocre-bb-fg-dim:rgba(244,237,220,0.88);
+  --ocre-bb-radius:24px;
+  --ocre-bb-shadow:0 4px 16px rgba(45,32,24,0.20);
+  --ocre-bb-padding-x:8px;
+  --ocre-bb-padding-y:8px;
+  --ocre-bb-icon-size:22px;
+  --ocre-bb-label-size:10px;
+  --ocre-bb-label-mt:3px;
+  --ocre-bb-accent-gold:#FFD89A;
+  --ocre-bb-accent-rose:#F4A89A;
+  --ocre-bb-bottom-offset:calc(8px + env(safe-area-inset-bottom, 0px));
+  --ocre-bb-side-margin:12px;
+  --ocre-bb-max-width:360px;
+}
+.ocre-bb-wrap{position:fixed;left:0;right:0;bottom:0;padding:0 var(--ocre-bb-side-margin) var(--ocre-bb-bottom-offset);display:flex;justify-content:center;pointer-events:none;z-index:50}
+.ocre-bb-pill{pointer-events:auto;background:var(--ocre-bb-bg);color:var(--ocre-bb-fg);border-radius:var(--ocre-bb-radius);box-shadow:var(--ocre-bb-shadow);padding:var(--ocre-bb-padding-y) var(--ocre-bb-padding-x);display:flex;align-items:center;justify-content:space-around;width:100%;max-width:var(--ocre-bb-max-width)}
+.ocre-bb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;background:none;border:none;color:var(--ocre-bb-fg);cursor:pointer;padding:4px 4px;font-family:inherit;flex:1;min-width:0}
+.ocre-bb-icon{width:var(--ocre-bb-icon-size);height:var(--ocre-bb-icon-size);stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.ocre-bb-label{font-size:var(--ocre-bb-label-size);font-weight:500;letter-spacing:0.02em;margin-top:var(--ocre-bb-label-mt);color:var(--ocre-bb-fg-dim)}
+.ocre-bb-btn--accent-gold{color:var(--ocre-bb-accent-gold)}
+.ocre-bb-btn--accent-gold .ocre-bb-label{color:var(--ocre-bb-accent-gold);opacity:1}
+.ocre-bb-btn--accent-rose{color:var(--ocre-bb-accent-rose)}
+.ocre-bb-btn--accent-rose .ocre-bb-label{color:var(--ocre-bb-accent-rose);opacity:1}
+body{padding-bottom:90px}
 </style>
 </head>
 <body>
@@ -341,6 +369,72 @@ function render(data) {
 }
 
 load();
+
+// M/2026/05/04/37 — Handlers BottomBar carnet partage (variante C1).
+function bbBack() { try { if (history.length > 1) history.back(); else window.close(); } catch (e) {} }
+function bbToggleCurrency() {
+  // Toggle visuel EUR/MAD du label (pas de logique conversion : la page affiche les montants tels que stockes).
+  var el = document.getElementById('bb-eur-label');
+  if (!el) return;
+  el.textContent = el.textContent === 'EUR' ? 'MAD' : 'EUR';
+}
+function bbToggleVisibility() {
+  // Toggle l'opacite des cards (mode focus-photos / lecture rapide).
+  document.querySelectorAll('.card').forEach(function(c) {
+    c.style.opacity = (c.style.opacity === '0.55') ? '1' : '0.55';
+  });
+}
+function bbScrollToBien() {
+  var els = document.querySelectorAll('h2');
+  for (var i = 0; i < els.length; i++) {
+    if (/le bien/i.test(els[i].textContent)) { els[i].scrollIntoView({behavior:'smooth', block:'start'}); return; }
+  }
+}
+function bbScrollToContact() {
+  var els = document.querySelectorAll('h2');
+  for (var i = 0; i < els.length; i++) {
+    if (/le contact/i.test(els[i].textContent)) { els[i].scrollIntoView({behavior:'smooth', block:'start'}); return; }
+  }
+}
+function bbShare() {
+  var url = location.href;
+  if (navigator.share) {
+    navigator.share({title: document.title, url: url}).catch(function() {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function() { alert('Lien copie : ' + url); }, function() { prompt('Copie le lien :', url); });
+  } else {
+    prompt('Copie le lien :', url);
+  }
+}
 </script>
+<!-- M/2026/05/04/37 — BottomBar uniforme C1 (Retour/EUR/Voir/Lieu/Profil/Partager). -->
+<div class="ocre-bb-wrap">
+  <div class="ocre-bb-pill">
+    <button class="ocre-bb-btn" type="button" onclick="bbBack()" title="Retour">
+      <svg class="ocre-bb-icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      <span class="ocre-bb-label">Retour</span>
+    </button>
+    <button class="ocre-bb-btn ocre-bb-btn--accent-gold" type="button" onclick="bbToggleCurrency()" title="Devise" id="bb-eur">
+      <svg class="ocre-bb-icon" viewBox="0 0 24 24"><path d="M16 4a8 8 0 1 0 0 16"/><line x1="3" y1="9" x2="13" y2="9"/><line x1="3" y1="14" x2="11" y2="14"/></svg>
+      <span class="ocre-bb-label" id="bb-eur-label">EUR</span>
+    </button>
+    <button class="ocre-bb-btn" type="button" onclick="bbToggleVisibility()" title="Voir / focus">
+      <svg class="ocre-bb-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="ocre-bb-label">Voir</span>
+    </button>
+    <button class="ocre-bb-btn" type="button" onclick="bbScrollToBien()" title="Le bien">
+      <svg class="ocre-bb-icon" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <span class="ocre-bb-label">Lieu</span>
+    </button>
+    <button class="ocre-bb-btn" type="button" onclick="bbScrollToContact()" title="Le contact">
+      <svg class="ocre-bb-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="ocre-bb-label">Profil</span>
+    </button>
+    <button class="ocre-bb-btn" type="button" onclick="bbShare()" title="Partager">
+      <svg class="ocre-bb-icon" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
+      <span class="ocre-bb-label">Partager</span>
+    </button>
+  </div>
+</div>
 </body>
 </html>
