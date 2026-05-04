@@ -227,7 +227,7 @@
   --profile-vendeur-fg:#1E3A5F;      --profile-vendeur-bg:#E8EBEF;      --profile-vendeur-accent:#3E5C82;
   --profile-investisseur-fg:#6B4E8B; --profile-investisseur-bg:#EFE9F2; --profile-investisseur-accent:#8B6FAA;
   --profile-bailleur-fg:#2D6B3F;     --profile-bailleur-bg:#E8EFE9;     --profile-bailleur-accent:#4F8B5C;
-  --profile-locataire-fg:#8B6B1E;    --profile-locataire-bg:#F4EFE5;    --profile-locataire-accent:#A8842F;
+  --profile-locataire-fg:#A86A5C;    --profile-locataire-bg:#F4E5DD;    --profile-locataire-accent:#A86A5C;
   --profile-curieux-fg:#757575;      --profile-curieux-bg:#F0F0F0;      --profile-curieux-accent:#8E8E8E;
 }
 .profile-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#fff;font-family:inherit}
@@ -480,12 +480,12 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
 const PROFILS_ORDER = ['Acheteur','Vendeur','Investisseur','Bailleur','Locataire','Curieux'];
 const PROFILS = {
   Acheteur:'#8B5E3C', Vendeur:'#1E3A5F', Investisseur:'#6B4E8B',
-  Bailleur:'#2D6B3F', Locataire:'#8B6B1E', Curieux:'#757575'
+  Bailleur:'#2D6B3F', Locataire:'#A86A5C', Curieux:'#757575'
 };
 // V18.15 — tint backgrounds ligne 1 ClientRow (12% opacity de la couleur profil).
 const PROFILS_TINT = {
   Acheteur:'#F4ECE3', Vendeur:'#E8EBEF', Investisseur:'#EFE9F2',
-  Bailleur:'#E8EFE9', Locataire:'#F4EFE5', Curieux:'#F0F0F0'
+  Bailleur:'#E8EFE9', Locataire:'#F4E5DD', Curieux:'#F0F0F0'
 };
 const BADGES = {Acheteur:'ACH', Vendeur:'VDR', Investisseur:'INV', Bailleur:'BAI', Locataire:'LOC', Curieux:'CUR'};
 // V26 — labels pleins (uppercase) pour remplacer les badges carrés ACH/VDR/INV/BAI/LOC/CUR
@@ -9093,7 +9093,7 @@ function DossierPicker({clients, value, onChange, placeholder = '(Aucun dossier)
     return [(c.prenom||''),(c.nom||''),c.societe_nom||''].filter(Boolean).join(' ').trim() || ('Dossier #' + c.id);
   }
   function profilColor(p) {
-    return ({Acheteur:'#8B5E3C', Vendeur:'#1E3A5F', Locataire:'#8B6B1E', Bailleur:'#2D6B3F', Investisseur:'#6B3D8B', Curieux:'#7A6B5C'})[p] || '#7A6B5C';
+    return ({Acheteur:'#8B5E3C', Vendeur:'#1E3A5F', Locataire:'#A86A5C', Bailleur:'#2D6B3F', Investisseur:'#6B3D8B', Curieux:'#7A6B5C'})[p] || '#7A6B5C';
   }
   const filtered = filterList(query);
   const sel = value;
@@ -19602,7 +19602,7 @@ function ProfilSelectorBar({activeProfil, onChange}) {
     {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
     {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
     {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
-    {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
+    {k:'Locataire', l:'Locataire', color:'#A86A5C'},
   ];
   // M/2026/05/01/20 — viewport tracking : mobile (<=480) / tablette (481-1024) / desktop (>1024).
   // Resize debounced 150ms. SSR-safe via typeof window check.
@@ -21120,7 +21120,7 @@ function FormView(props) {
               {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
               {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
               {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
-              {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
+              {k:'Locataire', l:'Locataire', color:'#A86A5C'},
             ].map(p => {
               const _selected = p.k === activeProfil;
               return (
@@ -21154,7 +21154,7 @@ function FormView(props) {
                    {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
                    {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
                    {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
-                   {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
+                   {k:'Locataire', l:'Locataire', color:'#A86A5C'},
                  ];
                  return (
                    <div style={{display:'flex', alignItems:'center', gap:6, flex:1, minWidth:0}}>
