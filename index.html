@@ -261,6 +261,11 @@ body{font-family:'DM Sans',sans-serif;background:#F0E8D8;color:#2A2018;overflow:
 ::-webkit-scrollbar{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+/* M/2026/05/05/26 — M-Toast-Animation-Fix : keyframe opacity-only pour Toast.
+   Le fadeIn classique inclut translateY(-6px) qui ECRASE le transform:translateX(-50%) inline du Toast
+   (centrage horizontal), creant un artefact visuel "le toast apparait decale puis se centre" percu par
+   Philippe comme un double toast. toastFadeIn ne touche que l opacity, le centrage reste statique. */
+@keyframes toastFadeIn{from{opacity:0}to{opacity:1}}
 @keyframes ocreBounce{0%,100%{transform:translateY(0);opacity:.7}50%{transform:translateY(-3px);opacity:1}}
 
 /* V17.4 UX v3 : densité mobile — labels, cartes, tuiles, chips. */
@@ -18142,7 +18147,7 @@ function Toast({msg}) {
                  color:'#fff', fontSize:14, fontWeight:600,
                  maxWidth:'min(90vw, 420px)',
                  textAlign:'center', whiteSpace:'normal',
-                 animation:'fadeIn .2s ease', zIndex:9999,
+                 animation:'toastFadeIn 180ms ease-out', zIndex:9999,
                  boxShadow:'0 4px 12px rgba(0, 0, 0, 0.08)'}}>{msg}</div>
   );
 }
