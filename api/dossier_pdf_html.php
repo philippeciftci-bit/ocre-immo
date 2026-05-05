@@ -402,16 +402,38 @@ header('Content-Type: text/html; charset=utf-8');
   .eye { font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 5px; text-transform: uppercase; color: var(--ocre-light); margin-bottom: 12px; }
   .agent-line { font-family: 'DM Sans', sans-serif; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--ocre-light); font-weight: 400; margin-top: 10px; }
 
-  .mosaic { display: grid; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4mm; height: 105mm; margin: 12mm 0 8mm; }
+  /* M/2026/05/05/17 — M-Photos-Mosaic-Adaptive : layouts dynamiques selon nb photos visibles. */
+  .mosaic, .mosaic-1, .mosaic-2, .mosaic-3, .mosaic-4 { display: grid; gap: 4mm; height: 105mm; margin: 12mm 0 8mm; }
+  .mosaic-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .mosaic-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+  .mosaic-3 { grid-template-columns: 60% 40%; grid-template-rows: 1fr 1fr; }
+  .mosaic-3 .m1 { grid-column: 1; grid-row: 1 / span 2; }
+  .mosaic-3 .m2 { grid-column: 2; grid-row: 1; }
+  .mosaic-3 .m3 { grid-column: 2; grid-row: 2; }
+  .mosaic-4 { grid-template-columns: 60% 40%; grid-template-rows: 1fr 1fr 1fr; }
+  .mosaic-4 .m1 { grid-column: 1; grid-row: 1 / span 3; }
+  .mosaic-4 .m2 { grid-column: 2; grid-row: 1; }
+  .mosaic-4 .m3 { grid-column: 2; grid-row: 2; }
+  .mosaic-4 .m4 { grid-column: 2; grid-row: 3; }
+  /* Layout 5 photos = layout actuel inchange (Philippe a valide). */
+  .mosaic { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
   .mosaic .m1 { grid-column: 1; grid-row: 1 / span 2; position: relative; }
   .mosaic .m2 { grid-column: 2; grid-row: 1; }
   .mosaic .m3 { grid-column: 3; grid-row: 1; }
   .mosaic .m4 { grid-column: 2; grid-row: 2; }
   .mosaic .m5 { grid-column: 3; grid-row: 2; }
-  .mosaic > div { background: var(--ocre-soft); overflow: hidden; position: relative; }
-  .mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .mosaic .ph-empty { display: flex; align-items: center; justify-content: center; color: var(--ocre-light); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
-  .mosaic .caption { position: absolute; bottom: 6px; left: 8px; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); font-weight: 500; }
+  .mosaic > div, .mosaic-1 > div, .mosaic-2 > div, .mosaic-3 > div, .mosaic-4 > div { background: var(--ocre-soft); overflow: hidden; position: relative; }
+  .mosaic img, .mosaic-1 img, .mosaic-2 img, .mosaic-3 img, .mosaic-4 img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mosaic .ph-empty, .mosaic-1 .ph-empty, .mosaic-2 .ph-empty, .mosaic-3 .ph-empty, .mosaic-4 .ph-empty { display: flex; align-items: center; justify-content: center; color: var(--ocre-light); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+  .mosaic .caption, .mosaic-1 .caption, .mosaic-2 .caption, .mosaic-3 .caption, .mosaic-4 .caption { position: absolute; bottom: 6px; left: 8px; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); font-weight: 500; }
+  /* M/2026/05/05/17 — section album : photos 6+ en grille de petites vignettes. */
+  .album { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 8mm; }
+  .album > div { aspect-ratio: 1 / 1; background: var(--ocre-soft); overflow: hidden; border-radius: 4px; }
+  .album img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  @media print {
+    .mosaic-1, .mosaic-2, .mosaic-3, .mosaic-4 { gap: 4mm; }
+    .album { grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+  }
 
   .cartouche { background: var(--bg); border-top: 0.5px solid var(--ocre); border-bottom: 0.5px solid var(--ocre); padding: 12mm 14mm; text-align: center; margin: 0 0 10mm; }
   .cartouche-title { font-family: 'Cormorant Garamond', serif; font-size: 26px; line-height: 1.2; color: var(--ink); font-weight: 400; margin-bottom: 6mm; }
@@ -546,33 +568,34 @@ header('Content-Type: text/html; charset=utf-8');
       <div class="agent-line"><?= h($agentName) ?><?php if ($agentTel): ?> · <?= h($agentTel) ?><?php endif; ?></div>
     </div>
 
-    <?php /* M/2026/05/05/16 — M-Photos-Modal-Adaptive : section mosaic cachee si 0 photo (toutes filtrees par hide_photos[]). */ ?>
-    <?php if (count($photos) > 0): ?>
-    <div class="mosaic">
-      <div class="m1">
-        <?php if ($photoMain): ?>
-          <img src="<?= h($photoMain) ?>" alt="">
-          <span class="caption">Photo principale</span>
-        <?php else: ?>
-          <div class="ph-empty">Photo principale</div>
-        <?php endif; ?>
-      </div>
-      <?php
-      $captions = ['Salon', 'Cuisine', 'Suite parentale', 'Terrasse'];
-      foreach ($photoSmall as $i => $p):
-        $cls = 'm' . ($i + 2);
-      ?>
+<?php /* M/2026/05/05/17 — M-Photos-Mosaic-Adaptive : layouts dynamiques selon nb photos visibles.
+       Captions ['Photo principale', 'Salon', 'Cuisine', 'Suite parentale', 'Terrasse'] mappees
+       dans l ORDRE des photos visibles (apres filtrage hide_photos[]), pas selon label original.
+       Photos 6+ = section album (grille 4 cols vignettes carrees, sans caption). */ ?>
+    <?php
+    $_mosaicCaptions = ['Photo principale', 'Salon', 'Cuisine', 'Suite parentale', 'Terrasse'];
+    $_mosaicTop = array_slice($photos, 0, 5);
+    $_albumExtra = array_slice($photos, 5, 25);
+    $_topCount = count($_mosaicTop);
+    $_mosaicCls = ['', 'mosaic-1', 'mosaic-2', 'mosaic-3', 'mosaic-4', 'mosaic'][$_topCount];
+    ?>
+    <?php if ($_topCount > 0): ?>
+    <div class="<?= $_mosaicCls ?>">
+      <?php foreach ($_mosaicTop as $i => $p): $cls = 'm' . ($i + 1); ?>
       <div class="<?= $cls ?>">
-        <?php if ($p): ?>
-          <img src="<?= h($p) ?>" alt="">
-          <span class="caption"><?= h($captions[$i]) ?></span>
-        <?php else: ?>
-          <div class="ph-empty"><?= h($captions[$i]) ?></div>
-        <?php endif; ?>
+        <img src="<?= h($p) ?>" alt="">
+        <span class="caption"><?= h($_mosaicCaptions[$i]) ?></span>
       </div>
       <?php endforeach; ?>
     </div>
-    <?php endif; /* /count($photos) > 0 */ ?>
+    <?php if (count($_albumExtra) > 0): ?>
+    <div class="album">
+      <?php foreach ($_albumExtra as $p): ?>
+      <div><img src="<?= h($p) ?>" alt=""></div>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+    <?php endif; /* /_topCount > 0 */ ?>
 
     <div class="cartouche">
       <div class="cartouche-title"><b><?= h($titreBien) ?></b></div>
