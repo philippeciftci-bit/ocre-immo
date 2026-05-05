@@ -15015,6 +15015,9 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
 
   // M/2026/05/05/52 — wire blocs editables apres injection HTML.
   // M/2026/05/05/56 — visuel rouge ostensible + lock zones non editables + mode preview propre.
+  // M/2026/05/05/57 — pastille oeil cliquable direct (toggle visible/invisible).
+  const OCRE_PDF_EYE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const OCRE_PDF_EYE_OFF_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
   React.useEffect(() => {
     if (!html || !previewRef.current) return undefined;
     const root = previewRef.current;
@@ -15088,28 +15091,56 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
           el.appendChild(lbl);
         }
       }
-      // Pastille rouge ⋮ permanente top-right.
+      // M/2026/05/05/57 — pastille oeil cliquable directement (plus de toolbar intermediaire).
+      // Etat VISIBLE : bg rouge DC2626 + icone eye lucide-style. Etat CACHE : bg gris 9CA3AF + icone eye-off.
       if (!el.querySelector(':scope > .ocre-pdf-dot')) {
+        const isVisible = el.getAttribute('data-pdf-hidden') !== '1';
         const dot = document.createElement('div');
         dot.className = 'ocre-pdf-dot';
         dot.setAttribute('data-pdf-dot', '1');
-        dot.style.cssText = 'position:absolute;top:-11px;right:8px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#DC2626;color:#fff;font-size:13px;font-weight:700;line-height:1;border-radius:99px;box-shadow:0 2px 6px rgba(220,38,38,.35);cursor:pointer;z-index:3;user-select:none;';
+        const bg = isVisible ? '#DC2626' : '#9CA3AF';
+        const sh = isVisible ? 'rgba(220,38,38,.35)' : 'rgba(156,163,175,.35)';
+        dot.style.cssText = 'position:absolute;top:-11px;right:8px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:' + bg + ';color:#fff;border-radius:99px;box-shadow:0 2px 6px ' + sh + ';cursor:pointer;z-index:3;user-select:none;transition:background 120ms, box-shadow 120ms;';
         dot.contentEditable = 'false';
-        dot.textContent = '⋮';
+        dot.innerHTML = isVisible ? OCRE_PDF_EYE_SVG : OCRE_PDF_EYE_OFF_SVG;
         el.appendChild(dot);
       }
     });
     // Delegation : un seul listener pour tous les clicks dans la preview.
     function onRootClick(e) {
-      const isDot = e.target.closest('[data-pdf-dot]');
+      const dotEl = e.target.closest('[data-pdf-dot]');
       const editableEl = e.target.closest('[data-editable]');
       const insideToolbar = e.target.closest('.ocre-pdf-toolbar');
       if (insideToolbar) return;
-      if (isDot && editableEl) {
+      // M/2026/05/05/57 — click pastille = toggle visible/invisible direct (plus de toolbar intermediaire).
+      if (dotEl && editableEl) {
         e.stopPropagation();
         const key = editableEl.getAttribute('data-editable');
-        if (openToolbarKey === key) { hideAllToolbars(); openToolbarKey = null; }
-        else { hideAllToolbars(); showToolbar(editableEl, key); openToolbarKey = key; }
+        const cur = editorBlocksRef.current[key] || {};
+        const wasVisible = cur.visible !== false;
+        setBlock(key, {visible: !wasVisible});
+        if (wasVisible) {
+          editableEl.setAttribute('data-pdf-hidden', '1');
+          editableEl.style.opacity = '0.35';
+          if (!editableEl.querySelector(':scope > .ocre-pdf-hidden-label')) {
+            const lbl = document.createElement('div');
+            lbl.className = 'ocre-pdf-hidden-label';
+            lbl.textContent = 'Masque sur le PDF final';
+            lbl.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7A5132;font-size:11px;font-weight:700;background:repeating-linear-gradient(45deg,rgba(184,137,90,0.06) 0 6px,rgba(184,137,90,0.12) 6px 12px);pointer-events:none;border-radius:4px;transition:opacity 180ms;';
+            editableEl.appendChild(lbl);
+          }
+          dotEl.style.background = '#9CA3AF';
+          dotEl.style.boxShadow = '0 2px 6px rgba(156,163,175,.35)';
+          dotEl.innerHTML = OCRE_PDF_EYE_OFF_SVG;
+        } else {
+          editableEl.removeAttribute('data-pdf-hidden');
+          editableEl.style.opacity = '1';
+          const lbl = editableEl.querySelector(':scope > .ocre-pdf-hidden-label');
+          if (lbl) lbl.remove();
+          dotEl.style.background = '#DC2626';
+          dotEl.style.boxShadow = '0 2px 6px rgba(220,38,38,.35)';
+          dotEl.innerHTML = OCRE_PDF_EYE_SVG;
+        }
         return;
       }
       if (editableEl) {
