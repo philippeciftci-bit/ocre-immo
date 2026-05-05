@@ -546,6 +546,8 @@ header('Content-Type: text/html; charset=utf-8');
       <div class="agent-line"><?= h($agentName) ?><?php if ($agentTel): ?> · <?= h($agentTel) ?><?php endif; ?></div>
     </div>
 
+    <?php /* M/2026/05/05/16 — M-Photos-Modal-Adaptive : section mosaic cachee si 0 photo (toutes filtrees par hide_photos[]). */ ?>
+    <?php if (count($photos) > 0): ?>
     <div class="mosaic">
       <div class="m1">
         <?php if ($photoMain): ?>
@@ -570,6 +572,7 @@ header('Content-Type: text/html; charset=utf-8');
       </div>
       <?php endforeach; ?>
     </div>
+    <?php endif; /* /count($photos) > 0 */ ?>
 
     <div class="cartouche">
       <div class="cartouche-title"><b><?= h($titreBien) ?></b></div>

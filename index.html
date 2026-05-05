@@ -14897,8 +14897,8 @@ function PhotosSheet({dossier, hiddenPhotos, onChange, onCancel, onConfirm, onCl
   const selected = total - hiddenList.length;
   const handleBackdropClick = () => { (onCancel || onClose) && (onCancel || onClose)(); };
   return (
-    <div onClick={handleBackdropClick} data-testid="photos-sheet" style={{position:'fixed', inset:0, background:'rgba(42,31,20,0.55)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'2.5vh 2.5vw'}}>
-      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:700, height:'95vh', maxHeight:'95vh', background:'#fff', borderRadius:22, boxShadow:'0 12px 40px rgba(42,31,20,0.35)', display:'flex', flexDirection:'column', overflow:'hidden'}}>
+    <div onClick={handleBackdropClick} data-testid="photos-sheet" style={{position:'fixed', inset:0, background:'rgba(42,31,20,0.55)', zIndex:9000, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
+      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:700, marginLeft:'auto', marginRight:'auto', maxHeight:'75vh', background:'#fff', borderRadius:'22px 22px 0 0', boxShadow:'0 -8px 30px rgba(42,31,20,0.30)', display:'flex', flexDirection:'column', overflow:'hidden'}}>
         {/* Header sticky */}
         <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, padding:'18px 20px 10px', borderBottom:'1px solid #F0E8D8', background:'#fff', flexShrink:0}}>
           <div>
@@ -14932,13 +14932,13 @@ function PhotosSheet({dossier, hiddenPhotos, onChange, onCancel, onConfirm, onCl
         </div>
         {/* Footer sticky */}
         <div style={{borderTop:'1px solid #F0E8D8', padding:'12px 20px calc(env(safe-area-inset-bottom, 0px) + 12px)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, background:'#fff', flexShrink:0}}>
-          <div style={{fontSize:12, color: selected === 0 ? '#C04B20' : '#8B7F6E', fontWeight:600}}>
+          {/* M/2026/05/05/16 — M-Photos-Modal-Adaptive : 0 photo autorise (compteur neutre, bouton Valider toujours actif). */}
+          <div style={{fontSize:12, color:'#8B7F6E', fontWeight:600}}>
             {total === 0 ? '0 photo' : (selected + ' / ' + total + ' photo' + (total > 1 ? 's' : '') + ' selectionnee' + (selected > 1 ? 's' : ''))}
-            {total > 0 && selected === 0 && <span style={{display:'block', fontSize:10, fontWeight:500, marginTop:2}}>Au moins 1 photo doit etre selectionnee</span>}
           </div>
           <div style={{display:'flex', gap:8}}>
             <button type="button" onClick={() => (onCancel || onClose)()} style={{padding:'9px 16px', borderRadius:100, border:'1px solid #E5E0D8', background:'#F0EBE2', color:'#1A1714', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
-            <button type="button" onClick={() => (onConfirm || onClose)()} disabled={total > 0 && selected === 0} style={{padding:'9px 18px', borderRadius:100, border:'none', background: (total > 0 && selected === 0) ? '#C9B79A' : '#7A5132', color:'#fff', fontSize:13, fontWeight:600, cursor: (total > 0 && selected === 0) ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>Valider</button>
+            <button type="button" onClick={() => (onConfirm || onClose)()} style={{padding:'9px 18px', borderRadius:100, border:'none', background:'#7A5132', color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Valider</button>
           </div>
         </div>
       </div>
