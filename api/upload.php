@@ -88,10 +88,16 @@ function purgeUnreferenced($dossier_id) {
             }
         }
     } catch (Throwable $e) { return ['purged' => [], 'error' => $e->getMessage()]; }
-    // Si bien.photos est COMPLETEMENT vide (0 entree) ET il y a des fichiers fs : ne PAS purger
-    // (cas d un dossier nouvellement charge ou dont le JSON n a pas encore ete sync).
-    // On ne purge que si JSON contient au moins 1 photo (signal positif d un client live).
-    if (count($referenced) === 0) return ['purged' => [], 'note' => 'json_empty_skip_purge'];
+    // Safety : si bien.photos est vide ET fs n est PAS sature (< LIMIT), skip (cas dossier vide ou upload en cours).
+    // Si fs sature (>= LIMIT) avec JSON vide -> desync totale a reparer -> on continue (purge tout fs orphelin).
+    if (count($referenced) === 0) {
+        $fs_count = 0;
+        foreach (glob($dir . '/*') ?: [] as $path) {
+            if (is_file($path) && preg_match('/\.(jpe?g|png)$/i', basename($path))) $fs_count++;
+        }
+        if ($fs_count < UPLOAD_MAX_PER_DOSSIER) return ['purged' => [], 'note' => 'json_empty_fs_not_saturated_skip'];
+        // Sinon : cas Philippe (fs sature, JSON vide) -> purge tout fs car desync prouvee.
+    }
     $purged = [];
     // Index originaux fs presents pour identifier les variants legitimes vs orphelins.
     $existingOriginals = [];
