@@ -563,6 +563,8 @@ header('Content-Type: text/html; charset=utf-8');
     pointer-events: none; z-index: 100;
   }
   @media print { .page[data-page-disabled="1"] { display: none; } }
+  /* M/2026/05/05/64 — blocs masques (visible=false via pastille oeil M/57) absents du PDF final imprime. */
+  @media print { [data-pdf-hidden="1"] { display: none !important; } }
 
   /* Banner confidentiel partage (legacy preserve) */
   .ocre-confidential-banner {
@@ -652,7 +654,7 @@ header('Content-Type: text/html; charset=utf-8');
           <?php endif; ?>
         </div>
 
-        <div class="client<?= $_hasClient ? '' : ' empty' ?>">
+        <div class="client<?= $_hasClient ? '' : ' empty' ?>"<?= _pdfEdAttr('client', $_pdfEditorState) ?>>
           <?php if ($_hasClient): ?>
             <span class="lab">Client</span>
             <?= _renderClientLines($_clientFullName, $_clientSociete, $_clientTel, $_clientEmail) ?>
@@ -770,7 +772,7 @@ header('Content-Type: text/html; charset=utf-8');
           <?php endif; ?>
         </div>
         <div class="pgnum">Page de détails</div>
-        <div class="client<?= $_hasClient ? '' : ' empty' ?>">
+        <div class="client<?= $_hasClient ? '' : ' empty' ?>"<?= _pdfEdAttr('client', $_pdfEditorState) ?>>
           <?php if ($_hasClient): ?>
             <span class="lab">Client</span>
             <?= _renderClientLines($_clientFullName, $_clientSociete, $_clientTel, $_clientEmail) ?>

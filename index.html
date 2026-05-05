@@ -22327,14 +22327,9 @@ function FormView(props) {
               ? !!window.__ocreFlags.M27_BOTTOMBAR_REFONTE : true;
             return _flagM27 ? <div style={{height:80, flexShrink:0}}/> : null;
           })()}
-          {/* M/2026/05/04/28 — M28 PhotosGalleryV28 wrappee dans flag M137_GALLERY_ENRICHED. */}
-          {(() => {
-            const _flagM137 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M137_GALLERY_ENRICHED'))
-              ? !!window.__ocreFlags.M137_GALLERY_ENRICHED : false;
-            const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
-            if (!_flagM137 || !_hasRealId) return null;
-            return <PhotosGalleryV28 dossier={editing} showToast={showToast}/>;
-          })()}
+          {/* M/2026/05/05/64 — drop zone photos M28 (PhotosGalleryV28 + zone "Glisser des photos ici")
+              RETIREE car redondante avec Stage V Photos M/31 plus haut dans le formulaire. Composant
+              PhotosGalleryV28 (line 20345) preserve en JS au cas ou flag M137 reactive ailleurs. */}
           {/* M/2026/05/04/27 — Wrap conditionnel flag M27_BOTTOMBAR_REFONTE :
               ON (default) -> nouvelle BottomBar #85583A 5 boutons (Save/Scan/PDF/Archiver/Supprimer).
               OFF -> ancienne barre glass V32 conservee pour rollback instantane via /admin/flags. */}
