@@ -1132,9 +1132,10 @@ function PhotosExifButton({dossierId, bien, onApply, showToast}) {
     fontFamily:"'DM Sans', -apple-system, sans-serif",
     border:'1px solid #D9C9A8',
   };
-  // M/2026/04/30/21 — scroll vers Bloc 09 Photos (#stage2-photos) + tentative ouverture file picker iOS.
+  // M/2026/04/30/21 — scroll vers Bloc Photos + tentative ouverture file picker iOS.
+  // M/2026/05/05/30 — M-Photos-Stage-V : photos sorties en stage V autonome, anchor = stage-photos-anchor.
   function scrollAndOpenPhotosBlock() {
-    const anchor = document.getElementById('stage2-photos');
+    const anchor = document.getElementById('stage-photos-anchor') || document.getElementById('stage2-photos');
     if (!anchor) {
       showToast && showToast('La section Photos sera bientôt disponible');
       return;
@@ -20145,15 +20146,19 @@ function FormView(props) {
          promoteStaged, deleteStaged} = props;
   // M/2026/04/30/9 — auto-detection pays via IP en mode CREATION (editing null ou tmp-).
   // Hook reel attache plus bas apres declaration de setD/d (etat local du form).
-  // V24 — scroll direct sur #stage2-photos si la nav a demandé focus='photos'.
+  // V24 — scroll direct sur #stage-photos-anchor si la nav a demandé focus='photos'.
+  // M/2026/05/05/30 — M-Photos-Stage-V : ouvre aussi le Stage V (idx 4) pour rendre le contenu visible.
   React.useEffect(() => {
     if (!initialFocus) return;
-    const targetId = initialFocus === 'photos' ? 'stage2-photos' : null;
+    const targetId = initialFocus === 'photos' ? 'stage-photos-anchor' : null;
     if (!targetId) return;
+    if (initialFocus === 'photos') {
+      setExpanded(prev => { const a = [...prev]; a[4] = true; return a; });
+    }
     const tid = setTimeout(() => {
       const el = document.getElementById(targetId);
       if (el) el.scrollIntoView({behavior:'smooth', block:'start', inline:'nearest'});
-    }, 220);
+    }, 280);
     return () => clearTimeout(tid);
   }, [initialFocus]);
   // V18.17 — dossier en mode staging (vient de la page Téléchargements).
