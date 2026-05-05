@@ -4346,9 +4346,17 @@ function PhotoEditSheet({photo, photoIdx, allPhotos, onChange, onClose}) {
 }
 
 // Vue groupee par categorie + auto-classify a chaque montage si photos sans category.
+// M/2026/05/05/35 — M-Hotfix-BulkDelete-Broken : se desactive quand selectMode actif dans PhotoUpload
+// pour ne pas intercepter les clicks via PhotoEditSheet (zIndex 9100 bloquait ConfirmModal selectMode).
 function PhotosGroupedView({dossierId, photos, onPhotosChange, showToast}) {
   const [editingIdx, setEditingIdx] = React.useState(null);
   const [classifying, setClassifying] = React.useState(false);
+  const [selectModeActive, setSelectModeActive] = React.useState(() => (typeof window !== 'undefined' && !!window.__ocrePhotosSelectMode));
+  React.useEffect(() => {
+    function onChange(e) { setSelectModeActive(!!(e && e.detail && e.detail.active)); }
+    window.addEventListener('ocre-photos-select-mode', onChange);
+    return () => window.removeEventListener('ocre-photos-select-mode', onChange);
+  }, []);
   const list = Array.isArray(photos) ? photos : [];
   // Auto-classify les photos sans category (background, sequentiel, n bloque pas le UI).
   React.useEffect(() => {
@@ -4391,6 +4399,9 @@ function PhotosGroupedView({dossierId, photos, onPhotosChange, showToast}) {
     });
     return out;
   }, [list]);
+  // M/2026/05/05/35 — M-Hotfix-BulkDelete-Broken : si selectMode actif dans PhotoUpload, on rend rien
+  // pour eviter que PhotoEditSheet zIndex 9100 intercepte les clicks et bloque ConfirmModal selectMode.
+  if (selectModeActive) return null;
   return (
     <div style={{marginTop:18, paddingTop:14, borderTop:'1px solid #E8DDC9'}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, gap:10}}>
@@ -4461,8 +4472,10 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     if (typeof p === 'string') return p;
     return p.name || p.url || ('idx-' + idx);
   }
-  function enterSelectMode() { setSelectMode(true); setSelectedUuids([]); }
-  function exitSelectMode() { setSelectMode(false); setSelectedUuids([]); }
+  // M/2026/05/05/35 — M-Hotfix-BulkDelete-Broken : expose selectMode global pour que PhotosGroupedView
+  // se desactive quand selectMode actif (sinon PhotoEditSheet zIndex 9100 intercepte les clicks).
+  function enterSelectMode() { setSelectMode(true); setSelectedUuids([]); try { window.__ocrePhotosSelectMode = true; window.dispatchEvent(new CustomEvent('ocre-photos-select-mode', {detail:{active:true}})); } catch (_) {} }
+  function exitSelectMode() { setSelectMode(false); setSelectedUuids([]); try { window.__ocrePhotosSelectMode = false; window.dispatchEvent(new CustomEvent('ocre-photos-select-mode', {detail:{active:false}})); } catch (_) {} }
   function toggleUuid(key) {
     setSelectedUuids(prev => prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]);
   }
@@ -4472,9 +4485,13 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     else setSelectedUuids(allKeys);
   }
   async function bulkDelete() {
-    if (selectedUuids.length === 0) return;
+    // M/2026/05/05/35 — M-Hotfix-BulkDelete-Broken : logging diagnostic pour traquer regressions futures.
+    console.log('[bulkDelete] start, selectedUuids.length=', selectedUuids.length, 'list.length=', list.length);
+    if (selectedUuids.length === 0) { console.warn('[bulkDelete] aborted: 0 selected'); return; }
     const n = selectedUuids.length;
-    if (!(await askConfirm({title:'Supprimer ' + n + ' photo' + (n > 1 ? 's' : '') + ' ?', message:'Cette action est definitive.', danger:true, confirmLabel:'Supprimer'}))) return;
+    const confirmed = await askConfirm({title:'Supprimer ' + n + ' photo' + (n > 1 ? 's' : '') + ' ?', message:'Cette action est definitive.', danger:true, confirmLabel:'Supprimer'});
+    console.log('[bulkDelete] askConfirm returned', confirmed);
+    if (!confirmed) return;
     setBulkDeleteRemaining(n);
     const succeeded = new Set();
     let failedCount = 0;
