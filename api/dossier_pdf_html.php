@@ -94,6 +94,11 @@ if (!$agentName) $agentName = $user['email'] ?? 'Agent Ocre';
 $agentTel = $user['telephone'] ?? '';
 $agentEmail = $user['email'] ?? '';
 
+// M/2026/05/05/58 — destinataire personnalise du PDF (optionnel par bien).
+$destinataireNom = trim((string)($dossier['destinataire_nom'] ?? ''));
+$destinataireEmail = trim((string)($dossier['destinataire_email'] ?? ''));
+$_hasDestinataire = ($destinataireNom !== '' || $destinataireEmail !== '');
+
 // Photos : 1) liste depuis bien.photos JSON (URLs externes Unsplash etc.), 2) sinon glob /uploads/<id>/.
 $photos = [];
 if (!empty($bien['photos']) && is_array($bien['photos'])) {
@@ -333,530 +338,402 @@ header('Content-Type: text/html; charset=utf-8');
 <head>
 <meta charset="UTF-8">
 <title>Carnet de bien · <?= h($titreBien) ?></title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;700&family=Caveat:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Cormorant+Garamond:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;700&family=Caveat:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  /* M/2026/05/05/59 — Belles Demeures Variante A. Palette or + ivoire. */
   :root {
-    --ocre: #8B5E3C;
-    --ocre-light: #A8896A;
-    --ocre-soft: #F5EFE7;
-    --bg: #FAF6F0;
-    --line: #E8E0D2;
-    --ink: #1A1A1A;
-    --muted: #7A7167;
+    --gold: #C9A961;
+    --gold-deep: #8B6F35;
+    --ivory: #F8F2E4;
+    --cream-warm: #EAD9B6;
+    --ink: #2A2018;
+    --mute: #9A8B7C;
   }
-  *, *::before, *::after { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: #E8E5E0; color: var(--ink); font-family: 'DM Sans', system-ui, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .pages { padding: 20px 16px; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: linear-gradient(180deg, #F8F2E4 0%, #EAD9B6 100%);
+    color: var(--ink);
+    font-family: "Bodoni Moda", "Cormorant Garamond", Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .micro { font-family: "DM Sans", "Helvetica Neue", Arial, sans-serif; }
+
+  /* Pages container : aspect A4 portrait. Print : page break apres chaque section. */
+  .pages { display: flex; flex-direction: column; align-items: center; padding: 18px 0; gap: 22px; }
   .page {
+    background: linear-gradient(180deg, #F8F2E4 0%, #EAD9B6 100%);
     width: 210mm;
     min-height: 297mm;
-    max-width: 210mm;
-    margin: 0 auto 18px;
-    background: #fff;
-    box-shadow: 0 4px 20px rgba(0,0,0,.08);
-    padding: 14mm 14mm 12mm;
-    position: relative;
+    max-height: 297mm;
+    box-shadow: 0 6px 24px rgba(60, 40, 20, .14), 0 0 0 .5px rgba(139, 111, 53, .25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     page-break-after: always;
-    overflow: hidden;
+    position: relative;
   }
-  .page:last-child { page-break-after: auto; margin-bottom: 0; }
-  @page { size: A4; margin: 0; }
   @media print {
-    body, html { background: #fff; }
-    .pages { padding: 0; }
-    .page { box-shadow: none; margin: 0; width: 210mm; height: 297mm; min-height: 297mm; padding: 14mm 14mm 12mm; }
+    body { background: #fff; }
+    .pages { padding: 0; gap: 0; }
+    .page { box-shadow: none; margin: 0; }
   }
 
-  /* M/2026/04/30/52 — responsive iPhone/iPad (capture IMG_4026 montrait debordement A4 sur iPhone). */
-  @media screen and (max-width: 480px) {
-    body, html { background: #fff; }
-    .pages { padding: 8px 0; }
-    .page {
-      width: 100% !important;
-      max-width: 100vw !important;
-      min-height: auto !important;
-      margin: 0 0 12px;
-      padding: 14px 14px 16px !important;
-      box-shadow: 0 1px 6px rgba(0,0,0,.05);
-      overflow-x: hidden;
-    }
-    .mosaic {
-      grid-template-columns: 1fr 1fr !important;
-      grid-template-rows: auto !important;
-      height: auto !important;
-      gap: 6px !important;
-      margin: 8mm 0 6mm;
-    }
-    .mosaic .m1 { grid-column: 1 / span 2 !important; grid-row: auto !important; aspect-ratio: 16 / 10; }
-    .mosaic .m2, .mosaic .m3, .mosaic .m4, .mosaic .m5 { grid-column: auto !important; grid-row: auto !important; aspect-ratio: 4 / 3; }
-    .cartouche { padding: 14px 12px !important; margin: 0 0 12px; }
-    .cartouche-title { font-size: 22px !important; margin-bottom: 12px !important; }
-    .cover-foot { grid-template-columns: 1fr !important; gap: 12px !important; padding-top: 12px; }
-    .cover-foot .price, .cover-foot .agent { text-align: left !important; }
-    .cover-foot .price .amount { font-size: 24px !important; }
-    .brand-lg .ocre-mark { font-size: 22px !important; }
-    .brand-lg .immo-mark { font-size: 26px !important; }
-    .ed-title { font-size: 24px !important; margin: 2mm 0 4mm !important; }
-    .runhead, .runfoot { font-size: 7px !important; letter-spacing: 1.5px !important; padding: 0 0 8px; }
-    .runfoot { position: static !important; margin-top: 12px; }
-  }
-  @media screen and (min-width: 481px) and (max-width: 768px) {
-    /* iPad portrait : largeur centree confortable, evite scroll horizontal. */
-    .pages { padding: 14px 0; }
-    .page {
-      width: 96vw !important;
-      max-width: 640px !important;
-      padding: 24px !important;
-    }
-  }
+  /* Ribbon header commun */
+  .ribbon { padding: 11px 0 8px; border-bottom: .5px solid var(--gold-deep); text-align: center; flex: none; }
+  .ribbon .b { font-style: italic; font-size: 14.5px; letter-spacing: 5px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; }
+  .ribbon .small { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold-deep); margin-top: 3px; font-weight: 500; }
+  .ribbon .ref { font-style: italic; font-size: 9.5px; letter-spacing: 1.5px; color: var(--gold-deep); margin-top: 3px; }
 
-  /* === Couleurs & typographies utilitaires === */
-  .cormorant { font-family: 'Cormorant Garamond', Georgia, serif; }
-  .ocre { color: var(--ocre); }
-  .ocre-light { color: var(--ocre-light); }
-  .uc { text-transform: uppercase; }
-  .center { text-align: center; }
-  hr.rule { border: 0; height: 0.5px; background: var(--ocre); margin: 8px 0; }
-
-  /* === Test badge === */
-  .test-badge { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; letter-spacing: 1.5px; color: #DC2626; text-transform: lowercase; line-height: 1; margin-top: 4px; display: block; text-align: center; }
-
-  /* === Logo OCRE immo (charte unifiee, single source of truth) === */
-  /* Reference : OcreTitle / OcreLogoButton dans index.html. Cormorant 700 ocre + Caveat 400 noir. */
-  .brand { display: inline-flex; align-items: baseline; gap: 3px; line-height: 1; white-space: nowrap; }
-  .brand .ocre-mark { font-family: 'Cormorant Garamond', serif; font-weight: 700; color: var(--ocre); letter-spacing: 1.5px; }
-  .brand .immo-mark { font-family: 'Caveat', cursive; font-weight: 400; color: var(--ink); margin-left: 2px; }
-  .brand-lg .ocre-mark { font-size: 28px; }
-  .brand-lg .immo-mark { font-size: 32px; }
-  .brand-md .ocre-mark { font-size: 14px; letter-spacing: 1.2px; }
-  .brand-md .immo-mark { font-size: 16px; }
-  .brand-sm .ocre-mark { font-size: 11px; letter-spacing: 1px; }
-  .brand-sm .immo-mark { font-size: 13px; }
-
-  /* === Page 1 — Cover === */
-  .cover-head { text-align: center; padding: 0 0 14px; border-bottom: 0.5px solid var(--ocre); }
-  .eye { font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 500; letter-spacing: 5px; text-transform: uppercase; color: var(--ocre-light); margin-bottom: 12px; }
-  .agent-line { font-family: 'DM Sans', sans-serif; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--ocre-light); font-weight: 400; margin-top: 10px; }
-
-  /* M/2026/05/05/17 — M-Photos-Mosaic-Adaptive : layouts dynamiques selon nb photos visibles. */
-  .mosaic, .mosaic-1, .mosaic-2, .mosaic-3, .mosaic-4 { display: grid; gap: 4mm; height: 105mm; margin: 12mm 0 8mm; }
-  .mosaic-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
-  .mosaic-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
-  .mosaic-3 { grid-template-columns: 60% 40%; grid-template-rows: 1fr 1fr; }
-  .mosaic-3 .m1 { grid-column: 1; grid-row: 1 / span 2; }
-  .mosaic-3 .m2 { grid-column: 2; grid-row: 1; }
-  .mosaic-3 .m3 { grid-column: 2; grid-row: 2; }
-  .mosaic-4 { grid-template-columns: 60% 40%; grid-template-rows: 1fr 1fr 1fr; }
-  .mosaic-4 .m1 { grid-column: 1; grid-row: 1 / span 3; }
-  .mosaic-4 .m2 { grid-column: 2; grid-row: 1; }
-  .mosaic-4 .m3 { grid-column: 2; grid-row: 2; }
-  .mosaic-4 .m4 { grid-column: 2; grid-row: 3; }
-  /* Layout 5 photos = layout actuel inchange (Philippe a valide). */
-  .mosaic { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
-  .mosaic .m1 { grid-column: 1; grid-row: 1 / span 2; position: relative; }
-  .mosaic .m2 { grid-column: 2; grid-row: 1; }
-  .mosaic .m3 { grid-column: 3; grid-row: 1; }
-  .mosaic .m4 { grid-column: 2; grid-row: 2; }
-  .mosaic .m5 { grid-column: 3; grid-row: 2; }
-  .mosaic > div, .mosaic-1 > div, .mosaic-2 > div, .mosaic-3 > div, .mosaic-4 > div { background: var(--ocre-soft); overflow: hidden; position: relative; }
-  .mosaic img, .mosaic-1 img, .mosaic-2 img, .mosaic-3 img, .mosaic-4 img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .mosaic .ph-empty, .mosaic-1 .ph-empty, .mosaic-2 .ph-empty, .mosaic-3 .ph-empty, .mosaic-4 .ph-empty { display: flex; align-items: center; justify-content: center; color: var(--ocre-light); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
-  .mosaic .caption, .mosaic-1 .caption, .mosaic-2 .caption, .mosaic-3 .caption, .mosaic-4 .caption { position: absolute; bottom: 6px; left: 8px; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); font-weight: 500; }
-  /* M/2026/05/05/17 — section album : photos 6+ en grille de petites vignettes.
-     M/2026/05/05/19 — M-Photos-Album-Toast-Fix : titre Album photo + grille STRICTE 4 cols + .album-cell aspect 4/3. */
-  .album-title { font-family: 'Cormorant Garamond', 'Playfair Display', serif; font-size: 22px; color: #7A5132; text-align: center; font-weight: 600; margin: 18px 0 12px; letter-spacing: 0.5px; }
-  .album { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 8mm; }
-  .album-cell { aspect-ratio: 4 / 3; background: var(--ocre-soft); overflow: hidden; border-radius: 6px; }
-  .album-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  @media print {
-    .mosaic-1, .mosaic-2, .mosaic-3, .mosaic-4 { gap: 4mm; }
-    .album { grid-template-columns: repeat(4, 1fr); gap: 4mm; }
-    .album-title { margin: 8mm 0 4mm; }
-  }
-
-  .cartouche { background: var(--bg); border-top: 0.5px solid var(--ocre); border-bottom: 0.5px solid var(--ocre); padding: 12mm 14mm; text-align: center; margin: 0 0 10mm; }
-  .cartouche-title { font-family: 'Cormorant Garamond', serif; font-size: 26px; line-height: 1.2; color: var(--ink); font-weight: 400; margin-bottom: 6mm; }
-  .cartouche-title b { font-weight: 700; color: var(--ink); }
-  .cartouche-loc { font-family: 'DM Sans', sans-serif; font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--ocre); font-weight: 500; margin-bottom: 6mm; }
-  .cartouche-bullets { font-family: 'DM Sans', sans-serif; font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
-  .cartouche-bullets b { font-family: 'Cormorant Garamond', serif; font-size: 18px; color: var(--ocre); font-weight: 700; letter-spacing: 0; margin: 0 2px; }
-
-  .cover-foot { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; padding-top: 6mm; border-top: 0.5px solid var(--ocre); align-items: end; }
-  .cover-foot .price { text-align: left; }
-  .cover-foot .price .amount { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; overflow: visible; white-space: nowrap; padding-right: 4px; }
-  .cover-foot .price .amount b { font-weight: 700; }
-  .cover-foot .price .hon { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
-  .cover-foot .center-mark { text-align: center; font-family: 'Cormorant Garamond', serif; font-size: 13px; letter-spacing: 4px; color: var(--ocre); }
-  .cover-foot .center-mark .sub { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
-  .cover-foot .agent { text-align: right; font-size: 9px; line-height: 1.6; color: var(--muted); }
-  .cover-foot .agent .name { font-weight: 700; color: var(--ink); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
-
-  /* === Pages 2 & 3 — Runhead / runfoot === */
-  .runhead { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 4mm; border-bottom: 0.5px solid var(--ocre); margin-bottom: 8mm; font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--ocre-light); }
-  .runhead .left { color: var(--ocre); font-weight: 500; letter-spacing: 4px; }
-  .runfoot { position: absolute; bottom: 8mm; left: 14mm; right: 14mm; padding-top: 4mm; border-top: 0.5px solid var(--ocre); display: flex; justify-content: space-between; font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--ocre-light); }
-
-  /* === Page 2 — Editorial === */
-  .ed-title { font-family: 'Cormorant Garamond', serif; font-size: 32px; line-height: 1.15; font-weight: 400; color: var(--ink); margin: 4mm 0 6mm; }
-  .ed-title b { font-weight: 700; }
-  .ed-lead { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 13px; line-height: 1.55; color: var(--muted); padding: 6mm 0; border-top: 0.5px solid var(--ocre); border-bottom: 0.5px solid var(--ocre); margin-bottom: 8mm; }
-  .ed-grid { display: grid; grid-template-columns: 5fr 4fr; gap: 8mm; }
-  .ed-text { font-family: 'DM Sans', sans-serif; font-size: 10.5px; line-height: 1.65; text-align: justify; color: var(--ink); }
-  .ed-text h4 { font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--ocre); margin: 6mm 0 2mm; }
-  .ed-text h4:first-child { margin-top: 0; }
-  .ed-text p { margin: 0 0 3mm; }
-  .ed-photos { display: grid; grid-template-rows: 2fr 1fr 1fr; grid-template-columns: 1fr; gap: 3mm; max-height: 175mm; }
-  .ed-photos > div { background: var(--ocre-soft); overflow: hidden; }
-  .ed-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .ed-photos .ph-empty { display: flex; align-items: center; justify-content: center; color: var(--ocre-light); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; height: 100%; }
-
-  /* === Page 3 — Technique === */
-  .tech-title { font-family: 'Cormorant Garamond', serif; font-size: 26px; line-height: 1.15; font-weight: 400; color: var(--ink); margin: 4mm 0 8mm; }
-  .tech-title b { font-weight: 700; }
-  .tech-section { display: grid; grid-template-columns: 32mm 1fr; gap: 4mm; padding: 4mm 0; border-bottom: 0.5px solid var(--line); }
-  .tech-section:last-of-type { border-bottom: 0; }
-  .tech-section h3 { font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--ocre); margin: 0; padding-top: 2px; }
-  .tech-rows { font-family: 'DM Sans', sans-serif; font-size: 10px; line-height: 1.7; color: var(--ink); }
-  .tech-rows .row { display: grid; grid-template-columns: 38mm 1fr; gap: 4mm; padding: 1.2mm 0; }
-  .tech-rows .row .k { font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
-  .tech-rows .inline { display: flex; flex-wrap: wrap; gap: 2.5mm 4mm; }
-  .tech-rows .inline span { font-size: 10px; color: var(--ink); }
-  .tech-rows .inline span::before { content: '· '; color: var(--ocre); margin-right: 2px; }
-
-  .contact-block { margin-top: 10mm; padding-top: 6mm; border-top: 0.5px solid var(--ocre); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; }
-  .contact-block .col h5 { font-family: 'DM Sans', sans-serif; font-size: 8px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--ocre-light); margin: 0 0 3mm; }
-  .contact-block .col .body { font-family: 'DM Sans', sans-serif; font-size: 10px; line-height: 1.6; color: var(--ink); }
-  .contact-block .col .body .name { font-weight: 700; font-size: 11px; }
-  .contact-block .col .price-final { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--ocre); font-weight: 400; line-height: 1; overflow: visible; white-space: nowrap; padding-right: 4px; }
-  .contact-block .col .price-final b { font-weight: 700; }
-  .contact-block .col .price-final .hon { font-family: 'DM Sans', sans-serif; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
-<?php if ($_isShareView): ?>
-  /* M/2026/05/01/13 — protections anti-fuite vue partagee : no-copy CSS, watermark calque, bandeau legal. */
-  .pages, .pages * {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .pages a { -webkit-touch-callout: default; }
-  .ocre-watermark {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 9999;
+  /* Photos style commun */
+  .ph {
+    aspect-ratio: 3/2;
+    border-radius: 5px;
     overflow: hidden;
-    background-image: repeating-linear-gradient(
-      -20deg,
-      transparent 0,
-      transparent 90px,
-      rgba(102, 78, 55, 0.04) 90px,
-      rgba(102, 78, 55, 0.04) 91px
-    );
+    box-shadow: 0 1px 3px rgba(60, 40, 20, .18), 0 0 0 .75px rgba(139, 111, 53, .55);
+    background: #2A2018;
+    position: relative;
   }
-  .ocre-watermark .wm-grid {
-    position: absolute;
-    inset: -50%;
-    transform: rotate(-20deg);
-    transform-origin: center;
+  .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ph::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, .18); border-radius: 5px;
+  }
+
+  /* ============================ PAGE 1 ============================ */
+  .pg {
     display: grid;
-    grid-template-columns: repeat(auto-fill, 200px);
-    grid-auto-rows: 120px;
-    align-items: center;
-    justify-content: start;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 5px;
+    padding: 7px 16px 0;
+    aspect-ratio: 3/2;
+    flex: none;
   }
-  .ocre-watermark .wm-cell {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-style: italic;
-    font-size: 13px;
-    color: rgba(102, 78, 55, 0.085);
-    text-align: center;
-    line-height: 1.4;
-    padding: 0 14px;
-    user-select: none;
-    white-space: nowrap;
+  .pg .hero { grid-row: 1 / span 2; grid-column: 1 / span 2; }
+
+  .body { padding: 11px 22px 12px; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .kicker { font-style: italic; font-size: 11.5px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold-deep); text-align: center; margin: 0 0 3px; }
+  .title { font-style: italic; font-size: 29px; line-height: 1.05; color: var(--ink); text-align: center; margin: 0 0 4px; font-weight: 500; }
+  .place { font-size: 12px; letter-spacing: 5px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; text-align: center; margin: 0 0 8px; }
+  .lead { font-style: italic; font-size: 13px; line-height: 1.5; color: var(--ink); text-align: justify; margin: 0 0 9px; }
+  .lead::first-letter { font-size: 34px; float: left; line-height: .85; margin: 3px 6px 0 0; font-weight: 500; color: var(--gold-deep); font-style: normal; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; border-top: .5px solid var(--gold-deep); border-bottom: .5px solid var(--gold-deep); padding: 7px 0; margin-bottom: 9px; }
+  .cols h4 { font-size: 10.5px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; text-align: center; margin: 0 0 4px; }
+  .cols .row { font-style: italic; font-size: 12px; color: var(--ink); padding: 1.5px 0; display: flex; gap: 6px; align-items: baseline; }
+  .cols .row .lab { flex: none; color: var(--mute); font-style: italic; }
+  .cols .row b { font-style: normal; font-weight: 500; color: var(--gold-deep); }
+
+  .foot { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; margin-top: auto; padding-top: 8px; flex: none; }
+  .foot .agent { font-style: italic; font-size: 11px; line-height: 1.4; text-align: left; }
+  .foot .agent .lab, .foot .client .lab { display: block; font-style: normal; font-weight: 500; font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold-deep); margin-bottom: 2px; }
+  .foot .price { text-align: center; border: 1.5px solid var(--gold-deep); padding: 8px 14px; background: rgba(232, 197, 117, .1); border-radius: 4px; font-style: italic; }
+  .foot .price .pre { font-style: italic; font-size: 8.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-deep); margin-bottom: 3px; }
+  .foot .price b { display: block; font-style: normal; font-weight: 500; color: var(--gold-deep); font-size: 24px; line-height: 1; }
+  .foot .price small { display: block; font-style: normal; font-size: 8.5px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold-deep); margin-top: 3px; }
+  .foot .client { font-style: italic; font-size: 11px; line-height: 1.4; text-align: right; }
+  .foot .client.empty { display: none; }
+
+  /* ============================ PAGE 2 ============================ */
+  .body-p2 { padding: 14px 22px 12px; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .h2-title { font-style: italic; font-size: 25px; text-align: center; margin: 0 0 3px; font-weight: 500; }
+  .h2-sub { font-size: 11px; letter-spacing: 5px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; text-align: center; margin: 0 0 8px; }
+  .h2-rule { height: .5px; background: var(--gold-deep); width: 50%; margin: 0 auto 10px; }
+  .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px; flex: 1 1 auto; align-content: start; }
+  .blk h5 { font-size: 11px; letter-spacing: 2.8px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; margin: 0 0 4px; border-bottom: .5px solid var(--gold-deep); padding-bottom: 3px; }
+  .blk .row { font-style: italic; font-size: 11.5px; display: flex; gap: 8px; padding: 1.5px 0; align-items: baseline; }
+  .blk .row .lab { flex: none; color: var(--mute); }
+  .blk .row b { font-style: normal; font-weight: 500; color: var(--gold-deep); }
+  .blk-full { grid-column: 1 / span 2; }
+
+  .foot-p2 { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; padding-top: 9px; margin-top: 10px; border-top: .5px solid var(--gold-deep); flex: none; }
+  .foot-p2 .agent { font-style: italic; font-size: 11px; line-height: 1.4; text-align: left; }
+  .foot-p2 .agent .lab, .foot-p2 .client .lab { display: block; font-style: normal; font-weight: 500; font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold-deep); margin-bottom: 2px; }
+  .foot-p2 .pgnum { font-style: italic; font-size: 10.5px; color: var(--gold-deep); letter-spacing: 2.5px; text-transform: uppercase; font-weight: 500; text-align: center; }
+  .foot-p2 .client { font-style: italic; font-size: 11px; line-height: 1.4; text-align: right; }
+  .foot-p2 .client.empty { display: none; }
+
+  /* ============================ PAGE 3 ============================ */
+  .alb-head { padding: 11px 0 6px; text-align: center; flex: none; }
+  .alb-head .h { font-style: italic; font-size: 22px; color: var(--ink); letter-spacing: .4px; margin: 0 0 2px; font-weight: 500; }
+  .alb-head .s { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; }
+
+  .body-alb { padding: 6px 14px 8px; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; gap: 2px; overflow: hidden; }
+  .sec-cap { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 5px 0 4px; }
+  .sec-cap::before, .sec-cap::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-deep) 50%, transparent); max-width: 60px; }
+  .sec-cap span { font-style: italic; font-size: 12px; color: var(--gold-deep); letter-spacing: 1px; }
+
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .grid-3 .ph { position: relative; }
+  .grid-3 .ph[data-cap]::before {
+    content: attr(data-cap); position: absolute; left: 6px; bottom: 5px; color: #fff;
+    font-style: italic; font-size: 10px; letter-spacing: 1.2px; text-shadow: 0 1px 3px rgba(0, 0, 0, .5);
+    z-index: 2; text-transform: uppercase;
   }
-  @media print {
-    .ocre-watermark { display: block !important; }
-  }
+  .footer-alb { padding-top: 7px; margin-top: auto; text-align: center; font-style: italic; font-size: 10.5px; color: var(--gold-deep); border-top: .5px solid var(--gold-deep); letter-spacing: 1px; flex: none; }
+
+  /* Editor inline (M/52, M/56, M/57) — placeholder neutre, styles injectes en JS cote frontend */
+  [data-editable] { transition: outline-color .15s, background .15s; }
+
+  /* Banner confidentiel partage (legacy preserve) */
   .ocre-confidential-banner {
-    max-width: 720px;
-    margin: 24px auto 32px;
-    padding: 0 18px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 11px;
-    font-style: italic;
-    color: #8B7F6E;
-    text-align: center;
-    line-height: 1.5;
+    position: fixed; bottom: 0; left: 0; right: 0; padding: 8px 16px;
+    background: rgba(42, 32, 24, .92); color: #F4EDDC; text-align: center;
+    font-family: "DM Sans", sans-serif; font-size: 10.5px; letter-spacing: .5px; line-height: 1.5;
+    z-index: 9999; backdrop-filter: blur(8px);
   }
-<?php endif; ?>
+  @media print { .ocre-confidential-banner { display: none; } }
 </style>
 </head>
 <body>
 <div class="pages">
 
-  <!-- ====================== PAGE 1 — COVER ====================== -->
-  <section class="page">
-    <div class="cover-head">
-      <div class="eye">Carnet de bien</div>
-      <span class="brand brand-lg"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span>
-      <?php if ($_isTestMode): ?><div class="test-badge">test</div><?php endif; ?>
-      <hr class="rule" style="margin: 8px auto 6px; max-width: 60%;">
-      <div class="agent-line"><?= h($agentName) ?><?php if ($agentTel): ?> · <?= h($agentTel) ?><?php endif; ?></div>
+  <!-- ====================== PAGE 1 — Belles Demeures Variante A ====================== -->
+  <section class="page" data-page="1">
+    <header class="ribbon">
+      <div class="b">OCRE Immo</div>
+      <div class="small">Marrakech &middot; Gueliz</div>
+      <div class="ref">Réf. <?= h($ref) ?> &middot; Page 1 / 3</div>
+    </header>
+
+    <div class="pg">
+      <div class="ph hero"><?php if (!empty($photos[0])): ?><img src="<?= h($photos[0]) ?>" alt=""><?php endif; ?></div>
+      <div class="ph"><?php if (!empty($photos[1])): ?><img src="<?= h($photos[1]) ?>" alt=""><?php endif; ?></div>
+      <div class="ph"><?php if (!empty($photos[2])): ?><img src="<?= h($photos[2]) ?>" alt=""><?php endif; ?></div>
+      <div class="ph"><?php if (!empty($photos[3])): ?><img src="<?= h($photos[3]) ?>" alt=""><?php endif; ?></div>
+      <div class="ph"><?php if (!empty($photos[4])): ?><img src="<?= h($photos[4]) ?>" alt=""><?php endif; ?></div>
+      <div class="ph"><?php if (!empty($photos[5])): ?><img src="<?= h($photos[5]) ?>" alt=""><?php endif; ?></div>
     </div>
 
-<?php /* M/2026/05/05/17 — M-Photos-Mosaic-Adaptive : layouts dynamiques selon nb photos visibles.
-       Captions ['Photo principale', 'Salon', 'Cuisine', 'Suite parentale', 'Terrasse'] mappees
-       dans l ORDRE des photos visibles (apres filtrage hide_photos[]), pas selon label original.
-       Photos 6+ = section album (grille 4 cols vignettes carrees, sans caption). */ ?>
-    <?php
-    $_mosaicCaptions = ['Photo principale', 'Salon', 'Cuisine', 'Suite parentale', 'Terrasse'];
-    $_mosaicTop = array_slice($photos, 0, 5);
-    $_albumExtra = array_slice($photos, 5, 25);
-    $_topCount = count($_mosaicTop);
-    $_mosaicCls = ['', 'mosaic-1', 'mosaic-2', 'mosaic-3', 'mosaic-4', 'mosaic'][$_topCount];
-    ?>
-    <?php if ($_topCount > 0): ?>
-    <div class="<?= $_mosaicCls ?>">
-      <?php foreach ($_mosaicTop as $i => $p): $cls = 'm' . ($i + 1); ?>
-      <div class="<?= $cls ?>">
-        <img src="<?= h($p) ?>" alt="">
-        <span class="caption"><?= h($_mosaicCaptions[$i]) ?></span>
-      </div>
-      <?php endforeach; ?>
-    </div>
-    <?php /* M/2026/05/05/51 — Album photo deplace en TOUTE FIN du PDF, juste avant footer page 3. */ ?>
-    <?php endif; /* /_topCount > 0 */ ?>
+    <div class="body">
+      <div class="kicker">— Une demeure de prestige —</div>
+      <h1 class="title"<?= _pdfEdAttr('title', $_pdfEditorState) ?>><?= h($titreBien) ?></h1>
+      <div class="place"<?= _pdfEdAttr('subtitle', $_pdfEditorState) ?>><?= h(_pdfBlockValue($_pdfEditorState, 'subtitle', $ville ?: 'Marrakech')) ?></div>
 
-    <div class="cartouche">
-      <div class="cartouche-title"<?= _pdfEdAttr('title', $_pdfEditorState) ?>><b><?= h($titreBien) ?></b></div>
-      <?php if ($hideAddress): ?>
-        <div class="cartouche-loc"<?= _pdfEdAttr('subtitle', $_pdfEditorState) ?> style="color: var(--muted); font-style: italic;">Adresse sur demande</div>
-      <?php else: ?>
-        <div class="cartouche-loc"<?= _pdfEdAttr('subtitle', $_pdfEditorState) ?>><?= h(_pdfBlockValue($_pdfEditorState, 'subtitle', (string)$ville)) ?></div>
-      <?php endif; ?>
-      <div class="cartouche-bullets">
-        <?php
-        $b = [];
-        if ($surfaceHab) $b[] = '<b>' . htmlspecialchars(fmtNum($surfaceHab)) . '</b> m² habitables';
-        if ($surfaceTerrain) $b[] = '<b>' . htmlspecialchars(fmtNum($surfaceTerrain)) . '</b> m² terrain';
-        if ($chambres) $b[] = '<b>' . (int) $chambres . '</b> ' . ($chambres > 1 ? 'chambres' : 'chambre');
-        if ($piscine && $piscine !== 'Aucune') $b[] = '<b>1</b> piscine';
-        echo implode(' · ', $b);
-        ?>
-      </div>
-    </div>
+      <p class="lead"<?= _pdfEdAttr('descriptif_lead', $_pdfEditorState) ?>><?php
+        $_lead = $descriptifLead;
+        if (!$_lead) {
+            $_lead = ($titreBien ? $titreBien : 'Cette demeure') . ' niché' . ($titreBien ? 'e' : 'e') . ' à ' . ($ville ?: 'Marrakech') . '. Volumes généreux, prestations de standing, jardin paysager. Une adresse rare pour qui cherche le confort d\'une vie entre médina et palmeraie.';
+        }
+        echo nl2br(h($_lead));
+      ?></p>
 
-    <div class="cover-foot">
-      <div class="price">
-        <?php if ($prix && !$prixDemand): ?>
-          <div class="amount"<?= _pdfEdAttr('price', $_pdfEditorState) ?>><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></div>
-          <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
-        <?php else: ?>
-          <div class="amount"<?= _pdfEdAttr('price', $_pdfEditorState) ?> style="font-size:18px; color: var(--muted); font-style: italic;">Sur demande</div>
-        <?php endif; ?>
+      <div class="cols">
+        <div class="col">
+          <h4>Identité</h4>
+          <div class="row"><span class="lab">Type</span><b><?= h($typeBien) ?></b></div>
+          <div class="row"><span class="lab">État</span><b><?= h($etat) ?></b></div>
+          <div class="row"><span class="lab">Vue</span><b><?= h($vues ? bullets($vues, ', ') : ($exposition ?: '—')) ?></b></div>
+        </div>
+        <div class="col">
+          <h4>Surfaces</h4>
+          <div class="row"><span class="lab">Habitable</span><b><?= $surfaceHab ? fmtNum($surfaceHab) . ' m²' : '—' ?></b></div>
+          <div class="row"><span class="lab">Terrain</span><b><?= $surfaceTerrain ? fmtNum($surfaceTerrain) . ' m²' : '—' ?></b></div>
+          <div class="row"><span class="lab">Terrasses</span><b><?= $surfaceTerrasse ? fmtNum($surfaceTerrasse) . ' m²' : '—' ?></b></div>
+        </div>
+        <div class="col">
+          <h4>Confort</h4>
+          <div class="row"><span class="lab">Clim.</span><b><?= h(in_array('Climatisation', $equipementsConfort, true) ? 'Oui' : (is_array($equipementsRaw) && !empty($equipementsRaw['climatisation']) ? 'Oui' : '—')) ?></b></div>
+          <div class="row"><span class="lab">Sécurité</span><b><?= h($securite ? bullets(array_slice($securite, 0, 1), '') : '—') ?></b></div>
+          <div class="row"><span class="lab">Cuisine</span><b><?= h(_pick($bien, 'cuisine')) ?></b></div>
+        </div>
       </div>
-      <div class="center-mark">
-        <span class="brand brand-md"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span>
-        <div class="sub">Marrakech</div>
+
+      <div class="foot">
+        <div class="agent">
+          <span class="lab">Agent référent</span>
+          <?php if ($hideIdentity): ?>
+            <span style="color: var(--mute); font-style: italic;">Coordonnées sur demande</span>
+          <?php else: ?>
+            <span<?= _pdfEdAttr('agent', $_pdfEditorState) ?>>
+              <span data-agent-field="name"><?= h($agentName) ?></span><?php if ($agentTel): ?> &middot; <span data-agent-field="phone"><?= h($agentTel) ?></span><?php endif; ?>
+            </span>
+          <?php endif; ?>
+        </div>
+
+        <div class="price"<?= _pdfEdAttr('price', $_pdfEditorState) ?>>
+          <?php if ($prix && !$prixDemand): ?>
+            <div class="pre">prix de présentation</div>
+            <b><?= htmlspecialchars(fmtNum($prix)) ?> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></b>
+            <?php if ($honoraires): ?><small>Honoraires inclus</small><?php endif; ?>
+          <?php else: ?>
+            <div class="pre">prix de présentation</div>
+            <b style="font-size: 18px; font-style: italic;">Sur demande</b>
+          <?php endif; ?>
+        </div>
+
+        <div class="client<?= $_hasDestinataire ? '' : ' empty' ?>">
+          <?php if ($_hasDestinataire): ?>
+            <span class="lab">Destinataire</span>
+            <?= h($destinataireNom) ?><?php if ($destinataireEmail): ?><br><?= h($destinataireEmail) ?><?php endif; ?>
+          <?php endif; ?>
+        </div>
       </div>
-      <div class="agent"<?= _pdfEdAttr('agent', $_pdfEditorState) ?>>
-        <?php if ($hideIdentity): ?>
-          <div style="color: var(--muted); font-style: italic; font-size: 11px;">Coordonnées sur demande</div>
-        <?php else: ?>
-          <div class="name" data-agent-field="name"><?= h($agentName) ?></div>
-          <?php if ($agentTel): ?><div data-agent-field="phone"><?= h($agentTel) ?></div><?php endif; ?>
-          <?php if ($agentEmail): ?><div data-agent-field="email"><?= h($agentEmail) ?></div><?php endif; ?>
-        <?php endif; ?>
+    </section>
+  <?php /* PAGE 1 fermee dans la balise </section> ci-dessus. */ ?>
+
+  <!-- ====================== PAGE 2 — Caractéristiques détaillées ====================== -->
+  <section class="page" data-page="2">
+    <header class="ribbon">
+      <div class="b">OCRE Immo</div>
+      <div class="small">Marrakech &middot; Gueliz</div>
+      <div class="ref">Réf. <?= h($ref) ?> &middot; Page 2 / 3</div>
+    </header>
+
+    <div class="body-p2">
+      <h2 class="h2-title">Caractéristiques détaillées</h2>
+      <div class="h2-sub"><?= h($titreBien) ?></div>
+      <div class="h2-rule"></div>
+
+      <div class="grid-2col">
+        <div class="blk">
+          <h5>Identité</h5>
+          <div class="row"><span class="lab">Type</span><b><?= h($typeBien) ?></b></div>
+          <div class="row"><span class="lab">Année</span><b><?= h(_pick($bien, 'annee_construction', 'annee')) ?></b></div>
+          <div class="row"><span class="lab">État</span><b><?= h($etat) ?></b></div>
+          <div class="row"><span class="lab">Standing</span><b><?= h(_pick($bien, 'standing')) ?></b></div>
+          <div class="row"><span class="lab">Orientation</span><b><?= h($exposition) ?></b></div>
+          <div class="row"><span class="lab">Vue</span><b><?= h($vues ? bullets($vues, ', ') : '—') ?></b></div>
+        </div>
+
+        <div class="blk">
+          <h5>Surfaces</h5>
+          <div class="row"><span class="lab">Habitable</span><b><?= $surfaceHab ? fmtNum($surfaceHab) . ' m²' : '—' ?></b></div>
+          <div class="row"><span class="lab">Terrain</span><b><?= $surfaceTerrain ? fmtNum($surfaceTerrain) . ' m²' : '—' ?></b></div>
+          <div class="row"><span class="lab">Terrasses</span><b><?= $surfaceTerrasse ? fmtNum($surfaceTerrasse) . ' m²' : '—' ?></b></div>
+          <div class="row"><span class="lab">Piscine</span><b><?= h($piscine ?: '—') ?></b></div>
+          <div class="row"><span class="lab">Garage</span><b><?= $surfaceGarage ? fmtNum($surfaceGarage) . ' m²' : '—' ?></b></div>
+          <div class="row"><span class="lab">Total clos</span><b><?= h(_pick($bien, 'surface_total_clos')) ?></b></div>
+        </div>
+
+        <div class="blk">
+          <h5>Pièces</h5>
+          <div class="row"><span class="lab">Pièces</span><b><?= h($pieces) ?></b></div>
+          <div class="row"><span class="lab">Chambres</span><b><?= h($chambres) ?></b></div>
+          <div class="row"><span class="lab">Sdb</span><b><?= h($sdb) ?></b></div>
+          <div class="row"><span class="lab">Salons</span><b><?= h(_pick($bien, 'salons_count', 'salons')) ?></b></div>
+          <div class="row"><span class="lab">Cuisine</span><b><?= h(_pick($bien, 'cuisine')) ?></b></div>
+          <div class="row"><span class="lab">Bureau</span><b><?= h(_pick($bien, 'bureau_count', 'bureau')) ?></b></div>
+        </div>
+
+        <div class="blk">
+          <h5>Confort</h5>
+          <div class="row"><span class="lab">Climatisation</span><b><?= h(in_array('Climatisation', $equipementsConfort, true) ? 'Oui' : (is_array($equipementsRaw) && !empty($equipementsRaw['climatisation']) ? 'Oui' : '—')) ?></b></div>
+          <div class="row"><span class="lab">Chauffage</span><b><?= h(_pick($bien, 'chauffage')) ?></b></div>
+          <div class="row"><span class="lab">Vitrage</span><b><?= h(_pick($bien, 'vitrage')) ?></b></div>
+          <div class="row"><span class="lab">Cuisine</span><b><?= h(_pick($bien, 'cuisine')) ?></b></div>
+          <div class="row"><span class="lab">Domotique</span><b><?= h(_pick($bien, 'domotique')) ?></b></div>
+          <div class="row"><span class="lab">Cheminée</span><b><?= h(in_array('Cheminée', $equipementsConfort, true) ? 'Oui' : '—') ?></b></div>
+        </div>
+
+        <div class="blk">
+          <h5>Extérieurs</h5>
+          <div class="row"><span class="lab">Jardin</span><b><?= $surfaceJardin ? fmtNum($surfaceJardin) . ' m²' : '—' ?></b></div>
+          <div class="row"><span class="lab">Piscine</span><b><?= h($piscine ?: '—') ?></b></div>
+          <div class="row"><span class="lab">Terrasses</span><b><?= $surfaceTerrasse ? fmtNum($surfaceTerrasse) . ' m²' : '—' ?></b></div>
+          <div class="row"><span class="lab">Barbecue</span><b><?= h(in_array('Barbecue', $amenagementsExt, true) ? 'Oui' : '—') ?></b></div>
+          <div class="row"><span class="lab">Pool house</span><b><?= h(in_array('Pool house', $amenagementsExt, true) ? 'Oui' : '—') ?></b></div>
+          <div class="row"><span class="lab">Arrosage</span><b><?= h(_pick($bien, 'arrosage')) ?></b></div>
+        </div>
+
+        <div class="blk">
+          <h5>Sécurité</h5>
+          <div class="row"><span class="lab">Alarme</span><b><?= h(in_array('Alarme', $securite, true) ? 'Oui' : '—') ?></b></div>
+          <div class="row"><span class="lab">Vidéo</span><b><?= h(in_array('Vidéosurveillance', $securite, true) ? 'Oui' : '—') ?></b></div>
+          <div class="row"><span class="lab">Portail</span><b><?= h(_pick($bien, 'portail')) ?></b></div>
+          <div class="row"><span class="lab">Gardien</span><b><?= h(in_array('Gardien', $securite, true) ? 'Oui' : '—') ?></b></div>
+          <div class="row"><span class="lab">Coffre-fort</span><b><?= h(in_array('Coffre-fort', $securite, true) ? 'Oui' : '—') ?></b></div>
+          <div class="row"><span class="lab">Quartier</span><b><?= h(_pick($bien, 'quartier_securite')) ?></b></div>
+        </div>
+
+        <div class="blk">
+          <h5>Énergie</h5>
+          <div class="row"><span class="lab">Eau</span><b><?= h(_pick($bien, 'eau')) ?></b></div>
+          <div class="row"><span class="lab">Électricité</span><b><?= h(_pick($bien, 'electricite')) ?></b></div>
+          <div class="row"><span class="lab">Solaire</span><b><?= h(_pick($bien, 'solaire')) ?></b></div>
+          <div class="row"><span class="lab">DPE</span><b><?= h(_pick($bien, 'dpe')) ?></b></div>
+          <div class="row"><span class="lab">GES</span><b><?= h(_pick($bien, 'ges')) ?></b></div>
+          <div class="row"><span class="lab">Internet</span><b><?= h(in_array('Internet fibre', $equipementsConfort, true) ? 'Fibre' : (_pick($bien, 'internet') ?: '—')) ?></b></div>
+        </div>
+
+        <div class="blk">
+          <h5>Localisation</h5>
+          <div class="row"><span class="lab">Quartier</span><b><?= h($bien['quartier'] ?? '—') ?></b></div>
+          <div class="row"><span class="lab">Commerces</span><b><?= h(_pick($bien, 'distance_commerces')) ?></b></div>
+          <div class="row"><span class="lab">Aéroport</span><b><?= h(_pick($bien, 'distance_aeroport_km') ? _pick($bien, 'distance_aeroport_km') . ' km' : null) ?></b></div>
+          <div class="row"><span class="lab">Médina</span><b><?= h(_pick($bien, 'distance_medina')) ?></b></div>
+          <div class="row"><span class="lab">École</span><b><?= h(_pick($bien, 'distance_ecole')) ?></b></div>
+          <div class="row"><span class="lab">Hôpital</span><b><?= h(_pick($bien, 'distance_hopital')) ?></b></div>
+        </div>
+
+        <div class="blk blk-full">
+          <h5>Honoraires &amp; conditions</h5>
+          <div class="row"><span class="lab">Prix net vendeur</span><b><?= h(_pick($data, 'prix_net_vendeur')) ?></b></div>
+          <div class="row"><span class="lab">Honoraires</span><b><?= h($honoraires ? 'Inclus' : 'En sus') ?></b></div>
+          <div class="row"><span class="lab">Prix de présentation</span><b><?= $prix ? (htmlspecialchars(fmtNum($prix)) . ' ' . htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8")) : 'Sur demande' ?></b></div>
+          <div class="row"><span class="lab">Disponibilité</span><b><?= h(trim(($dispoStatut ?? '') . ($dispoDate ? ' &middot; ' . $dispoDate : ''))) ?></b></div>
+        </div>
+      </div>
+
+      <div class="foot-p2">
+        <div class="agent">
+          <span class="lab">Agent référent</span>
+          <?php if ($hideIdentity): ?>
+            <span style="color: var(--mute); font-style: italic;">Coordonnées sur demande</span>
+          <?php else: ?>
+            <?= h($agentName) ?><?php if ($agentTel): ?> &middot; <?= h($agentTel) ?><?php endif; ?>
+          <?php endif; ?>
+        </div>
+        <div class="pgnum">Page 2 / 3</div>
+        <div class="client<?= $_hasDestinataire ? '' : ' empty' ?>">
+          <?php if ($_hasDestinataire): ?>
+            <span class="lab">Destinataire</span>
+            <?= h($destinataireNom) ?><?php if ($destinataireEmail): ?><br><?= h($destinataireEmail) ?><?php endif; ?>
+          <?php endif; ?>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ====================== PAGE 2 — DESCRIPTIF ====================== -->
-  <section class="page">
-    <div class="runhead">
-      <span class="left brand brand-sm"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span>
-      <span>Réf. <?= h($ref) ?> · Page 2/3</span>
+  <!-- ====================== PAGE 3 — Album photo (12 photos · 4 sections) ====================== -->
+  <section class="page" data-page="3">
+    <header class="ribbon">
+      <div class="b">OCRE Immo</div>
+      <div class="small">Marrakech &middot; Gueliz</div>
+      <div class="ref">Réf. <?= h($ref) ?> &middot; Page 3 / 3</div>
+    </header>
+
+    <div class="alb-head">
+      <div class="h">Album photo</div>
+      <div class="s"><?= h($titreBien) ?></div>
     </div>
 
-    <div class="eye" style="text-align:left;">Le bien</div>
-    <h1 class="ed-title"<?= _pdfEdAttr('title', $_pdfEditorState) ?>><?= h($titreBien) ?></h1>
-
-    <div class="ed-lead"<?= _pdfEdAttr('descriptif_lead', $_pdfEditorState) ?>>
-      <?php if ($descriptifLead): ?>
-        <?= nl2br(h($descriptifLead)) ?>
-      <?php else: ?>
-        <?= h($titreBien) ?> niché à <?= h($ville ?: 'Marrakech') ?>. Volumes généreux, prestations de standing, jardin paysager. Une adresse rare pour qui cherche le confort d'une vie entre médina et palmeraie.
-      <?php endif; ?>
-    </div>
-
-    <div class="ed-grid" style="<?= $_hasEditorialPhotos ? '' : 'grid-template-columns: 1fr;' ?>">
-      <div class="ed-text"<?= _pdfEdAttr('descriptif_texte', $_pdfEditorState) ?>>
-        <?php if ($descriptifTexte): ?>
-          <?= nl2br(h($descriptifTexte)) ?>
-        <?php else: ?>
-          <h4>Au rez-de-jardin</h4>
-          <p>Un vaste séjour traversant ouvre sur le jardin par de larges baies coulissantes. La cuisine équipée prolonge l'espace de réception et donne accès à la terrasse couverte. Un bureau, une suite d'amis et les pièces de service complètent ce niveau.</p>
-          <h4>À l'étage</h4>
-          <p>La suite parentale offre dressing et salle de bain en marbre travertin. <?= $chambres ? ((int) $chambres - 1) : 'Trois' ?> autres chambres en suite, baignées de lumière, donnent toutes sur le jardin et la piscine.</p>
-          <h4>Extérieurs &amp; prestations</h4>
-          <p><?= $piscine && $piscine !== 'Aucune' ? 'Piscine ' . htmlspecialchars(strtolower($piscine)) . ' chauffée, ' : '' ?>jardin paysager d'inspiration méditerranéenne, terrasses ombragées et coin barbecue. Climatisation réversible, double vitrage, alarme et vidéosurveillance.</p>
-        <?php endif; ?>
-      </div>
-      <?php if ($_hasEditorialPhotos): ?>
-      <div class="ed-photos">
-        <?php foreach ($photoEditorial as $p): ?>
-        <div>
-          <?php if ($p): ?>
-            <img src="<?= h($p) ?>" alt="">
-          <?php else: ?>
-            <div class="ph-empty">Photo</div>
-          <?php endif; ?>
-        </div>
+    <div class="body-alb">
+      <?php
+      $albSections = [
+          'Extérieurs'           => array_slice($photos, 0, 3),
+          'Pièces de réception'  => array_slice($photos, 3, 3),
+          'Chambres &amp; bains' => array_slice($photos, 6, 3),
+          'Détails &amp; vues'   => array_slice($photos, 9, 3),
+      ];
+      foreach ($albSections as $secName => $secPhotos):
+          $hasAny = !empty(array_filter($secPhotos));
+          if (!$hasAny) continue;
+      ?>
+      <div class="sec-cap"><span><?= $secName ?></span></div>
+      <div class="grid-3">
+        <?php foreach ([0, 1, 2] as $i):
+            $p = $secPhotos[$i] ?? null;
+        ?>
+        <div class="ph"><?php if ($p): ?><img src="<?= h($p) ?>" alt=""><?php endif; ?></div>
         <?php endforeach; ?>
       </div>
-      <?php endif; ?>
-    </div>
-
-    <div class="runfoot">
-      <span><span class="brand brand-sm"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span><span style="margin-left:6px">· Marrakech</span></span>
-      <span>Document confidentiel — usage agent</span>
-    </div>
-  </section>
-
-  <!-- ====================== PAGE 3 — TECHNIQUE ====================== -->
-  <section class="page">
-    <div class="runhead">
-      <span class="left brand brand-sm"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span>
-      <span>Réf. <?= h($ref) ?> · Page 3/3</span>
-    </div>
-
-    <div class="eye" style="text-align:left;">Fiche technique</div>
-    <h1 class="tech-title">Caractéristiques <b>complètes</b></h1>
-
-    <div class="tech-section">
-      <h3>Identité</h3>
-      <div class="tech-rows">
-        <div class="row"><span class="k">Type</span><span><?= h($typeBien) ?></span></div>
-        <div class="row"><span class="k">Statut foncier</span><span><?= h(_pick($bien, 'statut_foncier', 'titre_statut')) ?></span></div>
-        <div class="row"><span class="k">État</span><span><?= h($etat) ?></span></div>
-        <div class="row"><span class="k">Niveaux</span><span><?= h($etages) ?></span></div>
-        <div class="row"><span class="k">Pièces</span><span><?= h($pieces) ?></span></div>
-        <div class="row"><span class="k">Chambres</span><span><?= h($chambres) ?></span></div>
-        <div class="row"><span class="k">Disponibilité</span><span><?= h(trim(($dispoStatut ?? '') . ($dispoDate ? ' · ' . $dispoDate : ''))) ?></span></div>
-        <div class="row"><span class="k">Exposition</span><span><?= h($exposition) ?></span></div>
-        <div class="row"><span class="k">Vue</span><span><?= bullets($vues, ', ') ?></span></div>
-      </div>
-    </div>
-
-    <div class="tech-section">
-      <h3>Surfaces</h3>
-      <div class="tech-rows">
-        <div class="row"><span class="k">Habitable</span><span><?= $surfaceHab ? fmtNum($surfaceHab) . ' m²' : '—' ?></span></div>
-        <div class="row"><span class="k">Terrasses + garage</span><span><?= ($surfaceTerrasse || $surfaceGarage) ? fmtNum(((float) $surfaceTerrasse) + ((float) $surfaceGarage)) . ' m²' : '—' ?></span></div>
-        <div class="row"><span class="k">Terrain</span><span><?= $surfaceTerrain ? fmtNum($surfaceTerrain) . ' m²' : '—' ?></span></div>
-        <?php if ($piscine && $piscine !== 'Aucune'): ?>
-        <div class="row"><span class="k">Piscine</span><span><?= h($piscine) ?></span></div>
-        <?php endif; ?>
-        <?php if (!empty($bien['terrasse_couv_m2'])): ?>
-        <div class="row"><span class="k">Terrasse couverte</span><span><?= h($bien['terrasse_couv_m2']) ?> m²</span></div>
-        <?php endif; ?>
-        <?php if (!empty($bien['nombre_places_parking'])): ?>
-        <div class="row"><span class="k">Parking</span><span><?= (int) $bien['nombre_places_parking'] ?> place(s)</span></div>
-        <?php endif; ?>
-      </div>
-    </div>
-
-    <div class="tech-section">
-      <h3>Confort &amp; équipements</h3>
-      <div class="tech-rows">
-        <div class="inline">
-          <?php foreach ($equipementsConfort as $e): ?>
-            <span><?= h($e) ?></span>
-          <?php endforeach; ?>
-          <?php if (!$equipementsConfort): ?><span style="color:var(--muted)">—</span><?php endif; ?>
-        </div>
-      </div>
-    </div>
-
-    <div class="tech-section">
-      <h3>Sécurité &amp; extérieurs</h3>
-      <div class="tech-rows">
-        <div class="inline">
-          <?php foreach (array_merge($securite, $amenagementsExt) as $e): ?>
-            <span><?= h($e) ?></span>
-          <?php endforeach; ?>
-          <?php if (!$securite && !$amenagementsExt): ?><span style="color:var(--muted)">—</span><?php endif; ?>
-        </div>
-      </div>
-    </div>
-
-    <div class="tech-section">
-      <h3>Adresse &amp; proximités</h3>
-      <div class="tech-rows">
-        <?php if ($hideAddress): ?>
-          <div class="row"><span class="k">Adresse</span><span style="color: var(--muted); font-style: italic;">Sur demande</span></div>
-        <?php elseif ($adresse): ?>
-          <div class="row"><span class="k">Adresse</span><span><?= h($adresse) ?></span></div>
-        <?php endif; ?>
-        <div class="inline">
-          <?php foreach ($proximites as $e): ?>
-            <span><?= h($e) ?></span>
-          <?php endforeach; ?>
-          <?php if (!$proximites): ?><span style="color:var(--muted)">—</span><?php endif; ?>
-        </div>
-      </div>
-    </div>
-
-    <div class="contact-block">
-      <div class="col">
-        <h5>Agent référent</h5>
-        <div class="body">
-          <?php if ($hideIdentity): ?>
-            <div<?= _pdfEdAttr('agent', $_pdfEditorState) ?> style="color: var(--muted); font-style: italic; font-size: 12px;">Coordonnées sur demande auprès de l'agent</div>
-          <?php else: ?>
-            <div<?= _pdfEdAttr('agent', $_pdfEditorState) ?>>
-              <div class="name" data-agent-field="name"><?= h($agentName) ?></div>
-              <?php if ($agentTel): ?><div data-agent-field="phone"><?= h($agentTel) ?></div><?php endif; ?>
-              <?php if ($agentEmail): ?><div data-agent-field="email"><?= h($agentEmail) ?></div><?php endif; ?>
-            </div>
-          <?php endif; ?>
-        </div>
-      </div>
-      <div class="col">
-        <h5>Dossier en ligne</h5>
-        <div class="body">
-          <div><?= h($shareBase . $ref) ?></div>
-          <div style="color: var(--muted); font-size: 9px; margin-top: 2mm;">Lien valide 7 jours</div>
-        </div>
-      </div>
-      <div class="col" style="text-align: right;">
-        <h5>Prix</h5>
-        <?php if ($prix && !$prixDemand): ?>
-          <div class="price-final"<?= _pdfEdAttr('price', $_pdfEditorState) ?>><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></div>
-          <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
-        <?php else: ?>
-          <div class="price-final"<?= _pdfEdAttr('price', $_pdfEditorState) ?> style="font-size: 18px; color: var(--muted); font-style: italic;">Sur demande</div>
-        <?php endif; ?>
-      </div>
-    </div>
-
-    <?php /* M/2026/05/05/51 — Album photo deplace ici (fin PDF, juste avant footer). */ ?>
-    <?php if (!empty($_albumExtra) && count($_albumExtra) > 0): ?>
-    <h3 class="album-title">Album photo</h3>
-    <div class="album">
-      <?php foreach ($_albumExtra as $p): ?>
-      <div class="album-cell"><img src="<?= h($p) ?>" alt=""></div>
       <?php endforeach; ?>
     </div>
-    <?php endif; ?>
 
-    <div class="runfoot">
-      <span><span class="brand brand-sm"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span><span style="margin-left:6px">· Marrakech</span></span>
-      <span>Document confidentiel — usage agent</span>
-    </div>
+    <div class="footer-alb">Ocre Immo &middot; Marrakech &middot; Réf. <?= h($ref) ?> &middot; Page 3 / 3</div>
   </section>
 
 </div>
