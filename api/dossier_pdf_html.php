@@ -356,6 +356,32 @@ function _pdfPageNumLabel(array $real, string $key): string {
     return $n > 0 ? (string)$n : '—';
 }
 
+// M/2026/05/05/62 — helpers gracieux : skip rows + sections vides en P2.
+function _isEmptyVal($v): bool {
+    if ($v === null || $v === '' || $v === '—') return true;
+    if (is_array($v)) return count($v) === 0;
+    if (is_string($v) && trim($v) === '') return true;
+    return false;
+}
+function _renderRow(string $lab, $val): string {
+    if (_isEmptyVal($val)) return '';
+    if (is_array($val)) $val = bullets($val, ', ');
+    return '<div class="row"><span class="lab">' . htmlspecialchars($lab) . '</span><b>' . htmlspecialchars((string)$val) . '</b></div>';
+}
+// Variante : valeur deja formatee HTML (ex: nombre + unite avec htmlspecialchars).
+function _renderRowHtml(string $lab, string $valHtml): string {
+    if (trim($valHtml) === '' || trim($valHtml) === '—') return '';
+    return '<div class="row"><span class="lab">' . htmlspecialchars($lab) . '</span><b>' . $valHtml . '</b></div>';
+}
+function _renderSection(string $title, string $rowsHtml): string {
+    if (trim($rowsHtml) === '') return '';
+    return '<div class="blk"><h5>' . htmlspecialchars($title) . '</h5>' . $rowsHtml . '</div>';
+}
+// Yes-only helper (ne retourne null si absent pour pouvoir skip la row).
+function _yesIfIn(array $arr, string $needle): ?string {
+    return in_array($needle, $arr, true) ? 'Oui' : null;
+}
+
 header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
 <html lang="fr">
@@ -533,7 +559,7 @@ header('Content-Type: text/html; charset=utf-8');
     <header class="ribbon">
       <div class="b">OCRE Immo</div>
       <div class="small">Marrakech &middot; Gueliz</div>
-      <div class="ref">Réf. <?= h($ref) ?> &middot; Page <?= _pdfPageNumLabel($_realActivePages, 'p1') ?> / <?= $_totalActivePages ?></div>
+      <div class="ref">Réf. <?= h($ref) ?> &middot; Page de présentation</div>
     </header>
 
     <div class="pg">
@@ -605,7 +631,8 @@ header('Content-Type: text/html; charset=utf-8');
         <div class="client<?= $_hasDestinataire ? '' : ' empty' ?>">
           <?php if ($_hasDestinataire): ?>
             <span class="lab">Destinataire</span>
-            <?= h($destinataireNom) ?><?php if ($destinataireEmail): ?><br><?= h($destinataireEmail) ?><?php endif; ?>
+            <?php if ($destinataireNom !== ''): ?><?= htmlspecialchars($destinataireNom) ?><?php endif; ?>
+            <?php if ($destinataireEmail !== ''): ?><?php if ($destinataireNom !== ''): ?><br><?php endif; ?><?= htmlspecialchars($destinataireEmail) ?><?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
@@ -619,7 +646,7 @@ header('Content-Type: text/html; charset=utf-8');
     <header class="ribbon">
       <div class="b">OCRE Immo</div>
       <div class="small">Marrakech &middot; Gueliz</div>
-      <div class="ref">Réf. <?= h($ref) ?> &middot; Page <?= _pdfPageNumLabel($_realActivePages, 'p2') ?> / <?= $_totalActivePages ?></div>
+      <div class="ref">Réf. <?= h($ref) ?> &middot; Page de détails</div>
     </header>
 
     <div class="body-p2">
@@ -627,95 +654,88 @@ header('Content-Type: text/html; charset=utf-8');
       <div class="h2-sub"><?= h($titreBien) ?></div>
       <div class="h2-rule"></div>
 
-      <div class="grid-2col">
-        <div class="blk">
-          <h5>Identité</h5>
-          <div class="row"><span class="lab">Type</span><b><?= h($typeBien) ?></b></div>
-          <div class="row"><span class="lab">Année</span><b><?= h(_pick($bien, 'annee_construction', 'annee')) ?></b></div>
-          <div class="row"><span class="lab">État</span><b><?= h($etat) ?></b></div>
-          <div class="row"><span class="lab">Standing</span><b><?= h(_pick($bien, 'standing')) ?></b></div>
-          <div class="row"><span class="lab">Orientation</span><b><?= h($exposition) ?></b></div>
-          <div class="row"><span class="lab">Vue</span><b><?= h($vues ? bullets($vues, ', ') : '—') ?></b></div>
-        </div>
-
-        <div class="blk">
-          <h5>Surfaces</h5>
-          <div class="row"><span class="lab">Habitable</span><b><?= $surfaceHab ? fmtNum($surfaceHab) . ' m²' : '—' ?></b></div>
-          <div class="row"><span class="lab">Terrain</span><b><?= $surfaceTerrain ? fmtNum($surfaceTerrain) . ' m²' : '—' ?></b></div>
-          <div class="row"><span class="lab">Terrasses</span><b><?= $surfaceTerrasse ? fmtNum($surfaceTerrasse) . ' m²' : '—' ?></b></div>
-          <div class="row"><span class="lab">Piscine</span><b><?= h($piscine ?: '—') ?></b></div>
-          <div class="row"><span class="lab">Garage</span><b><?= $surfaceGarage ? fmtNum($surfaceGarage) . ' m²' : '—' ?></b></div>
-          <div class="row"><span class="lab">Total clos</span><b><?= h(_pick($bien, 'surface_total_clos')) ?></b></div>
-        </div>
-
-        <div class="blk">
-          <h5>Pièces</h5>
-          <div class="row"><span class="lab">Pièces</span><b><?= h($pieces) ?></b></div>
-          <div class="row"><span class="lab">Chambres</span><b><?= h($chambres) ?></b></div>
-          <div class="row"><span class="lab">Sdb</span><b><?= h($sdb) ?></b></div>
-          <div class="row"><span class="lab">Salons</span><b><?= h(_pick($bien, 'salons_count', 'salons')) ?></b></div>
-          <div class="row"><span class="lab">Cuisine</span><b><?= h(_pick($bien, 'cuisine')) ?></b></div>
-          <div class="row"><span class="lab">Bureau</span><b><?= h(_pick($bien, 'bureau_count', 'bureau')) ?></b></div>
-        </div>
-
-        <div class="blk">
-          <h5>Confort</h5>
-          <div class="row"><span class="lab">Climatisation</span><b><?= h(in_array('Climatisation', $equipementsConfort, true) ? 'Oui' : (is_array($equipementsRaw) && !empty($equipementsRaw['climatisation']) ? 'Oui' : '—')) ?></b></div>
-          <div class="row"><span class="lab">Chauffage</span><b><?= h(_pick($bien, 'chauffage')) ?></b></div>
-          <div class="row"><span class="lab">Vitrage</span><b><?= h(_pick($bien, 'vitrage')) ?></b></div>
-          <div class="row"><span class="lab">Cuisine</span><b><?= h(_pick($bien, 'cuisine')) ?></b></div>
-          <div class="row"><span class="lab">Domotique</span><b><?= h(_pick($bien, 'domotique')) ?></b></div>
-          <div class="row"><span class="lab">Cheminée</span><b><?= h(in_array('Cheminée', $equipementsConfort, true) ? 'Oui' : '—') ?></b></div>
-        </div>
-
-        <div class="blk">
-          <h5>Extérieurs</h5>
-          <div class="row"><span class="lab">Jardin</span><b><?= $surfaceJardin ? fmtNum($surfaceJardin) . ' m²' : '—' ?></b></div>
-          <div class="row"><span class="lab">Piscine</span><b><?= h($piscine ?: '—') ?></b></div>
-          <div class="row"><span class="lab">Terrasses</span><b><?= $surfaceTerrasse ? fmtNum($surfaceTerrasse) . ' m²' : '—' ?></b></div>
-          <div class="row"><span class="lab">Barbecue</span><b><?= h(in_array('Barbecue', $amenagementsExt, true) ? 'Oui' : '—') ?></b></div>
-          <div class="row"><span class="lab">Pool house</span><b><?= h(in_array('Pool house', $amenagementsExt, true) ? 'Oui' : '—') ?></b></div>
-          <div class="row"><span class="lab">Arrosage</span><b><?= h(_pick($bien, 'arrosage')) ?></b></div>
-        </div>
-
-        <div class="blk">
-          <h5>Sécurité</h5>
-          <div class="row"><span class="lab">Alarme</span><b><?= h(in_array('Alarme', $securite, true) ? 'Oui' : '—') ?></b></div>
-          <div class="row"><span class="lab">Vidéo</span><b><?= h(in_array('Vidéosurveillance', $securite, true) ? 'Oui' : '—') ?></b></div>
-          <div class="row"><span class="lab">Portail</span><b><?= h(_pick($bien, 'portail')) ?></b></div>
-          <div class="row"><span class="lab">Gardien</span><b><?= h(in_array('Gardien', $securite, true) ? 'Oui' : '—') ?></b></div>
-          <div class="row"><span class="lab">Coffre-fort</span><b><?= h(in_array('Coffre-fort', $securite, true) ? 'Oui' : '—') ?></b></div>
-          <div class="row"><span class="lab">Quartier</span><b><?= h(_pick($bien, 'quartier_securite')) ?></b></div>
-        </div>
-
-        <div class="blk">
-          <h5>Énergie</h5>
-          <div class="row"><span class="lab">Eau</span><b><?= h(_pick($bien, 'eau')) ?></b></div>
-          <div class="row"><span class="lab">Électricité</span><b><?= h(_pick($bien, 'electricite')) ?></b></div>
-          <div class="row"><span class="lab">Solaire</span><b><?= h(_pick($bien, 'solaire')) ?></b></div>
-          <div class="row"><span class="lab">DPE</span><b><?= h(_pick($bien, 'dpe')) ?></b></div>
-          <div class="row"><span class="lab">GES</span><b><?= h(_pick($bien, 'ges')) ?></b></div>
-          <div class="row"><span class="lab">Internet</span><b><?= h(in_array('Internet fibre', $equipementsConfort, true) ? 'Fibre' : (_pick($bien, 'internet') ?: '—')) ?></b></div>
-        </div>
-
-        <div class="blk">
-          <h5>Localisation</h5>
-          <div class="row"><span class="lab">Quartier</span><b><?= h($bien['quartier'] ?? '—') ?></b></div>
-          <div class="row"><span class="lab">Commerces</span><b><?= h(_pick($bien, 'distance_commerces')) ?></b></div>
-          <div class="row"><span class="lab">Aéroport</span><b><?= h(_pick($bien, 'distance_aeroport_km') ? _pick($bien, 'distance_aeroport_km') . ' km' : null) ?></b></div>
-          <div class="row"><span class="lab">Médina</span><b><?= h(_pick($bien, 'distance_medina')) ?></b></div>
-          <div class="row"><span class="lab">École</span><b><?= h(_pick($bien, 'distance_ecole')) ?></b></div>
-          <div class="row"><span class="lab">Hôpital</span><b><?= h(_pick($bien, 'distance_hopital')) ?></b></div>
-        </div>
-
-        <div class="blk blk-full">
-          <h5>Honoraires &amp; conditions</h5>
-          <div class="row"><span class="lab">Prix net vendeur</span><b><?= h(_pick($data, 'prix_net_vendeur')) ?></b></div>
-          <div class="row"><span class="lab">Honoraires</span><b><?= h($honoraires ? 'Inclus' : 'En sus') ?></b></div>
-          <div class="row"><span class="lab">Prix de présentation</span><b><?= $prix ? (htmlspecialchars(fmtNum($prix)) . ' ' . htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8")) : 'Sur demande' ?></b></div>
-          <div class="row"><span class="lab">Disponibilité</span><b><?= h(trim(($dispoStatut ?? '') . ($dispoDate ? ' &middot; ' . $dispoDate : ''))) ?></b></div>
-        </div>
-      </div>
+      <?php
+      // M/2026/05/05/62 — P2 graceful : skip rows vides + sections vides + suppression Honoraires.
+      $_p2sections = '';
+      // Identite
+      $_rows = '';
+      $_rows .= _renderRow('Type', $typeBien);
+      $_rows .= _renderRow('Année', _pick($bien, 'annee_construction', 'annee'));
+      $_rows .= _renderRow('État', $etat);
+      $_rows .= _renderRow('Standing', _pick($bien, 'standing'));
+      $_rows .= _renderRow('Orientation', $exposition);
+      $_rows .= _renderRow('Vue', $vues ? bullets($vues, ', ') : null);
+      $_p2sections .= _renderSection('Identité', $_rows);
+      // Surfaces
+      $_rows = '';
+      $_rows .= _renderRowHtml('Habitable',  $surfaceHab ? htmlspecialchars(fmtNum($surfaceHab)) . ' m²' : '');
+      $_rows .= _renderRowHtml('Terrain',    $surfaceTerrain ? htmlspecialchars(fmtNum($surfaceTerrain)) . ' m²' : '');
+      $_rows .= _renderRowHtml('Terrasses',  $surfaceTerrasse ? htmlspecialchars(fmtNum($surfaceTerrasse)) . ' m²' : '');
+      $_rows .= _renderRow('Piscine', $piscine);
+      $_rows .= _renderRowHtml('Garage', $surfaceGarage ? htmlspecialchars(fmtNum($surfaceGarage)) . ' m²' : '');
+      $_rows .= _renderRow('Total clos', _pick($bien, 'surface_total_clos'));
+      $_p2sections .= _renderSection('Surfaces', $_rows);
+      // Pieces
+      $_rows = '';
+      $_rows .= _renderRow('Pièces', $pieces);
+      $_rows .= _renderRow('Chambres', $chambres);
+      $_rows .= _renderRow('Sdb', $sdb);
+      $_rows .= _renderRow('Salons', _pick($bien, 'salons_count', 'salons'));
+      $_rows .= _renderRow('Cuisine', _pick($bien, 'cuisine'));
+      $_rows .= _renderRow('Bureau', _pick($bien, 'bureau_count', 'bureau'));
+      $_p2sections .= _renderSection('Pièces', $_rows);
+      // Confort
+      $_rows = '';
+      $_climOk = in_array('Climatisation', $equipementsConfort, true) || (is_array($equipementsRaw) && !empty($equipementsRaw['climatisation']));
+      $_rows .= _renderRow('Climatisation', $_climOk ? 'Oui' : null);
+      $_rows .= _renderRow('Chauffage', _pick($bien, 'chauffage'));
+      $_rows .= _renderRow('Vitrage', _pick($bien, 'vitrage'));
+      $_rows .= _renderRow('Cuisine', _pick($bien, 'cuisine'));
+      $_rows .= _renderRow('Domotique', _pick($bien, 'domotique'));
+      $_rows .= _renderRow('Cheminée', _yesIfIn($equipementsConfort, 'Cheminée'));
+      $_p2sections .= _renderSection('Confort', $_rows);
+      // Exterieurs
+      $_rows = '';
+      $_rows .= _renderRowHtml('Jardin',    $surfaceJardin ? htmlspecialchars(fmtNum($surfaceJardin)) . ' m²' : '');
+      $_rows .= _renderRow('Piscine',       $piscine);
+      $_rows .= _renderRowHtml('Terrasses', $surfaceTerrasse ? htmlspecialchars(fmtNum($surfaceTerrasse)) . ' m²' : '');
+      $_rows .= _renderRow('Barbecue',      _yesIfIn($amenagementsExt, 'Barbecue'));
+      $_rows .= _renderRow('Pool house',    _yesIfIn($amenagementsExt, 'Pool house'));
+      $_rows .= _renderRow('Arrosage',      _pick($bien, 'arrosage'));
+      $_p2sections .= _renderSection('Extérieurs', $_rows);
+      // Securite
+      $_rows = '';
+      $_rows .= _renderRow('Alarme',      _yesIfIn($securite, 'Alarme'));
+      $_rows .= _renderRow('Vidéo',       _yesIfIn($securite, 'Vidéosurveillance'));
+      $_rows .= _renderRow('Portail',     _pick($bien, 'portail'));
+      $_rows .= _renderRow('Gardien',     _yesIfIn($securite, 'Gardien'));
+      $_rows .= _renderRow('Coffre-fort', _yesIfIn($securite, 'Coffre-fort'));
+      $_rows .= _renderRow('Quartier',    _pick($bien, 'quartier_securite'));
+      $_p2sections .= _renderSection('Sécurité', $_rows);
+      // Energie
+      $_rows = '';
+      $_rows .= _renderRow('Eau',          _pick($bien, 'eau'));
+      $_rows .= _renderRow('Électricité',  _pick($bien, 'electricite'));
+      $_rows .= _renderRow('Solaire',      _pick($bien, 'solaire'));
+      $_rows .= _renderRow('DPE',          _pick($bien, 'dpe'));
+      $_rows .= _renderRow('GES',          _pick($bien, 'ges'));
+      $_internet = in_array('Internet fibre', $equipementsConfort, true) ? 'Fibre' : _pick($bien, 'internet');
+      $_rows .= _renderRow('Internet', $_internet);
+      $_p2sections .= _renderSection('Énergie', $_rows);
+      // Localisation
+      $_rows = '';
+      $_rows .= _renderRow('Quartier',   $bien['quartier'] ?? null);
+      $_rows .= _renderRow('Commerces',  _pick($bien, 'distance_commerces'));
+      $_aeroportKm = _pick($bien, 'distance_aeroport_km');
+      $_rows .= _renderRow('Aéroport',   $_aeroportKm ? ($_aeroportKm . ' km') : null);
+      $_rows .= _renderRow('Médina',     _pick($bien, 'distance_medina'));
+      $_rows .= _renderRow('École',      _pick($bien, 'distance_ecole'));
+      $_rows .= _renderRow('Hôpital',    _pick($bien, 'distance_hopital'));
+      $_p2sections .= _renderSection('Localisation', $_rows);
+      ?>
+      <?php if ($_p2sections !== ''): ?>
+      <div class="grid-2col"><?= $_p2sections ?></div>
+      <?php endif; ?>
 
       <div class="foot-p2">
         <div class="agent">
@@ -726,11 +746,12 @@ header('Content-Type: text/html; charset=utf-8');
             <?= h($agentName) ?><?php if ($agentTel): ?> &middot; <?= h($agentTel) ?><?php endif; ?>
           <?php endif; ?>
         </div>
-        <div class="pgnum">Page <?= _pdfPageNumLabel($_realActivePages, 'p2') ?> / <?= $_totalActivePages ?></div>
+        <div class="pgnum">Page de détails</div>
         <div class="client<?= $_hasDestinataire ? '' : ' empty' ?>">
           <?php if ($_hasDestinataire): ?>
             <span class="lab">Destinataire</span>
-            <?= h($destinataireNom) ?><?php if ($destinataireEmail): ?><br><?= h($destinataireEmail) ?><?php endif; ?>
+            <?php if ($destinataireNom !== ''): ?><?= htmlspecialchars($destinataireNom) ?><?php endif; ?>
+            <?php if ($destinataireEmail !== ''): ?><?php if ($destinataireNom !== ''): ?><br><?php endif; ?><?= htmlspecialchars($destinataireEmail) ?><?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
@@ -745,7 +766,7 @@ header('Content-Type: text/html; charset=utf-8');
     <header class="ribbon">
       <div class="b">OCRE Immo</div>
       <div class="small">Marrakech &middot; Gueliz</div>
-      <div class="ref">Réf. <?= h($ref) ?> &middot; Page <?= _pdfPageNumLabel($_realActivePages, 'p3') ?> / <?= $_totalActivePages ?></div>
+      <div class="ref">Réf. <?= h($ref) ?> &middot; Page des photos</div>
     </header>
 
     <div class="alb-head">
@@ -772,7 +793,7 @@ header('Content-Type: text/html; charset=utf-8');
       <?php endfor; ?>
     </div>
 
-    <div class="footer-alb">Ocre Immo &middot; Marrakech &middot; Réf. <?= h($ref) ?> &middot; Page <?= _pdfPageNumLabel($_realActivePages, 'p3') ?> / <?= $_totalActivePages ?></div>
+    <div class="footer-alb">Ocre Immo &middot; Marrakech &middot; Réf. <?= h($ref) ?> &middot; Page des photos</div>
   </section>
   <?php endif; /* P3 active ou preview */ ?>
 
