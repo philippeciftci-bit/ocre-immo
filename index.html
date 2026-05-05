@@ -4284,16 +4284,24 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     } catch (e) { throw e; }
   }
   async function handleFiles(fl) {
-    if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); if (inputRef.current) inputRef.current.value = ''; return; }
+    // M/2026/05/05/19 — M-Photos-Album-Toast-Fix : garde stricte. AUCUN toast si l utilisateur n a rien selectionne
+    // (cancel du picker iOS = files.length === 0). Le check "Limite atteinte" ne se declenche QUE si l agent a
+    // effectivement selectionne au moins 1 fichier ET que la limite est deja atteinte.
     const files = Array.from(fl || []);
-    if (!files.length) return;
-    // Cap 30 photos par bien.
-    const remaining = 30 - list.length;
-    if (remaining <= 0) {
+    if (!files.length) {
+      // Pas de toast, juste reset au cas ou.
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+    if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); if (inputRef.current) inputRef.current.value = ''; return; }
+    const currentCount = list.length;
+    // Cap 30 photos par bien. Toast UNIQUEMENT si fichiers selectionnes (deja ci-dessus) ET limite atteinte.
+    if (currentCount >= 30) {
       showToast && showToast('Limite atteinte (30 photos max par bien)');
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
+    const remaining = 30 - currentCount;
     const toUpload = files.slice(0, remaining);
     const skipped = files.length - toUpload.length;
     setUploading(true);
@@ -4302,12 +4310,10 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     const succeeded = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
     const failed = results.length - succeeded.length;
     if (succeeded.length > 0) {
-      // APPEND en fin de tableau (ordre brief).
       onPhotosChange && onPhotosChange([...list, ...succeeded]);
     }
     if (skipped > 0) showToast && showToast(succeeded.length + ' photo(s) ajoutee(s), ' + skipped + ' ignoree(s) (limite 30)');
     else if (failed > 0) showToast && showToast(succeeded.length + ' photo(s) ajoutee(s), ' + failed + ' echec(s)');
-    // Reset input pour permettre re-selection des memes fichiers.
     if (inputRef.current) inputRef.current.value = '';
   }
   async function removePhoto(p) {

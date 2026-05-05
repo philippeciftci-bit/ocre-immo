@@ -426,13 +426,16 @@ header('Content-Type: text/html; charset=utf-8');
   .mosaic img, .mosaic-1 img, .mosaic-2 img, .mosaic-3 img, .mosaic-4 img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .mosaic .ph-empty, .mosaic-1 .ph-empty, .mosaic-2 .ph-empty, .mosaic-3 .ph-empty, .mosaic-4 .ph-empty { display: flex; align-items: center; justify-content: center; color: var(--ocre-light); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
   .mosaic .caption, .mosaic-1 .caption, .mosaic-2 .caption, .mosaic-3 .caption, .mosaic-4 .caption { position: absolute; bottom: 6px; left: 8px; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); font-weight: 500; }
-  /* M/2026/05/05/17 — section album : photos 6+ en grille de petites vignettes. */
-  .album { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 8mm; }
-  .album > div { aspect-ratio: 1 / 1; background: var(--ocre-soft); overflow: hidden; border-radius: 4px; }
-  .album img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* M/2026/05/05/17 — section album : photos 6+ en grille de petites vignettes.
+     M/2026/05/05/19 — M-Photos-Album-Toast-Fix : titre Album photo + grille STRICTE 4 cols + .album-cell aspect 4/3. */
+  .album-title { font-family: 'Cormorant Garamond', 'Playfair Display', serif; font-size: 22px; color: #7A5132; text-align: center; font-weight: 600; margin: 18px 0 12px; letter-spacing: 0.5px; }
+  .album { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 8mm; }
+  .album-cell { aspect-ratio: 4 / 3; background: var(--ocre-soft); overflow: hidden; border-radius: 6px; }
+  .album-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
   @media print {
     .mosaic-1, .mosaic-2, .mosaic-3, .mosaic-4 { gap: 4mm; }
     .album { grid-template-columns: repeat(4, 1fr); gap: 4mm; }
+    .album-title { margin: 8mm 0 4mm; }
   }
 
   .cartouche { background: var(--bg); border-top: 0.5px solid var(--ocre); border-bottom: 0.5px solid var(--ocre); padding: 12mm 14mm; text-align: center; margin: 0 0 10mm; }
@@ -589,9 +592,10 @@ header('Content-Type: text/html; charset=utf-8');
       <?php endforeach; ?>
     </div>
     <?php if (count($_albumExtra) > 0): ?>
+    <h3 class="album-title">Album photo</h3>
     <div class="album">
       <?php foreach ($_albumExtra as $p): ?>
-      <div><img src="<?= h($p) ?>" alt=""></div>
+      <div class="album-cell"><img src="<?= h($p) ?>" alt=""></div>
       <?php endforeach; ?>
     </div>
     <?php endif; ?>
