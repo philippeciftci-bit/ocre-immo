@@ -490,13 +490,14 @@ const PROFILS_LABEL = {
 // V18.26 — titres sections adaptés par profil. Section II varie (ciblé/en vente/à louer/recherché).
 // Section III : "Budget & rendement" pour Investisseur, "Budget & financement" pour les autres.
 // Section IV : "Suivi & notes" pour tous (renommé depuis "Infos complémentaires").
+// M/2026/05/05/30 — M-Photos-Stage-V : ajout 5e stage "V. Photos" pour tous les profils.
 const STAGES = {
-  Acheteur:     ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents"],
-  Vendeur:      ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents"],
-  Investisseur: ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Activité & documents"],
-  Bailleur:     ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Activité & documents"],
-  Locataire:    ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Activité & documents"],
-  Curieux:      ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents"]
+  Acheteur:     ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Vendeur:      ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Investisseur: ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Activité & documents", "V. Photos"],
+  Bailleur:     ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Locataire:    ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Curieux:      ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"]
 };
 // V17.4 : suggestions "Aussi…" selon profil courant.
 const BASCULES = {
@@ -5686,21 +5687,12 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
               onChange={v => setB('videosurveillance_enregistrement', v === 'Actif')} options={['Actif','Inactif']}/>
           )}
 
-          {/* === BLOC 11 — PHOTOS === */}
-          {sectionTitle(9, 'Photos')}
-          {/* M/2026/05/02/20 — M132 : opts.commit=true M129 propagé pour auto-save photos.
-              Bug Philippe iPad 08:54 : upload + flèche retour = photo perdue. setB('photos', v)
-              sans commit = userBlurredRef ne flippe pas = pas de POST DB. Fix M132 : {commit:true}. */}
-          <PhotoUpload dossierId={dossierId} showToast={showToast}
-            photos={Array.isArray(bien.photos) ? bien.photos : []}
-            onPhotosChange={v => setB('photos', v, {commit: true})}/>
-          <div style={{fontSize:11, color:'#8B7F6E', marginTop:6}}>
-            {(bien.photos || []).length} / 30 photos · WebP auto · 1920 px max
-          </div>
+          {/* M/2026/05/05/30 — M-Photos-Stage-V : bloc Photos sorti de Stage II vers nouveau Stage V autonome.
+              Renumérotation : 09 Disponibilité (etait 10), 10 Proximités (etait 11), 11 Remarques (etait 12). */}
 
           {/* === BLOC 12 — DISPONIBILITÉ === */}
           {/* M/2026/04/30/42 — sub-bloc conditionnel Occupé : libération prévue + bail fin. */}
-          {sectionTitle(10, 'Disponibilité')}
+          {sectionTitle(9, 'Disponibilité')}
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
             <PillRadio label="Statut" value={bien.dispo_statut} onChange={v => setB('dispo_statut', v)} options={V1_DISPO_STATUTS}/>
             <Field label="Date" type="date" value={bien.dispo_date} onChange={v => setB('dispo_date', v)} placeholder="JJ/MM/AAAA"/>
@@ -5714,7 +5706,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
 
           {/* === BLOC 13 — PROXIMITÉS === */}
           {/* M/2026/04/30/44 — liste enrichie + textarea notes proximités (compact). */}
-          {sectionTitle(11, 'Proximités')}
+          {sectionTitle(10, 'Proximités')}
           <PillsMulti label="Proximités" value={bien.proximites || []} onChange={v => setB('proximites', v)} options={V1_PROXIMITES}/>
           <textarea value={bien.proximites_notes || ''} onChange={e => setB('proximites_notes', e.target.value)}
             placeholder="Distances précises (ex: Plage 5 min, École française 800m, Souk 2km)"
@@ -5723,7 +5715,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
 
           {/* === BLOC 14 — REMARQUES === */}
           {/* M/2026/04/30/44 — compteur caractères X/2000 (limite douce, ocre clair >2000). */}
-          {sectionTitle(12, 'Remarques')}
+          {sectionTitle(11, 'Remarques')}
           <textarea value={bien.remarques_bien || ''} onChange={e => setB('remarques_bien', e.target.value)}
             placeholder="Particularités, défauts à signaler, points d'attention pour la visite, contraintes copro, etc."
             style={{width:'100%', boxSizing:'border-box', minHeight:90, padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit',
@@ -20310,8 +20302,9 @@ function FormView(props) {
   // useState initializer re-run → `isNew` devient false → arr[0] revient à false. Supprimer
   // l'ouverture auto pour nouveau dossier tue le bug à la racine. initialExpandedSection
   // (tap secteur ClientRow) reste honoré.
+  // M/2026/05/05/30 — M-Photos-Stage-V : 5 stages au lieu de 4 (ajout V. Photos).
   const [expanded, setExpanded] = useState(() => {
-    const arr = [false, false, false, false];
+    const arr = [false, false, false, false, false];
     if (initialExpandedSection != null) arr[initialExpandedSection] = true;
     return arr;
   });
@@ -20848,11 +20841,34 @@ function FormView(props) {
       </>
     ) : emptyHint('Planifier un suivi');
 
+    // M/2026/05/05/30 — M-Photos-Stage-V : status section V (Photos) calcule depuis bien.photos.
+    const _photosArr = Array.isArray(d.bien && d.bien.photos) ? d.bien.photos : [];
+    const _photosCount = _photosArr.length;
+    const _photosPreview = _photosArr.slice(0, 5);
+    const sec5Status = _photosCount > 0 ? 'ok' : 'empty';
+    const sec5Summary = _photosCount > 0
+      ? (
+        <>
+          <div style={{display:'flex', gap:4, marginBottom:4, flexWrap:'wrap'}}>
+            {_photosPreview.map((p, i) => {
+              const src = (typeof p === 'object' && p && p.thumb_url) ? p.thumb_url : (typeof p === 'object' && p && p.url) ? p.url : (typeof p === 'string' ? p : null);
+              if (!src) return null;
+              return <div key={i} style={{width:36, height:36, borderRadius:6, overflow:'hidden', background:'#F4ECE3', border:'1px solid #E8DDD0', flexShrink:0}}>
+                <img src={src} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+              </div>;
+            })}
+            {_photosCount > 5 && <div style={{width:36, height:36, borderRadius:6, background:'#F5EFE6', border:'1px solid #E8DDD0', display:'flex', alignItems:'center', justifyContent:'center', color:'#7A5132', fontSize:11, fontWeight:600, flexShrink:0}}>+{_photosCount - 5}</div>}
+          </div>
+          <div>{_photosCount} photo{_photosCount > 1 ? 's' : ''}</div>
+        </>
+      )
+      : emptyHint('Ajouter des photos');
     return [
       {status: sec1Status, summary: sec1Summary},
       {status: sec2Status, summary: sec2Summary},
       {status: sec3Status, summary: sec3Summary},
       {status: sec4Status, summary: sec4Summary},
+      {status: sec5Status, summary: sec5Summary},
     ];
   }
   const stageStatus = computeStatus();
@@ -20887,6 +20903,8 @@ function FormView(props) {
         || (su.next_event && (hit(su.next_event.title) || hit(su.next_event.when_at)))
         || (su.next_todo && hit(su.next_todo.title))
         || (su.last_interaction && hit(su.last_interaction.content)),
+      // M/2026/05/05/30 — Section V — Photos : pas de query texte, false par defaut.
+      false,
     ];
     const matched = new Set();
     sections.forEach((ok, i) => { if (ok) matched.add(i); });
@@ -21722,6 +21740,18 @@ function FormView(props) {
             showToast={showToast}/>
           <CustomFieldList sectionKey="remarques" d={d} set={set}/>
           {/* M/2026/05/02/18 — M129 : bouton 'Enregistrer · Fermer ✓' Section IV orphelin SUPPRIMÉ. Auto-save M103. */}
+        </Stage>
+        </div>
+
+        {/* M/2026/05/05/30 — M-Photos-Stage-V : 5e stage autonome Photos. Sortie de Stage II. */}
+        <div data-stage-anchor="4">
+        <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[4] || 'V. Photos'} expanded={expanded[4] || isMatched(4)} onToggle={() => toggleStage(4)} highlighted={isMatched(4)}
+               status={stageStatus[4].status} summary={stageStatus[4].summary}>
+          <div id="stage-photos-anchor" style={{scrollMarginTop:60}}>
+            <PhotoUpload dossierId={dossierId} showToast={showToast}
+              photos={Array.isArray(d.bien && d.bien.photos) ? d.bien.photos : []}
+              onPhotosChange={v => setB('photos', v, {commit: true})}/>
+          </div>
         </Stage>
         </div>
 
