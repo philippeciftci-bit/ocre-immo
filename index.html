@@ -4268,27 +4268,46 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     return p.name || p.url || ('idx-' + idx);
   }
 
-  async function uploadFile(f) {
-    if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); return; }
-    if (list.length >= 30) { showToast && showToast('Limite 30 photos'); return; }
+  // M/2026/05/05/18 — M-Photos-Upload-Multi-Append : upload parallele + APPEND en fin (pas prepend) + reset input.
+  async function uploadOne(f) {
     const fd = new FormData();
     fd.append('action', 'upload');
     fd.append('dossier_id', dossierId);
     fd.append('file', f);
-    setUploading(true);
     try {
       const r = await fetch(API + '/upload.php?action=upload', {
         method:'POST', headers:{'X-Session-Token': token()}, body: fd,
       });
       const d = await r.json();
-      if (d && d.ok && d.photo) {
-        onPhotosChange && onPhotosChange([d.photo, ...list]);
-      } else showToast && showToast(d && d.error ? d.error : 'Échec upload');
-    } catch (e) { showToast && showToast('Erreur réseau'); }
-    setUploading(false);
+      if (d && d.ok && d.photo) return d.photo;
+      throw new Error((d && d.error) || 'echec_upload');
+    } catch (e) { throw e; }
   }
   async function handleFiles(fl) {
-    for (const f of fl) await uploadFile(f);
+    if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); if (inputRef.current) inputRef.current.value = ''; return; }
+    const files = Array.from(fl || []);
+    if (!files.length) return;
+    // Cap 30 photos par bien.
+    const remaining = 30 - list.length;
+    if (remaining <= 0) {
+      showToast && showToast('Limite atteinte (30 photos max par bien)');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+    const toUpload = files.slice(0, remaining);
+    const skipped = files.length - toUpload.length;
+    setUploading(true);
+    const results = await Promise.allSettled(toUpload.map(f => uploadOne(f)));
+    setUploading(false);
+    const succeeded = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+    const failed = results.length - succeeded.length;
+    if (succeeded.length > 0) {
+      // APPEND en fin de tableau (ordre brief).
+      onPhotosChange && onPhotosChange([...list, ...succeeded]);
+    }
+    if (skipped > 0) showToast && showToast(succeeded.length + ' photo(s) ajoutee(s), ' + skipped + ' ignoree(s) (limite 30)');
+    else if (failed > 0) showToast && showToast(succeeded.length + ' photo(s) ajoutee(s), ' + failed + ' echec(s)');
+    // Reset input pour permettre re-selection des memes fichiers.
     if (inputRef.current) inputRef.current.value = '';
   }
   async function removePhoto(p) {
