@@ -62,12 +62,35 @@ function checkOwnership($dossier_id, $user) {
 }
 
 function listPhotos($dossier_id) {
+    // M/2026/05/05/21 — M-Photos-Backend-Count-Fix : ne compter QUE les fichiers ORIGINAUX JPEG/PNG,
+    // pas les sous-produits du pipeline (photo_pipeline_compress genere <base>.webp + <base>_thumb.webp
+    // pour chaque upload .jpg/.png). Sinon 4 photos uploadees = 12 fichiers comptes => "Limite atteinte" prematuree.
     $dir = dossierDir($dossier_id);
     $items = [];
+    $originalsBase = []; // basenames (sans extension) des fichiers originaux JPEG/PNG, pour identifier les .webp standalone
     foreach (glob($dir . '/*') ?: [] as $path) {
         if (!is_file($path)) continue;
         $name = basename($path);
-        if (!preg_match('/\.(jpe?g|png|webp)$/i', $name)) continue;
+        if (preg_match('/\.(jpe?g|png)$/i', $name)) {
+            $originalsBase[pathinfo($name, PATHINFO_FILENAME)] = true;
+        }
+    }
+    foreach (glob($dir . '/*') ?: [] as $path) {
+        if (!is_file($path)) continue;
+        $name = basename($path);
+        // Exclure thumbs (sous-produit pipeline).
+        if (strpos($name, '_thumb.') !== false) continue;
+        // Compter JPEG/PNG (originaux) toujours.
+        $isJpegPng = preg_match('/\.(jpe?g|png)$/i', $name);
+        // Pour .webp : ne compter QUE si pas de sibling JPEG/PNG (i.e. user a uploade un .webp directement).
+        // Un .webp avec sibling .jpg/.png = compression du pipeline, on l ignore.
+        $isWebp = preg_match('/\.webp$/i', $name);
+        if ($isWebp && !$isJpegPng) {
+            $base = pathinfo($name, PATHINFO_FILENAME);
+            if (!empty($originalsBase[$base])) continue; // sous-produit, on saute
+        } elseif (!$isJpegPng && !$isWebp) {
+            continue; // autre extension non-photo
+        }
         $items[] = [
             'name' => $name,
             'url' => publicBase() . '/' . $dossier_id . '/' . $name,
@@ -161,10 +184,56 @@ switch ($action) {
             jsonError('Nom de fichier invalide');
         }
         checkOwnership($dossier_id, $user);
-        $path = dossierDir($dossier_id) . '/' . $name;
+        $dir = dossierDir($dossier_id);
+        $path = $dir . '/' . $name;
         if (!file_exists($path)) jsonError('Fichier introuvable', 404);
         if (!@unlink($path)) jsonError('Suppression impossible', 500);
-        jsonOk(['deleted' => $name]);
+        // M/2026/05/05/21 — M-Photos-Backend-Count-Fix : hard-delete des sous-produits pipeline (.webp + _thumb.webp)
+        // pour eviter accumulation d orphelins qui faussent listPhotos (cause "Limite atteinte" prematuree).
+        $base = pathinfo($name, PATHINFO_FILENAME);
+        $deleted = [$name];
+        foreach ([$base . '.webp', $base . '_thumb.webp'] as $sub) {
+            $subPath = $dir . '/' . $sub;
+            if ($subPath !== $path && is_file($subPath)) {
+                if (@unlink($subPath)) $deleted[] = $sub;
+            }
+        }
+        jsonOk(['deleted' => $deleted]);
+    }
+
+    // M/2026/05/05/21 — M-Photos-Backend-Count-Fix : purge orphelins pipeline (.webp + _thumb.webp sans original).
+    // Permet a Philippe (et tout user) de nettoyer le residu de tests upload+delete qui sature le compteur 30.
+    case 'purge_orphans': {
+        $user = requireAuth();
+        $input = getInput();
+        $dossier_id = (int)($input['dossier_id'] ?? 0);
+        if (!$dossier_id) jsonError('dossier_id requis');
+        checkOwnership($dossier_id, $user);
+        $dir = dossierDir($dossier_id);
+        $originalsBase = [];
+        foreach (glob($dir . '/*') ?: [] as $path) {
+            if (!is_file($path)) continue;
+            $name = basename($path);
+            if (preg_match('/\.(jpe?g|png)$/i', $name)) {
+                $originalsBase[pathinfo($name, PATHINFO_FILENAME)] = true;
+            }
+        }
+        $purged = [];
+        foreach (glob($dir . '/*') ?: [] as $path) {
+            if (!is_file($path)) continue;
+            $name = basename($path);
+            $base = pathinfo($name, PATHINFO_FILENAME);
+            $isThumb = strpos($name, '_thumb.') !== false;
+            $isWebp = preg_match('/\.webp$/i', $name);
+            $thumbBase = $isThumb ? preg_replace('/_thumb$/', '', $base) : null;
+            // Sous-produit pipeline : .webp ou _thumb.webp dont l original JPEG/PNG n existe plus.
+            if ($isThumb && $thumbBase && empty($originalsBase[$thumbBase])) {
+                if (@unlink($path)) $purged[] = $name;
+            } elseif ($isWebp && !$isThumb && empty($originalsBase[$base])) {
+                if (@unlink($path)) $purged[] = $name;
+            }
+        }
+        jsonOk(['purged' => $purged, 'count_after' => count(listPhotos($dossier_id))]);
     }
 
     // M/2026/04/30/43 — Bloc 13 Documents : PDF + scans CIN/RIB. Stockage /uploads/<id>/documents/.
