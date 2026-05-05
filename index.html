@@ -14844,21 +14844,40 @@ function PdfBottomBar({onBack, currency, onCurrencyClick, showPrice, setShowPric
 }
 
 // M/2026/05/05/10 — M-Photos-Bouton-V2 : bottom sheet selection des photos a masquer dans le PDF partage.
+// M/2026/05/05/14 — M-Photos-Sheet-Source : lecture depuis bien.photos (meme source que dossier_pdf_html.php).
+// Fallback photos_uuids pour dossiers utilisant l autre schema. Captions identiques au template PDF.
 function PhotosSheet({dossier, hiddenPhotos, onChange, onClose}) {
-  const photos = (() => {
-    const u = dossier && dossier.photos_uuids;
-    if (!u) return [];
-    if (typeof u === 'string') { try { return JSON.parse(u) || []; } catch (_) { return []; } }
-    return Array.isArray(u) ? u : [];
+  // Source PRIMARY : dossier.bien.photos (utilise par api/dossier_pdf_html.php pour rendre le PDF).
+  // Format : array de string URL ou array d objet {url}. Cf api/clients.php signClientPhotos.
+  // Source FALLBACK : dossier.photos_uuids (schema alternatif PhotosGalleryV28, servi via /api/photo_serve.php).
+  const photoItems = (() => {
+    const out = [];
+    const bp = dossier && dossier.bien && dossier.bien.photos;
+    if (Array.isArray(bp)) {
+      bp.forEach(p => {
+        if (typeof p === 'string' && p) out.push({id: p, url: p});
+        else if (p && typeof p === 'object' && p.url) out.push({id: p.url, url: p.url});
+      });
+    }
+    if (out.length === 0) {
+      let u = dossier && dossier.photos_uuids;
+      if (typeof u === 'string') { try { u = JSON.parse(u); } catch (_) { u = []; } }
+      if (Array.isArray(u)) u.forEach(uuid => {
+        if (uuid) out.push({id: uuid, url: '/api/photo_serve.php?uuid=' + encodeURIComponent(uuid) + '&size=thumb'});
+      });
+    }
+    return out;
   })();
+  // Captions strictement alignees sur api/dossier_pdf_html.php : Photo principale puis Salon/Cuisine/Suite parentale/Terrasse.
+  const PDF_CAPTIONS = ['Photo principale', 'Salon', 'Cuisine', 'Suite parentale', 'Terrasse'];
+  function captionFor(idx) { return PDF_CAPTIONS[idx] || ('Photo ' + (idx + 1)); }
   const [hidden, setHidden] = React.useState(() => Array.isArray(hiddenPhotos) ? [...hiddenPhotos] : []);
-  function toggle(uuid) {
-    setHidden(h => h.includes(uuid) ? h.filter(x => x !== uuid) : [...h, uuid]);
+  function toggle(id) {
+    setHidden(h => h.includes(id) ? h.filter(x => x !== id) : [...h, id]);
   }
   function valider() { onChange && onChange(hidden); onClose && onClose(); }
-  const total = photos.length;
+  const total = photoItems.length;
   const selected = total - hidden.length;
-  const photoUrl = (uuid) => '/api/photo_serve.php?uuid=' + encodeURIComponent(uuid) + '&size=thumb';
   return (
     <div onClick={onClose} data-testid="photos-sheet" style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:9000, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
       <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:520, marginLeft:'auto', marginRight:'auto', background:'#fff', borderTopLeftRadius:16, borderTopRightRadius:16, padding:'18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px)', boxShadow:'0 -4px 18px rgba(0,0,0,.12)', maxHeight:'85vh', display:'flex', flexDirection:'column'}}>
@@ -14874,16 +14893,17 @@ function PhotosSheet({dossier, hiddenPhotos, onChange, onClose}) {
             <div style={{textAlign:'center', padding:'40px 20px', color:'#8B7F6E', fontSize:13}}>Aucune photo dans ce dossier.</div>
           ) : (
             <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:6}}>
-              {photos.map((uuid, idx) => {
-                const isHidden = hidden.includes(uuid);
+              {photoItems.map((it, idx) => {
+                const isHidden = hidden.includes(it.id);
                 const isSelected = !isHidden;
                 return (
-                  <div key={uuid} onClick={() => toggle(uuid)} data-photo-idx={idx} data-photo-selected={isSelected ? '1' : '0'}
+                  <div key={it.id} onClick={() => toggle(it.id)} data-photo-idx={idx} data-photo-selected={isSelected ? '1' : '0'}
                     style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden', cursor:'pointer', border: '2px solid ' + (isSelected ? 'var(--pill-bg, #7A5132)' : 'transparent'), background:'#F4EEE6'}}>
-                    <img src={photoUrl(uuid)} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+                    <img src={it.url} alt={captionFor(idx)} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
                     <div style={{position:'absolute', top:6, right:6, width:18, height:18, borderRadius:'50%', background: isSelected ? '#7A5132' : '#fff', border: isSelected ? 'none' : '1.5px solid #E5DCC9', display:'flex', alignItems:'center', justifyContent:'center'}}>
                       {isSelected && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                     </div>
+                    <div style={{position:'absolute', left:0, right:0, bottom:0, padding:'3px 6px', background:'rgba(255,255,255,0.85)', color:'#2A2018', fontSize:9, fontWeight:600, letterSpacing:'.3px', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{captionFor(idx)}</div>
                   </div>
                 );
               })}
