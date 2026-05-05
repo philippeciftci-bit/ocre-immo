@@ -4566,7 +4566,10 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
       console.error('[PhotoUpload] response not JSON, http=', r.status, 'body=', txt && txt.slice(0, 200), 'file:', f && f.name);
       throw new Error('non_json_response_http_' + r.status);
     }
-    if (d && d.ok && d.photo) return d.photo;
+    if (d && d.ok && d.photo) {
+      // M/2026/05/05/38 — M-Hotfix-Upload-Race-AtomicSync COUCHE 3 : retourne photo + photos array authoritative serveur.
+      return {photo: d.photo, photos: Array.isArray(d.photos) ? d.photos : null};
+    }
     console.error('[PhotoUpload] backend rejected:', 'http=', r.status, 'body=', d, 'file:', f && f.name);
     throw new Error((d && d.error) || ('http_' + r.status));
   }
@@ -4589,12 +4592,18 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     const skipped = files.length - toUpload.length;
     setUploading(toUpload.length);
     // Sequentiel : evite la collision serveur sur uploads paralleles (M-Photos-Upload-Multi-Append cassait le backend).
+    // M/2026/05/05/38 — M-Hotfix-Upload-Race-AtomicSync COUCHE 3 : tracker dernier photos[] authoritative serveur
+    // pour eviter overwrite par auto-save M103 d un state client en retard sur le serveur.
     const succeeded = [];
+    let lastServerPhotos = null; // array authoritative venu de la response serveur (couche 1)
     let firstError = null;
     for (let i = 0; i < toUpload.length; i++) {
       try {
-        const photo = await uploadOne(toUpload[i]);
-        if (photo) succeeded.push(photo);
+        const result = await uploadOne(toUpload[i]);
+        if (result && result.photo) {
+          succeeded.push(result.photo);
+          if (Array.isArray(result.photos)) lastServerPhotos = result.photos;
+        }
       } catch (e) {
         if (!firstError) firstError = e && e.message ? e.message : 'erreur';
         console.error('[PhotoUpload] upload', (i+1) + '/' + toUpload.length, 'failed:', e);
@@ -4604,7 +4613,10 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     setUploading(0);
     const failed = toUpload.length - succeeded.length;
     if (succeeded.length > 0) {
-      onPhotosChange && onPhotosChange([...list, ...succeeded]);
+      // Si le serveur a retourne photos[] complet (couche 1 atomic sync OK) -> on l utilise comme source de verite.
+      // Sinon fallback legacy : append les photos de la response (couche 1 indispo / fail).
+      const newList = lastServerPhotos !== null ? lastServerPhotos : [...list, ...succeeded];
+      onPhotosChange && onPhotosChange(newList);
     }
     if (skipped > 0) showToast && showToast(succeeded.length + ' photo(s) ajoutee(s), ' + skipped + ' ignoree(s) (limite 30)');
     else if (failed > 0 && succeeded.length === 0) showToast && showToast('Echec upload : ' + (firstError || 'erreur') + ' (' + failed + '/' + toUpload.length + ')');

@@ -125,8 +125,15 @@ function purgeUnreferenced($dossier_id) {
             $existingOriginals[pathinfo($name, PATHINFO_FILENAME)] = $name;
         }
     }
+    // M/2026/05/05/38 — M-Hotfix-Upload-Race-AtomicSync COUCHE 2 : garde anti-race contre uploads recents.
+    // Si un fichier vient juste d etre upload (mtime < 60s), on ne le purge JAMAIS, meme si pas dans referenced[].
+    // Couvre les edge cases ou la couche 1 (UPDATE atomique) a un retard de quelques ms par rapport a la requete suivante.
+    $now = time();
+    $MIN_AGE_SECONDS = 60;
     foreach (glob($dir . '/*') ?: [] as $path) {
         if (!is_file($path)) continue;
+        $mt = @filemtime($path);
+        if ($mt !== false && ($now - $mt) < $MIN_AGE_SECONDS) continue; // trop recent, skip purge.
         $name = basename($path);
         $base = pathinfo($name, PATHINFO_FILENAME);
         $isThumb = strpos($name, '_thumb.') !== false;
@@ -260,16 +267,43 @@ switch ($action) {
             $compResult = photo_pipeline_compress($dest, dossierDir($dossier_id) . '/' . pathinfo($name, PATHINFO_FILENAME), (int) $f['size']);
         }
 
+        $photoObj = [
+            'name' => $name,
+            'url' => publicBase() . '/' . $dossier_id . '/' . $name,
+            'size' => filesize($dest),
+            'mtime' => filemtime($dest),
+            'webp_url' => $compResult['webp_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['webp_name'] : null,
+            'thumb_url' => $compResult['thumb_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['thumb_name'] : null,
+            'compression_ratio' => $compResult['ratio'] ?? null,
+        ];
+
+        // M/2026/05/05/38 — M-Hotfix-Upload-Race-AtomicSync COUCHE 1 : sync DB atomique.
+        // Avant ce fix, data.bien.photos[] etait UNIQUEMENT mis a jour via auto-save M103 cote client (debounce 800ms).
+        // L upload suivant lancait purgeUnreferenced qui voyait JSON pas encore a jour -> supprimait les fichiers fs
+        // recents comme orphelins -> photos perdues. Ici on UPDATE directement la DB pour eliminer la race.
+        $completeArray = null;
+        try {
+            $pdo = db();
+            // Step 1 : garantir que data.bien.photos existe comme array (init si data NULL ou bien.photos absent).
+            $pdo->prepare("UPDATE clients SET data = JSON_SET(IFNULL(data, JSON_OBJECT()), '$.bien.photos', IFNULL(JSON_EXTRACT(data, '$.bien.photos'), JSON_ARRAY())) WHERE id = ?")->execute([$dossier_id]);
+            // Step 2 : append le nouvel objet photo (JSON_EXTRACT(?, '$') parse le JSON string en objet MariaDB).
+            $pdo->prepare("UPDATE clients SET data = JSON_ARRAY_APPEND(data, '$.bien.photos', JSON_EXTRACT(?, '$')) WHERE id = ?")->execute([json_encode($photoObj, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $dossier_id]);
+            // Step 3 : refetch pour retourner l array complet authoritative au client (couche 3 = client utilise photos[] au lieu de push local).
+            $stmt = $pdo->prepare("SELECT JSON_EXTRACT(data, '$.bien.photos') AS photos FROM clients WHERE id = ?");
+            $stmt->execute([$dossier_id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty($row['photos'])) {
+                $completeArray = json_decode($row['photos'], true);
+                if (!is_array($completeArray)) $completeArray = null;
+            }
+        } catch (Throwable $e) {
+            error_log('[upload.php M/38 atomic-sync] FAIL dossier=' . $dossier_id . ' name=' . $name . ' : ' . $e->getMessage());
+            // On NE bloque PAS l upload : fs deja ecrit, le client va re-sync via auto-save M103 (legacy fallback).
+        }
+
         jsonOk([
-            'photo' => [
-                'name' => $name,
-                'url' => publicBase() . '/' . $dossier_id . '/' . $name,
-                'size' => filesize($dest),
-                'mtime' => filemtime($dest),
-                'webp_url' => $compResult['webp_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['webp_name'] : null,
-                'thumb_url' => $compResult['thumb_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['thumb_name'] : null,
-                'compression_ratio' => $compResult['ratio'] ?? null,
-            ],
+            'photo' => $photoObj,
+            'photos' => $completeArray, // peut etre null si DB sync a fail; client gere fallback
         ]);
     }
 
