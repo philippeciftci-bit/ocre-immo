@@ -14721,6 +14721,16 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
         body: JSON.stringify({id: dossierId, hidden_photos: list})}).catch(() => {});
     } catch (_) {}
   }
+  // M/2026/05/05/15 — M-Photos-Modal-Live : snapshot a l ouverture sheet pour bouton Annuler.
+  const photosSnapshotRef = React.useRef([]);
+  function openPhotosSheet() {
+    photosSnapshotRef.current = Array.isArray(hiddenPhotos) ? [...hiddenPhotos] : [];
+    setPhotosSheetOpen(true);
+  }
+  function cancelPhotosSheet() {
+    persistHiddenPhotos(photosSnapshotRef.current);
+    setPhotosSheetOpen(false);
+  }
 
   function buildQueryParams() {
     const p = [];
@@ -14728,6 +14738,10 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
     if (!showAddress) p.push('hide_address=1');
     if (!showIdentity) p.push('hide_identity=1');
     if (currency) p.push('currency=' + encodeURIComponent(currency));
+    // M/2026/05/05/15 — M-Photos-Modal-Live : transmet les photos masquees au backend pour filtrage live.
+    if (Array.isArray(hiddenPhotos) && hiddenPhotos.length > 0) {
+      hiddenPhotos.forEach(id => { p.push('hide_photos[]=' + encodeURIComponent(id)); });
+    }
     return p.length ? ('&' + p.join('&')) : '';
   }
   async function fetchHtml() {
@@ -14748,7 +14762,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
     if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
     refetchTimerRef.current = setTimeout(() => { fetchHtml(); }, 250);
     return () => { if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current); };
-  }, [showPrice, showAddress, showIdentity, currency]);
+  }, [showPrice, showAddress, showIdentity, currency, hiddenPhotos]);
 
   const profil = (dossierProfil || '').toLowerCase() || 'contrepartie';
 
@@ -14765,7 +14779,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
         showPrice={showPrice} setShowPrice={setShowPrice}
         showAddress={showAddress} setShowAddress={setShowAddress}
         showIdentity={showIdentity} setShowIdentity={setShowIdentity}
-        onPhotosClick={() => setPhotosSheetOpen(true)}
+        onPhotosClick={openPhotosSheet}
         onShare={() => setShareOpen(true)}/>
       {currencyPickerOpen && (
         <CurrencyPickerSheet
@@ -14778,7 +14792,9 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
           dossier={dossierData || {id: dossierId}}
           hiddenPhotos={hiddenPhotos}
           onChange={persistHiddenPhotos}
-          onClose={() => setPhotosSheetOpen(false)}/>
+          onCancel={cancelPhotosSheet}
+          onConfirm={() => setPhotosSheetOpen(false)}
+          onClose={cancelPhotosSheet}/>
       )}
       {shareOpen && (
         <PdfShareModal
@@ -14845,10 +14861,12 @@ function PdfBottomBar({onBack, currency, onCurrencyClick, showPrice, setShowPric
 
 // M/2026/05/05/10 — M-Photos-Bouton-V2 : bottom sheet selection des photos a masquer dans le PDF partage.
 // M/2026/05/05/14 — M-Photos-Sheet-Source : lecture depuis bien.photos (meme source que dossier_pdf_html.php).
-// Fallback photos_uuids pour dossiers utilisant l autre schema. Captions identiques au template PDF.
-function PhotosSheet({dossier, hiddenPhotos, onChange, onClose}) {
+// M/2026/05/05/15 — M-Photos-Modal-Live : modal plein ecran 95% + state controlle (lifted) + live update.
+// PhotosSheet est un composant PUR : props hiddenPhotos + onChange (live, chaque toggle) + onCancel + onConfirm + onClose.
+// Le state hiddenPhotos vit dans le parent (DossierPdfView) ; chaque toggle declenche immediatement onChange,
+// ce qui propage au parent qui re-fetch le PDF avec hide_photos[]=... -> live update visible derriere.
+function PhotosSheet({dossier, hiddenPhotos, onChange, onCancel, onConfirm, onClose}) {
   // Source PRIMARY : dossier.bien.photos (utilise par api/dossier_pdf_html.php pour rendre le PDF).
-  // Format : array de string URL ou array d objet {url}. Cf api/clients.php signClientPhotos.
   // Source FALLBACK : dossier.photos_uuids (schema alternatif PhotosGalleryV28, servi via /api/photo_serve.php).
   const photoItems = (() => {
     const out = [];
@@ -14868,56 +14886,59 @@ function PhotosSheet({dossier, hiddenPhotos, onChange, onClose}) {
     }
     return out;
   })();
-  // Captions strictement alignees sur api/dossier_pdf_html.php : Photo principale puis Salon/Cuisine/Suite parentale/Terrasse.
   const PDF_CAPTIONS = ['Photo principale', 'Salon', 'Cuisine', 'Suite parentale', 'Terrasse'];
   function captionFor(idx) { return PDF_CAPTIONS[idx] || ('Photo ' + (idx + 1)); }
-  const [hidden, setHidden] = React.useState(() => Array.isArray(hiddenPhotos) ? [...hiddenPhotos] : []);
+  const hiddenList = Array.isArray(hiddenPhotos) ? hiddenPhotos : [];
   function toggle(id) {
-    setHidden(h => h.includes(id) ? h.filter(x => x !== id) : [...h, id]);
+    const next = hiddenList.includes(id) ? hiddenList.filter(x => x !== id) : [...hiddenList, id];
+    onChange && onChange(next);
   }
-  function valider() { onChange && onChange(hidden); onClose && onClose(); }
   const total = photoItems.length;
-  const selected = total - hidden.length;
+  const selected = total - hiddenList.length;
+  const handleBackdropClick = () => { (onCancel || onClose) && (onCancel || onClose)(); };
   return (
-    <div onClick={onClose} data-testid="photos-sheet" style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:9000, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
-      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:520, marginLeft:'auto', marginRight:'auto', background:'#fff', borderTopLeftRadius:16, borderTopRightRadius:16, padding:'18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px)', boxShadow:'0 -4px 18px rgba(0,0,0,.12)', maxHeight:'85vh', display:'flex', flexDirection:'column'}}>
-        <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:6}}>
+    <div onClick={handleBackdropClick} data-testid="photos-sheet" style={{position:'fixed', inset:0, background:'rgba(42,31,20,0.55)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'2.5vh 2.5vw'}}>
+      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:700, height:'95vh', maxHeight:'95vh', background:'#fff', borderRadius:22, boxShadow:'0 12px 40px rgba(42,31,20,0.35)', display:'flex', flexDirection:'column', overflow:'hidden'}}>
+        {/* Header sticky */}
+        <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, padding:'18px 20px 10px', borderBottom:'1px solid #F0E8D8', background:'#fff', flexShrink:0}}>
           <div>
-            <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:20, fontWeight:700, color:'#2D2018'}}>Selection des photos</div>
-            <div style={{fontSize:11, color:'#8B7F6E', marginTop:2}}>Toutes cochees par defaut. Tape pour masquer.</div>
+            <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:22, fontWeight:700, color:'#2D2018'}}>Selection des photos</div>
+            <div style={{fontSize:11, color:'#8B7F6E', marginTop:2}}>Toutes cochees par defaut. Tape pour masquer (mise a jour immediate du PDF derriere).</div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Fermer" style={{width:32, height:32, borderRadius:'50%', border:'1px solid #E5E0D8', background:'#fff', color:'#1A1714', cursor:'pointer', fontSize:16, fontFamily:'inherit'}}>×</button>
+          <button type="button" onClick={handleBackdropClick} aria-label="Fermer" style={{width:36, height:36, borderRadius:'50%', border:'1px solid #E5E0D8', background:'#fff', color:'#1A1714', cursor:'pointer', fontSize:18, fontFamily:'inherit', flexShrink:0}}>×</button>
         </div>
-        <div style={{flex:1, overflowY:'auto', marginTop:10, marginBottom:10}}>
+        {/* Body scrollable */}
+        <div style={{flex:1, overflowY:'auto', padding:'12px 20px'}}>
           {total === 0 ? (
-            <div style={{textAlign:'center', padding:'40px 20px', color:'#8B7F6E', fontSize:13}}>Aucune photo dans ce dossier.</div>
+            <div style={{textAlign:'center', padding:'60px 20px', color:'#8B7F6E', fontSize:13}}>Aucune photo dans ce dossier.</div>
           ) : (
-            <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:6}}>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8}}>
               {photoItems.map((it, idx) => {
-                const isHidden = hidden.includes(it.id);
+                const isHidden = hiddenList.includes(it.id);
                 const isSelected = !isHidden;
                 return (
                   <div key={it.id} onClick={() => toggle(it.id)} data-photo-idx={idx} data-photo-selected={isSelected ? '1' : '0'}
-                    style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden', cursor:'pointer', border: '2px solid ' + (isSelected ? 'var(--pill-bg, #7A5132)' : 'transparent'), background:'#F4EEE6'}}>
+                    style={{position:'relative', aspectRatio:'1/1', borderRadius:10, overflow:'hidden', cursor:'pointer', border: '2px solid ' + (isSelected ? 'var(--pill-bg, #7A5132)' : 'transparent'), background:'#F4EEE6', transition:'border-color .15s'}}>
                     <img src={it.url} alt={captionFor(idx)} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
-                    <div style={{position:'absolute', top:6, right:6, width:18, height:18, borderRadius:'50%', background: isSelected ? '#7A5132' : '#fff', border: isSelected ? 'none' : '1.5px solid #E5DCC9', display:'flex', alignItems:'center', justifyContent:'center'}}>
-                      {isSelected && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    <div style={{position:'absolute', top:6, right:6, width:20, height:20, borderRadius:'50%', background: isSelected ? '#7A5132' : '#fff', border: isSelected ? 'none' : '1.5px solid #E5DCC9', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                      {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                     </div>
-                    <div style={{position:'absolute', left:0, right:0, bottom:0, padding:'3px 6px', background:'rgba(255,255,255,0.85)', color:'#2A2018', fontSize:9, fontWeight:600, letterSpacing:'.3px', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{captionFor(idx)}</div>
+                    <div style={{position:'absolute', left:0, right:0, bottom:0, padding:'4px 6px', background:'rgba(255,255,255,0.88)', color:'#2A2018', fontSize:9.5, fontWeight:600, letterSpacing:'.3px', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{captionFor(idx)}</div>
                   </div>
                 );
               })}
             </div>
           )}
         </div>
-        <div style={{borderTop:'1px solid #F0E8D8', paddingTop:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10}}>
+        {/* Footer sticky */}
+        <div style={{borderTop:'1px solid #F0E8D8', padding:'12px 20px calc(env(safe-area-inset-bottom, 0px) + 12px)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, background:'#fff', flexShrink:0}}>
           <div style={{fontSize:12, color: selected === 0 ? '#C04B20' : '#8B7F6E', fontWeight:600}}>
             {total === 0 ? '0 photo' : (selected + ' / ' + total + ' photo' + (total > 1 ? 's' : '') + ' selectionnee' + (selected > 1 ? 's' : ''))}
             {total > 0 && selected === 0 && <span style={{display:'block', fontSize:10, fontWeight:500, marginTop:2}}>Au moins 1 photo doit etre selectionnee</span>}
           </div>
           <div style={{display:'flex', gap:8}}>
-            <button type="button" onClick={onClose} style={{padding:'8px 14px', borderRadius:100, border:'1px solid #E5E0D8', background:'#F0EBE2', color:'#1A1714', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
-            <button type="button" onClick={valider} disabled={total > 0 && selected === 0} style={{padding:'8px 16px', borderRadius:100, border:'none', background: (total > 0 && selected === 0) ? '#C9B79A' : '#7A5132', color:'#fff', fontSize:13, fontWeight:600, cursor: (total > 0 && selected === 0) ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>Valider</button>
+            <button type="button" onClick={() => (onCancel || onClose)()} style={{padding:'9px 16px', borderRadius:100, border:'1px solid #E5E0D8', background:'#F0EBE2', color:'#1A1714', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+            <button type="button" onClick={() => (onConfirm || onClose)()} disabled={total > 0 && selected === 0} style={{padding:'9px 18px', borderRadius:100, border:'none', background: (total > 0 && selected === 0) ? '#C9B79A' : '#7A5132', color:'#fff', fontSize:13, fontWeight:600, cursor: (total > 0 && selected === 0) ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>Valider</button>
           </div>
         </div>
       </div>

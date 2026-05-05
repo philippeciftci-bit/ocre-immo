@@ -111,6 +111,16 @@ if (!$photos) {
         }
     }
 }
+// M/2026/05/05/15 — M-Photos-Modal-Live : filtre hide_photos[] (URLs ou UUIDs masques par l agent dans PhotosSheet).
+$_hidePhotos = [];
+if (!empty($_GET['hide_photos'])) {
+    $raw = $_GET['hide_photos'];
+    if (is_array($raw)) $_hidePhotos = array_values(array_filter(array_map('strval', $raw)));
+    elseif (is_string($raw) && $raw !== '') $_hidePhotos = array_values(array_filter(array_map('trim', explode(',', $raw))));
+}
+if ($_hidePhotos) {
+    $photos = array_values(array_filter($photos, fn($p) => !in_array($p, $_hidePhotos, true)));
+}
 // M/2026/04/29/29 — pas de doublon : page 1 cover utilise photos[0..4], page 2 editorial utilise photos[5..7].
 // Si moins de 5 photos : cases vides en placeholder. Si moins de 8 photos : column photos page 2 retrecit ou disparait.
 $photoMain = $photos[0] ?? null;
