@@ -65,6 +65,9 @@ function listPhotos($dossier_id) {
     // M/2026/05/05/21 — M-Photos-Backend-Count-Fix : ne compter QUE les fichiers ORIGINAUX JPEG/PNG,
     // pas les sous-produits du pipeline (photo_pipeline_compress genere <base>.webp + <base>_thumb.webp
     // pour chaque upload .jpg/.png). Sinon 4 photos uploadees = 12 fichiers comptes => "Limite atteinte" prematuree.
+    // M/2026/05/05/22 — M-Photos-Limit-State-Stuck : clearstatcache() pour fresh fs stats apres delete (sinon PHP
+    // peut retourner des is_file() obsoletes sur le meme path apres unlink, faussant le count).
+    clearstatcache(true);
     $dir = dossierDir($dossier_id);
     $items = [];
     $originalsBase = []; // basenames (sans extension) des fichiers originaux JPEG/PNG, pour identifier les .webp standalone
@@ -122,8 +125,10 @@ switch ($action) {
         }
 
         $existing = listPhotos($dossier_id);
+        // M/2026/05/05/22 — M-Photos-Limit-State-Stuck : message d erreur verbose pour diag (count exact backend).
+        // Permet d identifier si le backend pense etre a 30 alors que l UI affiche moins.
         if (count($existing) >= UPLOAD_MAX_PER_DOSSIER) {
-            jsonError('Limite atteinte (30 photos max par bien)', 409);
+            jsonError('Limite atteinte (count=' . count($existing) . ', limit=' . UPLOAD_MAX_PER_DOSSIER . ')', 409);
         }
 
         // V18.39 — quotas globaux : 500 Mo total photos par user (100/dossier déjà couvert
@@ -198,7 +203,10 @@ switch ($action) {
                 if (@unlink($subPath)) $deleted[] = $sub;
             }
         }
-        jsonOk(['deleted' => $deleted]);
+        // M/2026/05/05/22 — M-Photos-Limit-State-Stuck : invalider stats fs apres unlink pour que la prochaine
+        // requete upload voie un count frais (sinon is_file() sur les unlink peut retourner true pendant ~1s).
+        clearstatcache(true);
+        jsonOk(['deleted' => $deleted, 'count_after' => count(listPhotos($dossier_id))]);
     }
 
     // M/2026/05/05/21 — M-Photos-Backend-Count-Fix : purge orphelins pipeline (.webp + _thumb.webp sans original).
