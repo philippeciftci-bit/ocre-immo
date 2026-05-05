@@ -351,6 +351,106 @@ switch ($action) {
         jsonOk(['max_photos_per_dossier' => getMaxPhotos()]);
     }
 
+    // M/2026/05/05/32 — M-Photos-Organize-V2 : classification AI photo via Claude Vision.
+    // Settings on/off via /var/lib/ocre/uploads/_settings/ai_classify_enabled.txt (default 1).
+    case 'classify_photo': {
+        $user = requireAuth();
+        $dossier_id = (int)(($_GET['dossier_id'] ?? $_POST['dossier_id'] ?? 0));
+        $name = basename((string)($_GET['name'] ?? $_POST['name'] ?? ''));
+        if (!$dossier_id || !$name) jsonError('dossier_id et name requis');
+        if (!preg_match('/^[A-Za-z0-9._-]+\.(jpe?g|png|webp)$/i', $name)) jsonError('nom invalide');
+        checkOwnership($dossier_id, $user);
+        // Toggle settings.
+        $enabledFile = '/var/lib/ocre/uploads/_settings/ai_classify_enabled.txt';
+        $enabled = is_file($enabledFile) ? trim((string) @file_get_contents($enabledFile)) : '1';
+        if ($enabled !== '1') jsonOk(['category' => 'vrac', 'note' => 'ai_disabled']);
+        // Lire fichier image.
+        $path = dossierDir($dossier_id) . '/' . $name;
+        if (!is_file($path)) jsonError('fichier introuvable', 404);
+        $bytes = @file_get_contents($path);
+        if (!$bytes || strlen($bytes) < 100) jsonError('fichier invalide', 400);
+        if (strlen($bytes) > 5 * 1024 * 1024) {
+            // Pour images > 5MB, utiliser thumb si dispo.
+            $base = pathinfo($name, PATHINFO_FILENAME);
+            $thumbPath = dossierDir($dossier_id) . '/' . $base . '_thumb.webp';
+            if (is_file($thumbPath)) { $bytes = @file_get_contents($thumbPath); $name = $base . '_thumb.webp'; }
+        }
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->buffer($bytes) ?: 'image/jpeg';
+        if (!in_array($mime, ['image/jpeg','image/png','image/webp','image/gif'], true)) {
+            jsonOk(['category' => 'vrac', 'note' => 'mime_invalid:'.$mime]);
+        }
+        // Cle API.
+        $apiKey = null;
+        $f = '/root/.secrets/anthropic_api_key';
+        if (is_readable($f)) $apiKey = trim((string) @file_get_contents($f));
+        if (!$apiKey) jsonOk(['category' => 'vrac', 'note' => 'no_api_key']);
+        // Prompt.
+        $prompt = "You are classifying real estate photos for a property listing.\nLook at the image and return ONLY a JSON object, no markdown, no comments, with this exact format:\n{\"category\": \"<one of: exterieur_villa, exterieur_piscine, exterieur_jardin, exterieur_autre, salon, cuisine, chambre, salle_de_bain, interieur_autre, autre>\"}\n\nDefinitions:\n- exterieur_villa: wide exterior shot of the building/villa/house facade, front view\n- exterieur_piscine: swimming pool, pool deck, pool area\n- exterieur_jardin: garden, yard, landscaping, outdoor green areas, lawn\n- exterieur_autre: other exterior (terrace, balcony, parking, gate, street view, driveway)\n- salon: living room, sitting area, lounge, family room\n- cuisine: kitchen, cooking area, kitchen island\n- chambre: bedroom (any size)\n- salle_de_bain: bathroom, shower, toilet, washroom, sink, vanity\n- interieur_autre: other interior (hallway, dining room, office, dressing, laundry)\n- autre: cannot classify, screenshot, document, photo of person, unclear\n\nReturn only the JSON. No other text.";
+        $body = [
+            'model' => 'claude-haiku-4-5-20251001',
+            'max_tokens' => 100,
+            'messages' => [[
+                'role' => 'user',
+                'content' => [
+                    ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mime, 'data' => base64_encode($bytes)]],
+                    ['type' => 'text', 'text' => $prompt],
+                ],
+            ]],
+        ];
+        $start = microtime(true);
+        $ch = curl_init('https://api.anthropic.com/v1/messages');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($body),
+            CURLOPT_HTTPHEADER => [
+                'x-api-key: ' . $apiKey,
+                'anthropic-version: 2023-06-01',
+                'content-type: application/json',
+            ],
+            CURLOPT_TIMEOUT => 12,
+            CURLOPT_CONNECTTIMEOUT => 5,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+        $latency = (int)((microtime(true) - $start) * 1000);
+        if ($err || $code !== 200 || !$resp) {
+            error_log('[ai_classify] uuid=' . $name . ' err=' . $err . ' code=' . $code . ' latency=' . $latency);
+            jsonOk(['category' => 'vrac', 'note' => 'ai_call_failed_code_'.$code, 'latency_ms' => $latency]);
+        }
+        $j = json_decode($resp, true);
+        $textOut = $j['content'][0]['text'] ?? '';
+        $cat = 'vrac';
+        if (preg_match('/"category"\s*:\s*"([a-z_]+)"/i', $textOut, $m)) {
+            $cat = strtolower($m[1]);
+            $valid = ['exterieur_villa','exterieur_piscine','exterieur_jardin','exterieur_autre','salon','cuisine','chambre','salle_de_bain','interieur_autre','autre'];
+            if (!in_array($cat, $valid, true)) $cat = 'vrac';
+        }
+        error_log('[ai_classify] uuid=' . $name . ' cat=' . $cat . ' latency=' . $latency . 'ms');
+        jsonOk(['category' => $cat, 'latency_ms' => $latency]);
+    }
+
+    // M/2026/05/05/32 — M-Photos-Organize-V2 : toggle settings AI on/off (admin).
+    case 'set_ai_classify_enabled': {
+        $admin_code = $_SERVER['HTTP_X_ADMIN_CODE'] ?? ($_POST['admin_code'] ?? ($_GET['admin_code'] ?? ''));
+        if (!hash_equals(ADMIN_CODE, (string) $admin_code)) jsonError('admin_code requis', 403);
+        $v = (string)(($_POST['value'] ?? $_GET['value'] ?? '1'));
+        $v = ($v === '0' || $v === 'false' || $v === '') ? '0' : '1';
+        $f = '/var/lib/ocre/uploads/_settings/ai_classify_enabled.txt';
+        $dir = dirname($f);
+        if (!is_dir($dir)) @mkdir($dir, 0755, true);
+        if (@file_put_contents($f, $v, LOCK_EX) === false) jsonError('ecriture impossible', 500);
+        jsonOk(['ai_classify_enabled' => ($v === '1')]);
+    }
+    case 'get_ai_classify_enabled': {
+        $f = '/var/lib/ocre/uploads/_settings/ai_classify_enabled.txt';
+        $v = is_file($f) ? trim((string) @file_get_contents($f)) : '1';
+        jsonOk(['ai_classify_enabled' => ($v === '1')]);
+    }
+
     // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : modification cap par admin (X-Admin-Code requis).
     case 'set_max_photos': {
         $admin_code = $_SERVER['HTTP_X_ADMIN_CODE'] ?? ($_POST['admin_code'] ?? ($_GET['admin_code'] ?? ''));

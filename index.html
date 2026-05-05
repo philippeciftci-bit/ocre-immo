@@ -4259,6 +4259,186 @@ function PhotoLightbox({photos, startIndex = 0, onClose}) {
   );
 }
 
+// M/2026/05/05/32 — M-Photos-Organize-V2 : ordre canonique des categories pour render et tri.
+const CATEGORY_ORDER = ['photo_principale','exterieur_villa','exterieur_piscine','exterieur_jardin','exterieur_autre','salon','cuisine','chambre','salle_de_bain','interieur_autre','autre','vrac'];
+const CATEGORY_LABEL_FR = {
+  photo_principale: 'Photo principale',
+  exterieur_villa: 'Vue exterieure',
+  exterieur_piscine: 'Piscine',
+  exterieur_jardin: 'Jardin',
+  exterieur_autre: 'Autre exterieur',
+  salon: 'Salon',
+  cuisine: 'Cuisine',
+  chambre: 'Chambre',
+  salle_de_bain: 'Salle de bain',
+  interieur_autre: 'Autre interieur',
+  autre: 'Autre',
+  vrac: 'Non classees',
+};
+function _photoCatV2(p) {
+  if (!p || typeof p !== 'object') return 'vrac';
+  const c = (p.category || '').toLowerCase();
+  return CATEGORY_ORDER.includes(c) ? c : 'vrac';
+}
+function _photoSrcV2(p) {
+  if (!p) return null;
+  if (typeof p === 'string') return p;
+  return p.thumb_url || p.url || p.webp_url || null;
+}
+function _photoNameKey(p, idx) {
+  if (!p) return 'p-' + idx;
+  if (typeof p === 'string') return p;
+  return p.name || p.url || ('p-' + idx);
+}
+
+// Sheet bottom edition d une photo : preview + select categorie + toggle photo principale.
+function PhotoEditSheet({photo, photoIdx, allPhotos, onChange, onClose}) {
+  if (!photo) return null;
+  const cat = _photoCatV2(photo);
+  const isMain = cat === 'photo_principale';
+  function setCat(newCat) {
+    const obj = (typeof photo === 'object' && photo) ? {...photo, category: newCat} : {url: typeof photo === 'string' ? photo : '', category: newCat};
+    let next = allPhotos.map((p, i) => i === photoIdx ? obj : p);
+    // Unicite photo_principale.
+    if (newCat === 'photo_principale') {
+      next = next.map((p, i) => {
+        if (i === photoIdx || typeof p !== 'object' || !p) return p;
+        if (p.category === 'photo_principale') return {...p, category: 'vrac'};
+        return p;
+      });
+    }
+    onChange && onChange(next);
+  }
+  function togglePrincipale() {
+    setCat(isMain ? 'vrac' : 'photo_principale');
+  }
+  const src = _photoSrcV2(photo);
+  return (
+    <div onClick={onClose} data-testid="photo-edit-sheet" style={{position:'fixed', inset:0, background:'rgba(42,31,20,0.55)', zIndex:9100, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
+      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:600, maxHeight:'88vh', background:'#fff', borderTopLeftRadius:18, borderTopRightRadius:18, padding:'18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px)', boxShadow:'0 -8px 30px rgba(42,31,20,0.30)', display:'flex', flexDirection:'column', overflow:'hidden'}}>
+        <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8, marginBottom:10, flexShrink:0}}>
+          <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:20, fontWeight:700, color:'#2D2018'}}>Photo {photoIdx + 1}</div>
+          <button type="button" onClick={onClose} aria-label="Fermer" style={{width:34, height:34, borderRadius:'50%', border:'1px solid #E5E0D8', background:'#fff', color:'#1A1714', cursor:'pointer', fontSize:18, fontFamily:'inherit'}}>×</button>
+        </div>
+        {src && (
+          <div style={{width:'100%', maxHeight:'45vh', display:'flex', justifyContent:'center', background:'#F4ECE3', borderRadius:10, marginBottom:14, overflow:'hidden'}}>
+            <img src={src} alt="" style={{maxWidth:'100%', maxHeight:'45vh', objectFit:'contain', display:'block'}}/>
+          </div>
+        )}
+        <div style={{marginBottom:12}}>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.4px'}}>Categorie</label>
+          <select value={cat === 'photo_principale' ? 'vrac' : cat} onChange={e => setCat(e.target.value)} disabled={isMain}
+            style={{width:'100%', padding:'10px 12px', borderRadius:10, border:'1px solid #E5DCC9', background: isMain ? '#F0EBE2' : '#FDFAF7', fontSize:14, color:'#2A2018', fontFamily:'inherit', outline:'none'}}>
+            {CATEGORY_ORDER.filter(c => c !== 'photo_principale').map(c => <option key={c} value={c}>{CATEGORY_LABEL_FR[c]}</option>)}
+          </select>
+          {isMain && <div style={{fontSize:11, color:'#8B7F6E', marginTop:4, fontStyle:'italic'}}>Categorie ignoree quand photo principale.</div>}
+        </div>
+        <button type="button" onClick={togglePrincipale}
+          style={{padding:'12px 18px', borderRadius:100, border:'1px solid ' + (isMain ? '#7A5132' : '#BBA88B'), background: isMain ? '#7A5132' : '#FDFAF7', color: isMain ? '#fff' : '#7A5132', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill={isMain ? '#fff' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/>
+          </svg>
+          {isMain ? 'Retirer photo principale' : 'Definir comme photo principale'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Vue groupee par categorie + auto-classify a chaque montage si photos sans category.
+function PhotosGroupedView({dossierId, photos, onPhotosChange, showToast}) {
+  const [editingIdx, setEditingIdx] = React.useState(null);
+  const [classifying, setClassifying] = React.useState(false);
+  const list = Array.isArray(photos) ? photos : [];
+  // Auto-classify les photos sans category (background, sequentiel, n bloque pas le UI).
+  React.useEffect(() => {
+    if (!dossierId || classifying) return;
+    const toClassify = list
+      .map((p, i) => ({p, i}))
+      .filter(({p}) => p && typeof p === 'object' && !p.category && p.name);
+    if (toClassify.length === 0) return;
+    setClassifying(true);
+    (async () => {
+      const tk = localStorage.getItem('ocre_token') || '';
+      let updated = [...list];
+      for (const {p, i} of toClassify) {
+        try {
+          const r = await fetch('/api/upload.php?action=classify_photo&dossier_id=' + dossierId + '&name=' + encodeURIComponent(p.name), {headers:{'X-Session-Token': tk}});
+          const resJ = await r.json();
+          if (resJ && resJ.ok && resJ.category) {
+            const cat = resJ.category;
+            const baseObj = (typeof updated[i] === 'object' && updated[i]) ? updated[i] : (typeof updated[i] === 'string' ? {url: updated[i]} : null);
+            if (baseObj) {
+              updated = updated.map((x, k) => k === i ? {...baseObj, category: cat} : x);
+              onPhotosChange && onPhotosChange(updated);
+            }
+          }
+        } catch (e) {
+          console.error('[PhotosGroupedView] classify failed for', p && p.name, ':', e);
+        }
+      }
+      setClassifying(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dossierId, list.length]);
+  // Index par categorie en respectant CATEGORY_ORDER.
+  const grouped = React.useMemo(() => {
+    const out = {};
+    list.forEach((p, idx) => {
+      const c = _photoCatV2(p);
+      if (!out[c]) out[c] = [];
+      out[c].push({p, idx});
+    });
+    return out;
+  }, [list]);
+  return (
+    <div style={{marginTop:18, paddingTop:14, borderTop:'1px solid #E8DDC9'}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, gap:10}}>
+        <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:14, fontWeight:600, color:'#7A5132', textTransform:'uppercase', letterSpacing:'1px'}}>Organisation par categorie</div>
+        {classifying && <div style={{fontSize:10, color:'#8B7F6E', fontStyle:'italic'}}>Classification IA en cours...</div>}
+      </div>
+      {CATEGORY_ORDER.map(cat => {
+        const grp = grouped[cat];
+        if (!grp || grp.length === 0) return null;
+        return (
+          <div key={cat} style={{marginBottom:14}}>
+            <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:14, fontWeight:600, color:'#7A5132', textTransform:'uppercase', letterSpacing:'1px', margin:'12px 0 6px'}}>{CATEGORY_LABEL_FR[cat]}</div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(80px, 1fr))', gap:6}}>
+              {grp.map(({p, idx}) => {
+                const src = _photoSrcV2(p);
+                const isMain = cat === 'photo_principale';
+                return (
+                  <div key={_photoNameKey(p, idx)} onClick={() => setEditingIdx(idx)}
+                    style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden', cursor:'pointer',
+                            border: isMain ? '3px solid #7A5132' : '1px solid #E8DDD0', background:'#F4ECE3'}}>
+                    {src && <img src={src} alt={CATEGORY_LABEL_FR[cat]} loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>}
+                    {isMain && (
+                      <>
+                        <div style={{position:'absolute', top:4, left:4, width:20, height:20, borderRadius:'50%', background:'#7A5132', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(0,0,0,0.3)'}}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="0.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg>
+                        </div>
+                        <div style={{position:'absolute', left:0, right:0, bottom:0, padding:'2px 4px', background:'#FDFAF7', color:'#7A5132', fontSize:8, fontWeight:700, letterSpacing:'0.5px', textAlign:'center', textTransform:'uppercase', fontFamily:"'DM Sans', sans-serif"}}>Photo principale</div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      {editingIdx !== null && list[editingIdx] && (
+        <PhotoEditSheet
+          photo={list[editingIdx]}
+          photoIdx={editingIdx}
+          allPhotos={list}
+          onChange={(next) => { onPhotosChange && onPhotosChange(next); }}
+          onClose={() => setEditingIdx(null)}/>
+      )}
+    </div>
+  );
+}
+
 function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
   const [uploading, setUploading] = React.useState(0);
   // M/2026/05/05/27 — M-Photos-MultiSelect-V2 : mode selection refait propre. Bulk delete SEQUENTIEL obligatoire.
@@ -21753,11 +21933,18 @@ function FormView(props) {
         <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[4] || 'V. Photos'} expanded={expanded[4] || isMatched(4)} onToggle={() => toggleStage(4)} highlighted={isMatched(4)}
                status={stageStatus[4].status} summary={stageStatus[4].summary}>
           <div id="stage-photos-anchor" style={{scrollMarginTop:60}}>
-            {/* M/2026/05/05/31 — M-Hotfix-DossierId-Typo : dossierId n existe pas dans le scope FormView,
-                utiliser le pattern editing && editing.id pour eviter ReferenceError "Can't find variable dossierId". */}
+            {/* M/2026/05/05/31 — M-Hotfix-DossierId-Typo : pattern editing && editing.id pour eviter ReferenceError. */}
             <PhotoUpload dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null} showToast={showToast}
               photos={Array.isArray(d.bien && d.bien.photos) ? d.bien.photos : []}
               onPhotosChange={v => setB('photos', v, {commit: true})}/>
+            {/* M/2026/05/05/32 — M-Photos-Organize-V2 : vue groupee + bottom sheet edition + photo principale. */}
+            {Array.isArray(d.bien && d.bien.photos) && d.bien.photos.length > 0 && (
+              <PhotosGroupedView
+                dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
+                photos={d.bien.photos}
+                onPhotosChange={v => setB('photos', v, {commit: true})}
+                showToast={showToast}/>
+            )}
           </div>
         </Stage>
         </div>

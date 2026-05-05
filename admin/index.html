@@ -147,6 +147,18 @@ tr:hover td{background:#FDFAF7}
           </div>
           <p style="font-size:11px;color:#8B7F6E;margin-top:8px">Nombre maximum de photos uploadables par bien (default 30, plage 1-200). Affecte tous les dossiers immediatement apres reload.</p>
         </div>
+        <!-- M/2026/05/05/32 — M-Photos-Organize-V2 : toggle AI auto-classification. -->
+        <div style="margin-top:24px;padding-top:18px;border-top:1px solid #E8DDD0">
+          <label style="display:block;font-size:11px;font-weight:600;color:#8B7F6E;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">AI auto-classification photos</label>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+              <input id="ai-classify-toggle" type="checkbox" style="width:18px;height:18px;cursor:pointer">
+              Active la classification automatique des photos a l upload
+            </label>
+            <span id="ai-classify-status" style="font-size:12px;color:#8B7F6E"></span>
+          </div>
+          <p style="font-size:11px;color:#8B7F6E;margin-top:8px">Si actif, chaque photo uploadee est automatiquement classee (cuisine, salon, exterieur, etc.) via Claude Haiku 4.5 vision. Cout estime ~0.001 USD par photo.</p>
+        </div>
       </div>
     </div>
     <div id="pane-backups" class="pane hidden">
@@ -402,6 +414,30 @@ $('max-photos-save') && $('max-photos-save').addEventListener('click', async () 
       toast('Limite photos sauvegardée : ' + r.max_photos_per_dossier);
       const st = $('max-photos-status');
       if (st) st.innerHTML = '<span style="color:#3E8B5E">●</span> Limite actuelle : ' + r.max_photos_per_dossier;
+    } else toast(r && r.error ? r.error : 'Erreur', 'error');
+  } catch (e) { toast('Erreur reseau', 'error'); }
+});
+
+// M/2026/05/05/32 — M-Photos-Organize-V2 : toggle AI auto-classification.
+(async () => {
+  try {
+    const r = await fetch(API + '/upload.php?action=get_ai_classify_enabled').then(r => r.json());
+    if (r && r.ok) {
+      const cb = $('ai-classify-toggle');
+      if (cb) cb.checked = !!r.ai_classify_enabled;
+      const st = $('ai-classify-status');
+      if (st) st.innerHTML = '<span style="color:#3E8B5E">●</span> ' + (r.ai_classify_enabled ? 'Active' : 'Desactive');
+    }
+  } catch (e) {}
+})();
+$('ai-classify-toggle') && $('ai-classify-toggle').addEventListener('change', async (ev) => {
+  const v = ev.target.checked ? '1' : '0';
+  try {
+    const r = await fetch(API + '/upload.php?action=set_ai_classify_enabled&value=' + v, {method:'POST', headers:{'X-Admin-Code': adminCode}}).then(r => r.json());
+    if (r && r.ok) {
+      toast('AI classification ' + (r.ai_classify_enabled ? 'activee' : 'desactivee'));
+      const st = $('ai-classify-status');
+      if (st) st.innerHTML = '<span style="color:#3E8B5E">●</span> ' + (r.ai_classify_enabled ? 'Active' : 'Desactive');
     } else toast(r && r.error ? r.error : 'Erreur', 'error');
   } catch (e) { toast('Erreur reseau', 'error'); }
 });
