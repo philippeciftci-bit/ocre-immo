@@ -4398,21 +4398,31 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
         <label style={{fontSize:11, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, margin:0}}>
           Photos {list.length > 0 && <span style={{color:'#8B5E3C'}}>· {list.length}/{PHOTOS_DISPLAY_CAP}</span>}
         </label>
+        {/* M/2026/05/05/24 — M-Toast-Legacy-Kill : boutons mode selection stylises en pill ocre coherent design system. */}
         {list.length > 0 && !selectMode && (
-          <button type="button" onClick={() => setSelectMode(true)} style={{background:'transparent', border:'none', color:'#7A5132', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'2px 0'}}>
+          <button type="button" onClick={() => setSelectMode(true)}
+            style={{background:'#FDFAF7', border:'1px solid #BBA88B', color:'#7A5132', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'6px 14px', borderRadius:100, display:'inline-flex', alignItems:'center', gap:6}}
+            onMouseEnter={e => e.currentTarget.style.background = '#F5EFE6'}
+            onMouseLeave={e => e.currentTarget.style.background = '#FDFAF7'}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{display:'block'}}>
+              <circle cx="12" cy="12" r="9"/>
+              <polyline points="9 12 11 14 15 10"/>
+            </svg>
             Selectionner
           </button>
         )}
         {selectMode && (
-          <div style={{display:'flex', alignItems:'center', gap:6}}>
-            <button type="button" onClick={selectedKeys.size === list.length ? () => setSelectedKeys(new Set()) : selectAll} style={{background:'transparent', border:'none', color:'#7A5132', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
-              {selectedKeys.size === list.length && list.length > 0 ? 'Tout deselect.' : 'Tout selectionner'}
+          <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', justifyContent:'flex-end'}}>
+            <button type="button" onClick={selectedKeys.size === list.length ? () => setSelectedKeys(new Set()) : selectAll}
+              style={{background:'#FDFAF7', border:'1px solid #BBA88B', color:'#7A5132', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'6px 12px', borderRadius:100}}>
+              {selectedKeys.size === list.length && list.length > 0 ? 'Tout deselect.' : 'Tout select.'}
             </button>
             <button type="button" onClick={bulkDelete} disabled={selectedKeys.size === 0 || bulkDeleting}
-              style={{background: selectedKeys.size === 0 ? '#E5DCC9' : '#C73E3E', color:'#fff', border:'none', padding:'5px 10px', borderRadius:6, fontSize:12, fontWeight:600, cursor: selectedKeys.size === 0 ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>
+              style={{background: selectedKeys.size === 0 ? '#E5DCC9' : '#C73E3E', color:'#fff', border:'1px solid ' + (selectedKeys.size === 0 ? '#E5DCC9' : '#A82E2E'), padding:'6px 14px', borderRadius:100, fontSize:12, fontWeight:600, cursor: selectedKeys.size === 0 ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>
               {bulkDeleting ? '...' : 'Supprimer (' + selectedKeys.size + ')'}
             </button>
-            <button type="button" onClick={exitSelectMode} style={{background:'transparent', border:'1px solid #E5DCC9', color:'#1A1714', fontSize:12, fontWeight:600, padding:'4px 10px', borderRadius:6, cursor:'pointer', fontFamily:'inherit'}}>
+            <button type="button" onClick={exitSelectMode}
+              style={{background:'#fff', border:'1px solid #E5DCC9', color:'#1A1714', fontSize:12, fontWeight:600, padding:'6px 14px', borderRadius:100, cursor:'pointer', fontFamily:'inherit'}}>
               Annuler
             </button>
           </div>
@@ -10719,51 +10729,11 @@ function UpdateBanner() {
 // désactivation des inputs ni de cache LocalStorage des dossiers (reporté M141.B/M142).
 // Le SW killswitch v196 reste actif (refonte cache-first SW reportée M141.B en session
 // fraîche pour éviter de casser la stratégie d'invalidation iOS Safari).
+// M/2026/05/05/24 — M-Toast-Legacy-Kill : OnlineIndicator (badge top:4 right:8 "🔴 Hors ligne" / "🟢 Connexion retablie")
+// SUPPRIME car identifie comme le 2e toast legacy en haut a droite que Philippe voyait en parallele du toast central.
+// Si besoin futur d un indicateur connexion, le re-implementer en tant que ligne integree au header (pas en flash top-right).
 function OnlineIndicator() {
-  const [isOnline, setIsOnline] = React.useState(typeof navigator !== 'undefined' ? navigator.onLine !== false : true);
-  const [showFlash, setShowFlash] = React.useState(false);
-  const [flashType, setFlashType] = React.useState('online');
-  React.useEffect(() => {
-    const onUp = () => {
-      setIsOnline(true);
-      setFlashType('online');
-      setShowFlash(true);
-      setTimeout(() => setShowFlash(false), 2500);
-    };
-    const onDown = () => {
-      setIsOnline(false);
-      setFlashType('offline');
-      setShowFlash(true);
-      setTimeout(() => setShowFlash(false), 4000);
-    };
-    window.addEventListener('online', onUp);
-    window.addEventListener('offline', onDown);
-    return () => {
-      window.removeEventListener('online', onUp);
-      window.removeEventListener('offline', onDown);
-    };
-  }, []);
-  if (isOnline && !showFlash) return null;
-  // Badge offline persistant ou flash transition online/offline.
-  const isOfflineBadge = !isOnline;
-  const isFlashOnline = showFlash && flashType === 'online' && isOnline;
-  if (!isOfflineBadge && !isFlashOnline) return null;
-  return (
-    <div style={{
-      position:'fixed', top: 4, right: 8, zIndex: 250,
-      padding:'4px 10px', borderRadius: 12,
-      background: isOfflineBadge ? '#C73E3E' : '#2D6B3F',
-      color:'#fff', fontSize:11, fontWeight:700,
-      fontFamily:'inherit', display:'flex', alignItems:'center', gap:5,
-      boxShadow:'0 2px 8px rgba(0,0,0,0.18)',
-      pointerEvents:'none',
-      opacity: showFlash || isOfflineBadge ? 1 : 0,
-      transition:'opacity .25s ease',
-    }}>
-      <span aria-hidden="true">{isOfflineBadge ? '🔴' : '🟢'}</span>
-      <span>{isOfflineBadge ? 'Hors ligne' : 'Connexion rétablie'}</span>
-    </div>
-  );
+  return null;
 }
 
 function App() {
