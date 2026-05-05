@@ -15005,14 +15005,14 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
     return () => { if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current); };
   }, [showPrice, showAddress, showIdentity, currency, hiddenPhotos]);
 
-  // M/2026/05/05/52 — wire blocs editables apres injection HTML : hover liseré + click contentEditable + toolbar œil.
+  // M/2026/05/05/52 — wire blocs editables apres injection HTML.
+  // M/2026/05/05/55 — icone trois points toujours visible top-right + delegation event root.
   React.useEffect(() => {
     if (!html || !previewRef.current) return undefined;
     const root = previewRef.current;
     const editables = root.querySelectorAll('[data-editable]');
-    const cleanups = [];
+    let openToolbarKey = null;
     editables.forEach(el => {
-      const key = el.getAttribute('data-editable');
       // M/2026/05/05/54 — transitions opacite + background pour toggle fluide sans flash.
       el.style.transition = 'outline 120ms, opacity 180ms';
       el.style.outline = '1px solid transparent';
@@ -15031,47 +15031,93 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
           el.appendChild(lbl);
         }
       }
-      const onEnter = () => { el.style.outline = '1px solid #B8895A'; showToolbar(el, key); };
-      const onLeave = (e) => {
-        if (e && e.relatedTarget && (el.contains(e.relatedTarget) || (e.relatedTarget.classList && e.relatedTarget.classList.contains('ocre-pdf-toolbar')))) return;
-        el.style.outline = '1px solid transparent';
-        hideToolbar(el);
-      };
-      const onClick = (e) => {
-        if (e.target.closest('.ocre-pdf-toolbar')) return;
-        // Prix : popover dedie au lieu de contentEditable.
+      // M/2026/05/05/55 — icone ⋮ permanente top-right pour decouvrabilite immediate.
+      if (!el.querySelector(':scope > .ocre-pdf-dot')) {
+        const dot = document.createElement('div');
+        dot.className = 'ocre-pdf-dot';
+        dot.setAttribute('data-pdf-dot', '1');
+        dot.style.cssText = 'position:absolute;top:6px;right:6px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:#B8895A;font-size:18px;font-weight:700;line-height:1;cursor:pointer;opacity:0.35;transition:opacity 120ms;z-index:8;user-select:none;';
+        dot.textContent = '⋮';
+        dot.contentEditable = 'false';
+        el.appendChild(dot);
+      }
+    });
+    // Delegation : un seul listener pour tous les clicks dans la preview.
+    function onRootClick(e) {
+      const isDot = e.target.closest('[data-pdf-dot]');
+      const editableEl = e.target.closest('[data-editable]');
+      const insideToolbar = e.target.closest('.ocre-pdf-toolbar');
+      if (insideToolbar) return; // Toolbar handle son propre click via ses boutons.
+      // Click sur dot : ouvre/ferme la toolbar associee.
+      if (isDot && editableEl) {
+        e.stopPropagation();
+        const key = editableEl.getAttribute('data-editable');
+        if (openToolbarKey === key) { hideAllToolbars(); openToolbarKey = null; }
+        else { hideAllToolbars(); showToolbar(editableEl, key); openToolbarKey = key; }
+        return;
+      }
+      // Click sur bloc editable (hors dot) : ferme toolbar + entre en edition.
+      if (editableEl) {
+        if (openToolbarKey) { hideAllToolbars(); openToolbarKey = null; }
+        const key = editableEl.getAttribute('data-editable');
         if (key === 'price') {
           const cur = (editorBlocksRef.current.price && editorBlocksRef.current.price.currency) || currency || 'EUR';
           const amt = (editorBlocksRef.current.price && typeof editorBlocksRef.current.price.amount === 'number') ? editorBlocksRef.current.price.amount : null;
           setPricePopover({currency: cur, amount: amt});
           return;
         }
-        el.contentEditable = 'true';
-        el.focus();
+        editableEl.contentEditable = 'true';
+        editableEl.focus();
         const onBlur = () => {
-          el.contentEditable = 'false';
-          const value = el.innerText.trim();
+          editableEl.contentEditable = 'false';
+          const value = editableEl.innerText.trim();
           if (key === 'agent') {
-            // Multi-fields : extract via data-agent-field children.
             const patch = {};
-            el.querySelectorAll('[data-agent-field]').forEach(c => { patch[c.getAttribute('data-agent-field')] = c.innerText.trim(); });
+            editableEl.querySelectorAll('[data-agent-field]').forEach(c => { patch[c.getAttribute('data-agent-field')] = c.innerText.trim(); });
             setBlock('agent', patch);
           } else {
             setBlock(key, {value});
           }
-          el.removeEventListener('blur', onBlur);
+          editableEl.removeEventListener('blur', onBlur);
         };
-        el.addEventListener('blur', onBlur);
-      };
-      el.addEventListener('mouseenter', onEnter);
-      el.addEventListener('mouseleave', onLeave);
-      el.addEventListener('click', onClick);
-      cleanups.push(() => {
-        el.removeEventListener('mouseenter', onEnter);
-        el.removeEventListener('mouseleave', onLeave);
-        el.removeEventListener('click', onClick);
-      });
-    });
+        editableEl.addEventListener('blur', onBlur);
+        return;
+      }
+      // Click hors bloc : ferme toolbar si ouverte.
+      if (openToolbarKey) { hideAllToolbars(); openToolbarKey = null; }
+    }
+    function onRootHover(e) {
+      const editableEl = e.target.closest('[data-editable]');
+      if (!editableEl) return;
+      const dot = editableEl.querySelector(':scope > .ocre-pdf-dot');
+      if (dot) dot.style.opacity = '1';
+    }
+    function onRootHoverOut(e) {
+      const editableEl = e.target.closest('[data-editable]');
+      if (!editableEl) return;
+      // Ne pas reset si le mouvement reste dans le bloc.
+      if (e.relatedTarget && editableEl.contains(e.relatedTarget)) return;
+      const dot = editableEl.querySelector(':scope > .ocre-pdf-dot');
+      if (dot && openToolbarKey !== editableEl.getAttribute('data-editable')) dot.style.opacity = '0.35';
+    }
+    function hideAllToolbars() {
+      root.querySelectorAll('.ocre-pdf-toolbar').forEach(b => b.remove());
+    }
+    function onDocClick(e) {
+      // Click hors preview : ferme toolbar.
+      if (root.contains(e.target)) return;
+      if (openToolbarKey) { hideAllToolbars(); openToolbarKey = null; }
+    }
+    root.addEventListener('click', onRootClick);
+    root.addEventListener('mouseover', onRootHover);
+    root.addEventListener('mouseout', onRootHoverOut);
+    document.addEventListener('click', onDocClick);
+    const cleanups = [() => {
+      root.removeEventListener('click', onRootClick);
+      root.removeEventListener('mouseover', onRootHover);
+      root.removeEventListener('mouseout', onRootHoverOut);
+      document.removeEventListener('click', onDocClick);
+    }];
     function showToolbar(el, key) {
       let bar = el.querySelector(':scope > .ocre-pdf-toolbar');
       if (bar) return;
