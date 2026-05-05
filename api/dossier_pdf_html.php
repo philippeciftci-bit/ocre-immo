@@ -291,6 +291,42 @@ $descriptifTexte = $bien['descriptif'] ?? $bien['descriptif_texte'] ?? $bien['re
 // Honoraires : si legacy 'charges' ou 'commission' présents, surface dans une note.
 $chargesNote = _pick($data, 'charges') ?: _pick($bien, 'charges');
 
+// M/2026/05/05/52 — pdf_editor_state : override valeurs + visibility par bloc.
+// Structure : data.bien.pdf_editor_state.blocks.{key}.{visible,value,...}.
+$_pdfEditorState = $bien['pdf_editor_state']['blocks'] ?? [];
+function _pdfBlockVisible(array $state, string $key): bool {
+    if (!isset($state[$key])) return true;
+    $v = $state[$key]['visible'] ?? true;
+    return $v !== false;
+}
+function _pdfBlockValue(array $state, string $key, string $default): string {
+    if (!isset($state[$key])) return $default;
+    $v = $state[$key]['value'] ?? null;
+    if (is_string($v) && $v !== '') return $v;
+    return $default;
+}
+// Override les variables de rendu si pdf_editor_state contient une value.
+$titreBien       = _pdfBlockValue($_pdfEditorState, 'title', $titreBien);
+$descriptifLead  = _pdfBlockValue($_pdfEditorState, 'descriptif_lead', (string)$descriptifLead);
+$descriptifTexte = _pdfBlockValue($_pdfEditorState, 'descriptif_texte', (string)$descriptifTexte);
+// Agent : si bloc explicite override.
+if (isset($_pdfEditorState['agent'])) {
+    $a = $_pdfEditorState['agent'];
+    if (!empty($a['name']))  $agentName  = (string) $a['name'];
+    if (isset($a['phone']))  $agentTel   = (string) $a['phone'];
+    if (isset($a['email']))  $agentEmail = (string) $a['email'];
+}
+// Prix : override amount + currency.
+if (isset($_pdfEditorState['price'])) {
+    $pr = $_pdfEditorState['price'];
+    if (isset($pr['amount']) && is_numeric($pr['amount'])) $prix = (float) $pr['amount'];
+    if (!empty($pr['currency']) && is_string($pr['currency'])) $devise = (string) $pr['currency'];
+}
+function _pdfEdAttr(string $key, array $state): string {
+    $hidden = !_pdfBlockVisible($state, $key) ? ' data-pdf-hidden="1"' : '';
+    return ' data-editable="' . h($key) . '"' . $hidden;
+}
+
 header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
 <html lang="fr">
@@ -595,11 +631,11 @@ header('Content-Type: text/html; charset=utf-8');
     <?php endif; /* /_topCount > 0 */ ?>
 
     <div class="cartouche">
-      <div class="cartouche-title"><b><?= h($titreBien) ?></b></div>
+      <div class="cartouche-title"<?= _pdfEdAttr('title', $_pdfEditorState) ?>><b><?= h($titreBien) ?></b></div>
       <?php if ($hideAddress): ?>
-        <div class="cartouche-loc" style="color: var(--muted); font-style: italic;">Adresse sur demande</div>
+        <div class="cartouche-loc"<?= _pdfEdAttr('subtitle', $_pdfEditorState) ?> style="color: var(--muted); font-style: italic;">Adresse sur demande</div>
       <?php else: ?>
-        <div class="cartouche-loc"><?= h($ville) ?></div>
+        <div class="cartouche-loc"<?= _pdfEdAttr('subtitle', $_pdfEditorState) ?>><?= h(_pdfBlockValue($_pdfEditorState, 'subtitle', (string)$ville)) ?></div>
       <?php endif; ?>
       <div class="cartouche-bullets">
         <?php
@@ -616,23 +652,23 @@ header('Content-Type: text/html; charset=utf-8');
     <div class="cover-foot">
       <div class="price">
         <?php if ($prix && !$prixDemand): ?>
-          <div class="amount"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></div>
+          <div class="amount"<?= _pdfEdAttr('price', $_pdfEditorState) ?>><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
-          <div class="amount" style="font-size:18px; color: var(--muted); font-style: italic;">Sur demande</div>
+          <div class="amount"<?= _pdfEdAttr('price', $_pdfEditorState) ?> style="font-size:18px; color: var(--muted); font-style: italic;">Sur demande</div>
         <?php endif; ?>
       </div>
       <div class="center-mark">
         <span class="brand brand-md"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span>
         <div class="sub">Marrakech</div>
       </div>
-      <div class="agent">
+      <div class="agent"<?= _pdfEdAttr('agent', $_pdfEditorState) ?>>
         <?php if ($hideIdentity): ?>
           <div style="color: var(--muted); font-style: italic; font-size: 11px;">Coordonnées sur demande</div>
         <?php else: ?>
-          <div class="name"><?= h($agentName) ?></div>
-          <?php if ($agentTel): ?><div><?= h($agentTel) ?></div><?php endif; ?>
-          <?php if ($agentEmail): ?><div><?= h($agentEmail) ?></div><?php endif; ?>
+          <div class="name" data-agent-field="name"><?= h($agentName) ?></div>
+          <?php if ($agentTel): ?><div data-agent-field="phone"><?= h($agentTel) ?></div><?php endif; ?>
+          <?php if ($agentEmail): ?><div data-agent-field="email"><?= h($agentEmail) ?></div><?php endif; ?>
         <?php endif; ?>
       </div>
     </div>
@@ -646,9 +682,9 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
 
     <div class="eye" style="text-align:left;">Le bien</div>
-    <h1 class="ed-title"><?= h($titreBien) ?></h1>
+    <h1 class="ed-title"<?= _pdfEdAttr('title', $_pdfEditorState) ?>><?= h($titreBien) ?></h1>
 
-    <div class="ed-lead">
+    <div class="ed-lead"<?= _pdfEdAttr('descriptif_lead', $_pdfEditorState) ?>>
       <?php if ($descriptifLead): ?>
         <?= nl2br(h($descriptifLead)) ?>
       <?php else: ?>
@@ -657,7 +693,7 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
 
     <div class="ed-grid" style="<?= $_hasEditorialPhotos ? '' : 'grid-template-columns: 1fr;' ?>">
-      <div class="ed-text">
+      <div class="ed-text"<?= _pdfEdAttr('descriptif_texte', $_pdfEditorState) ?>>
         <?php if ($descriptifTexte): ?>
           <?= nl2br(h($descriptifTexte)) ?>
         <?php else: ?>
@@ -779,11 +815,13 @@ header('Content-Type: text/html; charset=utf-8');
         <h5>Agent référent</h5>
         <div class="body">
           <?php if ($hideIdentity): ?>
-            <div style="color: var(--muted); font-style: italic; font-size: 12px;">Coordonnées sur demande auprès de l'agent</div>
+            <div<?= _pdfEdAttr('agent', $_pdfEditorState) ?> style="color: var(--muted); font-style: italic; font-size: 12px;">Coordonnées sur demande auprès de l'agent</div>
           <?php else: ?>
-            <div class="name"><?= h($agentName) ?></div>
-            <?php if ($agentTel): ?><div><?= h($agentTel) ?></div><?php endif; ?>
-            <?php if ($agentEmail): ?><div><?= h($agentEmail) ?></div><?php endif; ?>
+            <div<?= _pdfEdAttr('agent', $_pdfEditorState) ?>>
+              <div class="name" data-agent-field="name"><?= h($agentName) ?></div>
+              <?php if ($agentTel): ?><div data-agent-field="phone"><?= h($agentTel) ?></div><?php endif; ?>
+              <?php if ($agentEmail): ?><div data-agent-field="email"><?= h($agentEmail) ?></div><?php endif; ?>
+            </div>
           <?php endif; ?>
         </div>
       </div>
@@ -797,10 +835,10 @@ header('Content-Type: text/html; charset=utf-8');
       <div class="col" style="text-align: right;">
         <h5>Prix</h5>
         <?php if ($prix && !$prixDemand): ?>
-          <div class="price-final"><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></div>
+          <div class="price-final"<?= _pdfEdAttr('price', $_pdfEditorState) ?>><b><?= htmlspecialchars(fmtNum($prix)) ?></b> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></div>
           <?php if ($honoraires): ?><div class="hon">Honoraires inclus</div><?php endif; ?>
         <?php else: ?>
-          <div class="price-final" style="font-size: 18px; color: var(--muted); font-style: italic;">Sur demande</div>
+          <div class="price-final"<?= _pdfEdAttr('price', $_pdfEditorState) ?> style="font-size: 18px; color: var(--muted); font-style: italic;">Sur demande</div>
         <?php endif; ?>
       </div>
     </div>
