@@ -4296,17 +4296,29 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     const n = selectedUuids.length;
     if (!(await askConfirm({title:'Supprimer ' + n + ' photo' + (n > 1 ? 's' : '') + ' ?', message:'Cette action est definitive.', danger:true, confirmLabel:'Supprimer'}))) return;
     setBulkDeleteRemaining(n);
-    const succeeded = new Set();
+    // M/2026/05/05/46 — tracker stable par name + fallback key. successNames = noms reels (authoritative
+    // pour matcher les photos meme si l index change). successKeys = fallback pour photos sans name
+    // (objets {url} sans name, fantomes legacy, null entries).
+    const successNames = new Set();
+    const successKeys = new Set();
     let failedCount = 0;
     // SEQUENTIEL obligatoire : backend OVH ne supporte pas deletes paralleles (cf v1 cassee).
     for (let i = 0; i < selectedUuids.length; i++) {
       const key = selectedUuids[i];
       const p = list.find((it, idx) => photoKey(it, idx) === key);
       const name = p && typeof p === 'object' ? (p.name || '') : (typeof p === 'string' ? p : '');
-      if (!name) { setBulkDeleteRemaining(n - i - 1); continue; }
+      // M/2026/05/05/46 — entry sans name (fantome / legacy / null) : skip fetch backend, retire en local
+      // via successKeys. Pour le cas string URL externe (Unsplash) : name = la string URL, fetch backend
+      // rejette regex mais on add a successNames quand meme (fetch ne throw pas sur 4xx).
+      if (!name) {
+        successKeys.add(key);
+        setBulkDeleteRemaining(n - i - 1);
+        continue;
+      }
       try {
         await fetch(API + '/upload.php?action=delete', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token()}, body: JSON.stringify({dossier_id: dossierId, name})});
-        succeeded.add(key);
+        successNames.add(name);
+        successKeys.add(key);
       } catch (e) {
         failedCount++;
         console.error('[PhotoUpload] bulkDelete failed for', name, ':', e);
@@ -4314,11 +4326,19 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
       setBulkDeleteRemaining(n - i - 1);
     }
     setBulkDeleteRemaining(0);
-    // Refetch state coherent : retire les succeeded de la liste parente.
-    onPhotosChange && onPhotosChange(list.filter((p, idx) => !succeeded.has(photoKey(p, idx))));
+    // M/2026/05/05/46 — filter par name authoritative + key fallback pour photos sans name.
+    const newList = list.filter((p, idx) => {
+      const pname = p && typeof p === 'object' ? (p.name || '') : (typeof p === 'string' ? p : '');
+      const pkey = photoKey(p, idx);
+      if (pname && successNames.has(pname)) return false;
+      if (successKeys.has(pkey)) return false;
+      return true;
+    });
+    const removedCount = list.length - newList.length;
+    onPhotosChange && onPhotosChange(newList);
     exitSelectMode();
-    if (failedCount > 0) showToast && showToast(succeeded.size + ' photo(s) supprimee(s), ' + failedCount + ' echec(s)');
-    else showToast && showToast(succeeded.size + ' photo' + (succeeded.size > 1 ? 's supprimees' : ' supprimee'));
+    if (failedCount > 0) showToast && showToast(removedCount + ' photo(s) supprimee(s), ' + failedCount + ' echec(s)');
+    else showToast && showToast(removedCount + ' photo' + (removedCount > 1 ? 's supprimees' : ' supprimee'));
   }
 
   // M/2026/05/05/18 — M-Photos-Upload-Multi-Append : APPEND en fin + reset input.
@@ -4346,7 +4366,8 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
       console.error('[PhotoUpload] response not JSON, http=', r.status, 'body=', txt && txt.slice(0, 200), 'file:', f && f.name);
       throw new Error('non_json_response_http_' + r.status);
     }
-    if (d && d.ok && d.photo) return d.photo;
+    // M/2026/05/05/46 — retourne {photo, photos} pour permettre au handler de sync state authoritative DB.
+    if (d && d.ok && d.photo) return {photo: d.photo, photos: Array.isArray(d.photos) ? d.photos : null};
     console.error('[PhotoUpload] backend rejected:', 'http=', r.status, 'body=', d, 'file:', f && f.name);
     throw new Error((d && d.error) || ('http_' + r.status));
   }
@@ -4370,11 +4391,17 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     setUploading(toUpload.length);
     // Sequentiel : evite la collision serveur sur uploads paralleles (M-Photos-Upload-Multi-Append cassait le backend).
     const succeeded = [];
+    // M/2026/05/05/46 — lastServerPhotos = array authoritative DB renvoye par backend a chaque upload.
+    // Permet de propager l etat DB exact en evitant la race avec auto-save M103 (debounce 800ms).
+    let lastServerPhotos = null;
     let firstError = null;
     for (let i = 0; i < toUpload.length; i++) {
       try {
-        const photo = await uploadOne(toUpload[i]);
-        if (photo) succeeded.push(photo);
+        const r = await uploadOne(toUpload[i]);
+        if (r) {
+          if (r.photo) succeeded.push(r.photo);
+          if (Array.isArray(r.photos)) lastServerPhotos = r.photos;
+        }
       } catch (e) {
         if (!firstError) firstError = e && e.message ? e.message : 'erreur';
         console.error('[PhotoUpload] upload', (i+1) + '/' + toUpload.length, 'failed:', e);
@@ -4383,7 +4410,10 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     }
     setUploading(0);
     const failed = toUpload.length - succeeded.length;
-    if (succeeded.length > 0) {
+    // M/2026/05/05/46 — preferer lastServerPhotos (authoritative DB) au append local (race-safe).
+    if (lastServerPhotos) {
+      onPhotosChange && onPhotosChange(lastServerPhotos);
+    } else if (succeeded.length > 0) {
       onPhotosChange && onPhotosChange([...list, ...succeeded]);
     }
     if (skipped > 0) showToast && showToast(succeeded.length + ' photo(s) ajoutee(s), ' + skipped + ' ignoree(s) (limite 30)');

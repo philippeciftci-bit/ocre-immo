@@ -127,6 +127,10 @@ function purgeUnreferenced($dossier_id) {
     }
     foreach (glob($dir . '/*') ?: [] as $path) {
         if (!is_file($path)) continue;
+        // M/2026/05/05/46 — garde anti-race : skip fichiers recents (<60s) pour eviter de purger
+        // un upload en cours dont le JSON client n est pas encore propage (auto-save M103 debounce 800ms).
+        $mt = @filemtime($path);
+        if ($mt !== false && (time() - $mt) < 60) continue;
         $name = basename($path);
         $base = pathinfo($name, PATHINFO_FILENAME);
         $isThumb = strpos($name, '_thumb.') !== false;
@@ -260,17 +264,39 @@ switch ($action) {
             $compResult = photo_pipeline_compress($dest, dossierDir($dossier_id) . '/' . pathinfo($name, PATHINFO_FILENAME), (int) $f['size']);
         }
 
-        jsonOk([
-            'photo' => [
-                'name' => $name,
-                'url' => publicBase() . '/' . $dossier_id . '/' . $name,
-                'size' => filesize($dest),
-                'mtime' => filemtime($dest),
-                'webp_url' => $compResult['webp_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['webp_name'] : null,
-                'thumb_url' => $compResult['thumb_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['thumb_name'] : null,
-                'compression_ratio' => $compResult['ratio'] ?? null,
-            ],
-        ]);
+        $photoObj = [
+            'name' => $name,
+            'url' => publicBase() . '/' . $dossier_id . '/' . $name,
+            'size' => filesize($dest),
+            'mtime' => filemtime($dest),
+            'webp_url' => $compResult['webp_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['webp_name'] : null,
+            'thumb_url' => $compResult['thumb_name'] ? publicBase() . '/' . $dossier_id . '/' . $compResult['thumb_name'] : null,
+            'compression_ratio' => $compResult['ratio'] ?? null,
+        ];
+
+        // M/2026/05/05/46 — UPDATE atomique data.bien.photos[] post-move pour eliminer la race
+        // entre purgeUnreferenced et l auto-save M103 client (debounce 800ms). Garantit que la prochaine
+        // requete upload voie un JSON deja propage.
+        // NB MariaDB : CAST(? AS JSON) non supporte -> JSON_EXTRACT(?, '$') parse string -> object.
+        $completeArray = null;
+        try {
+            $pdo = db();
+            $stmt0 = $pdo->prepare("UPDATE clients SET data = JSON_SET(IFNULL(data, JSON_OBJECT()), '$.bien.photos', IFNULL(JSON_EXTRACT(data, '$.bien.photos'), JSON_ARRAY())) WHERE id = ?");
+            $stmt0->execute([$dossier_id]);
+            $stmt1 = $pdo->prepare("UPDATE clients SET data = JSON_ARRAY_APPEND(data, '$.bien.photos', JSON_EXTRACT(?, '$')) WHERE id = ?");
+            $stmt1->execute([json_encode($photoObj, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $dossier_id]);
+            $stmt2 = $pdo->prepare("SELECT JSON_EXTRACT(data, '$.bien.photos') AS photos FROM clients WHERE id = ?");
+            $stmt2->execute([$dossier_id]);
+            $row = $stmt2->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty($row['photos'])) {
+                $completeArray = json_decode($row['photos'], true);
+                if (!is_array($completeArray)) $completeArray = null;
+            }
+        } catch (Throwable $e) {
+            error_log('[upload.php M/46 atomic-sync] FAIL dossier=' . $dossier_id . ' : ' . $e->getMessage());
+        }
+
+        jsonOk(['photo' => $photoObj, 'photos' => $completeArray]);
     }
 
     case 'list': {
