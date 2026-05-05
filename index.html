@@ -10707,6 +10707,13 @@ function App() {
   const [view, setView] = useState('list');
   const [editing, setEditing] = useState(null);
   const [toast, setToast] = useState('');
+  // M/2026/05/05/12 — M-Partage-Menu-V2 : state ShareMenu global (event-based, payload du parent).
+  const [shareMenuTarget, setShareMenuTarget] = useState(null);
+  React.useEffect(() => {
+    function onOpenShare(e) { const d = (e && e.detail) || {}; if (d.dossierId) setShareMenuTarget(d); }
+    window.addEventListener('ocre-open-share', onOpenShare);
+    return () => window.removeEventListener('ocre-open-share', onOpenShare);
+  }, []);
   const [formKey, setFormKey] = useState(0);
   const [activeProfil, setActiveProfil] = useState('Acheteur');
   const [isInvestisseur, setIsInvestisseur] = useState(false);
@@ -11290,6 +11297,18 @@ function App() {
       onConfirm={() => resolveConfirm(true)} onCancel={() => resolveConfirm(false)}/>
   )}
   <UpdateBanner/>
+  {shareMenuTarget && (
+    <ShareMenu
+      dossierId={shareMenuTarget.dossierId}
+      dossier={shareMenuTarget.dossier || null}
+      currency={shareMenuTarget.currency || 'EUR'}
+      showPrice={shareMenuTarget.showPrice !== false}
+      showAddress={shareMenuTarget.showAddress !== false}
+      showIdentity={shareMenuTarget.showIdentity !== false}
+      hiddenPhotos={shareMenuTarget.hiddenPhotos || []}
+      onClose={() => setShareMenuTarget(null)}
+      showToast={showToast}/>
+  )}
   </>);
 }
 
@@ -14766,7 +14785,10 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
         showAddress={showAddress} setShowAddress={setShowAddress}
         showIdentity={showIdentity} setShowIdentity={setShowIdentity}
         onPhotosClick={() => setPhotosSheetOpen(true)}
-        onShare={() => setShareOpen(true)}/>
+        onShare={() => {
+          // M/2026/05/05/12 — M-Partage-Menu-V2 : ouvre ShareMenu (3 sous-ecrans) via event global.
+          try { window.dispatchEvent(new CustomEvent('ocre-open-share', {detail: {dossierId, dossier: dossierData, currency, showPrice, showAddress, showIdentity, hiddenPhotos}})); } catch (_) {}
+        }}/>
       {currencyPickerOpen && (
         <CurrencyPickerSheet
           current={currency}
@@ -14789,6 +14811,219 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
           onClose={() => setShareOpen(false)}
           showToast={showToast}/>
       )}
+    </div>
+  );
+}
+
+// M/2026/05/05/12 — M-Partage-Menu-V2 : ShareMenu 3 sous-ecrans (Client/Confrere/Publier).
+// Recoit dossier en prop directement (pas de findClientById global). State machine screen.
+function ShareMenu({dossier, dossierId, currency, showPrice, showAddress, showIdentity, hiddenPhotos, onClose, showToast}) {
+  const [screen, setScreen] = React.useState('menu');
+  const did = dossierId || (dossier && dossier.id);
+  const totalPhotos = (() => {
+    const u = dossier && dossier.photos_uuids;
+    if (!u) return 0;
+    if (typeof u === 'string') { try { return (JSON.parse(u) || []).length; } catch (_) { return 0; } }
+    return Array.isArray(u) ? u.length : 0;
+  })();
+  const selectedPhotos = totalPhotos - (Array.isArray(hiddenPhotos) ? hiddenPhotos.length : 0);
+  const visibilitySnapshot = { showPrice, showAddress, showIdentity, hiddenPhotos: hiddenPhotos || [], currency: currency || 'EUR' };
+
+  function Recap() {
+    const Row = ({k,v,vstrong}) => (<div style={{display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px dashed #F4EEE6', fontSize:12}}><span style={{color:'#8B7F6E'}}>{k}</span><span style={{fontWeight: vstrong ? 700 : 600, color:'#2A2018'}}>{v}</span></div>);
+    return (
+      <div style={{background:'#FBF7F0', border:'1px solid #EDE6DC', borderRadius:10, padding:'8px 12px', marginTop:8, marginBottom:12}}>
+        <Row k="Prix" v={showPrice ? 'VISIBLE' : 'MASQUE'} vstrong={!showPrice}/>
+        <Row k="Adresse complete" v={showAddress ? 'VISIBLE' : 'MASQUE'} vstrong={!showAddress}/>
+        <Row k="Identite acheteur" v={showIdentity ? 'VISIBLE' : 'MASQUE'} vstrong={!showIdentity}/>
+        <Row k="Photos" v={selectedPhotos + ' / ' + totalPhotos} vstrong/>
+      </div>
+    );
+  }
+  function Header({title, withBack}) {
+    return (
+      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+        {withBack && <button type="button" onClick={() => setScreen('menu')} aria-label="Retour" style={{width:32, height:32, borderRadius:'50%', border:'1px solid #E5E0D8', background:'#fff', cursor:'pointer', fontFamily:'inherit'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1714" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{display:'block', margin:'0 auto'}}><polyline points="15 18 9 12 15 6"/></svg>
+        </button>}
+        <div style={{flex:1, fontFamily:"'Cormorant Garamond', serif", fontSize:20, fontWeight:700, color:'#2D2018'}}>{title}</div>
+        <button type="button" onClick={onClose} aria-label="Fermer" style={{width:32, height:32, borderRadius:'50%', border:'1px solid #E5E0D8', background:'#fff', cursor:'pointer', fontFamily:'inherit', fontSize:16}}>×</button>
+      </div>
+    );
+  }
+  function Chip({active, onClick, dotted, children}) {
+    const base = {padding:'7px 14px', borderRadius:100, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', border:'1px solid', whiteSpace:'nowrap', flexShrink:0, transition:'all .15s'};
+    const style = active
+      ? {...base, background:'#7A5132', color:'#fff', borderColor:'#7A5132'}
+      : {...base, background:'#fff', color:'#5C3B1E', borderColor: dotted ? '#C9B79A' : '#E5DCC9', borderStyle: dotted ? 'dashed' : 'solid'};
+    return <button type="button" onClick={onClick} style={style}>{children}</button>;
+  }
+  function MenuView() {
+    const Card = ({icon, title, sub, onClick}) => (
+      <div onClick={onClick} style={{display:'flex', alignItems:'center', gap:12, padding:14, background:'#fff', border:'1px solid #EDE6DC', borderRadius:12, cursor:'pointer', marginBottom:8, transition:'all .12s'}}
+        onMouseEnter={e => e.currentTarget.style.background = '#FBF7F0'}
+        onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+        <div style={{width:44, height:44, borderRadius:'50%', background:'#FBF1E4', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'#7A5132'}}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html: icon}}/>
+        </div>
+        <div style={{flex:1, minWidth:0}}>
+          <div style={{fontSize:14, fontWeight:700, color:'#2A2018', marginBottom:2}}>{title}</div>
+          <div style={{fontSize:11, color:'#8B7F6E'}}>{sub}</div>
+        </div>
+        <span style={{color:'#8B7F6E', fontSize:18}}>›</span>
+      </div>
+    );
+    return (
+      <div>
+        <Header title="Partager ce dossier"/>
+        <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14}}>Avec qui veux-tu le partager ?</div>
+        <Card icon={BB_ICONS.USER} title="Avec un client" sub="Lien lecture seule, suivi des vues" onClick={() => setScreen('client')}/>
+        <Card icon='<circle cx="9" cy="9" r="3"/><circle cx="17" cy="11" r="2.5"/><path d="M3 21v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1"/><path d="M14 21v-1a3 3 0 0 1 3-3h2a3 3 0 0 1 3 3v1"/>' title="Avec un confrere" sub="Travailler a plusieurs dans un WSC" onClick={() => setScreen('confrere')}/>
+        <Card icon='<circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a14 14 0 0 1 4 9 14 14 0 0 1-4 9 14 14 0 0 1-4-9 14 14 0 0 1 4-9z"/>' title="Publier sur Internet" sub="Site agent + agregateur ocre.immo" onClick={() => setScreen('publier')}/>
+      </div>
+    );
+  }
+  function ClientView() {
+    const VALIDITES = [{k:'1h',l:'1 heure'},{k:'1d',l:'1 jour'},{k:'7d',l:'1 semaine'},{k:'30d',l:'1 mois'},{k:'permanent',l:'Permanent'},{k:'1use',l:'1 fois',dotted:true}];
+    const [validity, setValidity] = React.useState('30d');
+    const [busy, setBusy] = React.useState(false);
+    async function envoyer() {
+      setBusy(true);
+      try {
+        const tk = localStorage.getItem('ocre_token') || '';
+        const validitySeconds = ({'1h':3600,'1d':86400,'7d':604800,'30d':2592000,'permanent':null,'1use':null})[validity];
+        const oneShot = validity === '1use';
+        const r = await fetch('/api/share_links_v20.php?action=create_link', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk},
+          body: JSON.stringify({dossier_id: did, validity_seconds: validitySeconds, one_shot: oneShot, hide_price: !showPrice, hide_address: !showAddress, hide_identity: !showIdentity, currency: currency || 'EUR'})});
+        const j = await r.json();
+        if (!j || !j.ok) throw new Error(j && j.error || 'Erreur creation lien');
+        const url = j.url || ('https://ocre.immo/s/' + (j.token || ''));
+        if (navigator.share) { try { await navigator.share({title:'Dossier Ocre Immo', url}); } catch (_) {} }
+        else if (navigator.clipboard) { try { await navigator.clipboard.writeText(url); showToast && showToast('Lien copie'); } catch (_) {} }
+        onClose && onClose();
+      } catch (e) { showToast && showToast('Erreur : ' + e.message); }
+      finally { setBusy(false); }
+    }
+    return (
+      <div>
+        <Header title="Avec un client" withBack/>
+        <div style={{fontSize:11, color:'#8B7F6E'}}>Le client recevra ce dossier avec :</div>
+        <Recap/>
+        <div style={{fontSize:13, fontWeight:700, color:'#2A2018', marginBottom:8}}>Validite du lien</div>
+        <div style={{display:'flex', gap:6, overflowX:'auto', paddingBottom:6, marginBottom:14}}>
+          {VALIDITES.map(v => <Chip key={v.k} active={validity === v.k} dotted={v.dotted} onClick={() => setValidity(v.k)}>{v.l}</Chip>)}
+        </div>
+        <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+          <button type="button" onClick={onClose} style={{padding:'9px 16px', borderRadius:100, border:'1px solid #E5E0D8', background:'#F0EBE2', color:'#1A1714', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+          <button type="button" onClick={envoyer} disabled={busy} style={{padding:'9px 18px', borderRadius:100, border:'none', background: busy ? '#C9B79A' : '#7A5132', color:'#fff', fontSize:13, fontWeight:700, cursor: busy ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>{busy ? 'Envoi...' : 'Envoyer'}</button>
+        </div>
+      </div>
+    );
+  }
+  function ConfrereView() {
+    const [wscs, setWscs] = React.useState([]);
+    const [selectedWsc, setSelectedWsc] = React.useState(null);
+    const [duration, setDuration] = React.useState('permanent');
+    const [busy, setBusy] = React.useState(false);
+    const [loading, setLoading] = React.useState(true);
+    React.useEffect(() => {
+      const tk = localStorage.getItem('ocre_token') || '';
+      fetch('/api/workspaces_of_user.php', {headers:{'X-Session-Token':tk}})
+        .then(r => r.json())
+        .then(j => { setWscs((j && j.workspaces) || []); setLoading(false); })
+        .catch(() => { setWscs([]); setLoading(false); });
+    }, []);
+    async function ajouter() {
+      if (!selectedWsc) { showToast && showToast('Choisis un espace'); return; }
+      setBusy(true);
+      try {
+        const tk = localStorage.getItem('ocre_token') || '';
+        const expiresMap = {'1d':86400,'7d':604800,'30d':2592000,'permanent':null};
+        const sec = expiresMap[duration];
+        const expiresAt = sec ? new Date(Date.now() + sec * 1000).toISOString().slice(0,19).replace('T',' ') : null;
+        const r = await fetch('/api/dossier_to_workspace.php', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk},
+          body: JSON.stringify({dossier_id: did, workspace_id: selectedWsc, expires_at: expiresAt})});
+        const j = await r.json();
+        if (j && j.ok) { showToast && showToast('Dossier ajoute au WSC'); onClose && onClose(); }
+        else throw new Error(j && j.error || 'Erreur');
+      } catch (e) { showToast && showToast('Erreur : ' + e.message); }
+      finally { setBusy(false); }
+    }
+    return (
+      <div>
+        <Header title="Avec un confrere" withBack/>
+        <div style={{fontSize:11, color:'#8B7F6E', marginBottom:10}}>Reste dans ton WSperso et apparait aussi dans le WSC.</div>
+        <div style={{fontSize:13, fontWeight:700, color:'#2A2018', marginBottom:8}}>Espaces communs</div>
+        <div style={{maxHeight:200, overflowY:'auto', marginBottom:14}}>
+          {loading ? <div style={{padding:20, textAlign:'center', fontSize:12, color:'#8B7F6E'}}>Chargement...</div>
+          : wscs.length === 0 ? <div style={{padding:20, textAlign:'center', fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Aucun WSC pour l instant.</div>
+          : wscs.map(w => (
+            <div key={w.id} onClick={() => setSelectedWsc(w.id)} style={{display:'flex', alignItems:'center', gap:10, padding:10, border: selectedWsc === w.id ? '2px solid #7A5132' : '1px solid #EDE6DC', borderRadius:10, marginBottom:6, cursor:'pointer', background:'#fff'}}>
+              <div style={{width:34, height:34, borderRadius:8, background:'#FBF1E4', display:'flex', alignItems:'center', justifyContent:'center', color:'#7A5132', flexShrink:0}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html: BB_ICONS.FOLDER}}/>
+              </div>
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{fontSize:13, fontWeight:700, color:'#2A2018', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{w.name}</div>
+                <div style={{fontSize:10, color:'#8B7F6E'}}>{(w.members || []).slice(0,3).join(' · ')}{w.member_count > 3 ? ' +' + (w.member_count - 3) : ''}</div>
+              </div>
+            </div>
+          ))}
+          <div onClick={() => showToast && showToast('Invitation par email — bientot')} style={{display:'flex', alignItems:'center', gap:10, padding:10, border:'1.5px dashed #C9B79A', borderRadius:10, cursor:'pointer', background:'#fff', color:'#8B5E3C'}}>
+            <div style={{width:34, height:34, borderRadius:8, background:'#fff', border:'1.5px dashed #C9B79A', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:18}}>+</div>
+            <div style={{flex:1, fontSize:13, fontWeight:600}}>Creer un WSC</div>
+          </div>
+        </div>
+        <div style={{fontSize:13, fontWeight:700, color:'#2A2018', marginBottom:8}}>Delai de partage</div>
+        <div style={{display:'flex', gap:6, overflowX:'auto', paddingBottom:6, marginBottom:14}}>
+          {[{k:'1d',l:'1 jour'},{k:'7d',l:'1 semaine'},{k:'30d',l:'1 mois'},{k:'permanent',l:'Permanent'}].map(c => <Chip key={c.k} active={duration === c.k} onClick={() => setDuration(c.k)}>{c.l}</Chip>)}
+        </div>
+        <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+          <button type="button" onClick={onClose} style={{padding:'9px 16px', borderRadius:100, border:'1px solid #E5E0D8', background:'#F0EBE2', color:'#1A1714', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+          <button type="button" onClick={ajouter} disabled={busy || !selectedWsc} style={{padding:'9px 18px', borderRadius:100, border:'none', background: (busy || !selectedWsc) ? '#C9B79A' : '#7A5132', color:'#fff', fontSize:13, fontWeight:700, cursor: (busy || !selectedWsc) ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>{busy ? '...' : 'Ajouter au WSC'}</button>
+        </div>
+      </div>
+    );
+  }
+  function PublishView() {
+    const [statut, setStatut] = React.useState('for_sale');
+    const [busy, setBusy] = React.useState(false);
+    async function publier() {
+      setBusy(true);
+      try {
+        const tk = localStorage.getItem('ocre_token') || '';
+        const r = await fetch('/api/publish.php?action=publish', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk},
+          body: JSON.stringify({dossier_id: did, status: statut, visibility_snapshot: visibilitySnapshot})});
+        const j = await r.json();
+        if (j && j.ok) { showToast && showToast('Dossier publie'); onClose && onClose(); }
+        else throw new Error(j && j.error || 'Erreur publication');
+      } catch (e) { showToast && showToast('Erreur : ' + e.message); }
+      finally { setBusy(false); }
+    }
+    return (
+      <div>
+        <Header title="Publier sur Internet" withBack/>
+        <div style={{fontSize:11, color:'#8B7F6E'}}>Visible sur ton site agent et l agregateur ocre.immo.</div>
+        <Recap/>
+        <div style={{fontSize:13, fontWeight:700, color:'#2A2018', marginBottom:8}}>Statut de l annonce</div>
+        <div style={{display:'flex', gap:6, marginBottom:14}}>
+          <Chip active={statut === 'for_sale'} onClick={() => setStatut('for_sale')}>A vendre</Chip>
+          <Chip active={statut === 'for_rent'} onClick={() => setStatut('for_rent')}>A louer</Chip>
+        </div>
+        <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+          <button type="button" onClick={onClose} style={{padding:'9px 16px', borderRadius:100, border:'1px solid #E5E0D8', background:'#F0EBE2', color:'#1A1714', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+          <button type="button" onClick={publier} disabled={busy} style={{padding:'9px 18px', borderRadius:100, border:'none', background: busy ? '#C9B79A' : '#7A5132', color:'#fff', fontSize:13, fontWeight:700, cursor: busy ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>{busy ? '...' : 'Publier'}</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div onClick={onClose} data-testid="share-menu" data-share-screen={screen} style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:9100, display:'flex', alignItems:'flex-end', justifyContent:'center'}}>
+      <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:520, background:'#fff', borderTopLeftRadius:16, borderTopRightRadius:16, padding:'18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px)', boxShadow:'0 -4px 18px rgba(0,0,0,.12)', maxHeight:'88vh', overflowY:'auto'}}>
+        {screen === 'menu' && <MenuView/>}
+        {screen === 'client' && <ClientView/>}
+        {screen === 'confrere' && <ConfrereView/>}
+        {screen === 'publier' && <PublishView/>}
+      </div>
     </div>
   );
 }
@@ -17811,9 +18046,9 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         </svg>
         <span>APERÇU</span>
       </button>
-      {/* M/2026/05/05/11 — M-Partage-Acces-V2 : 4e action swipe Partager (ocre #7A5132 right:0). Placeholder M-Partage-Menu-V2. */}
+      {/* M/2026/05/05/11 — M-Partage-Acces-V2 + M/2026/05/05/12 — M-Partage-Menu-V2 : 4e action swipe Partager ouvre ShareMenu. */}
       <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX <= -60) { try { console.log('TODO M-Partage-Menu-V2: open share menu for dossier', c.id); } catch(_) {} setSwipeX(0); } }}
+        onClick={e => { e.stopPropagation(); if (swipeX <= -60) { try { window.dispatchEvent(new CustomEvent('ocre-open-share', {detail: {dossierId: c.id, dossier: c}})); } catch(_) {} setSwipeX(0); } }}
         disabled={swipeX > -60}
         title="Partager"
         style={{position:'absolute', right:0, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#7A5132', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
@@ -21682,8 +21917,8 @@ function FormView(props) {
                   { key:'pdf', icon: BB_ICONS.PDF, label:'PDF', onClick:onPdf, title:'Apercu PDF' },
                   { key:'archive', icon: BB_ICONS.ARCHIVE, label: d.archived ? 'Desarch.' : 'Archiver', onClick:onArchive, title: d.archived ? 'Desarchiver' : 'Archiver' },
                   { key:'delete', icon: BB_ICONS.TRASH, label:'Supprimer', onClick:onTrash, accent:'rose', separatorAfter: true, title:'Supprimer definitivement' },
-                  // M/2026/05/05/11 — M-Partage-Acces-V2 : bouton Partager isole droite (placeholder M-Partage-Menu-V2).
-                  { key:'share', icon: BB_ICONS.SHARE, label:'Partager', onClick: () => { try { console.log('TODO M-Partage-Menu-V2: open share menu for dossier', editing && editing.id); } catch (_) {} }, title:'Partager ce dossier' },
+                  // M/2026/05/05/11 — M-Partage-Acces-V2 + M/2026/05/05/12 — M-Partage-Menu-V2 : ouvre ShareMenu via event.
+                  { key:'share', icon: BB_ICONS.SHARE, label:'Partager', onClick: () => { try { window.dispatchEvent(new CustomEvent('ocre-open-share', {detail: {dossierId: editing && editing.id, dossier: editing}})); } catch (_) {} }, title:'Partager ce dossier' },
                 ]}/>
               );
             }
