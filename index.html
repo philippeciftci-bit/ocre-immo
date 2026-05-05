@@ -15013,7 +15013,8 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
     const cleanups = [];
     editables.forEach(el => {
       const key = el.getAttribute('data-editable');
-      el.style.transition = 'outline 120ms';
+      // M/2026/05/05/54 — transitions opacite + background pour toggle fluide sans flash.
+      el.style.transition = 'outline 120ms, opacity 180ms';
       el.style.outline = '1px solid transparent';
       el.style.outlineOffset = '2px';
       el.style.borderRadius = '4px';
@@ -15094,9 +15095,29 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
         if (btn.getAttribute('data-act') === 'eye') {
           const cur = editorBlocksRef.current[key] || {};
           const wasVisible = cur.visible !== false;
+          // M/2026/05/05/54 — application visuelle immediate pure CSS, AUCUN refetch HTML.
+          // Le state local est source de verite pour la preview ; le backend POST debounce 800ms
+          // ne s applique qu au PROCHAIN PDF genere (export, partage, telechargement).
           setBlock(key, {visible: !wasVisible});
-          // Refetch HTML pour appliquer override visibility.
-          setTimeout(() => fetchHtml(), 100);
+          if (wasVisible) {
+            el.setAttribute('data-pdf-hidden', '1');
+            el.style.opacity = '0.35';
+            if (!el.querySelector('.ocre-pdf-hidden-label')) {
+              const lbl = document.createElement('div');
+              lbl.className = 'ocre-pdf-hidden-label';
+              lbl.textContent = 'Masque sur le PDF final';
+              lbl.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7A5132;font-size:11px;font-weight:700;background:repeating-linear-gradient(45deg,rgba(184,137,90,0.06) 0 6px,rgba(184,137,90,0.12) 6px 12px);pointer-events:none;border-radius:4px;transition:opacity 180ms;';
+              el.appendChild(lbl);
+            }
+          } else {
+            el.removeAttribute('data-pdf-hidden');
+            el.style.opacity = '1';
+            const lbl = el.querySelector('.ocre-pdf-hidden-label');
+            if (lbl) lbl.remove();
+          }
+          // Refresh toolbar icone (eye <-> eye-slash) sans toucher au reste.
+          hideToolbar(el);
+          showToolbar(el, key);
         }
       });
       el.appendChild(bar);
@@ -15138,10 +15159,15 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
             <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
               <button type="button" onClick={() => setPricePopover(null)} style={{padding:'9px 14px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:8, fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
               <button type="button" onClick={() => {
+                // M/2026/05/05/54 — update DOM in-place (pas de refetch ni setCurrency global pour eviter flash).
                 setBlock('price', {amount: pricePopover.amount, currency: pricePopover.currency});
-                setCurrency(pricePopover.currency);
+                if (previewRef.current && pricePopover.amount != null) {
+                  const fmt = Number(pricePopover.amount).toLocaleString('fr-FR').replace(/,/g, ' ');
+                  previewRef.current.querySelectorAll('[data-editable="price"]').forEach(elPx => {
+                    elPx.innerHTML = '<b>' + fmt + '</b> ' + (pricePopover.currency || '');
+                  });
+                }
                 setPricePopover(null);
-                setTimeout(() => fetchHtml(), 100);
               }} style={{padding:'9px 14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Valider</button>
             </div>
           </div>
