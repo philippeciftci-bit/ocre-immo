@@ -21,6 +21,13 @@ function jout(array $d, int $code = 200) {
 switch ($action) {
 
 case 'status': {
+    // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : expose max_photos pour le front (cap reglable admin).
+    $_max_photos = 30;
+    $_pmf = '/var/lib/ocre/photos_max.txt';
+    if (is_file($_pmf)) {
+        $_v = (int) trim((string) @file_get_contents($_pmf));
+        if ($_v >= 1 && $_v <= 200) $_max_photos = $_v;
+    }
     jout([
         'ok' => true,
         'app_name' => 'Ocre Immo',
@@ -28,6 +35,7 @@ case 'status': {
         'mode_test' => false,
         'mode_auth_email' => true,
         'mode_maintenance' => false,
+        'max_photos_per_dossier' => $_max_photos,
     ]);
 }
 

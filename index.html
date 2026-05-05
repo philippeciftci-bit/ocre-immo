@@ -4265,8 +4265,12 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
   const [bulkDeleteRemaining, setBulkDeleteRemaining] = React.useState(0);
   const inputRef = React.useRef(null);
   const list = Array.isArray(photos) ? photos : [];
-  const PHOTOS_HARD_CAP = 31;
-  const PHOTOS_DISPLAY_CAP = 30;
+  // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : limite STRICTE 30 par defaut, reglable admin via window.__ocreMaxPhotos
+  // (initialise au boot par App via auth status). Plus de marge +1.
+  const _gMax = (typeof window !== 'undefined' && typeof window.__ocreMaxPhotos === 'number' && window.__ocreMaxPhotos > 0) ? window.__ocreMaxPhotos : 30;
+  const maxPhotos = _gMax;
+  const PHOTOS_HARD_CAP = maxPhotos;
+  const PHOTOS_DISPLAY_CAP = maxPhotos;
 
   const token = () => localStorage.getItem('ocre_token') || '';
 
@@ -10931,7 +10935,11 @@ function App() {
         // M/2026/05/04/19 — boot feature flags apres me.user etabli (email pour cache key + override email).
         try { window.__ocreUserEmail = (me.user && me.user.email) || ''; window.bootFlags && window.bootFlags(); } catch (e) {}
         const st = await fetchWithTimeout(API + '/auth.php?action=status', {}, 5000).then(r => r.json()).catch(() => null);
-        if (st && st.ok) setAppSettings(st);
+        if (st && st.ok) {
+          setAppSettings(st);
+          // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : expose max_photos_per_dossier en global (lu par PhotoUpload).
+          try { window.__ocreMaxPhotos = (typeof st.max_photos_per_dossier === 'number') ? st.max_photos_per_dossier : 30; } catch (_) {}
+        }
         const cl = await fetchWithTimeout(API + '/clients.php?action=list', {headers: {'X-Session-Token': token}}, 8000).then(r => r.json());
         if (cl && cl.ok) {
           // V17.4 UX v3 : migration douce — is_investisseur true devient profil "Investisseur".

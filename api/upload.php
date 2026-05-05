@@ -10,7 +10,23 @@ require_once __DIR__ . '/lib/photo_pipeline.php';
 setCorsHeaders();
 
 define('UPLOAD_MAX_BYTES', 15 * 1024 * 1024);
-define('UPLOAD_MAX_PER_DOSSIER', 31); /* M/2026/05/05/23 — cap interne 31 (libelle UI affiche /30, marge anti-blocage) */
+define('UPLOAD_MAX_PER_DOSSIER_DEFAULT', 30); /* M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : cap STRICT 30, reglable admin via getMaxPhotos. */
+const UPLOAD_MAX_PHOTOS_FILE = '/var/lib/ocre/photos_max.txt';
+function getMaxPhotos(): int {
+    if (is_file(UPLOAD_MAX_PHOTOS_FILE)) {
+        $v = (int) trim((string) @file_get_contents(UPLOAD_MAX_PHOTOS_FILE));
+        if ($v >= 1 && $v <= 200) return $v;
+    }
+    return UPLOAD_MAX_PER_DOSSIER_DEFAULT;
+}
+function setMaxPhotos(int $n): bool {
+    if ($n < 1 || $n > 200) return false;
+    $dir = dirname(UPLOAD_MAX_PHOTOS_FILE);
+    if (!is_dir($dir)) @mkdir($dir, 0755, true);
+    return @file_put_contents(UPLOAD_MAX_PHOTOS_FILE, (string) $n, LOCK_EX) !== false;
+}
+/* Alias retro-compat pour le code existant qui lit la constante. */
+define('UPLOAD_MAX_PER_DOSSIER', getMaxPhotos());
 // V17.6 Section III : PDF accepté en plus des images (pour les docs crédit).
 define('UPLOAD_ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 define('UPLOAD_EXT_MAP', [
@@ -210,9 +226,10 @@ switch ($action) {
         $_purgeRes = purgeUnreferenced($dossier_id);
         if (!empty($_purgeRes['purged'])) error_log('upload pre-check auto-purge dossier=' . $dossier_id . ' removed=' . count($_purgeRes['purged']));
         $existing = listPhotos($dossier_id);
-        // M/2026/05/05/22 — M-Photos-Limit-State-Stuck : message d erreur verbose pour diag (count exact backend).
-        if (count($existing) >= UPLOAD_MAX_PER_DOSSIER) {
-            jsonError('Limite atteinte (count_db=' . count($existing) . ', count_fs=' . count($existing) . ', limit=' . UPLOAD_MAX_PER_DOSSIER . ')', 409);
+        // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : limit lit getMaxPhotos() (default 30, reglable admin).
+        $_limit = getMaxPhotos();
+        if (count($existing) >= $_limit) {
+            jsonError('Limite atteinte (count_fs=' . count($existing) . ', limit=' . $_limit . ')', 409);
         }
 
         // V18.39 — quotas globaux : 500 Mo total photos par user (100/dossier déjà couvert
@@ -326,6 +343,21 @@ switch ($action) {
             }
         }
         jsonOk(['purged' => $purged, 'count_after' => count(listPhotos($dossier_id))]);
+    }
+
+    // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : lecture publique du cap photos (front consomme au boot).
+    case 'get_max_photos': {
+        jsonOk(['max_photos_per_dossier' => getMaxPhotos()]);
+    }
+
+    // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : modification cap par admin (X-Admin-Code requis).
+    case 'set_max_photos': {
+        $admin_code = $_SERVER['HTTP_X_ADMIN_CODE'] ?? ($_POST['admin_code'] ?? ($_GET['admin_code'] ?? ''));
+        if (!hash_equals(ADMIN_CODE, (string) $admin_code)) jsonError('admin_code requis', 403);
+        $n = (int)(($_POST['value'] ?? $_GET['value'] ?? 0));
+        if ($n < 1 || $n > 200) jsonError('value doit etre entre 1 et 200', 400);
+        if (!setMaxPhotos($n)) jsonError('ecriture fichier impossible', 500);
+        jsonOk(['max_photos_per_dossier' => getMaxPhotos()]);
     }
 
     // M/2026/05/05/28 — M-Photos-Orphans-Purge-Fix : endpoint maintenance, supprime fichiers fs non
