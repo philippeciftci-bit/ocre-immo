@@ -534,4 +534,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+-- M/2026/05/05/58 — destinataire personnalise PDF (optionnel par bien).
+ALTER TABLE clients
+  ADD COLUMN IF NOT EXISTS destinataire_nom   VARCHAR(200) NULL,
+  ADD COLUMN IF NOT EXISTS destinataire_email VARCHAR(200) NULL;
+
 SET FOREIGN_KEY_CHECKS=1;

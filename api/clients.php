@@ -331,6 +331,11 @@ switch ($action) {
         $societe_nom = substr(trim((string)($c['societe_nom'] ?? '')), 0, 150);
         $tel = substr(trim((string)($c['tel'] ?? '')), 0, 30);
         $email = substr(trim((string)($c['email'] ?? '')), 0, 150);
+        // M/2026/05/05/58 — destinataire personnalise PDF (optionnel par bien). Non affiche en M/58, persiste pour M/59.
+        $destinataire_nom = isset($c['destinataire_nom']) ? substr(trim((string)$c['destinataire_nom']), 0, 200) : null;
+        $destinataire_email = isset($c['destinataire_email']) ? substr(trim((string)$c['destinataire_email']), 0, 200) : null;
+        if ($destinataire_nom === '') $destinataire_nom = null;
+        if ($destinataire_email === '') $destinataire_email = null;
         // V45 — payment_plan + received_payments validés et mirrorés en colonnes JSON.
         $payment_plan = null;
         if (isset($c['payment_plan']) && is_array($c['payment_plan'])) {
@@ -393,6 +398,7 @@ switch ($action) {
                    phone_country = ?, phone_e164 = ?,
                    id_country = ?, id_type = ?, id_number = ?,
                    bien_country = ?,
+                   destinataire_nom = ?, destinataire_email = ?,
                    updated_at = NOW()
                  WHERE id = ? AND user_id = ?"
             );
@@ -403,6 +409,7 @@ switch ($action) {
                             $phone_country, $phone_e164,
                             $id_country, $id_type, $id_number,
                             $bien_country,
+                            $destinataire_nom, $destinataire_email,
                             $id, $user['id']]);
         } else {
             $stmt = db()->prepare(
@@ -413,8 +420,9 @@ switch ($action) {
                                       phone_country, phone_e164,
                                       id_country, id_type, id_number,
                                       bien_country,
+                                      destinataire_nom, destinataire_email,
                                       created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
             );
             $stmt->execute([$user['id'], $data, $projet, $is_investisseur, $archived, $is_draft, $is_staged_new,
                             $prenom, $nom, $societe_nom, $tel, $email,
@@ -422,7 +430,8 @@ switch ($action) {
                             $is_promoteur, $is_marchand_de_biens,
                             $phone_country, $phone_e164,
                             $id_country, $id_type, $id_number,
-                            $bien_country]);
+                            $bien_country,
+                            $destinataire_nom, $destinataire_email]);
             $id = (int)db()->lastInsertId();
             $wasStaged = (bool)$is_staged_new;
         }
