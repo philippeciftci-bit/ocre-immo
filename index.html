@@ -17779,7 +17779,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         onClick={e => { e.stopPropagation(); if (swipeX <= -60) doDelete(e); }}
         disabled={swipeX > -60}
         title="Supprimer"
-        style={{position:'absolute', right:80, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#DC2626', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+        style={{position:'absolute', right:120, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#DC2626', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="3 6 5 6 21 6"/>
           <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
@@ -17792,7 +17792,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         onClick={e => { e.stopPropagation(); if (swipeX <= -60) doArchive(e); }}
         disabled={swipeX > -60}
         title="Archiver"
-        style={{position:'absolute', right:40, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#C9B698', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+        style={{position:'absolute', right:80, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#C9B698', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="21 8 21 21 3 21 3 8"/>
           <rect x="1" y="3" width="22" height="5"/>
@@ -17804,12 +17804,21 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         onClick={e => { e.stopPropagation(); if (swipeX <= -60 && props.openDossierPdf) { props.openDossierPdf(c.id); setSwipeX(0); } }}
         disabled={swipeX > -60}
         title="Aperçu"
-        style={{position:'absolute', right:0, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#8B6F4E', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+        style={{position:'absolute', right:40, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#8B6F4E', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
           <circle cx="12" cy="12" r="3"/>
         </svg>
         <span>APERÇU</span>
+      </button>
+      {/* M/2026/05/05/11 — M-Partage-Acces-V2 : 4e action swipe Partager (ocre #7A5132 right:0). Placeholder M-Partage-Menu-V2. */}
+      <button type="button"
+        onClick={e => { e.stopPropagation(); if (swipeX <= -60) { try { console.log('TODO M-Partage-Menu-V2: open share menu for dossier', c.id); } catch(_) {} setSwipeX(0); } }}
+        disabled={swipeX > -60}
+        title="Partager"
+        style={{position:'absolute', right:0, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#7A5132', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html: BB_ICONS.SHARE}}/>
+        <span>PART.</span>
       </button>
     <div className="client-row-card"
       onClick={e => { if (swipeX !== 0) { setSwipeX(0); return; } if (onClick) onClick(e); }}
@@ -21672,7 +21681,9 @@ function FormView(props) {
                   { key:'scan', icon: BB_ICONS.SCAN, label:'Scanner', onClick:onScan, title:'Scan internet' },
                   { key:'pdf', icon: BB_ICONS.PDF, label:'PDF', onClick:onPdf, title:'Apercu PDF' },
                   { key:'archive', icon: BB_ICONS.ARCHIVE, label: d.archived ? 'Desarch.' : 'Archiver', onClick:onArchive, title: d.archived ? 'Desarchiver' : 'Archiver' },
-                  { key:'delete', icon: BB_ICONS.TRASH, label:'Supprimer', onClick:onTrash, accent:'rose', title:'Supprimer definitivement' },
+                  { key:'delete', icon: BB_ICONS.TRASH, label:'Supprimer', onClick:onTrash, accent:'rose', separatorAfter: true, title:'Supprimer definitivement' },
+                  // M/2026/05/05/11 — M-Partage-Acces-V2 : bouton Partager isole droite (placeholder M-Partage-Menu-V2).
+                  { key:'share', icon: BB_ICONS.SHARE, label:'Partager', onClick: () => { try { console.log('TODO M-Partage-Menu-V2: open share menu for dossier', editing && editing.id); } catch (_) {} }, title:'Partager ce dossier' },
                 ]}/>
               );
             }
