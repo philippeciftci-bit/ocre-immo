@@ -94,10 +94,34 @@ if (!$agentName) $agentName = $user['email'] ?? 'Agent Ocre';
 $agentTel = $user['telephone'] ?? '';
 $agentEmail = $user['email'] ?? '';
 
-// M/2026/05/05/58 — destinataire personnalise du PDF (optionnel par bien).
+// M/2026/05/05/58 — destinataire personnalise du PDF (optionnel par bien). Dormant depuis M/63.
 $destinataireNom = trim((string)($dossier['destinataire_nom'] ?? ''));
 $destinataireEmail = trim((string)($dossier['destinataire_email'] ?? ''));
 $_hasDestinataire = ($destinataireNom !== '' || $destinataireEmail !== '');
+
+// M/2026/05/05/63 — bloc droite PDF P1+P2 = coordonnees du CLIENT (proprietaire/vendeur/bailleur).
+// Source : colonnes structurees prenom/nom/societe_nom/tel/email de la table clients.
+$_clientPrenom  = trim((string)($dossier['prenom'] ?? ''));
+$_clientNom     = trim((string)($dossier['nom'] ?? ''));
+$_clientSociete = trim((string)($dossier['societe_nom'] ?? ''));
+$_clientTel     = trim((string)($dossier['tel'] ?? ''));
+$_clientEmail   = trim((string)($dossier['email'] ?? ''));
+$_clientFullName = trim($_clientPrenom . ' ' . $_clientNom);
+$_hasClient = ($_clientFullName !== '' || $_clientSociete !== '' || $_clientTel !== '' || $_clientEmail !== '');
+function _renderClientLines(string $name, string $societe, string $tel, string $email): string {
+    $lines = [];
+    if ($name !== '' && $societe !== '') {
+        $lines[] = htmlspecialchars($name);
+        $lines[] = htmlspecialchars($societe);
+    } elseif ($name !== '') {
+        $lines[] = htmlspecialchars($name);
+    } elseif ($societe !== '') {
+        $lines[] = htmlspecialchars($societe);
+    }
+    if ($tel !== '')   $lines[] = htmlspecialchars($tel);
+    if ($email !== '') $lines[] = htmlspecialchars($email);
+    return implode('<br>', $lines);
+}
 
 // Photos : 1) liste depuis bien.photos JSON (URLs externes Unsplash etc.), 2) sinon glob /uploads/<id>/.
 $photos = [];
@@ -628,11 +652,10 @@ header('Content-Type: text/html; charset=utf-8');
           <?php endif; ?>
         </div>
 
-        <div class="client<?= $_hasDestinataire ? '' : ' empty' ?>">
-          <?php if ($_hasDestinataire): ?>
-            <span class="lab">Destinataire</span>
-            <?php if ($destinataireNom !== ''): ?><?= htmlspecialchars($destinataireNom) ?><?php endif; ?>
-            <?php if ($destinataireEmail !== ''): ?><?php if ($destinataireNom !== ''): ?><br><?php endif; ?><?= htmlspecialchars($destinataireEmail) ?><?php endif; ?>
+        <div class="client<?= $_hasClient ? '' : ' empty' ?>">
+          <?php if ($_hasClient): ?>
+            <span class="lab">Client</span>
+            <?= _renderClientLines($_clientFullName, $_clientSociete, $_clientTel, $_clientEmail) ?>
           <?php endif; ?>
         </div>
       </div>
@@ -747,11 +770,10 @@ header('Content-Type: text/html; charset=utf-8');
           <?php endif; ?>
         </div>
         <div class="pgnum">Page de détails</div>
-        <div class="client<?= $_hasDestinataire ? '' : ' empty' ?>">
-          <?php if ($_hasDestinataire): ?>
-            <span class="lab">Destinataire</span>
-            <?php if ($destinataireNom !== ''): ?><?= htmlspecialchars($destinataireNom) ?><?php endif; ?>
-            <?php if ($destinataireEmail !== ''): ?><?php if ($destinataireNom !== ''): ?><br><?php endif; ?><?= htmlspecialchars($destinataireEmail) ?><?php endif; ?>
+        <div class="client<?= $_hasClient ? '' : ' empty' ?>">
+          <?php if ($_hasClient): ?>
+            <span class="lab">Client</span>
+            <?= _renderClientLines($_clientFullName, $_clientSociete, $_clientTel, $_clientEmail) ?>
           <?php endif; ?>
         </div>
       </div>

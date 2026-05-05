@@ -22290,17 +22290,10 @@ function FormView(props) {
         </Stage>
         </div>
 
-        {/* M/2026/05/05/58 — Section Destinataire personnalise du PDF (optionnel par bien).
-            Persiste via colonnes clients.destinataire_nom / clients.destinataire_email (migration M/58).
-            Non utilise par le rendu PDF en M/58 — sera consomme par M/59 (refonte 3 pages). */}
-        <div style={{marginTop:18, marginBottom:8, padding:'14px 16px', background:'#FDF8F1', border:'1px solid #E8DDD0', borderRadius:10}}>
-          <div style={{fontSize:12, fontWeight:700, color:'#7A5132', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>Destinataire personnalise du PDF</div>
-          <div style={{fontSize:11, color:'#8B7F6E', marginBottom:10, fontStyle:'italic'}}>Optionnel. Sera affiche en page 1 du PDF de presentation a partir de M/59.</div>
-          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:8}}>
-            <Field label="Nom destinataire" value={d.destinataire_nom || ''} onChange={v => set('destinataire_nom', v, {commit: true})} placeholder="Ex : Mme Hassan El Fassi"/>
-            <Field label="Email destinataire" type="email" value={d.destinataire_email || ''} onChange={v => set('destinataire_email', v, {commit: true})} placeholder="exemple@domaine.com"/>
-          </div>
-        </div>
+        {/* M/2026/05/05/63 — Section "Destinataire personnalise du PDF" (M/58) RETIREE : le bloc droite PDF
+            affiche desormais les coordonnees du CLIENT proprietaire (prenom/nom/societe/tel/email deja
+            saisies en Section I), pas un destinataire externe. Colonnes destinataire_nom / destinataire_email
+            preservees en DB (dormantes, peuvent resservir). */}
 
         {/* V18.17 — boutons dédiés pour staged : Ajouter à mes brouillons + Supprimer téléchargement.
             M/2026/05/02/27 — M139 : wording renommé. Avant 'Enregistrer dans mes dossiers' (ambigu, suggérait
