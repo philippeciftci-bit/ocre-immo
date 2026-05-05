@@ -10869,6 +10869,17 @@ function App() {
   const [showArchives, setShowArchives] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const [view, setView] = useState('list');
+  // M/2026/05/05/53 — navigation : stack reel respecte par back Safari + bottombar Retour.
+  // Bug corrige : back Safari sortait de la SPA vers /login (URL serveur), bottombar Retour fixe sur 'list'.
+  const viewStackRef = React.useRef([]);
+  const viewRef = React.useRef('list');
+  React.useEffect(() => { viewRef.current = view; }, [view]);
+  function pushView(next) {
+    if (next === viewRef.current) return; // pas de no-op self-push
+    viewStackRef.current.push(viewRef.current);
+    setView(next);
+    try { window.history.pushState({view: next, depth: viewStackRef.current.length}, '', '/'); } catch (_) {}
+  }
   const [editing, setEditing] = useState(null);
   const [toast, setToast] = useState('');
   const [formKey, setFormKey] = useState(0);
@@ -11183,10 +11194,10 @@ function App() {
     await myPromise;
   }
   async function handleDelete(id) {
-    if (!id) { setView('list'); setEditing(null); return; }
+    if (!id) { window.history.back(); setEditing(null); return; }
     if (!(await askConfirm({title:'Supprimer ce dossier ?', message:'Cette action est définitive. Le dossier sera retiré de la liste, des matches et du Sheet au prochain sync.', danger:true}))) return;
     setClients(prev => prev.filter(c => c.id !== id));
-    setView('list'); setEditing(null);
+    window.history.back(); setEditing(null);
     await apiDeleteClient(id);
     showToast('Supprimé');
   }
@@ -11205,7 +11216,7 @@ function App() {
     setIsMarchandDeBiens(!!c.is_marchand_de_biens);
     setInitialExpandedSection(null);
     setInitialFocus(null);
-    setView('form');
+    pushView('form');
   }
   function openClientAtSection(c, sectionIdx, focus) {
     setEditing(c);
@@ -11217,7 +11228,7 @@ function App() {
     setInitialExpandedSection(sectionIdx);
     setInitialFocus(focus || null);
     setFormKey(k => k + 1); // force remount pour relancer l'init expanded
-    setView('form');
+    pushView('form');
   }
   function openNew() {
     // M/2026/05/01/10 — suppression franche ecran intermediaire ProfilPickerView.
@@ -11230,7 +11241,7 @@ function App() {
     setIsPromoteur(false);
     setIsMarchandDeBiens(false);
     setFormKey(k => k + 1);
-    setView('form');
+    pushView('form');
   }
   async function logout() {
     const token = localStorage.getItem('ocre_token');
@@ -11241,6 +11252,27 @@ function App() {
   }
   // M/2026/04/30/26 — auto-logout 30 min inactivite (warning a 28 min via askConfirm).
   useInactivityLogout(logout);
+
+  // M/2026/05/05/53 — boot replaceState + listener popstate global pour back Safari respect chrono.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    try { window.history.replaceState({view: 'list', depth: 0}, '', '/'); } catch (_) {}
+    viewStackRef.current = [];
+    function onPop(e) {
+      const stack = viewStackRef.current;
+      if (stack.length > 0) {
+        const prev = stack.pop();
+        setView(prev);
+        // Si retour a list depuis form/dossier_pdf : nettoyer editing pour eviter staleness.
+        if (prev === 'list') setEditing(null);
+      } else {
+        // Stack vide = on est au top app. Bloquer la sortie de la SPA en repushant.
+        try { window.history.pushState({view: viewRef.current, depth: 0}, '', '/'); } catch (_) {}
+      }
+    }
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // V18.17 — promote staged → liste principale + highlight ocre 3s.
   async function promoteStaged(id) {
@@ -11260,7 +11292,7 @@ function App() {
         setClients(prev => [migrated, ...prev]);
       }
       setEditing(null);
-      setView('list');
+      window.history.back();
       setPromotedId(id);
       setTimeout(() => setPromotedId(cur => (cur === id ? null : cur)), 3200);
       showToast('📥 Brouillon ajouté à tes dossiers');
@@ -11294,34 +11326,34 @@ function App() {
   }
 
   if (view === 'prefs') {
-    return <PrefsView currentUser={currentUser} onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
+    return <PrefsView currentUser={currentUser} onBack={() => window.history.back()} showToast={showToast} toast={toast}/>;
   }
   if (view === 'agent_profile') {
-    return <AgentProfileView currentUser={currentUser} onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
+    return <AgentProfileView currentUser={currentUser} onBack={() => window.history.back()} showToast={showToast} toast={toast}/>;
   }
   if (view === 'admin') {
-    return <AdminView currentUser={currentUser} onBack={() => setView('list')} showToast={showToast} startImpersonation={startImpersonation}/>;
+    return <AdminView currentUser={currentUser} onBack={() => window.history.back()} showToast={showToast} startImpersonation={startImpersonation}/>;
   }
   if (view === 'super_admin') {
-    return <SuperAdminDashboard currentUser={currentUser} onBack={() => setView('list')} showToast={showToast}/>;
+    return <SuperAdminDashboard currentUser={currentUser} onBack={() => window.history.back()} showToast={showToast}/>;
   }
   if (view === 'preferences') {
-    return <PreferencesPage currentUser={currentUser} onBack={() => setView('list')} showToast={showToast}/>;
+    return <PreferencesPage currentUser={currentUser} onBack={() => window.history.back()} showToast={showToast}/>;
   }
   if (view === 'export') {
-    return <ExportPage onBack={() => setView('list')} showToast={showToast}/>;
+    return <ExportPage onBack={() => window.history.back()} showToast={showToast}/>;
   }
   if (view === 'help') {
-    return <HelpPage onBack={() => setView('list')}/>;
+    return <HelpPage onBack={() => window.history.back()}/>;
   }
   if (view === 'dossier_pdf') {
     // M/2026/04/30/8 — passe profil dossier (vendeur/acheteur/...) pour libelle dynamique modale partage.
     const _pdfDossier = clients.find(c => c.id === pdfDossierId);
     const _pdfProfil = _pdfDossier ? (_pdfDossier.projet || _pdfDossier.profil_type || '') : '';
-    return <DossierPdfView dossierId={pdfDossierId} dossierProfil={_pdfProfil} onBack={() => setView('list')} showToast={showToast}/>;
+    return <DossierPdfView dossierId={pdfDossierId} dossierProfil={_pdfProfil} onBack={() => window.history.back()} showToast={showToast}/>;
   }
   if (view === 'dictation') {
-    return <DictationView onBack={() => setView('list')}
+    return <DictationView onBack={() => window.history.back()}
       showToast={showToast} toast={toast}
       clients={clients} openClientAtSection={openClientAtSection}
       onCreated={(newClient) => {
@@ -11329,54 +11361,54 @@ function App() {
         setEditing(newClient);
         setActiveProfil(newClient.projet || 'Acheteur');
         setIsInvestisseur(newClient.projet === 'Investisseur' || !!newClient.is_investisseur);
-        setView('form');
+        pushView('form');
       }}/>;
   }
   // V18.21 — import_url retiré (fusion dans DownloadsView). ImportImageView reste plein écran.
   if (view === 'import_image') {
-    return <ImportImageView onBack={() => { setPickedImageFile(null); setView('downloads'); }}
+    return <ImportImageView onBack={() => { setPickedImageFile(null); window.history.back(); }}
       showToast={showToast} toast={toast}
       fileAlreadySelected={pickedImageFile}
       onCreated={(newClient) => {
         setStaged(prev => [newClient, ...prev]);
         setStagedCount(n => n + 1);
         setPickedImageFile(null);
-        setView('downloads');
+        pushView('downloads');
       }}/>;
   }
   if (view === 'sheet') {
-    return <SheetView onBack={() => setView('list')}
+    return <SheetView onBack={() => window.history.back()}
       clients={clients} openClient={openClient} showToast={showToast} toast={toast}/>;
   }
   if (view === 'calendrier') {
-    return <CalendarView onBack={() => setView('list')} showToast={showToast} toast={toast}/>;
+    return <CalendarView onBack={() => window.history.back()} showToast={showToast} toast={toast}/>;
   }
   if (view === 'matches') {
-    return <MatchesView onBack={() => setView('list')}
-      openMatchDetail={(id) => { setSelectedMatchId(id); setView('match-detail'); }}
+    return <MatchesView onBack={() => window.history.back()}
+      openMatchDetail={(id) => { setSelectedMatchId(id); pushView('match-detail'); }}
       showToast={showToast} toast={toast}/>;
   }
   if (view === 'notifications') {
-    return <NotificationsView onBack={() => setView('list')}
-      openEditReview={(id) => { setSelectedEditId(id); setView('edit_review'); }}
+    return <NotificationsView onBack={() => window.history.back()}
+      openEditReview={(id) => { setSelectedEditId(id); pushView('edit_review'); }}
       showToast={showToast}/>;
   }
   if (view === 'edit_review') {
-    return <EditReviewView editId={selectedEditId} onBack={() => setView('notifications')} showToast={showToast}/>;
+    return <EditReviewView editId={selectedEditId} onBack={() => window.history.back()} showToast={showToast}/>;
   }
   if (view === 'match-detail') {
-    return <MatchDetailView matchId={selectedMatchId} onBack={() => setView('matches')}
+    return <MatchDetailView matchId={selectedMatchId} onBack={() => window.history.back()}
       showToast={showToast} toast={toast}/>;
   }
   if (view === 'downloads') {
-    return <DownloadsView onBack={() => setView('list')}
+    return <DownloadsView onBack={() => window.history.back()}
       showToast={showToast} toast={toast}
       staged={staged} clients={clients}
       onStagedCreated={(newClient) => {
         setStaged(prev => [newClient, ...prev]);
         setStagedCount(n => n + 1);
       }}
-      onPickedImageFile={(f) => { setPickedImageFile(f); setView('import_image'); }}
+      onPickedImageFile={(f) => { setPickedImageFile(f); pushView('import_image'); }}
       openClient={(c) => { openClient(c); }}/>;
   }
   const pwaOverlay = pwaOverlayOpen ? <PWAInstallOverlay onClose={() => setPwaOverlayOpen(false)}/> : null;
@@ -11400,29 +11432,29 @@ function App() {
       isInvestisseur={isInvestisseur} setIsInvestisseur={setIsInvestisseur}
       listFilter={listFilter} setListFilter={setListFilter}
       listSearch={listSearch} setListSearch={setListSearch}
-      stagedCount={stagedCount} openDownloads={() => setView('downloads')}
+      stagedCount={stagedCount} openDownloads={() => pushView('downloads')}
       promotedId={promotedId}
       openSharePlaceholder={() => setSharePlaceholderOpen(true)}
-      openMatches={() => setView('matches')}
-      openNotifs={() => setView('notifications')}
-      openCalendrier={() => setView('calendrier')}
+      openMatches={() => pushView('matches')}
+      openNotifs={() => pushView('notifications')}
+      openCalendrier={() => pushView('calendrier')}
       openClient={openClient} openClientAtSection={openClientAtSection} openNew={openNew} toast={toast}
-      openPrefs={() => { setUserMenu(false); setView('prefs'); }}
-      openAgentProfile={() => { setUserMenu(false); setView('agent_profile'); }}
-      openSheet={() => { setUserMenu(false); setView('sheet'); }}
-      openAdmin={() => setView('admin')}
-      openSuperAdmin={() => setView('super_admin')}
-      openPreferences={() => setView('preferences')}
-      openExport={() => setView('export')}
-      openHelp={() => setView('help')}
-      openDossierPdf={(id) => { setPdfDossierId(id); setView('dossier_pdf'); }}
+      openPrefs={() => { setUserMenu(false); pushView('prefs'); }}
+      openAgentProfile={() => { setUserMenu(false); pushView('agent_profile'); }}
+      openSheet={() => { setUserMenu(false); pushView('sheet'); }}
+      openAdmin={() => pushView('admin')}
+      openSuperAdmin={() => pushView('super_admin')}
+      openPreferences={() => pushView('preferences')}
+      openExport={() => pushView('export')}
+      openHelp={() => pushView('help')}
+      openDossierPdf={(id) => { setPdfDossierId(id); pushView('dossier_pdf'); }}
 
-      openDictation={() => setView('dictation')}
-      openImportUrl={() => setView('import_url')}
+      openDictation={() => pushView('dictation')}
+      openImportUrl={() => pushView('import_url')}
       matchesById={matchesById} openMatchModal={setMatchFor}
       matchFor={matchFor} closeMatchModal={() => setMatchFor(null)}
       findClientById={(id) => clients.find(c => c.id === id)}
-      setEditingFromMatch={(c) => { setEditing(c); setActiveProfil(c.projet || 'Acheteur'); setIsInvestisseur(c.projet === 'Investisseur' || !!c.is_investisseur); setMatchFor(null); setView('form'); }}
+      setEditingFromMatch={(c) => { setEditing(c); setActiveProfil(c.projet || 'Acheteur'); setIsInvestisseur(c.projet === 'Investisseur' || !!c.is_investisseur); setMatchFor(null); pushView('form'); }}
     />
   ) : (
     <FormView
@@ -11433,13 +11465,13 @@ function App() {
       isPromoteur={isPromoteur} setIsPromoteur={setIsPromoteur}
       isMarchandDeBiens={isMarchandDeBiens} setIsMarchandDeBiens={setIsMarchandDeBiens}
       handleSaveLocal={handleSaveLocal} handleDelete={handleDelete}
-      backToList={() => { setView(editing && editing.is_staged ? 'downloads' : 'list'); setEditing(null); }}
+      backToList={() => window.history.back()}
       toast={toast} showToast={showToast}
       clients={clients} openExistingDossier={openClient}
       initialExpandedSection={initialExpandedSection}
       initialFocus={initialFocus}
-      openEditReview={(id) => { setSelectedEditId(id); setView('edit_review'); }}
-      openDossierPdf={(id) => { setPdfDossierId(id); setView('dossier_pdf'); }}
+      openEditReview={(id) => { setSelectedEditId(id); pushView('edit_review'); }}
+      openDossierPdf={(id) => { setPdfDossierId(id); pushView('dossier_pdf'); }}
       currentUser={currentUser}
       promoteStaged={promoteStaged} deleteStaged={deleteStaged}
     />
