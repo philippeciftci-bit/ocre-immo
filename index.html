@@ -14906,6 +14906,10 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
   React.useEffect(() => {
     try { localStorage.setItem('ocre.pdf.editor.mode', editorMode); } catch (_) {}
   }, [editorMode]);
+  // M/2026/05/05/61 — selection pages PDF (P1/P2/P3 toggle persistant par bien).
+  const [pages, setPages] = React.useState({p1: true, p2: true, p3: true});
+  const pagesRef = React.useRef({p1: true, p2: true, p3: true});
+  const savePagesTimerRef = React.useRef(null);
   // M/2026/05/05/10 — M-Photos-Bouton-V2 : state local Photos selection (PAS de prop dossier externe).
   const [photosSheetOpen, setPhotosSheetOpen] = React.useState(false);
   const [dossierData, setDossierData] = React.useState(null);
@@ -14932,6 +14936,13 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
               setEditorBlocks(pst);
               editorBlocksRef.current = pst;
             }
+            // M/2026/05/05/61 — charge pages state si present.
+            const pagesPst = dataObj && dataObj.bien && dataObj.bien.pdf_editor_state && dataObj.bien.pdf_editor_state.pages;
+            if (pagesPst && typeof pagesPst === 'object') {
+              const next = {p1: pagesPst.p1 !== false, p2: pagesPst.p2 !== false, p3: pagesPst.p3 !== false};
+              setPages(next);
+              pagesRef.current = next;
+            }
           } catch (_) {}
         }
       }).catch(() => {});
@@ -14954,6 +14965,35 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
     const cur = editorBlocksRef.current[key] || {visible: true};
     const next = {...editorBlocksRef.current, [key]: {...cur, ...patch}};
     saveEditorState(next);
+  }
+  // M/2026/05/05/61 — toggle d une page PDF avec garde au moins une active + save debounce 800ms.
+  function togglePage(key) {
+    const cur = pagesRef.current;
+    const willBeOff = cur[key];
+    if (willBeOff) {
+      const remaining = Object.entries(cur).filter(([k, v]) => v && k !== key).length;
+      if (remaining === 0) return; // Garde : au moins une page active.
+    }
+    const next = {...cur, [key]: !cur[key]};
+    pagesRef.current = next;
+    setPages(next);
+    // Update direct DOM data-page-disabled pour eviter refetch (numerotation reste statique en preview).
+    if (previewRef.current) {
+      const map = {p1:'1', p2:'2', p3:'3'};
+      const sec = previewRef.current.querySelector('[data-page="' + map[key] + '"]');
+      if (sec) {
+        if (next[key]) sec.removeAttribute('data-page-disabled');
+        else sec.setAttribute('data-page-disabled', '1');
+      }
+    }
+    if (savePagesTimerRef.current) clearTimeout(savePagesTimerRef.current);
+    savePagesTimerRef.current = setTimeout(() => {
+      const tk = localStorage.getItem('ocre_token') || '';
+      fetch('/api/bien_pdf_state.php', {
+        method:'POST', headers:{'Content-Type':'application/json','X-Session-Token': tk},
+        body: JSON.stringify({bien_id: dossierId, pages: pagesRef.current})
+      }).catch(() => {});
+    }, 800);
   }
   // Conversion taux fixes phase 1 (EUR pivot).
   const FX = {EUR: 1.0, MAD: 11.0, USD: 1.08, GBP: 0.86};
@@ -14998,7 +15038,8 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
     setHtml('');
     try {
       // M/2026/05/04/14 — cache-buster _t pour eviter cache navigateur sur refetch live (devise/flags).
-      const r = await fetch('/api/dossier_pdf_html.php?dossier_id=' + dossierId + buildQueryParams() + '&_t=' + Date.now(),
+      // M/2026/05/05/61 — preview=1 : rend toutes pages avec data-page-disabled selon DB state, frontend grise.
+      const r = await fetch('/api/dossier_pdf_html.php?dossier_id=' + dossierId + buildQueryParams() + '&preview=1&_t=' + Date.now(),
         {headers:{'X-Session-Token': token()}, cache:'no-store'});
       const t = await r.text();
       if (r.ok) setHtml(t);
@@ -15263,7 +15304,8 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#E8E5E0'}}>
       {/* M/2026/05/05/56 — toggle Edition / Apercu en haut de la preview. Persiste localStorage. */}
-      <div style={{flexShrink:0, padding:'10px 16px', display:'flex', justifyContent:'center', alignItems:'center', borderBottom:'1px solid #E8DDD0', background:'#fff'}}>
+      {/* M/2026/05/05/61 — 3 toggles selection pages PDF P1/P2/P3 a cote du switch mode. */}
+      <div style={{flexShrink:0, padding:'10px 16px', display:'flex', justifyContent:'center', alignItems:'center', gap:14, borderBottom:'1px solid #E8DDD0', background:'#fff', flexWrap:'wrap'}}>
         <div style={{display:'inline-flex', background:'#fff', border:'1px solid #E8DDD0', borderRadius:99, padding:4, boxShadow:'0 2px 6px rgba(60,40,20,.04)'}}>
           {[{id:'edit', label:'Edition', activeBg:'#DC2626'}, {id:'preview', label:'Apercu', activeBg:'#5C4A3A'}].map(m => {
             const active = editorMode === m.id;
@@ -15279,6 +15321,27 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
                               opacity: active ? 1 : 0.5, transition:'box-shadow 120ms'}}/>
                 {m.label}
               </button>
+            );
+          })}
+        </div>
+        <div style={{display:'inline-flex', alignItems:'center', gap:0, background:'#fff', border:'1px solid #E8DDD0', borderRadius:99, padding:4, boxShadow:'0 2px 6px rgba(60,40,20,.04)'}}>
+          {[{key:'p1', label:'Présentation'}, {key:'p2', label:'Caractéristiques'}, {key:'p3', label:'Album'}].map((opt, idx) => {
+            const active = pages[opt.key];
+            const activeCount = (pages.p1 ? 1 : 0) + (pages.p2 ? 1 : 0) + (pages.p3 ? 1 : 0);
+            const wouldDeactivateLast = active && activeCount === 1;
+            return (
+              <React.Fragment key={opt.key}>
+                {idx > 0 && <span style={{width:1, height:18, background:'#E8DDD0'}}/>}
+                <button type="button"
+                  disabled={wouldDeactivateLast}
+                  title={wouldDeactivateLast ? 'Au moins une page doit rester active' : (active ? 'Cliquer pour exclure' : 'Cliquer pour inclure')}
+                  onClick={() => togglePage(opt.key)}
+                  style={{display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:99, fontFamily:'inherit', fontSize:12, fontWeight:600, transition:'background 150ms, color 150ms', cursor: wouldDeactivateLast ? 'not-allowed' : 'pointer', border:'none',
+                    background: active ? '#1D4E89' : '#E5E7EB', color: active ? '#fff' : '#9A8B7C', opacity: wouldDeactivateLast ? 0.6 : 1}}>
+                  <span style={{fontSize:11, fontWeight:700}}>{active ? '✓' : '⊘'}</span>
+                  {opt.label}
+                </button>
+              </React.Fragment>
             );
           })}
         </div>

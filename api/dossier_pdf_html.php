@@ -332,6 +332,30 @@ function _pdfEdAttr(string $key, array $state): string {
     return ' data-editable="' . h($key) . '"' . $hidden;
 }
 
+// M/2026/05/05/61 — selection pages PDF (P1/P2/P3 toggle persistant).
+$_pdfPagesState = $bien['pdf_editor_state']['pages'] ?? ['p1' => true, 'p2' => true, 'p3' => true];
+$_pdfPagesState = ['p1' => !isset($_pdfPagesState['p1']) || !empty($_pdfPagesState['p1']),
+                   'p2' => !isset($_pdfPagesState['p2']) || !empty($_pdfPagesState['p2']),
+                   'p3' => !isset($_pdfPagesState['p3']) || !empty($_pdfPagesState['p3'])];
+$_isPdfPreview = !empty($_GET['preview']);
+$_realActivePages = array_keys(array_filter($_pdfPagesState));
+if (count($_realActivePages) === 0) $_realActivePages = ['p1'];
+$_totalActivePages = count($_realActivePages);
+function _pdfPageActive(array $state, string $key): bool { return ($state[$key] ?? true) !== false; }
+function _pdfPageNum(array $real, string $key): int {
+    $i = array_search($key, $real, true);
+    return $i === false ? 0 : (int)$i + 1;
+}
+function _pdfPageDisabledAttr(array $state, string $key, bool $isPreview): string {
+    if (!$isPreview) return '';
+    return _pdfPageActive($state, $key) ? '' : ' data-page-disabled="1"';
+}
+// Helper : numero affiche (ou tiret) selon active.
+function _pdfPageNumLabel(array $real, string $key): string {
+    $n = _pdfPageNum($real, $key);
+    return $n > 0 ? (string)$n : '—';
+}
+
 header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
 <html lang="fr">
@@ -474,6 +498,22 @@ header('Content-Type: text/html; charset=utf-8');
   /* Editor inline (M/52, M/56, M/57) — placeholder neutre, styles injectes en JS cote frontend */
   [data-editable] { transition: outline-color .15s, background .15s; }
 
+  /* M/2026/05/05/61 — pages exclues du PDF final : grise + filet barre + label en preview. @media print : display none. */
+  .page[data-page-disabled="1"] {
+    position: relative;
+    opacity: 0.35;
+    filter: grayscale(.7);
+  }
+  .page[data-page-disabled="1"]::after {
+    content: "Page exclue du PDF";
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #4B5563; font-style: italic; font-size: 18px; font-weight: 600;
+    background: repeating-linear-gradient(45deg, rgba(75,85,99,0.04) 0 12px, rgba(75,85,99,0.10) 12px 24px);
+    pointer-events: none; z-index: 100;
+  }
+  @media print { .page[data-page-disabled="1"] { display: none; } }
+
   /* Banner confidentiel partage (legacy preserve) */
   .ocre-confidential-banner {
     position: fixed; bottom: 0; left: 0; right: 0; padding: 8px 16px;
@@ -487,12 +527,13 @@ header('Content-Type: text/html; charset=utf-8');
 <body>
 <div class="pages">
 
+  <?php if ($_isPdfPreview || _pdfPageActive($_pdfPagesState, 'p1')): ?>
   <!-- ====================== PAGE 1 — Belles Demeures Variante A ====================== -->
-  <section class="page" data-page="1">
+  <section class="page" data-page="1"<?= _pdfPageDisabledAttr($_pdfPagesState, 'p1', $_isPdfPreview) ?>>
     <header class="ribbon">
       <div class="b">OCRE Immo</div>
       <div class="small">Marrakech &middot; Gueliz</div>
-      <div class="ref">Réf. <?= h($ref) ?> &middot; Page 1 / 3</div>
+      <div class="ref">Réf. <?= h($ref) ?> &middot; Page <?= _pdfPageNumLabel($_realActivePages, 'p1') ?> / <?= $_totalActivePages ?></div>
     </header>
 
     <div class="pg">
@@ -570,13 +611,15 @@ header('Content-Type: text/html; charset=utf-8');
       </div>
     </section>
   <?php /* PAGE 1 fermee dans la balise </section> ci-dessus. */ ?>
+  <?php endif; /* P1 active ou preview */ ?>
 
+  <?php if ($_isPdfPreview || _pdfPageActive($_pdfPagesState, 'p2')): ?>
   <!-- ====================== PAGE 2 — Caractéristiques détaillées ====================== -->
-  <section class="page" data-page="2">
+  <section class="page" data-page="2"<?= _pdfPageDisabledAttr($_pdfPagesState, 'p2', $_isPdfPreview) ?>>
     <header class="ribbon">
       <div class="b">OCRE Immo</div>
       <div class="small">Marrakech &middot; Gueliz</div>
-      <div class="ref">Réf. <?= h($ref) ?> &middot; Page 2 / 3</div>
+      <div class="ref">Réf. <?= h($ref) ?> &middot; Page <?= _pdfPageNumLabel($_realActivePages, 'p2') ?> / <?= $_totalActivePages ?></div>
     </header>
 
     <div class="body-p2">
@@ -683,7 +726,7 @@ header('Content-Type: text/html; charset=utf-8');
             <?= h($agentName) ?><?php if ($agentTel): ?> &middot; <?= h($agentTel) ?><?php endif; ?>
           <?php endif; ?>
         </div>
-        <div class="pgnum">Page 2 / 3</div>
+        <div class="pgnum">Page <?= _pdfPageNumLabel($_realActivePages, 'p2') ?> / <?= $_totalActivePages ?></div>
         <div class="client<?= $_hasDestinataire ? '' : ' empty' ?>">
           <?php if ($_hasDestinataire): ?>
             <span class="lab">Destinataire</span>
@@ -694,12 +737,15 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
   </section>
 
+  <?php endif; /* P2 active ou preview */ ?>
+
+  <?php if ($_isPdfPreview || _pdfPageActive($_pdfPagesState, 'p3')): ?>
   <!-- ====================== PAGE 3 — Album photo (15 photos · 5 rangees · M/60) ====================== -->
-  <section class="page" data-page="3">
+  <section class="page" data-page="3"<?= _pdfPageDisabledAttr($_pdfPagesState, 'p3', $_isPdfPreview) ?>>
     <header class="ribbon">
       <div class="b">OCRE Immo</div>
       <div class="small">Marrakech &middot; Gueliz</div>
-      <div class="ref">Réf. <?= h($ref) ?> &middot; Page 3 / 3</div>
+      <div class="ref">Réf. <?= h($ref) ?> &middot; Page <?= _pdfPageNumLabel($_realActivePages, 'p3') ?> / <?= $_totalActivePages ?></div>
     </header>
 
     <div class="alb-head">
@@ -726,8 +772,9 @@ header('Content-Type: text/html; charset=utf-8');
       <?php endfor; ?>
     </div>
 
-    <div class="footer-alb">Ocre Immo &middot; Marrakech &middot; Réf. <?= h($ref) ?> &middot; Page 3 / 3</div>
+    <div class="footer-alb">Ocre Immo &middot; Marrakech &middot; Réf. <?= h($ref) ?> &middot; Page <?= _pdfPageNumLabel($_realActivePages, 'p3') ?> / <?= $_totalActivePages ?></div>
   </section>
+  <?php endif; /* P3 active ou preview */ ?>
 
 </div>
 <?php if ($_isShareView): ?>
