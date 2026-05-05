@@ -4492,7 +4492,7 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     else setSelectedUuids(allKeys);
   }
   async function bulkDelete() {
-    // M/2026/05/05/35 — M-Hotfix-BulkDelete-Broken : logging diagnostic pour traquer regressions futures.
+    // M/2026/05/05/35 — logging diagnostic.
     console.log('[bulkDelete] start, selectedUuids.length=', selectedUuids.length, 'list.length=', list.length);
     if (selectedUuids.length === 0) { console.warn('[bulkDelete] aborted: 0 selected'); return; }
     const n = selectedUuids.length;
@@ -4500,17 +4500,23 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     console.log('[bulkDelete] askConfirm returned', confirmed);
     if (!confirmed) return;
     setBulkDeleteRemaining(n);
-    const succeeded = new Set();
+    // M/2026/05/05/37 — M-Hotfix-BulkDelete-StateSync : tracker NOMS reels supprimes (pas keys), filter robuste apres.
+    const successNames = new Set();
     let failedCount = 0;
-    // SEQUENTIEL obligatoire : backend OVH ne supporte pas deletes paralleles (cf v1 cassee).
+    // SEQUENTIEL obligatoire : backend OVH ne supporte pas deletes paralleles.
     for (let i = 0; i < selectedUuids.length; i++) {
       const key = selectedUuids[i];
       const p = list.find((it, idx) => photoKey(it, idx) === key);
       const name = p && typeof p === 'object' ? (p.name || '') : (typeof p === 'string' ? p : '');
-      if (!name) { setBulkDeleteRemaining(n - i - 1); continue; }
+      if (!name) {
+        // Track aussi les keys sans name pour les retirer ensuite.
+        successNames.add(key);
+        setBulkDeleteRemaining(n - i - 1);
+        continue;
+      }
       try {
         await fetch(API + '/upload.php?action=delete', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token()}, body: JSON.stringify({dossier_id: dossierId, name})});
-        succeeded.add(key);
+        successNames.add(name);
       } catch (e) {
         failedCount++;
         console.error('[PhotoUpload] bulkDelete failed for', name, ':', e);
@@ -4518,11 +4524,21 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
       setBulkDeleteRemaining(n - i - 1);
     }
     setBulkDeleteRemaining(0);
-    // Refetch state coherent : retire les succeeded de la liste parente.
-    onPhotosChange && onPhotosChange(list.filter((p, idx) => !succeeded.has(photoKey(p, idx))));
+    // Filter robuste : comparer par nom (string photo, ou p.name objet) avec fallback key.
+    const newList = list.filter((p, idx) => {
+      const pname = (typeof p === 'object' && p) ? (p.name || '') : (typeof p === 'string' ? p : '');
+      const pkey = photoKey(p, idx);
+      // Garde la photo si son nom n est PAS dans successNames ET sa key n est PAS dans selectedUuids supprimes.
+      if (pname && successNames.has(pname)) return false;
+      if (successNames.has(pkey)) return false;
+      return true;
+    });
+    console.log('[bulkDelete] filtered list:', list.length, '→', newList.length, 'successNames=', successNames.size);
+    onPhotosChange && onPhotosChange(newList);
     exitSelectMode();
-    if (failedCount > 0) showToast && showToast(succeeded.size + ' photo(s) supprimee(s), ' + failedCount + ' echec(s)');
-    else showToast && showToast(succeeded.size + ' photo' + (succeeded.size > 1 ? 's supprimees' : ' supprimee'));
+    const removedCount = list.length - newList.length;
+    if (failedCount > 0) showToast && showToast(removedCount + ' photo(s) supprimee(s), ' + failedCount + ' echec(s)');
+    else showToast && showToast(removedCount + ' photo' + (removedCount > 1 ? 's supprimees' : ' supprimee'));
   }
 
   // M/2026/05/05/18 — M-Photos-Upload-Multi-Append : APPEND en fin + reset input.
@@ -21063,16 +21079,25 @@ function FormView(props) {
     const _photosCount = _photosArr.length;
     const _photosPreview = _photosArr.slice(0, 5);
     const sec5Status = _photosCount > 0 ? 'ok' : 'empty';
+    // M/2026/05/05/37 — M-Mini-Preview-Placeholder : utilise photoSrc helper robuste + onError + placeholder.
     const sec5Summary = _photosCount > 0
       ? (
         <>
           <div style={{display:'flex', gap:4, marginBottom:4, flexWrap:'wrap'}}>
             {_photosPreview.map((p, i) => {
-              const src = (typeof p === 'object' && p && p.thumb_url) ? p.thumb_url : (typeof p === 'object' && p && p.url) ? p.url : (typeof p === 'string' ? p : null);
-              if (!src) return null;
-              return <div key={i} style={{width:36, height:36, borderRadius:6, overflow:'hidden', background:'#F4ECE3', border:'1px solid #E8DDD0', flexShrink:0}}>
-                <img src={src} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
-              </div>;
+              const src = photoSrc(p);
+              return (
+                <div key={i} style={{position:'relative', width:36, height:36, borderRadius:6, overflow:'hidden', background:'#F4ECE3', border:'1px solid #E8DDD0', flexShrink:0}}>
+                  {src ? (
+                    <img src={src} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} onError={e => { try { e.target.style.display = 'none'; e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'flex'); } catch (_) {} }}/>
+                  ) : null}
+                  <div style={{display: src ? 'none' : 'flex', position:'absolute', inset:0, alignItems:'center', justifyContent:'center', color:'#8B7F6E'}}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.5}}>
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  </div>
+                </div>
+              );
             })}
             {_photosCount > 5 && <div style={{width:36, height:36, borderRadius:6, background:'#F5EFE6', border:'1px solid #E8DDD0', display:'flex', alignItems:'center', justifyContent:'center', color:'#7A5132', fontSize:11, fontWeight:600, flexShrink:0}}>+{_photosCount - 5}</div>}
           </div>
