@@ -4268,34 +4268,43 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     return p.name || p.url || ('idx-' + idx);
   }
 
-  // M/2026/05/05/18 — M-Photos-Upload-Multi-Append : upload parallele + APPEND en fin (pas prepend) + reset input.
+  // M/2026/05/05/18 — M-Photos-Upload-Multi-Append : APPEND en fin + reset input.
+  // M/2026/05/05/20 — M-Photos-Upload-Diagnostic-Fix : rollback du parallele Promise.allSettled (echouait
+  // silencieusement, probable collision serveur listPhotos/move_uploaded_file). Retour au sequentiel for...await
+  // (pattern qui marchait avant le refactor parallele) avec APPEND en fin et logging detaille.
   async function uploadOne(f) {
     const fd = new FormData();
     fd.append('action', 'upload');
     fd.append('dossier_id', dossierId);
     fd.append('file', f);
+    let r, d;
     try {
-      const r = await fetch(API + '/upload.php?action=upload', {
+      r = await fetch(API + '/upload.php?action=upload', {
         method:'POST', headers:{'X-Session-Token': token()}, body: fd,
       });
-      const d = await r.json();
-      if (d && d.ok && d.photo) return d.photo;
-      throw new Error((d && d.error) || 'echec_upload');
-    } catch (e) { throw e; }
+    } catch (e) {
+      console.error('[PhotoUpload] fetch network error:', e && e.message ? e.message : e, 'file:', f && f.name);
+      throw new Error('network_error');
+    }
+    try {
+      d = await r.json();
+    } catch (e) {
+      const txt = await r.text().catch(() => '');
+      console.error('[PhotoUpload] response not JSON, http=', r.status, 'body=', txt && txt.slice(0, 200), 'file:', f && f.name);
+      throw new Error('non_json_response_http_' + r.status);
+    }
+    if (d && d.ok && d.photo) return d.photo;
+    console.error('[PhotoUpload] backend rejected:', 'http=', r.status, 'body=', d, 'file:', f && f.name);
+    throw new Error((d && d.error) || ('http_' + r.status));
   }
   async function handleFiles(fl) {
-    // M/2026/05/05/19 — M-Photos-Album-Toast-Fix : garde stricte. AUCUN toast si l utilisateur n a rien selectionne
-    // (cancel du picker iOS = files.length === 0). Le check "Limite atteinte" ne se declenche QUE si l agent a
-    // effectivement selectionne au moins 1 fichier ET que la limite est deja atteinte.
     const files = Array.from(fl || []);
     if (!files.length) {
-      // Pas de toast, juste reset au cas ou.
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
     if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); if (inputRef.current) inputRef.current.value = ''; return; }
     const currentCount = list.length;
-    // Cap 30 photos par bien. Toast UNIQUEMENT si fichiers selectionnes (deja ci-dessus) ET limite atteinte.
     if (currentCount >= 30) {
       showToast && showToast('Limite atteinte (30 photos max par bien)');
       if (inputRef.current) inputRef.current.value = '';
@@ -4304,15 +4313,27 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     const remaining = 30 - currentCount;
     const toUpload = files.slice(0, remaining);
     const skipped = files.length - toUpload.length;
-    setUploading(true);
-    const results = await Promise.allSettled(toUpload.map(f => uploadOne(f)));
-    setUploading(false);
-    const succeeded = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
-    const failed = results.length - succeeded.length;
+    setUploading(toUpload.length);
+    // Sequentiel : evite la collision serveur sur uploads paralleles (M-Photos-Upload-Multi-Append cassait le backend).
+    const succeeded = [];
+    let firstError = null;
+    for (let i = 0; i < toUpload.length; i++) {
+      try {
+        const photo = await uploadOne(toUpload[i]);
+        if (photo) succeeded.push(photo);
+      } catch (e) {
+        if (!firstError) firstError = e && e.message ? e.message : 'erreur';
+        console.error('[PhotoUpload] upload', (i+1) + '/' + toUpload.length, 'failed:', e);
+      }
+      setUploading(toUpload.length - i - 1);
+    }
+    setUploading(0);
+    const failed = toUpload.length - succeeded.length;
     if (succeeded.length > 0) {
       onPhotosChange && onPhotosChange([...list, ...succeeded]);
     }
     if (skipped > 0) showToast && showToast(succeeded.length + ' photo(s) ajoutee(s), ' + skipped + ' ignoree(s) (limite 30)');
+    else if (failed > 0 && succeeded.length === 0) showToast && showToast('Echec upload : ' + (firstError || 'erreur') + ' (' + failed + '/' + toUpload.length + ')');
     else if (failed > 0) showToast && showToast(succeeded.length + ' photo(s) ajoutee(s), ' + failed + ' echec(s)');
     if (inputRef.current) inputRef.current.value = '';
   }
