@@ -11,7 +11,8 @@ setCorsHeaders();
 
 define('UPLOAD_MAX_BYTES', 15 * 1024 * 1024);
 define('UPLOAD_MAX_PER_DOSSIER_DEFAULT', 30); /* M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : cap STRICT 30, reglable admin via getMaxPhotos. */
-const UPLOAD_MAX_PHOTOS_FILE = '/var/lib/ocre/photos_max.txt';
+/* M/2026/05/05/29 — utilise /var/lib/ocre/uploads/_settings (parent writable www-ocre via M/2026/05/04/36). */
+const UPLOAD_MAX_PHOTOS_FILE = '/var/lib/ocre/uploads/_settings/photos_max.txt';
 function getMaxPhotos(): int {
     if (is_file(UPLOAD_MAX_PHOTOS_FILE)) {
         $v = (int) trim((string) @file_get_contents(UPLOAD_MAX_PHOTOS_FILE));
