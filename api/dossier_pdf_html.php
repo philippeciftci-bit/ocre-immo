@@ -406,6 +406,56 @@ function _yesIfIn(array $arr, string $needle): ?string {
     return in_array($needle, $arr, true) ? 'Oui' : null;
 }
 
+// M/2026/05/05/65 — col3 P1 adaptative selon type bien. Retourne [title, rowsHtml] graceful empty.
+function _pdfP1Col3(array $bien, $typeBien): array {
+    $type = strtolower(trim((string) $typeBien));
+    $rows = [];
+    if (in_array($type, ['villa', 'maison', 'riad'], true)) {
+        $rows = [
+            ['Chambres',       _pick($bien, 'chambres_v2', 'chambres')],
+            ['Salles de bain', _pick($bien, 'sdb_v2', 'sdb')],
+            ['Parking',        _pick($bien, 'nombre_places_parking', 'parking')],
+        ];
+        return ['ESPACES', $rows];
+    }
+    if ($type === 'appartement') {
+        $rows = [
+            ['Chambres',       _pick($bien, 'chambres_v2', 'chambres')],
+            ['Salles de bain', _pick($bien, 'sdb_v2', 'sdb')],
+            ['Étage',          _pick($bien, 'etage_v2', 'etage', 'etages')],
+        ];
+        return ['ESPACES', $rows];
+    }
+    if ($type === 'terrain') {
+        $surfT = _pick($bien, 'surface_terrain_v2', 'surface_terrain');
+        $rows = [
+            ['Surface',       $surfT ? fmtNum($surfT) . ' m²' : null],
+            ['Constructible', _pick($bien, 'terrain_constructible', 'constructible')],
+            ['Façade rue',    _pick($bien, 'facade_rue')],
+        ];
+        return ['TERRAIN', $rows];
+    }
+    if (in_array($type, ['local', 'bureau', 'commerce', 'commercial'], true)) {
+        $surfL = _pick($bien, 'surface_local', 'surface_hab', 'surface');
+        $rows = [
+            ['Surface', $surfL ? fmtNum($surfL) . ' m²' : null],
+            ['Pièces',  _pick($bien, 'pieces_count', 'pieces')],
+            ['Parking', _pick($bien, 'nombre_places_parking', 'parking')],
+        ];
+        return ['LOCAL', $rows];
+    }
+    // Fallback : CONFORT (comportement legacy)
+    $climOk = is_array($bien['equipements_confort'] ?? null) && in_array('Climatisation', $bien['equipements_confort'], true);
+    $climOk = $climOk || (is_array($bien['equipements'] ?? null) && !empty($bien['equipements']['climatisation']));
+    $secList = is_array($bien['securite'] ?? null) ? $bien['securite'] : [];
+    $rows = [
+        ['Clim.',    $climOk ? 'Oui' : null],
+        ['Sécurité', !empty($secList) ? bullets(array_slice($secList, 0, 1), '') : null],
+        ['Cuisine',  _pick($bien, 'cuisine')],
+    ];
+    return ['CONFORT', $rows];
+}
+
 header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
 <html lang="fr">
@@ -508,7 +558,8 @@ header('Content-Type: text/html; charset=utf-8');
   .foot .price b { display: block; font-style: normal; font-weight: 500; color: var(--gold-deep); font-size: 24px; line-height: 1; }
   .foot .price small { display: block; font-style: normal; font-size: 8.5px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold-deep); margin-top: 3px; }
   .foot .client { font-style: italic; font-size: 11px; line-height: 1.4; text-align: right; }
-  .foot .client.empty { display: none; }
+  /* M/2026/05/05/65 — footer rigide : visibility hidden au lieu de display none pour preserver le grid 1fr auto 1fr. */
+  .foot .client.empty { visibility: hidden; }
 
   /* ============================ PAGE 2 ============================ */
   .body-p2 { padding: 14px 22px 12px; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; }
@@ -527,7 +578,7 @@ header('Content-Type: text/html; charset=utf-8');
   .foot-p2 .agent .lab, .foot-p2 .client .lab { display: block; font-style: normal; font-weight: 500; font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold-deep); margin-bottom: 2px; }
   .foot-p2 .pgnum { font-style: italic; font-size: 10.5px; color: var(--gold-deep); letter-spacing: 2.5px; text-transform: uppercase; font-weight: 500; text-align: center; }
   .foot-p2 .client { font-style: italic; font-size: 11px; line-height: 1.4; text-align: right; }
-  .foot-p2 .client.empty { display: none; }
+  .foot-p2 .client.empty { visibility: hidden; }
 
   /* ============================ PAGE 3 ============================ */
   /* M/2026/05/05/60 — Album P3 : 15 photos en 5 rangees, sans titres intermediaires. Header compacte. */
@@ -565,6 +616,15 @@ header('Content-Type: text/html; charset=utf-8');
   @media print { .page[data-page-disabled="1"] { display: none; } }
   /* M/2026/05/05/64 — blocs masques (visible=false via pastille oeil M/57) absents du PDF final imprime. */
   @media print { [data-pdf-hidden="1"] { display: none !important; } }
+  /* M/2026/05/05/65 — footer rigide P1+P2 : preservation flow grid via visibility:hidden. */
+  @media print {
+    .foot .client[data-pdf-hidden="1"], .foot .agent[data-pdf-hidden="1"],
+    .foot-p2 .client[data-pdf-hidden="1"], .foot-p2 .agent[data-pdf-hidden="1"] {
+      display: block !important; visibility: hidden !important;
+    }
+  }
+  /* M/2026/05/05/65 — medaille "Prix a la demande" (visible=false) : meme cadre or, contenu different. */
+  .price.price-on-request b { font-size: 22px; font-style: italic; }
 
   /* Banner confidentiel partage (legacy preserve) */
   .ocre-confidential-banner {
@@ -623,11 +683,15 @@ header('Content-Type: text/html; charset=utf-8');
           <div class="row"><span class="lab">Terrain</span><b><?= $surfaceTerrain ? fmtNum($surfaceTerrain) . ' m²' : '—' ?></b></div>
           <div class="row"><span class="lab">Terrasses</span><b><?= $surfaceTerrasse ? fmtNum($surfaceTerrasse) . ' m²' : '—' ?></b></div>
         </div>
+        <?php
+        // M/2026/05/05/65 — col3 P1 adaptative selon type bien (ESPACES/TERRAIN/LOCAL/CONFORT).
+        list($_col3Title, $_col3Rows) = _pdfP1Col3($bien, $typeBien);
+        ?>
         <div class="col">
-          <h4>Confort</h4>
-          <div class="row"><span class="lab">Clim.</span><b><?= h(in_array('Climatisation', $equipementsConfort, true) ? 'Oui' : (is_array($equipementsRaw) && !empty($equipementsRaw['climatisation']) ? 'Oui' : '—')) ?></b></div>
-          <div class="row"><span class="lab">Sécurité</span><b><?= h($securite ? bullets(array_slice($securite, 0, 1), '') : '—') ?></b></div>
-          <div class="row"><span class="lab">Cuisine</span><b><?= h(_pick($bien, 'cuisine')) ?></b></div>
+          <h4><?= htmlspecialchars($_col3Title) ?></h4>
+          <?php foreach ($_col3Rows as $r): list($lab, $val) = $r; if (_isEmptyVal($val)) continue; ?>
+          <div class="row"><span class="lab"><?= htmlspecialchars($lab) ?></span><b><?= htmlspecialchars((string) $val) ?></b></div>
+          <?php endforeach; ?>
         </div>
       </div>
 
@@ -643,8 +707,17 @@ header('Content-Type: text/html; charset=utf-8');
           <?php endif; ?>
         </div>
 
-        <div class="price"<?= _pdfEdAttr('price', $_pdfEditorState) ?>>
-          <?php if ($prix && !$prixDemand): ?>
+        <?php
+        // M/2026/05/05/65 — pastille oeil prix masquee (visible=false) -> medaille "Prix a la demande"
+        // au lieu du chiffre. data-editable preserve mais data-pdf-hidden NON ajoute (le bloc reste
+        // visible dans le PDF final, juste avec contenu different).
+        $_priceVisible = _pdfBlockVisible($_pdfEditorState, 'price');
+        ?>
+        <div class="price<?= !$_priceVisible ? ' price-on-request' : '' ?>" data-editable="price">
+          <?php if (!$_priceVisible): ?>
+            <div class="pre">PRIX</div>
+            <b>à la demande</b>
+          <?php elseif ($prix && !$prixDemand): ?>
             <div class="pre">prix de présentation</div>
             <b><?= htmlspecialchars(fmtNum($prix)) ?> <?= htmlspecialchars((string)$devise, ENT_QUOTES | ENT_HTML5, "UTF-8") ?></b>
             <?php if ($honoraires): ?><small>Honoraires inclus</small><?php endif; ?>
