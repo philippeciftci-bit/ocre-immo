@@ -456,16 +456,13 @@ header('Content-Type: text/html; charset=utf-8');
   .foot-p2 .client.empty { display: none; }
 
   /* ============================ PAGE 3 ============================ */
-  .alb-head { padding: 11px 0 6px; text-align: center; flex: none; }
-  .alb-head .h { font-style: italic; font-size: 22px; color: var(--ink); letter-spacing: .4px; margin: 0 0 2px; font-weight: 500; }
-  .alb-head .s { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; }
+  /* M/2026/05/05/60 — Album P3 : 15 photos en 5 rangees, sans titres intermediaires. Header compacte. */
+  .alb-head { padding: 6px 0 4px; text-align: center; flex: none; }
+  .alb-head .h { font-style: italic; font-size: 18px; color: var(--ink); letter-spacing: .4px; margin: 0 0 2px; font-weight: 500; }
+  .alb-head .s { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; }
 
-  .body-alb { padding: 6px 14px 8px; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; gap: 2px; overflow: hidden; }
-  .sec-cap { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 5px 0 4px; }
-  .sec-cap::before, .sec-cap::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-deep) 50%, transparent); max-width: 60px; }
-  .sec-cap span { font-style: italic; font-size: 12px; color: var(--gold-deep); letter-spacing: 1px; }
-
-  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .body-alb { padding: 5px 14px 8px; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; gap: 4px; overflow: hidden; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
   .grid-3 .ph { position: relative; }
   .grid-3 .ph[data-cap]::before {
     content: attr(data-cap); position: absolute; left: 6px; bottom: 5px; color: #fff;
@@ -697,7 +694,7 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
   </section>
 
-  <!-- ====================== PAGE 3 — Album photo (12 photos · 4 sections) ====================== -->
+  <!-- ====================== PAGE 3 — Album photo (15 photos · 5 rangees · M/60) ====================== -->
   <section class="page" data-page="3">
     <header class="ribbon">
       <div class="b">OCRE Immo</div>
@@ -712,25 +709,21 @@ header('Content-Type: text/html; charset=utf-8');
 
     <div class="body-alb">
       <?php
-      $albSections = [
-          'Extérieurs'           => array_slice($photos, 0, 3),
-          'Pièces de réception'  => array_slice($photos, 3, 3),
-          'Chambres &amp; bains' => array_slice($photos, 6, 3),
-          'Détails &amp; vues'   => array_slice($photos, 9, 3),
-      ];
-      foreach ($albSections as $secName => $secPhotos):
-          $hasAny = !empty(array_filter($secPhotos));
-          if (!$hasAny) continue;
+      // M/2026/05/05/60 — 5 rangees x 3 photos = 15 photos max, sans titres intermediaires.
+      // Si moins de 15 photos disponibles, afficher celles dispo, ne pas remplir avec placeholder vide
+      // (rangees totalement vides skip pour eviter trous visuels).
+      for ($row = 0; $row < 5; $row++):
+          $rowPhotos = array_slice($photos, $row * 3, 3);
+          if (empty(array_filter($rowPhotos))) continue;
       ?>
-      <div class="sec-cap"><span><?= $secName ?></span></div>
       <div class="grid-3">
         <?php foreach ([0, 1, 2] as $i):
-            $p = $secPhotos[$i] ?? null;
+            $p = $rowPhotos[$i] ?? null;
         ?>
         <div class="ph"><?php if ($p): ?><img src="<?= h($p) ?>" alt=""><?php endif; ?></div>
         <?php endforeach; ?>
       </div>
-      <?php endforeach; ?>
+      <?php endfor; ?>
     </div>
 
     <div class="footer-alb">Ocre Immo &middot; Marrakech &middot; Réf. <?= h($ref) ?> &middot; Page 3 / 3</div>
