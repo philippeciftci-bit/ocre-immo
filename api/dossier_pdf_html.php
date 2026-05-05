@@ -591,14 +591,7 @@ header('Content-Type: text/html; charset=utf-8');
       </div>
       <?php endforeach; ?>
     </div>
-    <?php if (count($_albumExtra) > 0): ?>
-    <h3 class="album-title">Album photo</h3>
-    <div class="album">
-      <?php foreach ($_albumExtra as $p): ?>
-      <div class="album-cell"><img src="<?= h($p) ?>" alt=""></div>
-      <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
+    <?php /* M/2026/05/05/51 — Album photo deplace en TOUTE FIN du PDF, juste avant footer page 3. */ ?>
     <?php endif; /* /_topCount > 0 */ ?>
 
     <div class="cartouche">
@@ -811,6 +804,16 @@ header('Content-Type: text/html; charset=utf-8');
         <?php endif; ?>
       </div>
     </div>
+
+    <?php /* M/2026/05/05/51 — Album photo deplace ici (fin PDF, juste avant footer). */ ?>
+    <?php if (!empty($_albumExtra) && count($_albumExtra) > 0): ?>
+    <h3 class="album-title">Album photo</h3>
+    <div class="album">
+      <?php foreach ($_albumExtra as $p): ?>
+      <div class="album-cell"><img src="<?= h($p) ?>" alt=""></div>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
     <div class="runfoot">
       <span><span class="brand brand-sm"><span class="ocre-mark">OCRE</span><span class="immo-mark">immo</span></span><span style="margin-left:6px">· Marrakech</span></span>
