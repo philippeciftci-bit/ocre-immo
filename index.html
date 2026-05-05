@@ -4253,9 +4253,16 @@ function PhotoLightbox({photos, startIndex = 0, onClose}) {
 }
 
 function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
-  const [uploading, setUploading] = React.useState(false);
+  const [uploading, setUploading] = React.useState(0);
+  // M/2026/05/05/23 — M-Photos-UX-Polish : mode selection multi pour suppression en lot.
+  const [selectMode, setSelectMode] = React.useState(false);
+  const [selectedKeys, setSelectedKeys] = React.useState(() => new Set());
+  const [bulkDeleting, setBulkDeleting] = React.useState(false);
   const inputRef = React.useRef(null);
   const list = Array.isArray(photos) ? photos : [];
+  // Cap interne 31, libelle UI affiche /30 (marge anti-blocage).
+  const PHOTOS_HARD_CAP = 31;
+  const PHOTOS_DISPLAY_CAP = 30;
 
   const token = () => localStorage.getItem('ocre_token') || '';
 
@@ -4266,6 +4273,36 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     if (!p) return 'idx-' + idx;
     if (typeof p === 'string') return p;
     return p.name || p.url || ('idx-' + idx);
+  }
+  function exitSelectMode() { setSelectMode(false); setSelectedKeys(new Set()); }
+  function toggleSelected(key) {
+    setSelectedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+  function selectAll() {
+    setSelectedKeys(new Set(list.map((p, i) => photoKey(p, i))));
+  }
+  async function bulkDelete() {
+    const keys = Array.from(selectedKeys);
+    if (!keys.length) return;
+    if (!(await askConfirm({title:'Supprimer ' + keys.length + ' photo' + (keys.length > 1 ? 's' : '') + ' ?', message:'Cette action est definitive.', danger:true, confirmLabel:'Supprimer'}))) return;
+    setBulkDeleting(true);
+    // Identifie chaque photo a supprimer par sa key.
+    const toDelete = list.filter((p, i) => keys.includes(photoKey(p, i)));
+    // Promise.allSettled : delete idempotent cote backend, parallele safe.
+    await Promise.allSettled(toDelete.map(p => {
+      const name = typeof p === 'object' ? (p.name || '') : '';
+      if (!name) return Promise.resolve();
+      return fetch(API + '/upload.php?action=delete', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token()}, body: JSON.stringify({dossier_id: dossierId, name})}).catch(() => {});
+    }));
+    // Retire toutes les photos selectionnees du state local.
+    onPhotosChange && onPhotosChange(list.filter((p, i) => !keys.includes(photoKey(p, i))));
+    setBulkDeleting(false);
+    exitSelectMode();
+    showToast && showToast(keys.length + ' photo' + (keys.length > 1 ? 's supprimees' : ' supprimee'));
   }
 
   // M/2026/05/05/18 — M-Photos-Upload-Multi-Append : APPEND en fin + reset input.
@@ -4305,12 +4342,13 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     }
     if (!dossierId) { showToast && showToast('Enregistrez d\'abord le dossier'); if (inputRef.current) inputRef.current.value = ''; return; }
     const currentCount = list.length;
-    if (currentCount >= 30) {
-      showToast && showToast('Limite atteinte (30 photos max par bien)');
+    // M/2026/05/05/23 — cap interne PHOTOS_HARD_CAP=31 (libelle /30 garde, marge anti-blocage backend).
+    if (currentCount >= PHOTOS_HARD_CAP) {
+      showToast && showToast('Limite atteinte (' + PHOTOS_DISPLAY_CAP + ' photos max par bien)');
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
-    const remaining = 30 - currentCount;
+    const remaining = PHOTOS_HARD_CAP - currentCount;
     const toUpload = files.slice(0, remaining);
     const skipped = files.length - toUpload.length;
     setUploading(toUpload.length);
@@ -4355,26 +4393,66 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
 
   return (
     <div id="stage2-photos" style={{marginBottom:10, scrollMarginTop:60}}>
-      <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:6, textTransform:'uppercase', letterSpacing:.4}}>
-        Photos {list.length > 0 && <span style={{color:'#8B5E3C'}}>· {list.length}/30</span>}
-      </label>
-      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6, marginBottom:8}}>
+      {/* M/2026/05/05/23 — M-Photos-UX-Polish : barre header avec compteur + bouton Selectionner / actions bulk. */}
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6, gap:8}}>
+        <label style={{fontSize:11, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, margin:0}}>
+          Photos {list.length > 0 && <span style={{color:'#8B5E3C'}}>· {list.length}/{PHOTOS_DISPLAY_CAP}</span>}
+        </label>
+        {list.length > 0 && !selectMode && (
+          <button type="button" onClick={() => setSelectMode(true)} style={{background:'transparent', border:'none', color:'#7A5132', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'2px 0'}}>
+            Selectionner
+          </button>
+        )}
+        {selectMode && (
+          <div style={{display:'flex', alignItems:'center', gap:6}}>
+            <button type="button" onClick={selectedKeys.size === list.length ? () => setSelectedKeys(new Set()) : selectAll} style={{background:'transparent', border:'none', color:'#7A5132', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
+              {selectedKeys.size === list.length && list.length > 0 ? 'Tout deselect.' : 'Tout selectionner'}
+            </button>
+            <button type="button" onClick={bulkDelete} disabled={selectedKeys.size === 0 || bulkDeleting}
+              style={{background: selectedKeys.size === 0 ? '#E5DCC9' : '#C73E3E', color:'#fff', border:'none', padding:'5px 10px', borderRadius:6, fontSize:12, fontWeight:600, cursor: selectedKeys.size === 0 ? 'not-allowed' : 'pointer', fontFamily:'inherit'}}>
+              {bulkDeleting ? '...' : 'Supprimer (' + selectedKeys.size + ')'}
+            </button>
+            <button type="button" onClick={exitSelectMode} style={{background:'transparent', border:'1px solid #E5DCC9', color:'#1A1714', fontSize:12, fontWeight:600, padding:'4px 10px', borderRadius:6, cursor:'pointer', fontFamily:'inherit'}}>
+              Annuler
+            </button>
+          </div>
+        )}
+      </div>
+      <div style={{position:'relative', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6, marginBottom:8}}>
         {list.map((p, idx) => {
           const src = photoSrc(p);
+          const key = photoKey(p, idx);
+          const isSelected = selectedKeys.has(key);
           return (
-            <div key={photoKey(p, idx)} style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden', border:'1px solid #E8DDD0', background:'#F4ECE3'}}>
+            <div key={key} onClick={selectMode ? () => toggleSelected(key) : undefined}
+              style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden', border: selectMode && isSelected ? '2px solid #7A5132' : '1px solid #E8DDD0', background:'#F4ECE3', cursor: selectMode ? 'pointer' : 'default'}}>
               {src && <img src={src} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} onError={e => { e.target.style.display = 'none'; }}/>}
-              <button type="button" onClick={() => removePhoto(p)}
-                style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(42,32,24,.75)', color:'#fff', fontSize:12, cursor:'pointer', lineHeight:'20px', padding:0}}>×</button>
+              {selectMode ? (
+                <div style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border: isSelected ? 'none' : '1.5px solid #fff', background: isSelected ? '#7A5132' : 'rgba(255,255,255,0.4)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}>
+                  {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                </div>
+              ) : (
+                <button type="button" onClick={() => removePhoto(p)}
+                  style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(42,32,24,.75)', color:'#fff', fontSize:12, cursor:'pointer', lineHeight:'20px', padding:0}}>×</button>
+              )}
             </div>
           );
         })}
-        {list.length < 30 && (
-          <button type="button" onClick={() => inputRef.current && inputRef.current.click()} disabled={uploading || !dossierId}
+        {list.length < PHOTOS_HARD_CAP && !selectMode && (
+          <button type="button" onClick={() => inputRef.current && inputRef.current.click()} disabled={uploading > 0 || !dossierId}
             title={!dossierId ? 'Enregistrez d\'abord le dossier' : ''}
             style={{aspectRatio:'1/1', border:'1.5px dashed #BBA88B', borderRadius:8, background:'#FDFAF7', color:'#8B5E3C', cursor: dossierId ? 'pointer' : 'not-allowed', opacity: dossierId ? 1 : .5, fontSize:24, fontWeight:700}}>
-            {uploading ? '…' : '+'}
+            {uploading > 0 ? '…' : '+'}
           </button>
+        )}
+        {/* M/2026/05/05/23 — overlay spinner pendant upload (uploading = compteur restant). */}
+        {uploading > 0 && (
+          <div data-testid="photo-upload-spinner" style={{position:'absolute', inset:-4, background:'rgba(255,255,255,0.85)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:8, borderRadius:8, zIndex:5}}>
+            <div style={{position:'relative', width:40, height:40}}>
+              <div style={{position:'absolute', inset:0, border:'3px solid rgba(139,94,60,0.20)', borderTopColor:'#8B5E3C', borderRadius:'50%', animation:'ocreSpin 1.0s linear infinite'}}/>
+            </div>
+            <div style={{fontSize:12, color:'#5C3B1E', fontWeight:600}}>Telechargement {uploading} restant{uploading > 1 ? 'es' : 'e'}...</div>
+          </div>
         )}
       </div>
       {/* M/2026/05/02/20 — M132 : accept élargi 'image/jpeg,image/png,image/webp' -> 'image/*'.

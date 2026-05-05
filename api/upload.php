@@ -10,7 +10,7 @@ require_once __DIR__ . '/lib/photo_pipeline.php';
 setCorsHeaders();
 
 define('UPLOAD_MAX_BYTES', 15 * 1024 * 1024);
-define('UPLOAD_MAX_PER_DOSSIER', 30);
+define('UPLOAD_MAX_PER_DOSSIER', 31); /* M/2026/05/05/23 — cap interne 31 (libelle UI affiche /30, marge anti-blocage) */
 // V17.6 Section III : PDF accepté en plus des images (pour les docs crédit).
 define('UPLOAD_ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 define('UPLOAD_EXT_MAP', [
