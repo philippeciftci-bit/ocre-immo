@@ -14898,6 +14898,14 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
   const [pricePopover, setPricePopover] = React.useState(null); // {anchor, currency, amount} ou null
   const saveTimerRef = React.useRef(null);
   const editorBlocksRef = React.useRef({});
+  // M/2026/05/05/56 — mode editor : 'edit' (marqueurs rouges + pastille ⋮) | 'preview' (rendu propre identique PDF final).
+  const [editorMode, setEditorMode] = React.useState(() => {
+    try { return (localStorage.getItem('ocre.pdf.editor.mode') === 'preview') ? 'preview' : 'edit'; }
+    catch (_) { return 'edit'; }
+  });
+  React.useEffect(() => {
+    try { localStorage.setItem('ocre.pdf.editor.mode', editorMode); } catch (_) {}
+  }, [editorMode]);
   // M/2026/05/05/10 — M-Photos-Bouton-V2 : state local Photos selection (PAS de prop dossier externe).
   const [photosSheetOpen, setPhotosSheetOpen] = React.useState(false);
   const [dossierData, setDossierData] = React.useState(null);
@@ -15006,39 +15014,88 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
   }, [showPrice, showAddress, showIdentity, currency, hiddenPhotos]);
 
   // M/2026/05/05/52 — wire blocs editables apres injection HTML.
-  // M/2026/05/05/55 — icone trois points toujours visible top-right + delegation event root.
+  // M/2026/05/05/56 — visuel rouge ostensible + lock zones non editables + mode preview propre.
   React.useEffect(() => {
     if (!html || !previewRef.current) return undefined;
     const root = previewRef.current;
+
+    // Cleanup tout marker/lock existant pour rebuild propre selon mode.
+    root.querySelectorAll('[data-editable]').forEach(el => {
+      el.style.outline = '';
+      el.style.outlineOffset = '';
+      el.style.background = '';
+      el.style.cursor = '';
+      el.style.transition = '';
+      el.style.borderRadius = '';
+      el.style.display = '';
+      const dot = el.querySelector(':scope > .ocre-pdf-dot');
+      if (dot) dot.remove();
+      const lbl = el.querySelector(':scope > .ocre-pdf-hidden-label');
+      if (lbl) lbl.remove();
+    });
+    root.querySelectorAll('.ocre-pdf-toolbar').forEach(b => b.remove());
+    root.querySelectorAll('.ocre-pdf-lock-icon').forEach(b => b.remove());
+    root.querySelectorAll('[data-pdf-locked-applied="1"]').forEach(el => {
+      el.style.opacity = '';
+      el.style.filter = '';
+      el.removeAttribute('data-pdf-locked-applied');
+    });
+
+    // Mode preview : aucun marqueur, masquer les blocs invisibles pour un rendu fidele au PDF final.
+    if (editorMode === 'preview') {
+      root.querySelectorAll('[data-editable][data-pdf-hidden="1"]').forEach(el => { el.style.display = 'none'; });
+      return undefined;
+    }
+
+    // Mode edit : restaurer display des blocs invisibles (override eventuel preview precedent).
+    root.querySelectorAll('[data-editable]').forEach(el => { el.style.display = ''; });
+
+    // Lock zones non editables : logo OCRE, runheads, runfoots, marque centrale cover.
+    const lockSelectors = '.runhead, .runfoot, .center-mark';
+    root.querySelectorAll(lockSelectors).forEach(el => {
+      if (el.closest('[data-editable]')) return; // skip si dans un editable (rare, mais safe)
+      el.style.opacity = '0.45';
+      el.style.filter = 'grayscale(.5)';
+      el.style.position = el.style.position || 'relative';
+      el.setAttribute('data-pdf-locked-applied', '1');
+      if (!el.querySelector(':scope > .ocre-pdf-lock-icon')) {
+        const lock = document.createElement('span');
+        lock.className = 'ocre-pdf-lock-icon';
+        lock.textContent = '🔒';
+        lock.style.cssText = 'position:absolute;top:2px;right:6px;font-size:11px;opacity:.6;pointer-events:none;z-index:2;';
+        el.appendChild(lock);
+      }
+    });
+
     const editables = root.querySelectorAll('[data-editable]');
     let openToolbarKey = null;
     editables.forEach(el => {
-      // M/2026/05/05/54 — transitions opacite + background pour toggle fluide sans flash.
-      el.style.transition = 'outline 120ms, opacity 180ms';
-      el.style.outline = '1px solid transparent';
-      el.style.outlineOffset = '2px';
+      el.style.transition = 'background .15s, outline-color .15s, opacity 180ms';
+      el.style.outline = '2px dashed #DC2626';
+      el.style.outlineOffset = '4px';
+      el.style.background = '#FEF2F2';
       el.style.borderRadius = '4px';
       el.style.cursor = 'text';
       el.style.position = el.style.position || 'relative';
-      // Si bloc invisible : opacité réduite + label.
+      // Bloc invisible : opacite reduite + label diagonal stripe.
       if (el.getAttribute('data-pdf-hidden') === '1') {
         el.style.opacity = '0.35';
-        if (!el.querySelector('.ocre-pdf-hidden-label')) {
+        if (!el.querySelector(':scope > .ocre-pdf-hidden-label')) {
           const lbl = document.createElement('div');
           lbl.className = 'ocre-pdf-hidden-label';
           lbl.textContent = 'Masque sur le PDF final';
-          lbl.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7A5132;font-size:11px;font-weight:700;background:repeating-linear-gradient(45deg,rgba(184,137,90,0.06) 0 6px,rgba(184,137,90,0.12) 6px 12px);pointer-events:none;border-radius:4px;';
+          lbl.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7A5132;font-size:11px;font-weight:700;background:repeating-linear-gradient(45deg,rgba(184,137,90,0.06) 0 6px,rgba(184,137,90,0.12) 6px 12px);pointer-events:none;border-radius:4px;transition:opacity 180ms;';
           el.appendChild(lbl);
         }
       }
-      // M/2026/05/05/55 — icone ⋮ permanente top-right pour decouvrabilite immediate.
+      // Pastille rouge ⋮ permanente top-right.
       if (!el.querySelector(':scope > .ocre-pdf-dot')) {
         const dot = document.createElement('div');
         dot.className = 'ocre-pdf-dot';
         dot.setAttribute('data-pdf-dot', '1');
-        dot.style.cssText = 'position:absolute;top:6px;right:6px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:#B8895A;font-size:18px;font-weight:700;line-height:1;cursor:pointer;opacity:0.35;transition:opacity 120ms;z-index:8;user-select:none;';
-        dot.textContent = '⋮';
+        dot.style.cssText = 'position:absolute;top:-11px;right:8px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#DC2626;color:#fff;font-size:13px;font-weight:700;line-height:1;border-radius:99px;box-shadow:0 2px 6px rgba(220,38,38,.35);cursor:pointer;z-index:3;user-select:none;';
         dot.contentEditable = 'false';
+        dot.textContent = '⋮';
         el.appendChild(dot);
       }
     });
@@ -15047,8 +15104,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
       const isDot = e.target.closest('[data-pdf-dot]');
       const editableEl = e.target.closest('[data-editable]');
       const insideToolbar = e.target.closest('.ocre-pdf-toolbar');
-      if (insideToolbar) return; // Toolbar handle son propre click via ses boutons.
-      // Click sur dot : ouvre/ferme la toolbar associee.
+      if (insideToolbar) return;
       if (isDot && editableEl) {
         e.stopPropagation();
         const key = editableEl.getAttribute('data-editable');
@@ -15056,7 +15112,6 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
         else { hideAllToolbars(); showToolbar(editableEl, key); openToolbarKey = key; }
         return;
       }
-      // Click sur bloc editable (hors dot) : ferme toolbar + entre en edition.
       if (editableEl) {
         if (openToolbarKey) { hideAllToolbars(); openToolbarKey = null; }
         const key = editableEl.getAttribute('data-editable');
@@ -15083,28 +15138,25 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
         editableEl.addEventListener('blur', onBlur);
         return;
       }
-      // Click hors bloc : ferme toolbar si ouverte.
       if (openToolbarKey) { hideAllToolbars(); openToolbarKey = null; }
     }
     function onRootHover(e) {
       const editableEl = e.target.closest('[data-editable]');
       if (!editableEl) return;
-      const dot = editableEl.querySelector(':scope > .ocre-pdf-dot');
-      if (dot) dot.style.opacity = '1';
+      editableEl.style.background = '#FECACA';
+      editableEl.style.outlineColor = '#B91C1C';
     }
     function onRootHoverOut(e) {
       const editableEl = e.target.closest('[data-editable]');
       if (!editableEl) return;
-      // Ne pas reset si le mouvement reste dans le bloc.
       if (e.relatedTarget && editableEl.contains(e.relatedTarget)) return;
-      const dot = editableEl.querySelector(':scope > .ocre-pdf-dot');
-      if (dot && openToolbarKey !== editableEl.getAttribute('data-editable')) dot.style.opacity = '0.35';
+      editableEl.style.background = '#FEF2F2';
+      editableEl.style.outlineColor = '#DC2626';
     }
     function hideAllToolbars() {
       root.querySelectorAll('.ocre-pdf-toolbar').forEach(b => b.remove());
     }
     function onDocClick(e) {
-      // Click hors preview : ferme toolbar.
       if (root.contains(e.target)) return;
       if (openToolbarKey) { hideAllToolbars(); openToolbarKey = null; }
     }
@@ -15173,12 +15225,33 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
       if (bar) bar.remove();
     }
     return () => { cleanups.forEach(fn => fn()); };
-  }, [html]);
+  }, [html, editorMode]);
 
   const profil = (dossierProfil || '').toLowerCase() || 'contrepartie';
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#E8E5E0'}}>
+      {/* M/2026/05/05/56 — toggle Edition / Apercu en haut de la preview. Persiste localStorage. */}
+      <div style={{flexShrink:0, padding:'10px 16px', display:'flex', justifyContent:'center', alignItems:'center', borderBottom:'1px solid #E8DDD0', background:'#fff'}}>
+        <div style={{display:'inline-flex', background:'#fff', border:'1px solid #E8DDD0', borderRadius:99, padding:4, boxShadow:'0 2px 6px rgba(60,40,20,.04)'}}>
+          {[{id:'edit', label:'Edition', activeBg:'#DC2626'}, {id:'preview', label:'Apercu', activeBg:'#5C4A3A'}].map(m => {
+            const active = editorMode === m.id;
+            return (
+              <button key={m.id} type="button" onClick={() => setEditorMode(m.id)}
+                style={{display:'flex', alignItems:'center', gap:8, padding:'7px 14px',
+                        background: active ? m.activeBg : 'transparent',
+                        color: active ? '#fff' : '#9A8B7C',
+                        border:'none', borderRadius:99, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
+                        transition:'background 120ms, color 120ms'}}>
+                <span style={{width:7, height:7, borderRadius:'50%', background: active ? '#fff' : '#C9B79A',
+                              boxShadow: active ? '0 0 6px rgba(255,255,255,0.85)' : 'none',
+                              opacity: active ? 1 : 0.5, transition:'box-shadow 120ms'}}/>
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <div style={{flex:1, overflowY:'auto', paddingBottom:'calc(env(safe-area-inset-bottom, 0px) + 96px)'}}>
         {loading && <div style={{textAlign:'center', padding:40, color:'#7A7167'}}>Chargement de l'apercu...</div>}
         {!loading && html && <div ref={previewRef} dangerouslySetInnerHTML={{__html: html}}/>}
