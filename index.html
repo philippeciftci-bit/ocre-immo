@@ -4510,13 +4510,11 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
                       background:'#F4ECE3', cursor: selectMode ? 'pointer' : 'default',
                       opacity: isSelected ? 0.85 : 1}}>
               {src && <img src={src} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} onError={e => { e.target.style.display = 'none'; }}/>}
-              {selectMode ? (
+              {/* M/2026/05/05/50 — croix individuelle retiree. Suppression via mode Selectionner -> checkbox -> Supprimer (N). */}
+              {selectMode && (
                 <div style={{position:'absolute', top:6, right:6, width:22, height:22, borderRadius:11, border: isSelected ? 'none' : '2px solid #BBA88B', background: isSelected ? '#7A5132' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(0,0,0,0.15)'}}>
                   {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
-              ) : (
-                <button type="button" onClick={() => removePhoto(p)}
-                  style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'none', background:'rgba(42,32,24,.75)', color:'#fff', fontSize:12, cursor:'pointer', lineHeight:'20px', padding:0}}>×</button>
               )}
             </div>
           );
