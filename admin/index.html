@@ -137,6 +137,16 @@ tr:hover td{background:#FDFAF7}
           <div id="ak-status" style="font-size:12px;color:#8B7F6E">Chargement…</div>
           <p style="font-size:11px;color:#8B7F6E;margin-top:10px">Utilisée par la dictée vocale (extraction JSON FR) et l'import URL (structuration HTML). Sans clé, fallback heuristique PHP pour dictée, parsing OG/JSON-LD pour URL.</p>
         </div>
+        <!-- M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : limite photos par dossier (regalable). -->
+        <div style="margin-top:24px;padding-top:18px;border-top:1px solid #E8DDD0">
+          <label style="display:block;font-size:11px;font-weight:600;color:#8B7F6E;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Limite photos par dossier</label>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+            <input id="max-photos-input" type="number" min="1" max="200" step="1" style="width:120px;padding:10px 12px;border-radius:8px;border:1.5px solid #E8DDD0;background:#FDFAF7;font-family:inherit;font-size:13px;outline:none">
+            <button class="btn btn-primary" id="max-photos-save">Sauver</button>
+            <span id="max-photos-status" style="font-size:12px;color:#8B7F6E"></span>
+          </div>
+          <p style="font-size:11px;color:#8B7F6E;margin-top:8px">Nombre maximum de photos uploadables par bien (default 30, plage 1-200). Affecte tous les dossiers immediatement apres reload.</p>
+        </div>
       </div>
     </div>
     <div id="pane-backups" class="pane hidden">
@@ -369,6 +379,31 @@ $('ak-save').addEventListener('click', async () => {
     toast('Clé sauvegardée');
     $('ak-status').innerHTML = '<span style="color:#3E8B5E">●</span> Clé sauvegardée — Claude activé pour dictée + import URL.';
   } else toast(d && d.error ? d.error : 'Erreur', 'error');
+});
+
+// M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : load + save limite photos par dossier.
+(async () => {
+  try {
+    const r = await fetch(API + '/upload.php?action=get_max_photos').then(r => r.json());
+    if (r && r.ok && typeof r.max_photos_per_dossier === 'number') {
+      const inp = $('max-photos-input');
+      if (inp) inp.value = r.max_photos_per_dossier;
+      const st = $('max-photos-status');
+      if (st) st.innerHTML = '<span style="color:#3E8B5E">●</span> Limite actuelle : ' + r.max_photos_per_dossier;
+    }
+  } catch (e) {}
+})();
+$('max-photos-save') && $('max-photos-save').addEventListener('click', async () => {
+  const v = parseInt($('max-photos-input').value, 10);
+  if (!Number.isFinite(v) || v < 1 || v > 200) { toast('Valeur invalide (1-200)', 'error'); return; }
+  try {
+    const r = await fetch(API + '/upload.php?action=set_max_photos&value=' + v, {method:'POST', headers:{'X-Admin-Code': adminCode}}).then(r => r.json());
+    if (r && r.ok) {
+      toast('Limite photos sauvegardée : ' + r.max_photos_per_dossier);
+      const st = $('max-photos-status');
+      if (st) st.innerHTML = '<span style="color:#3E8B5E">●</span> Limite actuelle : ' + r.max_photos_per_dossier;
+    } else toast(r && r.error ? r.error : 'Erreur', 'error');
+  } catch (e) { toast('Erreur reseau', 'error'); }
 });
 
 async function loadCountries(){
