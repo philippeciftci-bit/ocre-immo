@@ -1215,10 +1215,17 @@ function PhotosExifButton({dossierId, bien, onApply, showToast}) {
 
 // M/2026/04/30/28 — photoSrc helper hoiste au module scope (etait dans PhotoUpload local
 // scope, pas accessible depuis SheetView -> ReferenceError silencieux ecran blanc Vue tableau).
+// M/2026/05/05/36 — M-Hotfix-Thumbnails-Broken : robustesse src multi-source.
+// Priorite : thumb_url > url > webp_url. Pour strings : http(s):// ou /uploads/ direct, sinon vide (broken).
 function photoSrc(p) {
   if (!p) return '';
-  if (typeof p === 'string') return p;
-  return p.url || '';
+  if (typeof p === 'string') {
+    // String absolue http/https ou /uploads/ ok ; path /upload/images/ (relatif autre site) cassé.
+    if (/^https?:\/\//i.test(p) || p.startsWith('/uploads/')) return p;
+    return '';
+  }
+  // Objet : prioriser thumb_url (plus rapide load), fallback url, fallback webp_url, fallback name dans /uploads/.
+  return p.thumb_url || p.url || p.webp_url || '';
 }
 
 // M/2026/04/30/11 — helper unique pour formater l adresse du bien (Section II Bloc 01).
@@ -4656,7 +4663,16 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
                       border: isSelected ? '2px solid #7A5132' : '1px solid #E8DDD0',
                       background:'#F4ECE3', cursor: selectMode ? 'pointer' : 'default',
                       opacity: isSelected ? 0.85 : 1}}>
-              {src && <img src={src} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} onError={e => { e.target.style.display = 'none'; }}/>}
+              {src ? (
+                <img src={src} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} onError={e => { try { e.target.style.display = 'none'; e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'flex'); } catch (_) {} }}/>
+              ) : null}
+              {/* M/2026/05/05/36 — M-Hotfix-Thumbnails-Broken : placeholder visible si src cassé. */}
+              <div style={{display: src ? 'none' : 'flex', position:'absolute', inset:0, alignItems:'center', justifyContent:'center', flexDirection:'column', gap:4, color:'#8B7F6E', fontSize:9, fontFamily:'inherit', textAlign:'center', padding:6}}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.6}}>
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <span>Image indisponible</span>
+              </div>
               {/* M/2026/05/05/34 — M-Photos-Remove-IndividualX : croix individuelle supprimee.
                   Suppression photo = uniquement via mode Selectionner -> Supprimer (N) bulk delete V2. */}
               {selectMode && (
