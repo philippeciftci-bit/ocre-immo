@@ -4335,7 +4335,12 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
       return true;
     });
     const removedCount = list.length - newList.length;
-    onPhotosChange && onPhotosChange(newList);
+    // M/2026/05/05/47 — defensif : nouvelle reference + try/catch pour eviter blocage silencieux rerender.
+    try {
+      onPhotosChange && onPhotosChange([...newList]);
+    } catch (e) {
+      console.error('[PhotoUpload M/47] bulkDelete state update failed:', e);
+    }
     exitSelectMode();
     if (failedCount > 0) showToast && showToast(removedCount + ' photo(s) supprimee(s), ' + failedCount + ' echec(s)');
     else showToast && showToast(removedCount + ' photo' + (removedCount > 1 ? 's supprimees' : ' supprimee'));
@@ -4367,7 +4372,14 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
       throw new Error('non_json_response_http_' + r.status);
     }
     // M/2026/05/05/46 — retourne {photo, photos} pour permettre au handler de sync state authoritative DB.
-    if (d && d.ok && d.photo) return {photo: d.photo, photos: Array.isArray(d.photos) ? d.photos : null};
+    // M/2026/05/05/47 — sanitiser photos array : filtre null/undefined pour eviter exception downstream.
+    if (d && d.ok && d.photo) {
+      let serverPhotos = null;
+      if (Array.isArray(d.photos)) {
+        serverPhotos = d.photos.filter(p => p !== null && p !== undefined);
+      }
+      return {photo: d.photo, photos: serverPhotos};
+    }
     console.error('[PhotoUpload] backend rejected:', 'http=', r.status, 'body=', d, 'file:', f && f.name);
     throw new Error((d && d.error) || ('http_' + r.status));
   }
@@ -4411,10 +4423,18 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
     setUploading(0);
     const failed = toUpload.length - succeeded.length;
     // M/2026/05/05/46 — preferer lastServerPhotos (authoritative DB) au append local (race-safe).
-    if (lastServerPhotos) {
-      onPhotosChange && onPhotosChange(lastServerPhotos);
-    } else if (succeeded.length > 0) {
-      onPhotosChange && onPhotosChange([...list, ...succeeded]);
+    // M/2026/05/05/47 — defensif : nouvelle reference array forcee + try/catch global pour eviter
+    // qu une exception silencieuse bloque le rerender React (cause symptome "rien ne se passe").
+    try {
+      if (lastServerPhotos && Array.isArray(lastServerPhotos)) {
+        onPhotosChange && onPhotosChange([...lastServerPhotos]);
+      } else if (succeeded.length > 0) {
+        onPhotosChange && onPhotosChange([...list, ...succeeded]);
+      }
+    } catch (e) {
+      console.error('[PhotoUpload M/47] handleFiles state update failed:', e);
+      try { if (succeeded.length > 0) onPhotosChange && onPhotosChange([...list, ...succeeded]); }
+      catch (e2) { console.error('[PhotoUpload M/47] fallback failed:', e2); }
     }
     if (skipped > 0) showToast && showToast(succeeded.length + ' photo(s) ajoutee(s), ' + skipped + ' ignoree(s) (limite 30)');
     else if (failed > 0 && succeeded.length === 0) showToast && showToast('Echec upload : ' + (firstError || 'erreur') + ' (' + failed + '/' + toUpload.length + ')');
