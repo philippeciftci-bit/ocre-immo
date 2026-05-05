@@ -61,6 +61,80 @@ function checkOwnership($dossier_id, $user) {
     if (!$chk->fetch()) jsonError('Accès refusé', 403);
 }
 
+// M/2026/05/05/28 — M-Photos-Orphans-Purge-Fix : purge fichiers fs non referencees dans bien.photos JSON.
+// ROOT CAUSE : fichiers uploades disk mais bien.photos JSON pas a jour (auto-save M103 echoue silencieusement
+// ou multi-upload partiel). Resultat : fs=31, JSON=0, listPhotos compte 31 -> "Limite atteinte" alors que
+// l UI affiche 0. La purge se fait au debut de case 'upload' pour reparer automatiquement l etat ETB.
+function purgeUnreferenced($dossier_id) {
+    clearstatcache(true);
+    $dir = dossierDir($dossier_id);
+    // Lire bien.photos[] depuis le JSON client.
+    $referenced = [];
+    try {
+        $stmt = db()->prepare("SELECT data FROM clients WHERE id = ? LIMIT 1");
+        $stmt->execute([$dossier_id]);
+        $row = $stmt->fetch();
+        if ($row && !empty($row['data'])) {
+            $d = json_decode($row['data'], true);
+            $bp = $d['bien']['photos'] ?? null;
+            if (is_array($bp)) {
+                foreach ($bp as $p) {
+                    if (is_string($p) && $p !== '') $referenced[basename($p)] = true;
+                    elseif (is_array($p)) {
+                        if (!empty($p['name'])) $referenced[basename($p['name'])] = true;
+                        if (!empty($p['url'])) $referenced[basename($p['url'])] = true;
+                    }
+                }
+            }
+        }
+    } catch (Throwable $e) { return ['purged' => [], 'error' => $e->getMessage()]; }
+    // Si bien.photos est COMPLETEMENT vide (0 entree) ET il y a des fichiers fs : ne PAS purger
+    // (cas d un dossier nouvellement charge ou dont le JSON n a pas encore ete sync).
+    // On ne purge que si JSON contient au moins 1 photo (signal positif d un client live).
+    if (count($referenced) === 0) return ['purged' => [], 'note' => 'json_empty_skip_purge'];
+    $purged = [];
+    // Index originaux fs presents pour identifier les variants legitimes vs orphelins.
+    $existingOriginals = [];
+    foreach (glob($dir . '/*') ?: [] as $path) {
+        if (!is_file($path)) continue;
+        $name = basename($path);
+        if (preg_match('/\.(jpe?g|png)$/i', $name)) {
+            $existingOriginals[pathinfo($name, PATHINFO_FILENAME)] = $name;
+        }
+    }
+    foreach (glob($dir . '/*') ?: [] as $path) {
+        if (!is_file($path)) continue;
+        $name = basename($path);
+        $base = pathinfo($name, PATHINFO_FILENAME);
+        $isThumb = strpos($name, '_thumb.') !== false;
+        $thumbBase = $isThumb ? preg_replace('/_thumb$/', '', $base) : null;
+        $isOriginal = (bool) preg_match('/\.(jpe?g|png)$/i', $name);
+        $isWebpStandalone = preg_match('/\.webp$/i', $name) && !$isThumb && empty($existingOriginals[$base]);
+        // Original orphelin : pas dans referenced -> purge (avec variants).
+        if ($isOriginal && empty($referenced[$name])) {
+            if (@unlink($path)) {
+                $purged[] = $name;
+                // Cascade variants.
+                foreach ([$base . '.webp', $base . '_thumb.webp'] as $sub) {
+                    $subPath = $dir . '/' . $sub;
+                    if (is_file($subPath) && @unlink($subPath)) $purged[] = $sub;
+                }
+            }
+        }
+        // Thumb orphelin : sa base original n est ni dans referenced ni present sur fs.
+        elseif ($isThumb && $thumbBase && empty($existingOriginals[$thumbBase]) && empty($referenced[$thumbBase . '.jpg']) && empty($referenced[$thumbBase . '.jpeg']) && empty($referenced[$thumbBase . '.png'])) {
+            if (@unlink($path)) $purged[] = $name;
+        }
+        // Webp standalone orphelin : pas referenced ET pas sibling original.
+        elseif ($isWebpStandalone && empty($referenced[$name])) {
+            if (@unlink($path)) $purged[] = $name;
+        }
+    }
+    if (!empty($purged)) error_log('purgeUnreferenced dossier=' . $dossier_id . ' removed=' . count($purged));
+    clearstatcache(true);
+    return ['purged' => $purged];
+}
+
 function listPhotos($dossier_id) {
     // M/2026/05/05/21 — M-Photos-Backend-Count-Fix : ne compter QUE les fichiers ORIGINAUX JPEG/PNG,
     // pas les sous-produits du pipeline (photo_pipeline_compress genere <base>.webp + <base>_thumb.webp
@@ -124,11 +198,15 @@ switch ($action) {
             jsonError('Format non supporté (JPEG/PNG/WebP uniquement)');
         }
 
+        // M/2026/05/05/28 — M-Photos-Orphans-Purge-Fix : auto-purge fichiers non referencees dans bien.photos JSON
+        // AVANT le check de limite. Repare automatiquement la desync fs/JSON sans intervention manuelle (Philippe a accumule
+        // 31 orphelins par auto-save partiel des multi-uploads). Ceinture+bretelles : si JSON vide, skip purge (safe).
+        $_purgeRes = purgeUnreferenced($dossier_id);
+        if (!empty($_purgeRes['purged'])) error_log('upload pre-check auto-purge dossier=' . $dossier_id . ' removed=' . count($_purgeRes['purged']));
         $existing = listPhotos($dossier_id);
         // M/2026/05/05/22 — M-Photos-Limit-State-Stuck : message d erreur verbose pour diag (count exact backend).
-        // Permet d identifier si le backend pense etre a 30 alors que l UI affiche moins.
         if (count($existing) >= UPLOAD_MAX_PER_DOSSIER) {
-            jsonError('Limite atteinte (count=' . count($existing) . ', limit=' . UPLOAD_MAX_PER_DOSSIER . ')', 409);
+            jsonError('Limite atteinte (count_db=' . count($existing) . ', count_fs=' . count($existing) . ', limit=' . UPLOAD_MAX_PER_DOSSIER . ')', 409);
         }
 
         // V18.39 — quotas globaux : 500 Mo total photos par user (100/dossier déjà couvert
@@ -242,6 +320,18 @@ switch ($action) {
             }
         }
         jsonOk(['purged' => $purged, 'count_after' => count(listPhotos($dossier_id))]);
+    }
+
+    // M/2026/05/05/28 — M-Photos-Orphans-Purge-Fix : endpoint maintenance, supprime fichiers fs non
+    // referencees dans bien.photos JSON. Idempotent. Accessible via curl avec auth + ownership.
+    case 'purge_unreferenced': {
+        $user = requireAuth();
+        $dossier_id = (int)(($_GET['dossier_id'] ?? $_POST['dossier_id'] ?? 0));
+        if (!$dossier_id) jsonError('dossier_id requis');
+        checkOwnership($dossier_id, $user);
+        $res = purgeUnreferenced($dossier_id);
+        $count_after = count(listPhotos($dossier_id));
+        jsonOk(['purged' => $res['purged'] ?? [], 'count_after' => $count_after, 'note' => $res['note'] ?? null]);
     }
 
     // M/2026/04/30/43 — Bloc 13 Documents : PDF + scans CIN/RIB. Stockage /uploads/<id>/documents/.
