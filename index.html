@@ -21807,7 +21807,12 @@ function FormView(props) {
                 utiliser le pattern editing && editing.id pour eviter ReferenceError "Can't find variable dossierId". */}
             <PhotoUpload dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null} showToast={showToast}
               photos={Array.isArray(d.bien && d.bien.photos) ? d.bien.photos : []}
-              onPhotosChange={v => setB('photos', v, {commit: true})}/>
+              onPhotosChange={v => set('bien', {...(d.bien || {}), photos: Array.isArray(v) ? [...v] : v}, {commit: true})}/>
+            {/* M/2026/05/05/49 — fix root cause : setB n existait pas dans le scope FormView (defini uniquement
+                dans BienForm). Quand Stage V a ete extrait (M/31), l appel setB('photos', v) renvoyait
+                ReferenceError silent attrape par try/catch M/47 -> aucun rerender React -> Philippe ne voyait
+                rien changer. Remplace par set('bien', {...}) qui existe bien dans FormView (line 20392).
+                Spread Array forcerait nouvelle reference pour rerender garanti. */}
           </div>
         </Stage>
         </div>
