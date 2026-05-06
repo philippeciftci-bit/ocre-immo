@@ -21133,11 +21133,26 @@ function FormView(props) {
   }, [profilPickerOpen]);
   function toggleProfilPicker() {
     if (profilBtnRef.current) {
+      // M/2026/05/06/81 — fix positioning : si pastille a gauche de l ecran, picker s ouvre vers la droite
+      // (left ancrage). Sinon ancrage right comme avant. Garde-fou viewport >= 8px sur les 2 cotes.
       const r = profilBtnRef.current.getBoundingClientRect();
-      setProfilPickerPos({
-        top: Math.round(r.bottom + 4),
-        right: Math.round(window.innerWidth - r.right),
-      });
+      const winW = window.innerWidth;
+      const PICKER_MIN_W = 200, PICKER_MAX_W = 280, MARGIN = 8;
+      const isLeftSide = (r.left + r.width / 2) < (winW / 2);
+      const top = Math.round(r.bottom + 4);
+      let pos = {top};
+      if (isLeftSide) {
+        // ancrer left sur la pastille, garde-fou right pour ne pas deborder
+        let left = Math.max(MARGIN, Math.round(r.left));
+        if (left + PICKER_MAX_W > winW - MARGIN) left = Math.max(MARGIN, winW - PICKER_MAX_W - MARGIN);
+        pos.left = left;
+      } else {
+        // ancrer right comme avant, garde-fou left
+        let right = Math.max(MARGIN, Math.round(winW - r.right));
+        if (right + PICKER_MAX_W > winW - MARGIN) right = Math.max(MARGIN, winW - PICKER_MAX_W - MARGIN);
+        pos.right = right;
+      }
+      setProfilPickerPos(pos);
     }
     setProfilPickerOpen(o => !o);
   }
@@ -22078,21 +22093,15 @@ function FormView(props) {
                   Brouillon
                 </span>
               )}
-              {/* M/2026/05/06/74 — pastille profil TOUJOURS rendue. Placeholder dashed cliquable si profil null en brouillon. */}
-              {_isPrincipalBar ? (
+              {/* M/2026/05/06/74 — pastille profil rendue uniquement si profil choisi.
+                  M/2026/05/06/81 — placeholder dashed barre client SUPPRIME (redondant avec Section 1). */}
+              {_isPrincipalBar && (
                 <button type="button"
                   onClick={(e) => { e.stopPropagation(); if (_profilClickableBar) toggleProfilPicker(); }}
                   disabled={!_profilClickableBar}
                   title={_profilClickableBar ? 'Changer le profil' : 'Profil verrouille apres enregistrement'}
                   style={{padding:'2px 8px', borderRadius:10, background:_profilColorBar, color:'#fff', fontSize:9.5, fontWeight:700, letterSpacing:0.4, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', border:'none', cursor: _profilClickableBar ? 'pointer' : 'default', opacity: _profilClickableBar ? 1 : 0.92}}>
                   {_profilLabelBar}
-                </button>
-              ) : (
-                <button type="button"
-                  onClick={(e) => { e.stopPropagation(); toggleProfilPicker(); }}
-                  title="Choisir un profil"
-                  style={{padding:'2px 8px', borderRadius:10, background:'transparent', border:'1.5px dashed #C9B79A', color:'#5C3B1E', fontStyle:'italic', fontSize:9.5, fontWeight:600, whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', cursor:'pointer'}}>
-                  Choisir un profil
                 </button>
               )}
             </div>
@@ -22206,9 +22215,10 @@ function FormView(props) {
             profilPickerPos calcule au tap (getBoundingClientRect du bouton). Tap exterieur ferme
             via useEffect listener mousedown+touchstart. */}
         {profilPickerOpen && (
-          // M/2026/05/06/75 — picker etendu de 4 a 7 profils (Promoteur + MarchandBiens + Investisseur ajoutes).
+          // M/2026/05/06/75 — picker etendu de 4 a 7 profils.
+          // M/2026/05/06/81 — positioning ancrage left ou right selon cote ecran (anti-debordement).
           <div ref={profilPopupRef} onClick={e => e.stopPropagation()}
-            style={{position:'fixed', top:profilPickerPos.top + 'px', right:profilPickerPos.right + 'px', zIndex:1000, background:'#fff', border:'1px solid #C9B79A', borderRadius:10, boxShadow:'0 6px 16px rgba(60,40,20,.18)', padding:6, display:'grid', gridTemplateColumns:'1fr 1fr', gap:5, fontFamily:'inherit', minWidth:200, maxWidth:280}}>
+            style={{position:'fixed', top:profilPickerPos.top + 'px', ...(profilPickerPos.left != null ? {left: profilPickerPos.left + 'px'} : {right: profilPickerPos.right + 'px'}), zIndex:1000, background:'#fff', border:'1px solid #C9B79A', borderRadius:10, boxShadow:'0 6px 16px rgba(60,40,20,.18)', padding:6, display:'grid', gridTemplateColumns:'1fr 1fr', gap:5, fontFamily:'inherit', minWidth:200, maxWidth:280}}>
             {[
               {k:'Acheteur',       l:'Acheteur',           color:'#8B5E3C'},
               {k:'Vendeur',        l:'Vendeur',            color:'#1E3A5F'},
@@ -22275,7 +22285,9 @@ function FormView(props) {
                        <button ref={profilBtnRef} type="button"
                          onClick={(e) => { e.stopPropagation(); toggleProfilPicker(); }}
                          title="Choisir un profil"
-                         style={{padding:'5px 11px', borderRadius:99, background:'transparent', border:'1.5px dashed #C9B79A', color:'#5C3B1E', fontStyle:'italic', fontSize:10.5, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, cursor:'pointer'}}>
+                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(192,57,43,0.1)'}
+                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                         style={{padding:'5px 11px', borderRadius:99, background:'transparent', border:'1.5px dashed #C0392B', color:'#C0392B', fontStyle:'italic', fontSize:10.5, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, cursor:'pointer'}}>
                          Choisir un profil
                        </button>
                      )}
