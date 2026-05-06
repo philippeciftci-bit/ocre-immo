@@ -30,7 +30,6 @@ case 'context': {
             'display_name' => $ctx['workspace']['display_name'],
             'country_code' => $ctx['workspace']['country_code'],
         ],
-        'mode' => $ctx['mode'],
         'is_super_admin' => $ctx['is_super_admin'],
         'is_readonly' => $ctx['is_readonly'],
         'membership_role' => $ctx['membership']['role'] ?? null,

@@ -113,14 +113,7 @@
     if (c.is_super_admin && c.is_readonly) {
       banners.push({ cls: 'v20-banner-superadmin', txt: 'Vue super-administrateur · Lecture seule' });
     }
-    // M/2026/04/29/21 — Bandeau MODE TEST supprime franchement, remplace par
-    // indicateur compact "test" rouge dans le header app (cf TestBadge inline
-    // dans le wordmark OcreTitle, exposition globale via window.__ocreMode).
-    if (c.workspace.type === 'wsp' && c.mode === 'test') {
-      try { window.__ocreMode = 'test'; } catch (e) {}
-    } else {
-      try { window.__ocreMode = c.mode || 'agent'; } catch (e) {}
-    }
+    // M84 — mode test/agent supprime, plus de window.__ocreMode.
     if (c.rupture_pending) {
       const d = new Date(c.rupture_pending.scheduled_for);
       const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' });
@@ -141,33 +134,26 @@
   }
 
   // === Switcher overlay (tap logo) ===
-  // M/2026/04/30/32 — refonte switcher : pas de repetition prenom user courant + WSc avec
-  // prenoms des autres membres tries alpha + WS test rouge en bas + separateurs discrets
-  // entre 3 zones (perso / WSc / test) sans labels textes "MON ESPACE/PARTAGES/TEST".
+  // M/2026/05/06/84 — refonte simplifie : un seul mode par tenant (suppression
+  // mode test). Switcher liste WS perso + WSc partages, plus de WS test rouge.
   function openSwitcher() {
     const wsp = state.workspaces.filter(w => w.type === 'wsp');
     const wsc = state.workspaces.filter(w => w.type === 'wsc' && w.pact_active);
     const cur = state.ctx ? state.ctx.workspace.slug : '';
-    const curMode = state.ctx ? state.ctx.mode : 'agent';
     const u = state.ctx && state.ctx.user ? state.ctx.user : {};
-    // M/2026/05/01/3 — fallback robuste prenom user (bug "WS mon" hardcode regression M56).
-    // Ordre : firstname / first_name / prenom / display_name (split first word) / email avant @ / 'Mon espace' italic.
     let userFirstname = u.firstname || u.first_name || u.prenom || '';
     if (!userFirstname && u.display_name) userFirstname = String(u.display_name).split(' ')[0];
     if (!userFirstname && u.email) userFirstname = String(u.email).split('@')[0];
     if (!userFirstname) userFirstname = '';
 
-    const goto = (slug, mode) => {
-      if (mode) document.cookie = `OCRE_MODE_${slug.toUpperCase()}=${mode};path=/;max-age=31536000`;
+    const goto = (slug) => {
       location.href = `https://${slug}.ocre.immo/`;
     };
 
     const sep = () => el('div', { style: 'border-top:1px solid #E5DCC4;margin:14px 0' });
     const children = [];
-    // Section 1 : WS perso mode agent par defaut. Pas de "Mode agent" libelle.
     wsp.forEach(w => {
-      const active = (w.slug === cur && curMode === 'agent');
-      // M/2026/05/01/3 — si pas de prenom, fallback italique "Mon espace" (signal pas hardcode "mon").
+      const active = (w.slug === cur);
       let labelNode;
       if (userFirstname) {
         labelNode = el('strong', {}, 'WS ' + userFirstname);
@@ -177,15 +163,13 @@
       children.push(
         el('div', {
           class: 'v20-row v20-ws-row' + (active ? ' active' : ''),
-          onclick: () => goto(w.slug, 'agent'),
+          onclick: () => goto(w.slug),
         }, labelNode)
       );
     });
-    // Section 2 : WSc (uniquement si > 0). Pas de label "Partenariats".
     if (wsc.length) {
       children.push(sep());
       wsc.forEach(w => {
-        // Prenoms des AUTRES membres uniquement, tries alpha, separes ", ".
         const others = (w.other_members || [])
           .map(m => (typeof m === 'string' ? m : (m && (m.firstname || m.display_name || m.email))))
           .filter(Boolean)
@@ -200,19 +184,6 @@
           }, el('strong', {}, label))
         );
       });
-    }
-    // Section 3 : WS test (toujours visible, rouge). WS perso mode test.
-    if (wsp.length) {
-      children.push(sep());
-      const w = wsp[0];
-      const active = (w.slug === cur && curMode === 'test');
-      children.push(
-        el('div', {
-          class: 'v20-row v20-ws-row v20-ws-test' + (active ? ' active' : ''),
-          style: 'color:#DC2626',
-          onclick: () => goto(w.slug, 'test'),
-        }, el('strong', {}, 'WS test'))
-      );
     }
     children.push(
       el('div', { style: 'margin-top:18px;padding-top:14px;border-top:1px solid #E5DDC8' },
@@ -533,7 +504,6 @@
     if (!user || user.tour_completed_at) return;
     const slides = [
       { h: 'Tes dossiers, tes contacts', p: 'Crée et suis tes clients, tes biens, tes mandats dans un espace strictement privé.' },
-      { h: 'Mode test pour t\'entraîner', p: 'Tape sur le logo en haut à gauche pour basculer entre Mode agent et Mode test (dossiers d\'exemple).' },
       { h: 'Workspace partagé', p: 'Crée un partenariat avec un autre agent : pacte digital, dossiers partagés, rupture 48h.' },
     ];
     let i = 0;

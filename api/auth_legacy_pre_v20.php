@@ -8,11 +8,9 @@ $input = getInput();
 switch ($action) {
 
     case 'status': {
-        $mode_test = getSetting('mode_test', '0') === '1';
         $mode_auth_email = getSetting('mode_auth_email', '1') === '1';
         $mode_maintenance = getSetting('mode_maintenance', '0') === '1';
         jsonOk([
-            'mode_test' => $mode_test,
             'mode_auth_email' => $mode_auth_email,
             'mode_maintenance' => $mode_maintenance,
             'app_name' => getSetting('app_name', 'Ocre Immo'),
@@ -111,38 +109,8 @@ switch ($action) {
     }
 
     case 'test_login': {
-        if (getSetting('mode_test', '0') !== '1') jsonError('Mode test désactivé', 403);
-        $pwd = (string)($input['password'] ?? '');
-        $expected = getSetting('test_password', '');
-        if (!$expected || !hash_equals($expected, $pwd)) jsonError('Mot de passe test invalide', 401);
-        $stmt = db()->prepare("SELECT * FROM users WHERE email = 'test@ocre.immo' LIMIT 1");
-        $stmt->execute();
-        $u = $stmt->fetch();
-        if (!$u) {
-            db()->prepare(
-                "INSERT INTO users (email, password_hash, role, prenom, nom, active)
-                 VALUES ('test@ocre.immo', 'PLACEHOLDER', 'visiteur', 'Testeur', '', 1)"
-            )->execute();
-            $uid = (int)db()->lastInsertId();
-            $stmt = db()->prepare("SELECT * FROM users WHERE id = ?");
-            $stmt->execute([$uid]);
-            $u = $stmt->fetch();
-        }
-        $token = bin2hex(random_bytes(32));
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-        $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
-        db()->prepare(
-            "INSERT INTO sessions (token, user_id, expires_at, ip, user_agent)
-             VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 86400 SECOND), ?, ?)"
-        )->execute([$token, $u['id'], $ip, $ua]);
-        logAction((int)$u['id'], 'test_login');
-        jsonOk([
-            'token' => $token, 'test_mode' => true,
-            'user' => [
-                'id' => (int)$u['id'], 'email' => $u['email'],
-                'prenom' => $u['prenom'], 'nom' => $u['nom'], 'role' => $u['role'],
-            ],
-        ]);
+        // M84 — endpoint test_login deprecated. Mode test supprime, plus de bypass auth.
+        jsonError('Mode test désactivé', 410);
     }
 
     case 'logout': {

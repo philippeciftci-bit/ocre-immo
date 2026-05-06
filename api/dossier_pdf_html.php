@@ -1,10 +1,9 @@
 <?php
-// M/2026/04/29/24 — Refonte complete maquette C 3 pages (cover mosaïque + descriptif
-// editorial + fiche technique). Cormorant Garamond + DM Sans. Indicateur test si mode test.
+// M/2026/04/29/24 + M/2026/05/06/84 — Refonte complete maquette C 3 pages
+// (cover mosaïque + descriptif editorial + fiche technique). Cormorant Garamond + DM Sans.
 // Cible : DossierPdfView (in-app viewer) + impression A4 (Philippe declenche manuellement
 // via bouton Partager / Imprimer dans le viewer).
 require_once __DIR__ . '/db.php';
-$_isTestMode = (isset($_v20_mode) && $_v20_mode === 'test');
 
 // M/2026/05/01/7 — Mode public via ?token=<32hex> : bypass auth, lookup shared_links V20,
 // flags hide_* lus depuis DB (anti-contournement URL). Sinon flow agent authentifie standard.
@@ -35,18 +34,15 @@ if ($shareToken && strlen($shareToken) >= 32) {
         echo "</body></html>";
         exit;
     }
-    // Charge dossier dans la WSp source (mode agent puis fallback test).
+    // M84 : une seule DB par tenant (suppression mode test).
     $slug_clean = preg_replace('/[^a-z0-9_-]/', '', $linkRow['wsp_slug']);
     $dossier = null;
-    foreach (['', '_test'] as $suffix) {
-        try {
-            $pdoWsp = pdo_workspace('ocre_wsp_' . $slug_clean . $suffix);
-            $d = $pdoWsp->prepare("SELECT * FROM clients WHERE id = ? AND deleted_at IS NULL LIMIT 1");
-            $d->execute([(int)$linkRow['dossier_id']]);
-            $r = $d->fetch();
-            if ($r) { $dossier = $r; if ($suffix === '_test') $_isTestMode = true; break; }
-        } catch (Throwable $e) {}
-    }
+    try {
+        $pdoWsp = pdo_workspace('ocre_wsp_' . $slug_clean);
+        $d = $pdoWsp->prepare("SELECT * FROM clients WHERE id = ? AND deleted_at IS NULL LIMIT 1");
+        $d->execute([(int)$linkRow['dossier_id']]);
+        $dossier = $d->fetch() ?: null;
+    } catch (Throwable $e) {}
     if (!$dossier) { http_response_code(404); echo 'Dossier introuvable'; exit; }
     $dossierId = (int)$linkRow['dossier_id'];
     $_isShareView = true;

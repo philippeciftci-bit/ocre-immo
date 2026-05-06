@@ -33,7 +33,6 @@ case 'list': {
 
 case 'toggle': {
     require_write_access($ctx);
-    if ($ctx['mode'] !== 'agent') jout(['ok' => false, 'error' => 'agent mode only'], 403);
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
     $key = (string)($input['field_key'] ?? '');
     $enabled = !empty($input['enabled']) ? 1 : 0;

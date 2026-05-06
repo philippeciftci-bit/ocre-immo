@@ -53,7 +53,6 @@ if [[ -z "$OWNER_UID" ]]; then
 fi
 
 DB_AGENT="ocre_wsp_${SLUG}"
-DB_TEST="ocre_wsp_${SLUG}_test"
 APP_USER="ocre_app"
 SCHEMA="$(cd "$(dirname "$0")/.." && pwd)/migrations/tenant-schema-v2.sql"
 
@@ -62,23 +61,19 @@ if [[ ! -f "$SCHEMA" ]]; then
   exit 2
 fi
 
+# M84 : une seule DB par tenant (suppression DB _test).
 mysql -uroot -p"$ROOT_PWD" -e "
 CREATE DATABASE IF NOT EXISTS \`${DB_AGENT}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE DATABASE IF NOT EXISTS \`${DB_TEST}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 GRANT ALL PRIVILEGES ON \`${DB_AGENT}\`.* TO '${APP_USER}'@'localhost';
-GRANT ALL PRIVILEGES ON \`${DB_TEST}\`.* TO '${APP_USER}'@'localhost';
 FLUSH PRIVILEGES;
 "
 
 mysql -uroot -p"$ROOT_PWD" --database="${DB_AGENT}" < "$SCHEMA"
-mysql -uroot -p"$ROOT_PWD" --database="${DB_TEST}"  < "$SCHEMA"
 
-for DB in "${DB_AGENT}" "${DB_TEST}"; do
-  mysql -uroot -p"$ROOT_PWD" --database="${DB}" -e "
-    INSERT IGNORE INTO users (id, email, active)
-    VALUES (${OWNER_UID}, 'local@${SLUG}', 1);
-  "
-done
+mysql -uroot -p"$ROOT_PWD" --database="${DB_AGENT}" -e "
+  INSERT IGNORE INTO users (id, email, active)
+  VALUES (${OWNER_UID}, 'local@${SLUG}', 1);
+"
 
 DISPLAY_ESC="${DISPLAY_NAME//\'/\\\'}"
 [[ -z "$DISPLAY_ESC" ]] && DISPLAY_ESC="$SLUG"
@@ -92,4 +87,4 @@ INSERT IGNORE INTO ocre_meta.workspace_members (workspace_id, user_id, role)
 SELECT id, ${OWNER_UID}, 'owner' FROM ocre_meta.workspaces WHERE slug = '${SLUG}';
 "
 
-echo "OK ${DB_AGENT} + ${DB_TEST} + meta workspaces+members (owner=${OWNER_UID})"
+echo "OK ${DB_AGENT} + meta workspaces+members (owner=${OWNER_UID})"

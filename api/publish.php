@@ -87,10 +87,6 @@ switch ($action) {
     }
 
     case 'publish': {
-        // M/2026/04/30/32 — verrou mode test : interdit publication depuis le sandbox.
-        // Le mode est lu via cookie OCRE_MODE_<SLUG> ou via $_v20_mode (cf router.php).
-        $mode = $_v20_mode ?? '';
-        if ($mode === 'test') jsonError('Mode test : publication indisponible', 403);
         checkRateLimit('publish_bien', 10, 3600, (int) $user['id']);
         $id = (int) ($input['client_id'] ?? 0);
         if (!$id) jsonError('client_id requis');

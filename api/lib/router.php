@@ -109,18 +109,9 @@ function resolve_workspace_context(): array {
         exit;
     }
 
-    // Mode test/agent pour WSp via session-key dans ocre_meta.sessions ?
-    // Approche simple : key dans sessions table via colonne json (extension future).
-    // V20 phase 3 minimal : detecter via cookie OCRE_MODE_<slug>.
-    $mode = 'agent';
-    if ($workspace['type'] === 'wsp') {
-        $cookieKey = 'OCRE_MODE_' . strtoupper($slug);
-        $mode = $_COOKIE[$cookieKey] ?? 'agent';
-        if (!in_array($mode, ['agent', 'test'], true)) $mode = 'agent';
-    }
-
+    // M84 : un seul mode par tenant (suppression mode test). DB_NAME = ocre_wsp_<slug>.
     $db_name = match ((string)$workspace['type']) {
-        'wsp' => 'ocre_wsp_' . $slug . ($mode === 'test' ? '_test' : ''),
+        'wsp' => 'ocre_wsp_' . $slug,
         'wsc' => 'ocre_wsc_' . $slug,
         default => '',
     };
@@ -131,7 +122,6 @@ function resolve_workspace_context(): array {
         'membership' => $membership,
         'is_super_admin' => $is_super_admin,
         'is_readonly' => $is_super_admin && !$membership,
-        'mode' => $mode,
         'db_name' => $db_name,
     ];
 }

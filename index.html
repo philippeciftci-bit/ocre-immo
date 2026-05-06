@@ -12705,7 +12705,7 @@ function HelpPage({onBack}) {
   const FAQ = [
     {section: 'Démarrage', items: [
       {q: 'Comment ajouter un dossier ?', a: 'Tap sur le bouton + dans la liste principale. Choisis le profil (Acheteur, Vendeur…) et remplis les sections progressivement. Les champs marqués d\'une astérisque sont obligatoires.'},
-      {q: 'Comment basculer entre mes espaces ?', a: 'Tap sur le logo OCRE en haut à gauche pour ouvrir le sélecteur. Tu y trouves tes workspaces (mode agent et mode test) ainsi que les partenariats actifs.'},
+      {q: 'Comment basculer entre mes espaces ?', a: 'Tap sur le logo OCRE en haut à gauche pour ouvrir le sélecteur. Tu y trouves ton espace personnel ainsi que les partenariats actifs.'},
     ]},
     {section: 'Dossiers', items: [
       {q: 'A quoi sert le toggle Investisseur ?', a: 'Le toggle Investisseur (orthogonal aux 4 profils principaux) bascule la Section III en mode rendement (rentabilite locative, dispositifs fiscaux). Active-le si le contact achete pour investir / louer.'},
@@ -17235,31 +17235,6 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
           </div>
         )}
 
-        {!loading && (() => {
-          const slug = (location.host.match(/^([a-z0-9-]+)\.ocre\.immo/) || [])[1] || '';
-          const ck = document.cookie.split('; ').find(c => c.startsWith('OCRE_MODE_' + slug.toUpperCase() + '='));
-          const mode = ck ? ck.split('=')[1] : 'agent';
-          if (mode !== 'test') return null;
-          return (
-            <div className="ocre-card" style={{marginTop:14}}>
-              <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, color:'#8B5E3C', fontWeight:700, marginBottom:6}}>Mode test</div>
-              <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14, lineHeight:1.5}}>
-                10 dossiers démo canoniques (3 paires conçues pour matcher) sont injectés à l'inscription. Ce bouton réinjecte les dossiers manquants si tu en as supprimé. <b>N'écrase jamais</b> les dossiers que tu as saisis toi-même.
-              </div>
-              <button type="button" className="ocre-tile state-default"
-                onClick={async () => {
-                  try {
-                    const r = await fetch(API + '/seed.php?action=restore_test_seed', {method:'POST', headers:{'X-Session-Token': token()}});
-                    const d = await r.json();
-                    if (d && d.ok) showToast && showToast(d.inserted + ' dossier(s) démo restauré(s) (' + d.skipped + ' déjà présent(s))');
-                    else showToast && showToast((d && d.error) || 'Échec');
-                  } catch (e) { showToast && showToast('Erreur réseau'); }
-                }}
-                style={{width:'100%'}}>Restaurer les dossiers démo</button>
-            </div>
-          );
-        })()}
-
         {!loading && (
           <div className="ocre-card" style={{marginTop:14}}>
             <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, color:'#8B5E3C', fontWeight:700, marginBottom:6}}>Notifications email</div>
@@ -17322,51 +17297,8 @@ function OcreLogo({size = 36}) {
 }
 
 // V18.19 — titre bi-typo. "OCRE" Cormorant ocre bold + "immo" Caveat noir manuscrit.
-// Les deux 'i' (logo + immo) partagent Caveat pour cohérence visuelle.
-// M/2026/04/29/21 — TestBadge "test" rouge accessible (#DC2626) à côté du wordmark
-// si mode test actif. Detection : cookie OCRE_MODE_<SLUG>=test (lecture côté React,
-// fallback window.__ocreMode populé par v20-bridge).
-function useTestMode() {
-  const [isTest, setIsTest] = React.useState(() => {
-    try {
-      if (typeof window !== 'undefined' && window.__ocreMode === 'test') return true;
-      const slug = (location.host.match(/^([a-z0-9-]+)\.ocre\.immo/) || [])[1] || '';
-      if (!slug) return false;
-      const ck = document.cookie.split('; ').find(c => c.startsWith('OCRE_MODE_' + slug.toUpperCase() + '='));
-      return ck && ck.split('=')[1] === 'test';
-    } catch (e) { return false; }
-  });
-  React.useEffect(() => {
-    const id = setInterval(() => {
-      try {
-        const slug = (location.host.match(/^([a-z0-9-]+)\.ocre\.immo/) || [])[1] || '';
-        if (!slug) return;
-        const ck = document.cookie.split('; ').find(c => c.startsWith('OCRE_MODE_' + slug.toUpperCase() + '='));
-        const next = (ck && ck.split('=')[1] === 'test') || window.__ocreMode === 'test';
-        setIsTest(prev => prev !== next ? next : prev);
-      } catch (e) {}
-    }, 2000);
-    return () => clearInterval(id);
-  }, []);
-  return isTest;
-}
-// M/2026/04/29/22 — TestBadge sous le wordmark, taille ~18px, lowercase, rouge accessible.
-// Single source of truth : ce composant porte taille/couleur ; les call-sites OcreTitle
-// et OcreLogoButton wrappent leur wordmark dans un flex column pour positionner le badge
-// en-dessous (pas à côté). PDF et share répliquent la même structure visuelle CSS.
-function TestBadge() {
-  const isTest = useTestMode();
-  if (!isTest) return null;
-  return (
-    <div className="test-badge" style={{
-      fontFamily:'"DM Sans", system-ui, sans-serif',
-      fontSize:18, fontWeight:500, letterSpacing:1.5,
-      color:'#DC2626', textTransform:'lowercase',
-      lineHeight:1, marginTop:2, textAlign:'center',
-      whiteSpace:'nowrap'
-    }}>test</div>
-  );
-}
+// M/2026/05/06/84 — TestBadge supprime (mode test/agent supprime, une seule DB par tenant).
+function TestBadge() { return null; }
 function OcreTitle() {
   return (
     <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>

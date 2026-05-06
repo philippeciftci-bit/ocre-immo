@@ -1,6 +1,6 @@
 <?php
-// V20 phase 3 — auth multi-tenant. Login mail+password (ocre_meta.users + sessions),
-// switch-mode (cookie OCRE_MODE_<slug>), status, logout.
+// V20 phase 3 + M84 — auth multi-tenant. Login mail+password (ocre_meta.users +
+// sessions), status, logout. Mode test/agent supprime en M84 (une seule DB par tenant).
 require_once __DIR__ . '/lib/router.php';
 
 header('Access-Control-Allow-Origin: *');
@@ -32,7 +32,6 @@ case 'status': {
         'ok' => true,
         'app_name' => 'Ocre Immo',
         'app_tagline' => 'CRM Immobilier multi-tenant',
-        'mode_test' => false,
         'mode_auth_email' => true,
         'mode_maintenance' => false,
         'max_photos_per_dossier' => $_max_photos,
@@ -123,17 +122,7 @@ case 'register': {
         @exec('sudo /opt/ocre-app/scripts/provision-tenant.sh ' . escapeshellarg($slug) . ' ' . escapeshellarg((string) $user_id) . ' 2>&1', $provOut, $provRc);
         $tenant_provisioned = ($provRc === 0);
 
-        // M/2026/04/28/16 — Hook seeder mode test : injecte les 10 dossiers
-        // canoniques dans ocre_wsp_<slug>_test dès la création du WSp.
-        // M/2026/04/28/30 — applyCanonicalMatches retiré : c'est l'algo
-        // /api/matching.php?action=rejouer_complet qui calcule désormais.
-        if ($tenant_provisioned) {
-            try {
-                require_once __DIR__ . '/lib/seed_helpers.php';
-                $testPdo = pdo_workspace('ocre_wsp_' . $slug . '_test');
-                applySeedToTenant($testPdo, (int) $user_id);
-            } catch (Throwable $e) { /* seed best-effort, ne bloque pas l'inscription */ }
-        }
+        // M84 : seeder mode test supprime (plus de DB _test, plus de dossiers demo).
 
         // Envoi mail OBLIGATOIRE pour valider la transaction.
         $mail_sent = false;
@@ -347,27 +336,6 @@ case 'me': {
         ],
         'workspaces' => $ws_stmt->fetchAll(),
     ]);
-}
-
-case 'switch_mode': {
-    $u = current_user_or_401();
-    $slug = strtolower(preg_replace('/[^a-z0-9-]/', '', (string)($input['workspace_slug'] ?? '')));
-    $mode = $input['mode'] ?? 'agent';
-    if (!in_array($mode, ['agent', 'test'], true)) jout(['ok' => false, 'error' => 'mode invalide'], 400);
-    $check = pdo_meta()->prepare(
-        "SELECT m.role, w.type FROM workspace_members m
-         JOIN workspaces w ON w.id = m.workspace_id
-         WHERE w.slug = ? AND m.user_id = ? AND m.left_at IS NULL AND w.archived_at IS NULL"
-    );
-    $check->execute([$slug, $u['id']]);
-    $r = $check->fetch();
-    if (!$r) jout(['ok' => false, 'error' => 'Pas membre de ce workspace'], 403);
-    if ($r['type'] !== 'wsp') jout(['ok' => false, 'error' => 'Mode test/agent uniquement sur WSp'], 400);
-    setcookie('OCRE_MODE_' . strtoupper($slug), $mode, [
-        'expires' => time() + 86400 * 30,
-        'path' => '/', 'domain' => '.ocre.immo', 'secure' => true, 'httponly' => false, 'samesite' => 'Lax',
-    ]);
-    jout(['ok' => true, 'workspace_slug' => $slug, 'mode' => $mode]);
 }
 
 case 'logout': {
