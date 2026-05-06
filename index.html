@@ -499,14 +499,14 @@ const PROFILS_LABEL = {
 // M/2026/05/06/78 — Stage VI "Mandat et frais" ajoute pour Vendeur/Promoteur/MarchandBiens.
 const STAGES = {
   Acheteur:      ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  Vendeur:       ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais"],
+  Vendeur:       ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
   Investisseur:  ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Activité & documents", "V. Photos"],
   Bailleur:      ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
   Locataire:     ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
   Curieux:       ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
   // M/2026/05/06/71 — Promoteur + Marchand de biens : structure clonee Vendeur (bien en vente).
-  Promoteur:     ["I. Le Promoteur",   "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais"],
-  MarchandBiens: ["I. Le Marchand",    "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais"]
+  Promoteur:     ["I. Le Promoteur",   "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
+  MarchandBiens: ["I. Le Marchand",    "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"]
 };
 // V17.4 : suggestions "Aussi…" selon profil courant.
 const BASCULES = {
@@ -20838,6 +20838,189 @@ function PhotosPreviewRow({photos, count}) {
   );
 }
 
+// M/2026/05/06/79 — Section VII Notaire & Avocat : referentiel pays France/Maroc.
+const M79_COUNTRY_REF = {
+  FR: {
+    flag: '🇫🇷', name: 'France',
+    diagnostics: [
+      {id:'dpe',            label:'DPE',                 info:'Diagnostic de Performance Energetique',  required:true},
+      {id:'carrez',         label:'Loi Carrez',          info:'Superficie privative (copropriete)',     required:true},
+      {id:'plomb',          label:'Plomb (CREP)',        info:'Avant 1949',                              required:true},
+      {id:'amiante',        label:'Amiante',             info:'Avant 1997',                              required:true},
+      {id:'termites',       label:'Termites',            info:'Zones a risque',                          required:true},
+      {id:'gaz_elec',       label:'Gaz / Electricite',   info:'Installations > 15 ans',                  required:true},
+      {id:'erp',            label:'ERP',                 info:'Etat des Risques et Pollutions',          required:true},
+      {id:'assainissement', label:'Assainissement non collectif', info:'Si applicable',                  required:false},
+    ],
+    legal: [
+      {id:'sru',            label:'Loi SRU',             text:'Delai de retractation acheteur de 10 jours a compter de la signature du compromis.'},
+      {id:'cond_susp',      label:'Conditions suspensives', text:'Standard : financement, urbanisme, servitudes.'},
+      {id:'mutation',       label:'Droits de mutation',  text:'5,8 % a charge acheteur (hors honoraires).'},
+      {id:'tva_honoraires', label:'TVA honoraires',      text:'20 % sur honoraires agence.'},
+    ],
+    blockHeaders: {pieces:'07c · Diagnostics DDT', legal:'07d · Delais & retractation', notaire:'Notaire(s)'},
+    avocatSuffix: '(optionnel)',
+  },
+  MA: {
+    flag: '🇲🇦', name: 'Maroc',
+    pieces: [
+      {id:'titre_foncier',  label:'Titre foncier',       info:'Bleu = immatricule / Vert = en cours',   required:true},
+      {id:'certif_propriete', label:'Certificat de propriete', info:'< 3 mois',                           required:true},
+      {id:'plan_cadastral', label:'Plan cadastral',      required:true},
+      {id:'permis_habiter', label:'Permis d habiter',    info:'Si construction',                         required:false},
+      {id:'autorisation_etranger', label:'Autorisation etranger', info:'Si etranger',                     required:false},
+      {id:'quitus_fiscal',  label:'Quitus fiscal',       info:'Recommande',                              required:false},
+    ],
+    legal: [
+      {id:'tpi',            label:'TPI',                 text:'Taxe sur les Profits Immobiliers — a charge vendeur, bareme progressif.'},
+      {id:'enregistrement', label:'Droits d enregistrement', text:'4-6 % a charge acheteur.'},
+      {id:'conservation',   label:'Conservation fonciere', text:'1 % + frais fixes.'},
+      {id:'no_retract',     label:'Pas de delai legal',  text:'Pas de retractation au Maroc — protection contractuelle uniquement.'},
+    ],
+    blockHeaders: {pieces:'07c · Pieces & formalites', legal:'07d · Taxes & cadre legal', notaire:'Notaire / Adoul'},
+    avocatSuffix: '(recommande etrangers)',
+  },
+};
+
+function Section7({d, set}) {
+  const _pays = (d && d.bien && (d.bien.pays || '')).toUpperCase();
+  const _ref = M79_COUNTRY_REF[_pays] || null;
+  const _avocat = (d && d.avocat) || {};
+  const _checklist = (d && d.country_checklist) || {};
+  const _diag = _checklist.diagnostics || {};
+  const _pieces = _checklist.pieces || {};
+  const _legalAck = _checklist.legal_ack || {};
+  const _maNotaire = (d && d.notaire_type_ma) || 'notaire';
+  const setAvocatField = (k, v) => set('avocat', {..._avocat, [k]: v}, {commit:true});
+  const setChecklist = (cat, id, patch) => {
+    const next = {..._checklist};
+    next[cat] = {...(next[cat] || {}), [id]: {...((next[cat] || {})[id] || {}), ...patch}};
+    set('country_checklist', next, {commit:true});
+  };
+  const setLegalAck = (id, v) => {
+    const next = {..._checklist};
+    next.legal_ack = {...(next.legal_ack || {}), [id]: !!v};
+    set('country_checklist', next, {commit:true});
+  };
+  return (
+    <div style={{padding:'12px 14px'}}>
+      {/* Bandeau Cadre legal detecte */}
+      <div style={{padding:'7px 11px', background:'linear-gradient(90deg, #F4E5C8, #FFF8E8)', border:'1px solid #C9A961', borderRadius:9, marginBottom:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+        <span style={{fontSize:18, flexShrink:0}}>{_ref ? _ref.flag : '🌐'}</span>
+        <span style={{flex:1, minWidth:0, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:13, color:'#5C3B1E'}}>
+          Cadre legal &middot; <b style={{fontStyle:'normal', fontWeight:700}}>{_ref ? _ref.name : (_pays || 'Pays non renseigne')}</b>
+        </span>
+        <span style={{fontSize:10, color:'#8B7F6E', fontStyle:'italic'}}>detecte Section II</span>
+      </div>
+
+      {/* 7a Notaire — placeholder migration */}
+      <div style={{padding:'10px 12px', background:'#E8EFE9', border:'1px solid #5C8A6F', borderRadius:10, marginBottom:8}}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6, flexWrap:'wrap', gap:8}}>
+          <div style={{fontSize:11, fontWeight:700, color:'#2D6B3F', textTransform:'uppercase', letterSpacing:.5}}>07a · {_ref ? _ref.blockHeaders.notaire : 'Notaire(s)'}</div>
+          {_pays === 'MA' && (
+            <div style={{display:'inline-flex', gap:4}}>
+              {[{k:'notaire', l:'Notaire moderne'}, {k:'adoul', l:'Adoul'}].map(o => {
+                const sel = _maNotaire === o.k;
+                return (
+                  <button key={o.k} type="button" onClick={() => set('notaire_type_ma', o.k, {commit:true})}
+                    style={{padding:'3px 9px', background: sel ? '#2D6B3F' : '#fff', color: sel ? '#fff' : '#2D6B3F', border:'1px solid #5C8A6F', borderRadius:99, fontSize:10, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>
+                    {o.l}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div style={{fontSize:11.5, color:'#2A2018', fontStyle:'italic'}}>
+          Bloc Frais Notaire actuellement saisi en Section III. Migration effective avec DualCurrencyPair par ligne notaire (refacto multi-acteurs preservant %, V/A, ×, +Ajouter notaire) reportee en sous-mission ciblee M79.1. Le toggle Notaire/Adoul ci-dessus est deja persiste pour les biens Maroc.
+        </div>
+      </div>
+
+      {/* 7b Avocat */}
+      <div style={{padding:'10px 12px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:11, marginBottom:8}}>
+        <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>07b · Avocat <span style={{fontWeight:500, fontSize:10, color:'#9A8B7C', textTransform:'none', letterSpacing:0}}>{_ref ? _ref.avocatSuffix : ''}</span></div>
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:8}}>
+          <Field label="Nom" value={_avocat.nom || ''} onChange={v => setAvocatField('nom', v)} placeholder="Maitre Dupont"/>
+          <Field label="Cabinet" value={_avocat.cabinet || ''} onChange={v => setAvocatField('cabinet', v)} placeholder="Cabinet Dupont &amp; Associes"/>
+          <Field label="Telephone" type="tel" value={_avocat.telephone || ''} onChange={v => setAvocatField('telephone', v)} placeholder="+212 ..."/>
+          <Field label="Email" type="email" value={_avocat.email || ''} onChange={v => setAvocatField('email', v)} placeholder="contact@cabinet.com"/>
+        </div>
+        <div style={{marginTop:8}}>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Notes</label>
+          <textarea value={_avocat.notes || ''} onChange={e => setAvocatField('notes', e.target.value)}
+            placeholder="Notes libres..." style={{width:'100%', boxSizing:'border-box', minHeight:60, padding:'8px 10px', borderRadius:8, fontSize:13, fontFamily:'inherit', border:'1.5px solid #E8DDD0', background:'#FDFAF7', color:'#2A2018', resize:'vertical', outline:'none'}}/>
+        </div>
+      </div>
+
+      {/* 7c Pieces / Diagnostics pays-dependant */}
+      <div style={{padding:'10px 12px', background:'#fff', border:'1px solid #E8DDC9', borderRadius:11, marginBottom:8}}>
+        <div style={{fontSize:11, fontWeight:700, color:'#5C3B1E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>{_ref ? _ref.blockHeaders.pieces : '07c · Pieces & diagnostics'}</div>
+        {_ref ? (
+          <div style={{display:'flex', flexDirection:'column', gap:6}}>
+            {((_ref.diagnostics) || (_ref.pieces) || []).map(item => {
+              const cat = _ref.diagnostics ? 'diagnostics' : 'pieces';
+              const cur = (cat === 'diagnostics' ? _diag : _pieces)[item.id] || {};
+              return (
+                <div key={item.id} style={{display:'flex', alignItems:'flex-start', gap:8, padding:'6px 8px', background:'#FBF7EF', borderRadius:7}}>
+                  <button type="button" onClick={() => setChecklist(cat, item.id, {checked: !cur.checked})}
+                    style={{flexShrink:0, width:18, height:18, borderRadius:4, border:'2px solid '+(cur.checked ? '#2D6B3F' : '#C9B79A'), background: cur.checked ? '#2D6B3F' : '#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, marginTop:1}}>
+                    {cur.checked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 12 10 17 19 7"/></svg>}
+                  </button>
+                  <div style={{flex:1, minWidth:0}}>
+                    <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap'}}>
+                      <span style={{fontSize:12.5, fontWeight:600, color:'#2A2018'}}>{item.label}</span>
+                      <span style={{fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:4, background: item.required ? '#FBE2E2' : '#EFEFEF', color: item.required ? '#C0392B' : '#7A7167', textTransform:'uppercase', letterSpacing:.3}}>{item.required ? 'Obligatoire' : 'Optionnel'}</span>
+                    </div>
+                    {item.info && <div style={{fontSize:10.5, color:'#8B7F6E', fontStyle:'italic', marginTop:1}}>{item.info}</div>}
+                    <textarea value={cur.note || ''} onChange={e => setChecklist(cat, item.id, {note: e.target.value})}
+                      placeholder="Note libre (optionnel)" rows={1}
+                      style={{width:'100%', boxSizing:'border-box', marginTop:4, padding:'4px 7px', borderRadius:6, fontSize:11, fontFamily:'inherit', border:'1px solid #E8DDD0', background:'#fff', color:'#2A2018', resize:'vertical', outline:'none'}}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{padding:8, fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>
+            Referentiel non disponible pour {_pays || 'pays non renseigne'} — saisie libre :
+            <textarea value={_checklist.free_text || ''} onChange={e => set('country_checklist', {..._checklist, free_text: e.target.value}, {commit:true})}
+              placeholder="Lister les pieces et diagnostics requis pour ce pays..."
+              style={{width:'100%', boxSizing:'border-box', marginTop:6, minHeight:80, padding:'8px 10px', borderRadius:8, fontSize:13, fontFamily:'inherit', border:'1.5px solid #E8DDD0', background:'#fff', color:'#2A2018', resize:'vertical', outline:'none'}}/>
+          </div>
+        )}
+      </div>
+
+      {/* 7d Cadre legal pays-dependant */}
+      <div style={{padding:'10px 12px', background:'#fff', border:'1.5px dashed #C9A961', borderRadius:10}}>
+        <div style={{fontSize:11, fontWeight:700, color:'#5C3B1E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>{_ref ? _ref.blockHeaders.legal : '07d · Cadre legal'}</div>
+        {_ref ? (
+          <ul style={{listStyle:'none', padding:0, margin:0, display:'flex', flexDirection:'column', gap:6}}>
+            {_ref.legal.map(item => {
+              const ack = !!_legalAck[item.id];
+              return (
+                <li key={item.id} style={{display:'flex', alignItems:'flex-start', gap:8, padding:'6px 0', borderTop:'1px solid #F0E9DC'}}>
+                  <button type="button" onClick={() => setLegalAck(item.id, !ack)}
+                    style={{flexShrink:0, width:16, height:16, borderRadius:3, border:'2px solid '+(ack ? '#8B5E3C' : '#C9B79A'), background: ack ? '#8B5E3C' : '#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, marginTop:2}}
+                    title={ack ? 'Vu / OK — clic pour decocher' : 'Marquer comme vu'}>
+                    {ack && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 12 10 17 19 7"/></svg>}
+                  </button>
+                  <span style={{flexShrink:0, marginTop:6, width:5, height:5, borderRadius:'50%', background:'#8B5E3C'}}/>
+                  <div style={{flex:1, minWidth:0}}>
+                    <span style={{fontSize:12, fontWeight:700, color:'#2A2018'}}>{item.label}</span>
+                    <div style={{fontSize:11, color:'#5C3B1E', marginTop:1, lineHeight:1.4}}>{item.text}</div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div style={{padding:8, fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>Referentiel cadre legal non disponible pour {_pays || 'pays non renseigne'} — voir conseiller juridique local.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FormView(props) {
   const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          isPromoteur, setIsPromoteur, isMarchandDeBiens, setIsMarchandDeBiens,
@@ -21009,7 +21192,8 @@ function FormView(props) {
   // (tap secteur ClientRow) reste honoré.
   // M/2026/05/05/30 — M-Photos-Stage-V : 5 stages au lieu de 4 (ajout V. Photos).
   const [expanded, setExpanded] = useState(() => {
-    const arr = [false, false, false, false, false];
+    // M/2026/05/06/78 + M/2026/05/06/79 — taille etendue a 7 (Stages I-VII pour profils Vente).
+    const arr = [false, false, false, false, false, false, false];
     if (initialExpandedSection != null) arr[initialExpandedSection] = true;
     return arr;
   });
@@ -22455,6 +22639,19 @@ function FormView(props) {
                     <div style={{fontSize:11.5, color:'#F4EDDC', fontStyle:'italic', opacity:.92}}>Calcul Prix + Liquide + Frais agence à charge vendeur. Bandeau visible actuellement en Section III — migration en sous-mission ciblée.</div>
                   </div>
                 </div>
+              </Stage>
+            </div>
+          );
+        })()}
+
+        {/* M/2026/05/06/79 — Stage VII "Notaire & Avocat" : visible uniquement pour profils avec un 7e stage. */}
+        {(() => {
+          const _stages7 = (STAGES[activeProfil] || []);
+          if (!_stages7[6]) return null;
+          return (
+            <div data-stage-anchor="6">
+              <Stage title={_stages7[6]} expanded={expanded[6] || isMatched(6)} onToggle={() => toggleStage(6)} highlighted={isMatched(6)}>
+                <Section7 d={d} set={set}/>
               </Stage>
             </div>
           );
