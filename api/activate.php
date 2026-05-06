@@ -1,6 +1,8 @@
 <?php
-// M/2026/04/29/1 — Activation compte : valide token + définit mot de passe + auto-login.
+// M/2026/04/29/1 + M/2026/05/06/83.3 — Activation compte : valide token + definit
+// mot de passe + provisioning auto tenant + session 30j + redirect_url cross-subdomain.
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib/tenant_provisioning.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -24,7 +26,30 @@ $st = $meta->prepare("SELECT id, email, display_name, prenom, slug, status, acti
 $st->execute([$token]);
 $user = $st->fetch();
 if (!$user) { http_response_code(404); echo json_encode(['ok' => false, 'error' => 'token introuvable']); exit; }
-if ($user['status'] !== 'pending_activation') { http_response_code(409); echo json_encode(['ok' => false, 'error' => 'compte déjà actif']); exit; }
+
+// M83.3 idempotence : un 2eme clic sur le meme lien apres set_password reussi
+// arrive ici avec status='active' et token NULL — donc plus rien a faire. Mais
+// si user.slug est deja set, on regenere une session et renvoie le redirect.
+if ($user['status'] === 'active') {
+    if (!empty($user['slug']) && $action === 'set_password') {
+        // Le client repete set_password apres activation reussie — re-emet session.
+        $prov = ocre_provision_tenant_for_user((int)$user['id']);
+        if ($prov['ok']) {
+            echo json_encode([
+                'ok' => true,
+                'session_token' => $prov['session_token'],
+                'slug' => $prov['slug'],
+                'redirect' => $prov['redirect_url'],
+                'idempotent' => true,
+            ]);
+            exit;
+        }
+    }
+    http_response_code(409);
+    echo json_encode(['ok' => false, 'error' => 'compte déjà actif']);
+    exit;
+}
+if ($user['status'] !== 'pending_activation') { http_response_code(409); echo json_encode(['ok' => false, 'error' => 'compte non activable']); exit; }
 if (strtotime($user['activation_token_expires_at']) < time()) { http_response_code(410); echo json_encode(['ok' => false, 'error' => 'token expiré']); exit; }
 
 if ($action === 'check') {
@@ -48,17 +73,20 @@ if ($action === 'set_password' && $method === 'POST') {
     $meta->prepare("UPDATE users SET password_hash = ?, status = 'active', activation_token = NULL, activation_token_expires_at = NULL WHERE id = ?")
         ->execute([$hash, $user['id']]);
 
-    // Création session token long-lived (24h).
-    $sessionToken = bin2hex(random_bytes(32));
-    try {
-        $meta->prepare("INSERT INTO sessions (token, user_id, expires_at, created_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR), NOW())")
-            ->execute([$sessionToken, $user['id']]);
-    } catch (Throwable $e) {}
+    // M83.3 — provisioning auto tenant + session token cross-subdomain (X-Session-Token).
+    $prov = ocre_provision_tenant_for_user((int)$user['id']);
+    if (!$prov['ok']) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => $prov['error'] ?? 'Provisioning échoué', 'detail' => $prov['detail'] ?? '']);
+        exit;
+    }
 
     echo json_encode([
         'ok' => true,
-        'session_token' => $sessionToken,
-        'redirect' => 'https://' . $user['slug'] . '.ocre.immo/',
+        'session_token' => $prov['session_token'],
+        'slug' => $prov['slug'],
+        'redirect' => $prov['redirect_url'],
+        'duration_ms' => $prov['duration_ms'] ?? null,
     ]);
     exit;
 }

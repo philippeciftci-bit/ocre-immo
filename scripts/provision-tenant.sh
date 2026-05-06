@@ -1,21 +1,50 @@
 #!/bin/bash
-# M/2026/04/28/17 — Provisioning tenant Ocre. Crée les 2 DBs ocre_wsp_<slug>
-# (mode agent) + ocre_wsp_<slug>_test (mode test) et applique le schéma
-# canonique versionné migrations/tenant-schema-v1.sql.
-#
-# Remplacement franc de la version précédente qui clonait depuis
-# ocre_wsp_ozkan_test (DB qui n'existe plus → DBs créées vides → bug
-# diagnostiqué pour zefkicin@gmail.com).
+# M/2026/04/28/17 + M/2026/05/06/83.3 — Provisioning tenant Ocre.
+# Cree les 2 DBs ocre_wsp_<slug> + ocre_wsp_<slug>_test, applique le schema
+# canonique versionne migrations/tenant-schema-v2.sql, GRANT ocre_app, INSERT
+# user owner local. M83.3 : ajout INSERT ocre_meta.workspaces +
+# workspace_members(role=owner) + flags --owner-user-id/--display-name/--type/
+# --country. Backward-compat positionnel : <slug> [<owner_meta_uid>].
 set -euo pipefail
 
-SLUG="${1:?usage: $0 <slug> [<owner_meta_uid>]}"
+OWNER_UID=""
+DISPLAY_NAME=""
+WS_TYPE="wsp"
+COUNTRY_CODE="FR"
+POSITIONALS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --owner-user-id=*) OWNER_UID="${1#*=}"; shift ;;
+    --owner-user-id)   OWNER_UID="$2"; shift 2 ;;
+    --display-name=*)  DISPLAY_NAME="${1#*=}"; shift ;;
+    --display-name)    DISPLAY_NAME="$2"; shift 2 ;;
+    --type=*)          WS_TYPE="${1#*=}"; shift ;;
+    --type)            WS_TYPE="$2"; shift 2 ;;
+    --country=*)       COUNTRY_CODE="${1#*=}"; shift ;;
+    --country)         COUNTRY_CODE="$2"; shift 2 ;;
+    --help|-h)
+      echo "usage: $0 <slug> [--owner-user-id=N] [--display-name=NAME] [--type=wsp|wsc] [--country=FR]"
+      echo "       $0 <slug> [<owner_meta_uid>]   (legacy positional)"
+      exit 0
+      ;;
+    --*) echo "Flag inconnu: $1" >&2; exit 1 ;;
+    *) POSITIONALS+=("$1"); shift ;;
+  esac
+done
+
+[[ ${#POSITIONALS[@]} -ge 1 ]] || { echo "usage: $0 <slug> [--owner-user-id=N] ..." >&2; exit 1; }
+SLUG="${POSITIONALS[0]}"
+[[ -z "$OWNER_UID" && ${#POSITIONALS[@]} -ge 2 ]] && OWNER_UID="${POSITIONALS[1]}"
+
 SLUG=$(echo "$SLUG" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
 [[ -z "$SLUG" ]] && { echo "Slug invalide" >&2; exit 1; }
-OWNER_UID="${2:-}"
+[[ "$WS_TYPE" =~ ^(wsp|wsc)$ ]] || { echo "type invalide (wsp|wsc): $WS_TYPE" >&2; exit 1; }
+
+ROOT_PWD=$(cat /root/.secrets/mysql-root.pwd)
+
 if [[ -z "$OWNER_UID" ]]; then
-  # Fallback : lookup ocre_meta (workspace_members owner du slug). Sinon 1.
-  ROOT_PWD_TMP=$(cat /root/.secrets/mysql-root.pwd)
-  OWNER_UID=$(mysql -uroot -p"$ROOT_PWD_TMP" -BNe "
+  OWNER_UID=$(mysql -uroot -p"$ROOT_PWD" -BNe "
     SELECT m.user_id FROM ocre_meta.workspace_members m
     JOIN ocre_meta.workspaces w ON w.id = m.workspace_id
     WHERE w.slug = '${SLUG}' AND m.role = 'owner' AND m.left_at IS NULL LIMIT 1;
@@ -23,18 +52,16 @@ if [[ -z "$OWNER_UID" ]]; then
   [[ -z "$OWNER_UID" ]] && OWNER_UID=1
 fi
 
-ROOT_PWD=$(cat /root/.secrets/mysql-root.pwd)
 DB_AGENT="ocre_wsp_${SLUG}"
 DB_TEST="ocre_wsp_${SLUG}_test"
 APP_USER="ocre_app"
 SCHEMA="$(cd "$(dirname "$0")/.." && pwd)/migrations/tenant-schema-v2.sql"
 
 if [[ ! -f "$SCHEMA" ]]; then
-  echo "Schéma canonique introuvable : $SCHEMA" >&2
+  echo "Schema canonique introuvable : $SCHEMA" >&2
   exit 2
 fi
 
-# 1. Créer les 2 DBs + droits applicatifs.
 mysql -uroot -p"$ROOT_PWD" -e "
 CREATE DATABASE IF NOT EXISTS ${DB_AGENT} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS ${DB_TEST} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -43,12 +70,9 @@ GRANT ALL PRIVILEGES ON ${DB_TEST}.* TO '${APP_USER}'@'localhost';
 FLUSH PRIVILEGES;
 "
 
-# 2. Appliquer le schéma canonique idempotent aux 2 DBs.
 mysql -uroot -p"$ROOT_PWD" "${DB_AGENT}" < "$SCHEMA"
 mysql -uroot -p"$ROOT_PWD" "${DB_TEST}"  < "$SCHEMA"
 
-# 3. Insérer le user local owner (id=1) dans les 2 DBs. Sert de cible FK pour
-#    clients.user_id ; credentials et identité réelle vivent en ocre_meta.users.
 for DB in "${DB_AGENT}" "${DB_TEST}"; do
   mysql -uroot -p"$ROOT_PWD" "${DB}" -e "
     INSERT IGNORE INTO users (id, email, active)
@@ -56,4 +80,16 @@ for DB in "${DB_AGENT}" "${DB_TEST}"; do
   "
 done
 
-echo "OK ${DB_AGENT} + ${DB_TEST} (schéma + user owner local)"
+DISPLAY_ESC="${DISPLAY_NAME//\'/\\\'}"
+[[ -z "$DISPLAY_ESC" ]] && DISPLAY_ESC="$SLUG"
+
+mysql -uroot -p"$ROOT_PWD" -e "
+INSERT INTO ocre_meta.workspaces (slug, type, display_name, country_code)
+VALUES ('${SLUG}', '${WS_TYPE}', '${DISPLAY_ESC}', '${COUNTRY_CODE}')
+ON DUPLICATE KEY UPDATE display_name = VALUES(display_name);
+
+INSERT IGNORE INTO ocre_meta.workspace_members (workspace_id, user_id, role)
+SELECT id, ${OWNER_UID}, 'owner' FROM ocre_meta.workspaces WHERE slug = '${SLUG}';
+"
+
+echo "OK ${DB_AGENT} + ${DB_TEST} + meta workspaces+members (owner=${OWNER_UID})"
