@@ -63,18 +63,18 @@ if [[ ! -f "$SCHEMA" ]]; then
 fi
 
 mysql -uroot -p"$ROOT_PWD" -e "
-CREATE DATABASE IF NOT EXISTS ${DB_AGENT} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE DATABASE IF NOT EXISTS ${DB_TEST} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-GRANT ALL PRIVILEGES ON ${DB_AGENT}.* TO '${APP_USER}'@'localhost';
-GRANT ALL PRIVILEGES ON ${DB_TEST}.* TO '${APP_USER}'@'localhost';
+CREATE DATABASE IF NOT EXISTS \`${DB_AGENT}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS \`${DB_TEST}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON \`${DB_AGENT}\`.* TO '${APP_USER}'@'localhost';
+GRANT ALL PRIVILEGES ON \`${DB_TEST}\`.* TO '${APP_USER}'@'localhost';
 FLUSH PRIVILEGES;
 "
 
-mysql -uroot -p"$ROOT_PWD" "${DB_AGENT}" < "$SCHEMA"
-mysql -uroot -p"$ROOT_PWD" "${DB_TEST}"  < "$SCHEMA"
+mysql -uroot -p"$ROOT_PWD" --database="${DB_AGENT}" < "$SCHEMA"
+mysql -uroot -p"$ROOT_PWD" --database="${DB_TEST}"  < "$SCHEMA"
 
 for DB in "${DB_AGENT}" "${DB_TEST}"; do
-  mysql -uroot -p"$ROOT_PWD" "${DB}" -e "
+  mysql -uroot -p"$ROOT_PWD" --database="${DB}" -e "
     INSERT IGNORE INTO users (id, email, active)
     VALUES (${OWNER_UID}, 'local@${SLUG}', 1);
   "
