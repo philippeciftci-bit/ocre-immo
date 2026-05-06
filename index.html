@@ -17780,6 +17780,21 @@ function ListView(props) {
   // Le composant <SearchBar/> gère son propre ref/autofocus.
   const [showSearch, setShowSearch] = useState(Boolean(listSearch));
   const [searchInput, setSearchInput] = useState(listSearch || '');
+  // M/2026/05/06/82.2 — workspaces map client_id -> [WS] pour rendu marker-top sur cards.
+  // Stocke en window.__ocreClientWorkspaces lu globalement par ClientRow (evite props drilling).
+  const [clientWorkspacesTick, setClientWorkspacesTick] = useState(0);
+  useEffect(() => {
+    const tk = localStorage.getItem('ocre_token') || '';
+    fetch('/api/workspaces.php?action=for_all_clients', {headers:{'X-Session-Token': tk}, cache:'no-store'})
+      .then(r => r.json())
+      .then(j => {
+        if (j && j.ok && j.by_client) {
+          window.__ocreClientWorkspaces = j.by_client;
+          setClientWorkspacesTick(t => t + 1);
+        }
+      })
+      .catch(() => {});
+  }, []);
   // V57 — moteur recherche avancé. State session-only (sessionStorage rehydraté au mount).
   const [advancedOpen, setAdvancedOpen] = React.useState(false);
   const [advancedCriteria, setAdvancedCriteria] = React.useState(() => {
@@ -18605,6 +18620,32 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       onClick={e => { if (swipeX !== 0) { setSwipeX(0); return; } if (onClick) onClick(e); }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       style={{transform:'translateX(' + swipeX + 'px)', transition: swipeStart ? 'none' : 'transform 200ms ease', background:'#fff', position:'relative', zIndex:1, marginBottom:0}}>
+      {/* M/2026/05/06/82.2 — Marker-top centre : Brouillon italique rouge OU spans WS multi italique violet, cliquables filtre. */}
+      {(() => {
+        const _isBrouillon = (c.statut === 'brouillon') || (!c.statut && (c.is_draft === 1 || c.is_draft === true));
+        const _wsList = (typeof window !== 'undefined' && window.__ocreClientWorkspaces && window.__ocreClientWorkspaces[c.id]) || [];
+        if (!_isBrouillon && _wsList.length === 0) return null;
+        const onClickBrouillon = (e) => { e.stopPropagation(); try { window.dispatchEvent(new CustomEvent('ocre-filter-brouillon')); } catch (_) {} };
+        const onClickWs = (ws, e) => { e.stopPropagation(); try { window.dispatchEvent(new CustomEvent('ocre-filter-wsc', {detail: {workspace_id: ws.id, nom: ws.nom}})); } catch (_) {} };
+        return (
+          <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:6, flexWrap:'wrap', padding:'5px 10px 0', background: tint}}>
+            {_isBrouillon ? (
+              <span data-filter="brouillon" onClick={onClickBrouillon}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(192,57,43,0.08)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                style={{cursor:'pointer', padding:'2px 5px', borderRadius:99, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize:9.5, color:'#C0392B', lineHeight:1.2, transition:'background 120ms'}}>Brouillon</span>
+            ) : _wsList.map((ws, idx) => (
+              <React.Fragment key={'ws-' + ws.id}>
+                {idx > 0 && <span aria-hidden="true" style={{fontSize:8, color:'#9A8B7C', opacity:0.4}}>●</span>}
+                <span data-filter="wsc" data-workspace-id={ws.id} onClick={(e) => onClickWs(ws, e)}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(107,79,143,0.10)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                  style={{cursor:'pointer', padding:'2px 5px', borderRadius:99, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize:9.5, color:'#6B4F8F', lineHeight:1.2, transition:'background 120ms'}}>WS {ws.nom}</span>
+              </React.Fragment>
+            ))}
+          </div>
+        );
+      })()}
       {/* V40 — Header ClientRow : thumb 54×54 + colonne 2 lignes à droite (Variante 1).
           Ligne 1 : nom (+ société italique si Pro) + pill profil à droite marginLeft:auto.
           Ligne 2 : chip tel + chip mail + cible 🎯 à droite marginLeft:auto.
@@ -18670,14 +18711,9 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             {c.is_demo && (
               <span title="Dossier de démonstration" style={{fontSize:9, fontWeight:700, letterSpacing:.5, color:'#fff', background:'#8B5E3C', borderRadius:8, padding:'1px 6px', whiteSpace:'nowrap', flexShrink:0}}>DÉMO</span>
             )}
-            {/* M/2026/05/06/76 — span "Brouillon" italique rouge a gauche pastille profil si statut=brouillon. */}
-            {((c.statut === 'brouillon') || (!c.statut && (c.is_draft === 1 || c.is_draft === true))) && (
-              <span style={{flexShrink:0, marginLeft:'auto', fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize:11.5, color:'#C0392B', lineHeight:1, marginRight:6}}>
-                Brouillon
-              </span>
-            )}
-            {/* Pill profil principal — toujours collée à droite (marginLeft auto si pas de span Brouillon precedent). */}
-            <span style={{flexShrink:0, marginLeft: ((c.statut === 'brouillon') || (!c.statut && (c.is_draft === 1 || c.is_draft === true))) ? 0 : 'auto', padding:'3px 9px', borderRadius:12, fontSize:9.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background: PROFILS[profil] || '#8B5E3C', color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+            {/* M/2026/05/06/82.2 — span "Brouillon" gauche pastille profil RETIRE. Marker centre au-dessus a la place (rendu plus haut dans la card). */}
+            {/* Pill profil principal — collee a droite via marginLeft auto. */}
+            <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:9.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background: PROFILS[profil] || '#8B5E3C', color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
               {PROFILS_LABEL[profil] || (profil || '').toUpperCase()}
             </span>
             {/* M/2026/05/02/36 — M140.B livrable C : badge source d'annonce (Mandat/Partenaire/Veille).

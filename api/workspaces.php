@@ -80,6 +80,25 @@ switch ($action) {
         jsonOk(['detached' => true]);
     }
 
+    case 'for_all_clients': {
+        // Retourne map client_id -> [workspaces] pour TOUS les clients du user, en 1 query.
+        $sql = "SELECT cw.client_id, w.id AS ws_id, w.nom, w.couleur
+                FROM client_workspaces cw
+                JOIN workspaces w ON w.id = cw.workspace_id
+                JOIN clients c ON c.id = cw.client_id AND c.user_id = ?
+                ORDER BY cw.client_id, w.nom";
+        $stmt = db()->prepare($sql);
+        $stmt->execute([$user['id']]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $map = [];
+        foreach ($rows as $r) {
+            $cid = (int) $r['client_id'];
+            if (!isset($map[$cid])) $map[$cid] = [];
+            $map[$cid][] = ['id' => (int) $r['ws_id'], 'nom' => $r['nom'], 'couleur' => $r['couleur']];
+        }
+        jsonOk(['by_client' => $map]);
+    }
+
     case 'for_client': {
         $client_id = (int) ($_GET['client_id'] ?? 0);
         if (!$client_id) jsonError('client_id requis', 400);
