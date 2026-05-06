@@ -10,6 +10,23 @@
   // === Helpers réseau ===
   const tenantSlug = (location.hostname.match(/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/) || [])[1] || '';
   const SESSION_KEY = 'ocre_token';
+
+  // M/2026/05/07/90 — extraction session token depuis URL ?_s=<token> (post-activation
+  // M89 redirige vers https://<slug>.ocre.immo/?_s=<token>). Sans cette extraction,
+  // le frontend ne récupère pas la session, l'auth échoue, et tout INSERT fiche client
+  // remonte "Échec sauvegarde". Stocke + nettoie l'URL (history.replaceState).
+  try {
+    const urlParams = new URLSearchParams(location.search);
+    const sessFromUrl = urlParams.get('_s') || '';
+    if (sessFromUrl && /^[a-f0-9]{64}$/i.test(sessFromUrl)) {
+      localStorage.setItem(SESSION_KEY, sessFromUrl);
+      urlParams.delete('_s');
+      const cleanQs = urlParams.toString();
+      const cleanUrl = location.pathname + (cleanQs ? '?' + cleanQs : '') + location.hash;
+      history.replaceState(null, '', cleanUrl);
+    }
+  } catch (_) { /* silencieux : si fallback échoue, l'user re-login via le form */ }
+
   const sess = () => localStorage.getItem(SESSION_KEY) || '';
   const apiFetch = async (url, opts = {}) => {
     opts.headers = Object.assign({}, opts.headers || {}, {

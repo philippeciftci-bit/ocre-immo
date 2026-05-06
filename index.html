@@ -21130,18 +21130,25 @@ function FormView(props) {
   }
   function requestProfilSwitch(targetProfil) {
     // M/2026/05/04/3 — Mission 39.3 : modal rouge dans 2 cas (avec/sans prix), seul le message change.
-    // Toast diag M392 retire. Console.log retire. confirmProfilSwitch est maintenant un objet
-    // {target, message} pour permettre 2 messages distincts dans le modal.
+    // M/2026/05/07/90.4 — wording dynamique : "Confirmer le profil ?" si premiere creation
+    // (activeProfil null/vide), "Confirmer le changement ?" si modification d'un profil deja choisi.
     if (targetProfil === activeProfil) { setProfilPickerOpen(false); return; }
     const cur = (latestRef && latestRef.current) || d;
     const _hasPrix = _PRIX_FIELDS_M39.some(k => {
       const v = cur[k];
       return v != null && v !== '' && Number(v) > 0;
     });
-    const _message = _hasPrix
-      ? 'Les prix et budgets vont être effacés (les fourchettes ne correspondent pas entre profils).'
-      : 'Confirmer le changement de profil ?';
-    setConfirmProfilSwitch({target: targetProfil, message: _message});
+    const _isFirstChoice = !activeProfil;
+    const _title = _isFirstChoice ? 'Profil sélectionné' : 'Profil modifié';
+    let _message;
+    if (_isFirstChoice) {
+      _message = 'Confirmer ce profil ? Vous pourrez le modifier plus tard.';
+    } else if (_hasPrix) {
+      _message = 'Les prix et budgets vont être effacés (les fourchettes ne correspondent pas entre profils).';
+    } else {
+      _message = 'Confirmer le changement de profil ?';
+    }
+    setConfirmProfilSwitch({target: targetProfil, message: _message, title: _title, firstChoice: _isFirstChoice});
     setProfilPickerOpen(false);
   }
   function applyProfilSwitchM39() {
@@ -22153,7 +22160,7 @@ function FormView(props) {
                     <line x1="12" y1="17" x2="12.01" y2="17"/>
                   </svg>
                 </div>
-                <div style={{fontSize:17, fontWeight:700, color:'#2A2018', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>Profil modifié</div>
+                <div style={{fontSize:17, fontWeight:700, color:'#2A2018', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>{(confirmProfilSwitch && confirmProfilSwitch.title) || 'Profil modifié'}</div>
               </div>
               <div style={{fontSize:13, color:'#5A4E3D', lineHeight:1.5, marginBottom:18}}>
                 {(confirmProfilSwitch && confirmProfilSwitch.message) || 'Confirmer le changement de profil ?'}
@@ -22164,7 +22171,7 @@ function FormView(props) {
                   Annuler
                 </button>
                 <button type="button" onClick={applyProfilSwitchM39}
-                  style={{padding:'8px 16px', border:'none', borderRadius:8, background:'#C0392B', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                  style={{padding:'8px 16px', border:'none', borderRadius:8, background:(confirmProfilSwitch && confirmProfilSwitch.firstChoice) ? '#2D7A3E' : '#C0392B', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
                   Valider
                 </button>
               </div>

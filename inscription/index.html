@@ -88,6 +88,14 @@ const STORAGE_KEY = 'ocre_inscription_draft';
 function validateSiret(s) { const c = (s || '').replace(/\D/g, ''); if (c.length !== 14) return false; let sum = 0; for (let i = 0; i < 14; i++) { let d = parseInt(c[i], 10); if (i % 2 === 0) { d *= 2; if (d > 9) d -= 9; } sum += d; } return sum % 10 === 0; }
 function fmtSiret(s) { const c = (s || '').replace(/\D/g, '').slice(0, 14); if (c.length <= 3) return c; if (c.length <= 6) return c.slice(0, 3) + ' ' + c.slice(3); if (c.length <= 9) return c.slice(0, 3) + ' ' + c.slice(3, 6) + ' ' + c.slice(6); return c.slice(0, 3) + ' ' + c.slice(3, 6) + ' ' + c.slice(6, 9) + ' ' + c.slice(9); }
 function pwdScore(p) { let s = 0; if (!p) return 0; if (p.length >= 10) s++; if (/[A-Z]/.test(p)) s++; if (/[0-9]/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; return s; }
+function pwdCriteria(p) {
+  return {
+    len: !!p && p.length >= 10,
+    maj: !!p && /[A-Z]/.test(p),
+    num: !!p && /[0-9]/.test(p),
+    spe: !!p && /[^A-Za-z0-9]/.test(p),
+  };
+}
 
 function Wizard() {
   const [step, setStep] = useState(1);
@@ -116,7 +124,9 @@ function Wizard() {
   }
   const step1Valid = data.prenom.trim() && data.nom.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) && pwdScore(data.password) >= 3 && data.password === data.password2 && emailStatus.state !== 'taken';
   const siretValid = validateSiret(data.siret);
-  const step2Valid = siretValid && data.ville.trim();
+  // M90.3 — SIRET optionnel : valide si vide OU Luhn-valide.
+  const siretOk = data.siret.length === 0 || siretValid;
+  const step2Valid = siretOk && data.ville.trim();
   const step3Valid = data.tel.trim();
   const step4Valid = data.cgu === true && data.rgpd === true;
   async function submit() {
@@ -161,7 +171,35 @@ function Wizard() {
             <div className="field"><label>Nom<span className="req">*</span></label><input type="text" value={data.nom} onChange={e=>set('nom',e.target.value)} onBlur={e=>set('nom',e.target.value.toUpperCase())}/></div>
           </div>
           <div className="field"><label>Email professionnel<span className="req">*</span></label><input type="email" value={data.email} onChange={e=>{set('email',e.target.value); setEmailStatus({state:'idle', msg:''});}} onBlur={checkEmail} autoComplete="email"/>{emailStatus.state === 'checking' && <div className="help">Vérification…</div>}{emailStatus.state === 'ok' && <div className="help ok">✓ Disponible</div>}{emailStatus.state === 'taken' && <div className="help err">⚠ {emailStatus.msg}</div>}</div>
-          <div className="field"><label>Mot de passe<span className="req">*</span></label><input type="password" value={data.password} onChange={e=>set('password',e.target.value)} placeholder="Min 10 chars, 1 maj, 1 chiffre"/><div className="help">Force : {pwdScore(data.password)} / 4</div></div>
+          <div className="field"><label>Mot de passe<span className="req">*</span></label><input type="password" value={data.password} onChange={e=>set('password',e.target.value)} placeholder="Min 10 chars, 1 maj, 1 chiffre"/>
+            {(() => {
+              const c = pwdCriteria(data.password);
+              const score = (c.len?1:0) + (c.maj?1:0) + (c.num?1:0) + (c.spe?1:0);
+              const barColor = score <= 1 ? '#C0392B' : (score === 2 ? '#D68910' : '#2D7A3E');
+              const barLabel = score <= 1 ? 'Faible' : (score === 2 ? 'Moyen' : (score === 3 ? 'Fort' : 'Excellent'));
+              const barWidth = data.password.length === 0 ? 0 : Math.max(8, score * 25);
+              const Item = ({ok, label}) => (
+                <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,color:ok?'#2D7A3E':'#8B7F6E',fontWeight:ok?600:400}}>
+                  <span style={{display:'inline-block',width:14,height:14,borderRadius:'50%',background:ok?'#2D7A3E':'#E8DDC9',color:'#fff',fontSize:10,lineHeight:'14px',textAlign:'center'}}>{ok?'✓':''}</span>
+                  {label}
+                </span>
+              );
+              return (
+                <div style={{marginTop:8}}>
+                  <div style={{height:4,background:'#EDE6DC',borderRadius:2,overflow:'hidden'}}>
+                    <div style={{height:'100%',width:barWidth+'%',background:barColor,transition:'width 200ms,background 200ms'}}/>
+                  </div>
+                  <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:6}}>
+                    <Item ok={c.len} label="10+ caractères"/>
+                    <Item ok={c.maj} label="Majuscule"/>
+                    <Item ok={c.num} label="Chiffre"/>
+                    <Item ok={c.spe} label="Caractère spécial"/>
+                  </div>
+                  {data.password.length > 0 && <div style={{fontSize:10.5,color:barColor,marginTop:4,fontWeight:600}}>{barLabel}</div>}
+                </div>
+              );
+            })()}
+          </div>
           <div className="field"><label>Confirmation<span className="req">*</span></label><input type="password" value={data.password2} onChange={e=>set('password2',e.target.value)}/>{data.password2 && (data.password === data.password2 ? <div className="help ok">✓ Identiques</div> : <div className="help err">⚠ Différents</div>)}</div>
           <button className="btn btn-primary" onClick={()=>setStep(2)} disabled={!step1Valid}>Continuer →</button>
         </div>
@@ -169,7 +207,7 @@ function Wizard() {
       {step === 2 && (
         <div className="card">
           <h2>2. Statut professionnel</h2>
-          <div className="field"><label>SIRET<span className="req">*</span> (14 chiffres)</label><input type="text" value={fmtSiret(data.siret)} onChange={e=>set('siret',e.target.value.replace(/\D/g,'').slice(0,14))} inputMode="numeric"/>{data.siret.length >= 14 && (siretValid ? <div className="help ok">✓ SIRET valide</div> : <div className="help err">⚠ SIRET invalide (Luhn)</div>)}</div>
+          <div className="field"><label>SIRET (optionnel, 14 chiffres)</label><input type="text" value={fmtSiret(data.siret)} onChange={e=>set('siret',e.target.value.replace(/\D/g,'').slice(0,14))} inputMode="numeric" placeholder="Laisser vide si non immatriculé"/>{data.siret.length >= 14 && (siretValid ? <div className="help ok">✓ SIRET valide</div> : <div className="help err">⚠ SIRET invalide (Luhn)</div>)}{data.siret.length > 0 && data.siret.length < 14 && <div className="help">Continuez la saisie ou laissez vide</div>}</div>
           <div className="field"><label>Nom de l'agence (optionnel)</label><input type="text" value={data.agence} onChange={e=>set('agence',e.target.value)}/></div>
           <div className="row2"><div className="field"><label>Ville<span className="req">*</span></label><input type="text" value={data.ville} onChange={e=>set('ville',e.target.value)}/></div><div className="field"><label>Code postal</label><input type="text" value={data.cp} onChange={e=>set('cp',e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric"/></div></div>
           <div className="field"><label>Carte professionnelle (optionnel)</label><input type="text" value={data.carte_pro} onChange={e=>set('carte_pro',e.target.value)}/></div>

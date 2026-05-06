@@ -88,7 +88,8 @@ if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'
 if (strlen($pwd) < 10) $errors['password'] = 'Mot de passe trop court (min 10)';
 elseif (!preg_match('/[A-Z]/', $pwd)) $errors['password'] = 'Mot de passe doit contenir 1 majuscule';
 elseif (!preg_match('/[0-9]/', $pwd)) $errors['password'] = 'Mot de passe doit contenir 1 chiffre';
-if (!_validate_siret($siretRaw)) $errors['siret'] = 'SIRET invalide (Luhn)';
+// M90.3 — SIRET optionnel : valide si vide OU 14 chiffres Luhn-valides.
+if ($siretRaw !== '' && !_validate_siret($siretRaw)) $errors['siret'] = 'SIRET invalide (Luhn)';
 if ($ville === '') $errors['ville'] = 'Ville requise';
 if ($tel === '')   $errors['tel']   = 'Telephone requis';
 if (!in_array($sensibility, ['strict','equilibre','large','tres_large'], true)) $sensibility = 'equilibre';
@@ -105,7 +106,9 @@ if (!empty($errors)) {
     exit;
 }
 
-$siren = substr($siretRaw, 0, 9);
+// M90.3 — SIRET optionnel : si vide, siret + siren = NULL.
+$siretSql = $siretRaw !== '' ? $siretRaw : null;
+$siren = $siretRaw !== '' ? substr($siretRaw, 0, 9) : null;
 $pwdHash = password_hash($pwd, PASSWORD_BCRYPT, ['cost' => 12]);
 $nomUpper = mb_strtoupper($nom, 'UTF-8');
 $displayName = trim($prenom . ' ' . $nomUpper);
@@ -147,7 +150,7 @@ try {
             $upd->execute([
                 $prenom, $nomUpper, $displayName,
                 $pwdHash, $tel, ($whatsapp ?: null),
-                $siretRaw, $siren, ($cartePro ?: null),
+                $siretSql, $siren, ($cartePro ?: null),
                 ($agence ?: null), $ville, ($cp ?: null),
                 $sensibility, $prefsJson,
                 $activationToken,
@@ -205,7 +208,7 @@ try {
     $stmt->execute([
         $email, $pwdHash, $displayName, $prenom, $nomUpper,
         $tel, ($whatsapp ?: null), $ville, ($cp ?: null),
-        ($cartePro ?: null), $siretRaw, $siren, ($agence ?: null),
+        ($cartePro ?: null), $siretSql, $siren, ($agence ?: null),
         $sensibility, $prefsJson,
         $activationToken,
         $cguVersion, $cguVersion,
