@@ -21825,19 +21825,23 @@ function FormView(props) {
             profilPickerPos calcule au tap (getBoundingClientRect du bouton). Tap exterieur ferme
             via useEffect listener mousedown+touchstart. */}
         {profilPickerOpen && (
+          // M/2026/05/06/75 — picker etendu de 4 a 7 profils (Promoteur + MarchandBiens + Investisseur ajoutes).
           <div ref={profilPopupRef} onClick={e => e.stopPropagation()}
-            style={{position:'fixed', top:profilPickerPos.top + 'px', right:profilPickerPos.right + 'px', zIndex:1000, background:'#fff', border:'1px solid #C9B79A', borderRadius:10, boxShadow:'0 6px 16px rgba(60,40,20,.18)', padding:6, display:'grid', gridTemplateColumns:'1fr 1fr', gap:5, fontFamily:'inherit', minWidth:160, maxWidth:240}}>
+            style={{position:'fixed', top:profilPickerPos.top + 'px', right:profilPickerPos.right + 'px', zIndex:1000, background:'#fff', border:'1px solid #C9B79A', borderRadius:10, boxShadow:'0 6px 16px rgba(60,40,20,.18)', padding:6, display:'grid', gridTemplateColumns:'1fr 1fr', gap:5, fontFamily:'inherit', minWidth:200, maxWidth:280}}>
             {[
-              {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
-              {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
-              {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
-              {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
+              {k:'Acheteur',       l:'Acheteur',           color:'#8B5E3C'},
+              {k:'Vendeur',        l:'Vendeur',            color:'#1E3A5F'},
+              {k:'Bailleur',       l:'Bailleur',           color:'#2D6B3F'},
+              {k:'Locataire',      l:'Locataire',          color:'#8B6B1E'},
+              {k:'Promoteur',      l:'Promoteur',          color:'#5A3F2A'},
+              {k:'MarchandBiens',  l:'Marchand de biens',  color:'#4A5A6F'},
+              {k:'Investisseur',   l:'Investisseur',       color:'#6B4E8B', span:2},
             ].map(p => {
               const _selected = p.k === activeProfil;
               return (
                 <button type="button" key={p.k}
                   onClick={(e) => { e.stopPropagation(); requestProfilSwitch(p.k); }}
-                  style={{padding:'6px 8px', borderRadius:8, border:'1.5px solid '+p.color, background: _selected ? p.color : '#fff', color: _selected ? '#fff' : p.color, fontSize:11, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', textAlign:'center'}}>
+                  style={{padding:'6px 8px', borderRadius:8, border:'1.5px solid '+p.color, background: _selected ? p.color : '#fff', color: _selected ? '#fff' : p.color, fontSize:11, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', textAlign:'center', gridColumn: p.span === 2 ? '1 / span 2' : 'auto'}}>
                   {p.l}
                 </button>
               );
