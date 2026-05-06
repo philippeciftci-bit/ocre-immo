@@ -2,129 +2,204 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ocre Immo — Créer un compte agent</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500&family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>Inscription agent — Ocre Immo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'DM Sans',sans-serif;background:#F0E8D8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:14px;color:#2A2018}
-.card{width:100%;max-width:400px;background:#fff;border-radius:14px;padding:22px 22px 24px;box-shadow:0 4px 30px rgba(139,94,60,0.12)}
-.logo{display:flex;align-items:baseline;justify-content:center;gap:3px}
-.logo .ocre{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:28px;letter-spacing:1.5px;color:#8B5E3C}
-.logo .immo{font-family:'Caveat',cursive;font-weight:400;font-size:32px;color:#2A2018;margin-left:2px;line-height:1}
-.tagline{text-align:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:#6B4429;margin:4px 0 16px}
-.field{margin-bottom:10px;position:relative}
-.field label{display:block;font-size:10px;font-weight:600;color:#8B7F6E;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
-.input{width:100%;padding:9px 11px;border-radius:8px;border:1.5px solid #E8DDD0;background:#FDFAF7;font-size:14px;font-family:inherit;color:#2A2018;outline:none;height:38px}
-.input:focus{border-color:#8B5E3C;background:#fff}
-.input.invalid{border-color:#C0392B}
-.cgu-row{display:flex;gap:7px;align-items:flex-start;margin:10px 0 4px;font-size:12.5px;line-height:1.4}
-.cgu-row input[type=checkbox]{margin-top:2px;width:16px;height:16px;accent-color:#8B5E3C;cursor:pointer}
-.cgu-row a{color:#8B5E3C;text-decoration:underline}
-.btn{width:100%;padding:11px;border-radius:9px;background:linear-gradient(135deg,#8B5E3C,#A06B45);color:#fff;font-weight:700;border:none;cursor:pointer;font-size:14px;font-family:inherit;margin-top:8px}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.secondary{text-align:center;margin-top:10px;font-size:12.5px;color:#7A7167}
-.secondary a{color:#8B5E3C;text-decoration:underline}
-.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:200;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.18)}
-.toast.success{background:#5A8A3A}
-.toast.error{background:#C0392B}
-.modal-overlay{position:fixed;inset:0;background:rgba(20,12,4,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal{background:#fff;border-radius:12px;max-width:600px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.18)}
-.modal-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #E5DDC8}
-.modal-header h2{font-family:'Cormorant Garamond',serif;font-size:16px;color:#8B5E3C;margin:0}
-.modal-close{background:none;border:none;font-size:22px;color:#8B7F6E;cursor:pointer;padding:0 6px}
-.modal-body{flex:1;overflow:auto;border:none;width:100%}
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: #FAF6EC; color: #2A2018; min-height: 100vh; }
+  .page { max-width: 480px; margin: 0 auto; padding: 18px 16px 40px; }
+  .brand { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; font-weight: 600; color: #8B5E3C; text-align: center; margin-bottom: 8px; }
+  .brand small { display: block; font-family: 'DM Sans', sans-serif; font-style: normal; font-size: 11px; letter-spacing: 3px; color: #B8895A; text-transform: uppercase; font-weight: 600; margin-top: 4px; }
+  h1 { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 28px; font-weight: 500; color: #2A1F15; margin: 16px 0 4px; text-align: center; }
+  .subtitle { font-size: 13px; color: #8B7F6E; text-align: center; margin-bottom: 22px; font-style: italic; }
+  .progress { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 24px; padding: 0 8px; }
+  .progress .step { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%; background: #EDE6DC; color: #B8AB99; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 200ms; }
+  .progress .step.done { background: #2D7A3E; color: #fff; }
+  .progress .step.active { background: #B8895A; color: #fff; box-shadow: 0 2px 8px rgba(184,137,90,0.35); }
+  .progress .line { flex: 1 1 auto; height: 2px; background: #EDE6DC; }
+  .progress .line.done { background: #2D7A3E; }
+  .card { background: #fff; border-radius: 14px; padding: 22px 18px; box-shadow: 0 2px 10px rgba(60,40,20,0.06); margin-bottom: 16px; }
+  .card h2 { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; font-weight: 500; color: #5C3B1E; margin: 0 0 14px; }
+  label { display: block; font-size: 11px; font-weight: 600; color: #8B7F6E; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
+  label .req { color: #C0392B; margin-left: 2px; }
+  input[type=text], input[type=email], input[type=password], input[type=tel] {
+    width: 100%; padding: 11px 13px; border: 1.5px solid #E8DDC9; border-radius: 9px; font-size: 14px;
+    font-family: 'DM Sans', sans-serif; background: #FDFAF7; color: #2A2018; outline: none; transition: border 150ms; }
+  input:focus { border-color: #8B5E3C; background: #fff; }
+  .field { margin-bottom: 14px; }
+  .help { font-size: 11px; color: #8B7F6E; font-style: italic; margin-top: 4px; }
+  .help.ok { color: #2D7A3E; font-style: normal; font-weight: 600; }
+  .help.err { color: #C0392B; font-style: normal; font-weight: 600; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn { width: 100%; padding: 13px 20px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity 150ms, transform 150ms; }
+  .btn-primary { background: #8B5E3C; color: #fff; margin-top: 8px; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-success { background: #2D7A3E; color: #fff; margin-top: 8px; }
+  .btn-back { width: auto; padding: 10px 16px; background: #fff; color: #8B5E3C; border: 1.5px solid #E8DDC9; font-weight: 600; }
+  .nav-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .preset-card { padding: 10px 11px; border: 1.5px solid #E8DDC9; background: #FDFAF7; border-radius: 9px; cursor: pointer; text-align: left; transition: all 150ms; }
+  .preset-card.active { border-color: #8B5E3C; background: #FBF1E4; }
+  .preset-card .pname { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 14px; font-weight: 600; color: #5C3B1E; }
+  .preset-card .pdesc { font-size: 10.5px; color: #8B7F6E; margin-top: 2px; line-height: 1.3; }
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #FDFAF7; border: 1px solid #E8DDC9; border-radius: 9px; margin-bottom: 8px; }
+  .toggle-row .lbl { font-size: 13px; font-weight: 600; color: #2A2018; }
+  .toggle-row .desc { font-size: 11px; color: #8B7F6E; margin-top: 2px; }
+  .toggle-switch { width: 42px; height: 24px; background: #D9C9A8; border-radius: 99px; position: relative; cursor: pointer; transition: background 150ms; }
+  .toggle-switch.on { background: #2D7A3E; }
+  .toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: left 150ms; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+  .toggle-switch.on::after { left: 20px; }
+  .recap-line { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #EDE6DC; }
+  .recap-line:last-child { border-bottom: none; }
+  .recap-line .lbl { font-size: 11px; font-weight: 600; color: #8B7F6E; text-transform: uppercase; letter-spacing: 0.3px; flex-shrink: 0; }
+  .recap-line .val { font-size: 13px; font-weight: 600; color: #2A2018; text-align: right; }
+  .cgu-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; }
+  .cgu-row input[type=checkbox] { flex-shrink: 0; margin-top: 2px; transform: scale(1.2); cursor: pointer; }
+  .cgu-row label { text-transform: none; letter-spacing: 0; font-size: 12px; color: #5C3B1E; line-height: 1.5; margin: 0; font-weight: 400; }
+  .cgu-row a { color: #8B5E3C; text-decoration: underline; }
+  .recap-section { margin-bottom: 14px; }
+  .recap-section h3 { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15px; color: #8B5E3C; margin: 0 0 6px; font-weight: 600; }
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="logo"><span class="ocre">OCRE</span><span class="immo">immo</span></div>
-  <div class="tagline">Créer un compte agent</div>
-
-  <form id="form-register" autocomplete="on">
-    <div class="field"><label>Prénom</label><input class="input" type="text" id="f-prenom" autocomplete="given-name" required></div>
-    <div class="field"><label>Nom</label><input class="input" type="text" id="f-nom" autocomplete="family-name" required></div>
-    <div class="field">
-      <label>Email</label>
-      <input class="input" type="email" id="f-email" autocomplete="email" placeholder="ton.email@gmail.com" required>
-      <div style="font-size:11px;color:#7A7167;margin-top:4px;line-height:1.4">Utilise ton email habituel — c'est là que tu recevras ton code de connexion et les notifications.</div>
-    </div>
-    <div class="field"><label>Téléphone</label><input class="input" type="tel" id="f-tel" autocomplete="tel" required></div>
-    <div class="field"><label>Ville d'exercice</label><input class="input" type="text" id="f-ville" placeholder="Marrakech, Casablanca…" required></div>
-    <div class="field"><label>Diplôme ou formation (optionnel)</label><input class="input" type="text" id="f-formation" placeholder="ESI Paris, Master immo, autodidacte…"></div>
-
-    <div class="cgu-row">
-      <input type="checkbox" id="cgu-cb">
-      <label for="cgu-cb">J'accepte les <a href="#" id="cgu-link">conditions générales d'utilisation</a></label>
-    </div>
-
-    <button class="btn" type="submit" id="btn-submit" disabled>Créer mon compte</button>
-  </form>
-
-  <div class="secondary">Déjà un compte ? <a href="/login/">Se connecter</a></div>
+<div class="page">
+  <div class="brand">Ocre Immo<small>Inscription Agent</small></div>
+  <h1>Bienvenue dans le réseau</h1>
+  <p class="subtitle">Quelques minutes pour rejoindre les agents qui matchent ensemble.</p>
+  <div id="root"></div>
 </div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect } = React;
+const STORAGE_KEY = 'ocre_inscription_draft';
+function validateSiret(s) { const c = (s || '').replace(/\D/g, ''); if (c.length !== 14) return false; let sum = 0; for (let i = 0; i < 14; i++) { let d = parseInt(c[i], 10); if (i % 2 === 0) { d *= 2; if (d > 9) d -= 9; } sum += d; } return sum % 10 === 0; }
+function fmtSiret(s) { const c = (s || '').replace(/\D/g, '').slice(0, 14); if (c.length <= 3) return c; if (c.length <= 6) return c.slice(0, 3) + ' ' + c.slice(3); if (c.length <= 9) return c.slice(0, 3) + ' ' + c.slice(3, 6) + ' ' + c.slice(6); return c.slice(0, 3) + ' ' + c.slice(3, 6) + ' ' + c.slice(6, 9) + ' ' + c.slice(9); }
+function pwdScore(p) { let s = 0; if (!p) return 0; if (p.length >= 10) s++; if (/[A-Z]/.test(p)) s++; if (/[0-9]/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; return s; }
 
-<div class="modal-overlay" id="cgu-modal" style="display:none">
-  <div class="modal">
-    <div class="modal-header"><h2>Conditions générales d'utilisation v1.0</h2><button class="modal-close" id="cgu-close">×</button></div>
-    <iframe class="modal-body" src="/cgu/cgu-v1.0.html"></iframe>
-  </div>
-</div>
-
-<script>
-const $ = id => document.getElementById(id);
-const emailValid = v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
-function update() {
-  const ok = $('f-prenom').value.trim() && $('f-nom').value.trim() && emailValid($('f-email').value.trim()) && $('f-tel').value.trim() && $('f-ville').value.trim() && $('cgu-cb').checked;
-  $('btn-submit').disabled = !ok;
+function Wizard() {
+  const [step, setStep] = useState(1);
+  const [data, setData] = useState({prenom:'',nom:'',email:'',password:'',password2:'',siret:'',agence:'',ville:'',cp:'',carte_pro:'',tel:'',whatsapp:'',sensibility_preset:'equilibre',channels_email:true,channels_whatsapp:false,cgu:false});
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState('');
+  useEffect(() => {
+    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const saved = JSON.parse(raw); if (saved && typeof saved === 'object') setData(d => ({...d, ...saved, password:'', password2:''})); } } catch(_) {}
+  }, []);
+  useEffect(() => {
+    try { const {password, password2, ...p} = data; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(_) {}
+  }, [data]);
+  const set = (k, v) => setData(d => ({...d, [k]: v}));
+  const step1Valid = data.prenom.trim() && data.nom.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) && pwdScore(data.password) >= 3 && data.password === data.password2;
+  const siretValid = validateSiret(data.siret);
+  const step2Valid = siretValid && data.ville.trim();
+  const step3Valid = data.tel.trim();
+  const step4Valid = data.cgu === true;
+  async function submit() {
+    if (submitting) return;
+    setSubmitting(true); setServerError('');
+    try {
+      const r = await fetch('/api/agents_register.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+        prenom: data.prenom.trim(), nom: data.nom.trim(), email: data.email.trim().toLowerCase(),
+        password: data.password, siret: data.siret.replace(/\D/g, ''), agence: data.agence.trim(),
+        ville: data.ville.trim(), cp: data.cp.trim(), carte_pro: data.carte_pro.trim(),
+        tel: data.tel.trim(), whatsapp: data.whatsapp.trim(), sensibility_preset: data.sensibility_preset,
+        channels_enabled: {email: data.channels_email, whatsapp: data.channels_whatsapp},
+      })});
+      const j = await r.json();
+      if (r.ok && j && j.ok) {
+        try { localStorage.removeItem(STORAGE_KEY); } catch(_) {}
+        window.location = j.redirect || '/inscription/confirmee/';
+        return;
+      }
+      if (r.status === 409) setServerError(j && j.error || 'Cet email est deja utilise');
+      else if (r.status === 422 && j && j.errors) setServerError('Erreur : ' + Object.values(j.errors).join(', '));
+      else setServerError(j && j.error || 'Erreur serveur');
+    } catch(_) { setServerError('Erreur reseau'); }
+    setSubmitting(false);
+  }
+  return (
+    <>
+      <div className="progress">
+        {[1,2,3,4].map((n, i) => (
+          <React.Fragment key={n}>
+            {i > 0 && <span className={"line " + (step > n - 1 ? "done" : "")}/>}
+            <span className={"step " + (step === n ? "active" : (step > n ? "done" : ""))}>{step > n ? '✓' : n}</span>
+          </React.Fragment>
+        ))}
+      </div>
+      {step === 1 && (
+        <div className="card">
+          <h2>1. Identité</h2>
+          <div className="row2">
+            <div className="field"><label>Prénom<span className="req">*</span></label><input type="text" value={data.prenom} onChange={e=>set('prenom',e.target.value)}/></div>
+            <div className="field"><label>Nom<span className="req">*</span></label><input type="text" value={data.nom} onChange={e=>set('nom',e.target.value)} onBlur={e=>set('nom',e.target.value.toUpperCase())}/></div>
+          </div>
+          <div className="field"><label>Email professionnel<span className="req">*</span></label><input type="email" value={data.email} onChange={e=>set('email',e.target.value)} autoComplete="email"/></div>
+          <div className="field"><label>Mot de passe<span className="req">*</span></label><input type="password" value={data.password} onChange={e=>set('password',e.target.value)} placeholder="Min 10 chars, 1 maj, 1 chiffre"/><div className="help">Force : {pwdScore(data.password)} / 4</div></div>
+          <div className="field"><label>Confirmation<span className="req">*</span></label><input type="password" value={data.password2} onChange={e=>set('password2',e.target.value)}/>{data.password2 && (data.password === data.password2 ? <div className="help ok">✓ Identiques</div> : <div className="help err">⚠ Différents</div>)}</div>
+          <button className="btn btn-primary" onClick={()=>setStep(2)} disabled={!step1Valid}>Continuer →</button>
+        </div>
+      )}
+      {step === 2 && (
+        <div className="card">
+          <h2>2. Statut professionnel</h2>
+          <div className="field"><label>SIRET<span className="req">*</span> (14 chiffres)</label><input type="text" value={fmtSiret(data.siret)} onChange={e=>set('siret',e.target.value.replace(/\D/g,'').slice(0,14))} inputMode="numeric"/>{data.siret.length >= 14 && (siretValid ? <div className="help ok">✓ SIRET valide</div> : <div className="help err">⚠ SIRET invalide (Luhn)</div>)}</div>
+          <div className="field"><label>Nom de l'agence (optionnel)</label><input type="text" value={data.agence} onChange={e=>set('agence',e.target.value)}/></div>
+          <div className="row2"><div className="field"><label>Ville<span className="req">*</span></label><input type="text" value={data.ville} onChange={e=>set('ville',e.target.value)}/></div><div className="field"><label>Code postal</label><input type="text" value={data.cp} onChange={e=>set('cp',e.target.value.replace(/\D/g,'').slice(0,5))} inputMode="numeric"/></div></div>
+          <div className="field"><label>Carte professionnelle (optionnel)</label><input type="text" value={data.carte_pro} onChange={e=>set('carte_pro',e.target.value)}/></div>
+          <div className="nav-row"><button className="btn btn-back" onClick={()=>setStep(1)}>‹ Retour</button><button className="btn btn-primary" onClick={()=>setStep(3)} disabled={!step2Valid} style={{flex:1}}>Continuer →</button></div>
+        </div>
+      )}
+      {step === 3 && (
+        <div className="card">
+          <h2>3. Coordonnées + préférences</h2>
+          <div className="field"><label>Téléphone<span className="req">*</span></label><input type="tel" value={data.tel} onChange={e=>set('tel',e.target.value)}/></div>
+          <div className="field"><label>WhatsApp pro (optionnel)</label><input type="tel" value={data.whatsapp} onChange={e=>set('whatsapp',e.target.value)} placeholder="+33 6 51 32 51 77"/></div>
+          <label>Sensibilité matching</label>
+          <div className="preset-grid" style={{marginBottom:16}}>
+            {[{k:'strict',n:'Strict',d:'Très précis, peu de propositions'},{k:'equilibre',n:'Équilibré',d:'Recommandé · ratio qualité/quantité'},{k:'large',n:'Large',d:'Plus de pistes, moins précises'},{k:'tres_large',n:'Très large',d:'Maximum de pistes à explorer'}].map(p => (
+              <div key={p.k} className={"preset-card " + (data.sensibility_preset === p.k ? "active" : "")} onClick={()=>set('sensibility_preset',p.k)}>
+                <div className="pname">{p.n}</div><div className="pdesc">{p.d}</div>
+              </div>
+            ))}
+          </div>
+          <label>Canaux notifications</label>
+          <div className="toggle-row"><div><div className="lbl">Email</div><div className="desc">Recommandations + alertes</div></div><div className={"toggle-switch " + (data.channels_email ? "on" : "")} onClick={()=>set('channels_email',!data.channels_email)}/></div>
+          <div className="toggle-row" style={{opacity: data.whatsapp.trim() ? 1 : 0.5}}><div><div className="lbl">WhatsApp</div><div className="desc">{data.whatsapp.trim() ? 'Notifications instantanées' : 'Renseigne ton numéro WhatsApp pour activer'}</div></div><div className={"toggle-switch " + (data.channels_whatsapp && data.whatsapp.trim() ? "on" : "")} onClick={()=>data.whatsapp.trim() && set('channels_whatsapp',!data.channels_whatsapp)}/></div>
+          <div className="nav-row"><button className="btn btn-back" onClick={()=>setStep(2)}>‹ Retour</button><button className="btn btn-primary" onClick={()=>setStep(4)} disabled={!step3Valid} style={{flex:1}}>Récap →</button></div>
+        </div>
+      )}
+      {step === 4 && (
+        <div className="card">
+          <h2>4. Récap final</h2>
+          <div className="recap-section"><h3>Identité</h3>
+            <div className="recap-line"><span className="lbl">Nom</span><span className="val">{data.prenom} {data.nom}</span></div>
+            <div className="recap-line"><span className="lbl">Email</span><span className="val">{data.email}</span></div>
+          </div>
+          <div className="recap-section"><h3>Statut professionnel</h3>
+            <div className="recap-line"><span className="lbl">SIRET</span><span className="val">{fmtSiret(data.siret)}</span></div>
+            {data.agence && <div className="recap-line"><span className="lbl">Agence</span><span className="val">{data.agence}</span></div>}
+            <div className="recap-line"><span className="lbl">Ville</span><span className="val">{data.ville}{data.cp ? ' (' + data.cp + ')' : ''}</span></div>
+          </div>
+          <div className="recap-section"><h3>Préférences</h3>
+            <div className="recap-line"><span className="lbl">Téléphone</span><span className="val">{data.tel}</span></div>
+            {data.whatsapp && <div className="recap-line"><span className="lbl">WhatsApp</span><span className="val">{data.whatsapp}</span></div>}
+            <div className="recap-line"><span className="lbl">Sensibilité</span><span className="val">{({strict:'Strict',equilibre:'Équilibré',large:'Large',tres_large:'Très large'})[data.sensibility_preset]}</span></div>
+            <div className="recap-line"><span className="lbl">Canaux</span><span className="val">{[data.channels_email && 'Email', data.channels_whatsapp && 'WhatsApp'].filter(Boolean).join(' · ') || 'Aucun'}</span></div>
+          </div>
+          <div className="cgu-row"><input type="checkbox" id="cgu" checked={data.cgu} onChange={e=>set('cgu',e.target.checked)}/><label htmlFor="cgu">J'accepte les <a href="/cgu" target="_blank">Conditions Générales d'Utilisation</a> et la <a href="/rgpd" target="_blank">politique de confidentialité</a> de Ocre Immo.</label></div>
+          {serverError && <div className="help err" style={{marginBottom:8}}>⚠ {serverError}</div>}
+          <div className="nav-row"><button className="btn btn-back" onClick={()=>setStep(3)}>‹ Retour</button><button className="btn btn-success" onClick={submit} disabled={!step4Valid || submitting} style={{flex:1}}>{submitting ? '…' : '✓ Créer mon compte'}</button></div>
+        </div>
+      )}
+    </>
+  );
 }
-['f-prenom','f-nom','f-email','f-tel','f-ville','f-formation'].forEach(id => $(id).addEventListener('input', update));
-$('cgu-cb').addEventListener('change', update);
-$('cgu-link').addEventListener('click', e => { e.preventDefault(); $('cgu-modal').style.display='flex'; });
-$('cgu-close').addEventListener('click', () => $('cgu-modal').style.display='none');
-
-function toast(msg, type='success') {
-  const t = document.createElement('div');
-  t.className = 'toast ' + type; t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3500);
-}
-
-$('form-register').addEventListener('submit', async ev => {
-  ev.preventDefault();
-  const btn = $('btn-submit');
-  btn.disabled = true;
-  const old = btn.textContent;
-  btn.innerHTML = '<span class="spinner"></span>';
-  const payload = {
-    prenom: $('f-prenom').value.trim(),
-    nom: $('f-nom').value.trim(),
-    email: $('f-email').value.trim().toLowerCase(),
-    telephone: $('f-tel').value.trim(),
-    ville: $('f-ville').value.trim(),
-    formation: $('f-formation').value.trim(),
-    accept_cgu: $('cgu-cb').checked,
-  };
-  try {
-    const r = await fetch('/api/auth.php?action=register', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    const d = await r.json();
-    if (!d.ok) { toast(d.error || 'Erreur', 'error'); btn.disabled=false; btn.textContent=old; return; }
-    const msg = d.mail_sent === false
-      ? 'Compte créé. Le code va t\'arriver par email dans quelques instants.'
-      : 'Compte créé. Vérifie tes emails pour ton code de connexion.';
-    toast(msg, 'success');
-    setTimeout(() => {
-      window.location = 'https://' + d.wsp_slug + '.ocre.immo/login/?email=' + encodeURIComponent(payload.email);
-    }, 2500);
-  } catch (e) { toast('Erreur réseau', 'error'); btn.disabled=false; btn.textContent=old; }
-});
+ReactDOM.createRoot(document.getElementById('root')).render(<Wizard/>);
 </script>
 </body>
 </html>
