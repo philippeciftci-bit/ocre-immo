@@ -654,7 +654,7 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
 
     <div class="body">
-      <div class="kicker">— Une demeure de prestige —</div>
+      <div class="kicker"<?= _pdfEdAttr('kicker', $_pdfEditorState) ?>><?= h(_pdfBlockValue($_pdfEditorState, 'kicker', '— Une demeure de prestige —')) ?></div>
       <h1 class="title"<?= _pdfEdAttr('title', $_pdfEditorState) ?>><?= h($titreBien) ?></h1>
       <div class="place"<?= _pdfEdAttr('subtitle', $_pdfEditorState) ?>><?= h(_pdfBlockValue($_pdfEditorState, 'subtitle', $ville ?: 'Marrakech')) ?></div>
 
