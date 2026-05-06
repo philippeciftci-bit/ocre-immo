@@ -22420,15 +22420,45 @@ function FormView(props) {
             const _flagM32 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M32_BOTTOMBAR_UNIFORM'))
               ? !!window.__ocreFlags.M32_BOTTOMBAR_UNIFORM : true;
             if (_flagM32) {
-              return (
-                <OcreBottomBar buttons={[
-                  { key:'back', icon: BB_ICONS.BACK, label:'Retour', onClick: () => backToList && backToList(), separatorAfter: true, title:'Retour a la liste' },
-                  { key:'scan', icon: BB_ICONS.SCAN, label:'Scanner', onClick:onScan, title:'Scan internet' },
-                  { key:'pdf', icon: BB_ICONS.PDF, label:'PDF', onClick:onPdf, title:'Apercu PDF' },
-                  { key:'archive', icon: BB_ICONS.ARCHIVE, label: d.archived ? 'Desarch.' : 'Archiver', onClick:onArchive, title: d.archived ? 'Desarchiver' : 'Archiver' },
-                  { key:'delete', icon: BB_ICONS.TRASH, label:'Supprimer', onClick:onTrash, accent:'rose', title:'Supprimer definitivement' },
-                ]}/>
+              // M/2026/05/06/72 — bouton Enregistrer entre PDF et Archiver. Visible uniquement si statut=brouillon
+              // (masque si enregistre/archive pour eviter le shift de layout, plus propre que disabled gris).
+              const _isBrouillon72 = (d.statut === 'brouillon') || (!d.statut && (d.is_draft === 1 || d.is_draft === true));
+              const _isArchive72 = d.statut === 'archive' || !!d.archived;
+              const onPublishDossier = async () => {
+                if (!_hasRealId) { showToast && showToast('Enregistre d abord le dossier'); return; }
+                if (!activeProfil) { showToast && showToast('Choisis un profil avant d enregistrer'); return; }
+                try {
+                  const tk = localStorage.getItem('ocre_token') || '';
+                  const next = {...d, id: editing.id, projet: activeProfil, statut: 'enregistre', is_draft: 0};
+                  const r = await fetch(API + '/clients.php?action=save', {
+                    method:'POST', headers:{'Content-Type':'application/json','X-Session-Token': tk},
+                    body: JSON.stringify({client: next})
+                  });
+                  const j = await r.json();
+                  if (!r.ok || !j || !j.ok) {
+                    showToast && showToast((j && j.error) || 'Echec enregistrement');
+                    return;
+                  }
+                  setD(prev => ({...prev, statut: 'enregistre', is_draft: 0}));
+                  if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, statut: 'enregistre', is_draft: 0} : prev);
+                  showToast && showToast('Dossier enregistre');
+                } catch (e) {
+                  showToast && showToast('Erreur reseau');
+                }
+              };
+              const buttons72 = [
+                { key:'back', icon: BB_ICONS.BACK, label:'Retour', onClick: () => backToList && backToList(), separatorAfter: true, title:'Retour a la liste' },
+                { key:'scan', icon: BB_ICONS.SCAN, label:'Scanner', onClick:onScan, title:'Scan internet' },
+                { key:'pdf', icon: BB_ICONS.PDF, label:'PDF', onClick:onPdf, title:'Apercu PDF' },
+              ];
+              if (_isBrouillon72 && !_isArchive72) {
+                buttons72.push({ key:'save', icon: BB_ICONS.SAVE, label:'Enregistrer', onClick: onPublishDossier, accent:'gold', title:'Enregistrer le dossier (passe brouillon -> enregistre + verrouille profil)' });
+              }
+              buttons72.push(
+                { key:'archive', icon: BB_ICONS.ARCHIVE, label: d.archived ? 'Desarch.' : 'Archiver', onClick:onArchive, title: d.archived ? 'Desarchiver' : 'Archiver' },
+                { key:'delete', icon: BB_ICONS.TRASH, label:'Supprimer', onClick:onTrash, accent:'rose', title:'Supprimer definitivement' }
               );
+              return (<OcreBottomBar buttons={buttons72}/>);
             }
             // M/2026/05/04/31 — flag M31_BOTTOMBAR_PILL : ON = pill flottant N°10 (#7A5132 capsule), OFF = ancien rectangle M27/M29.
             const _flagM31 = (typeof window !== 'undefined' && window.__ocreFlags && Object.prototype.hasOwnProperty.call(window.__ocreFlags, 'M31_BOTTOMBAR_PILL'))
