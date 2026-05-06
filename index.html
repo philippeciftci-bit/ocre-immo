@@ -21639,9 +21639,13 @@ function FormView(props) {
           const _displayNameBar = (profilType === 'Société' && d.societe_nom)
             ? d.societe_nom
             : (((d.prenom || '') + ' ' + (d.nom || '')).trim() || 'Sans nom');
-          const _isPrincipalBar = ['Acheteur','Vendeur','Bailleur','Locataire'].includes(activeProfil);
+          // M/2026/05/06/74 — barre client : pastille profil placeholder dashed si profil null,
+          //                  picker accessible via tap pastille (en mode brouillon).
+          const _isPrincipalBar = ['Acheteur','Vendeur','Bailleur','Locataire','Promoteur','MarchandBiens','Investisseur'].includes(activeProfil);
           const _profilColorBar = _isPrincipalBar ? (PROFILS[activeProfil] || '#8B5E3C') : '#A89882';
-          const _profilLabelBar = _isPrincipalBar ? (PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()) : 'BROUILLON';
+          const _profilLabelBar = _isPrincipalBar ? (PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()) : '';
+          const _isBrouillonBar = (d.statut === 'brouillon') || (!d.statut && (d.is_draft === 1 || d.is_draft === true));
+          const _profilClickableBar = _isBrouillonBar;
           // M/2026/05/03/31 — emails + calendrier ajoutes dans le bloc identite.
           const _emailsBar = Array.isArray(d.emails) && d.emails.length > 0 ? d.emails : (d.email ? [{valeur: d.email}] : []);
           const _emailBar = (_emailsBar[0] && _emailsBar[0].valeur) || '';
@@ -21688,14 +21692,28 @@ function FormView(props) {
                 </button>
               </div>
               {/* M/2026/05/06/71 — span "Brouillon" italique rouge a gauche de la pastille profil, uniquement si statut=brouillon. */}
-              {((d.statut === 'brouillon') || (!d.statut && (d.is_draft === 1 || d.is_draft === true))) && (
+              {_isBrouillonBar && (
                 <span style={{flexShrink:0, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize: smallScreen ? 9 : 11.5, color:'#C0392B', lineHeight:1, marginRight:2}}>
                   Brouillon
                 </span>
               )}
-              <span style={{padding:'2px 8px', borderRadius:10, background:_profilColorBar, color:'#fff', fontSize:9.5, fontWeight:700, letterSpacing:0.4, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit'}}>
-                {_profilLabelBar}
-              </span>
+              {/* M/2026/05/06/74 — pastille profil TOUJOURS rendue. Placeholder dashed cliquable si profil null en brouillon. */}
+              {_isPrincipalBar ? (
+                <button type="button"
+                  onClick={(e) => { e.stopPropagation(); if (_profilClickableBar) toggleProfilPicker(); }}
+                  disabled={!_profilClickableBar}
+                  title={_profilClickableBar ? 'Changer le profil' : 'Profil verrouille apres enregistrement'}
+                  style={{padding:'2px 8px', borderRadius:10, background:_profilColorBar, color:'#fff', fontSize:9.5, fontWeight:700, letterSpacing:0.4, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', border:'none', cursor: _profilClickableBar ? 'pointer' : 'default', opacity: _profilClickableBar ? 1 : 0.92}}>
+                  {_profilLabelBar}
+                </button>
+              ) : (
+                <button type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleProfilPicker(); }}
+                  title="Choisir un profil"
+                  style={{padding:'2px 8px', borderRadius:10, background:'transparent', border:'1.5px dashed #C9B79A', color:'#5C3B1E', fontStyle:'italic', fontSize:9.5, fontWeight:600, whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit', cursor:'pointer'}}>
+                  Choisir un profil
+                </button>
+              )}
             </div>
           );
         })()}
@@ -21855,18 +21873,27 @@ function FormView(props) {
                    {k:'Investisseur',   l:'Investisseur',       color:'#6B4E8B'},
                  ];
                  return (
-                   <div style={{display:'flex', alignItems:'center', gap:6, flex:1, minWidth:0}}>
-                     <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:500, color:'#2A1F15', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:1, minWidth:0}}>{_titleStage1}</span>
-                     <span style={{display:'inline-block', width:1, height:16, background:'#E8DDC9', flexShrink:0, marginLeft:4}}/>
-                     <div style={{flex:1}}/>
-                     <button ref={profilBtnRef} type="button"
-                       disabled={!_isBrouillon1A}
-                       onClick={(e) => { e.stopPropagation(); if (_isBrouillon1A) toggleProfilPicker(); }}
-                       aria-label={_isBrouillon1A ? 'Choisir le profil' : 'Profil verrouille (dossier enregistre)'}
-                       title={_isBrouillon1A ? 'Choisir le profil' : 'Profil verrouille apres enregistrement'}
-                       style={{padding:'5px 11px', borderRadius:99, border:'none', background: _isPrincipal1A ? _profilColor1A : '#A89882', color: '#fff', fontSize:10.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor: _isBrouillon1A ? 'pointer' : 'default', fontFamily:'inherit', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, flexShrink:0, boxShadow:'0 1px 3px rgba(0,0,0,0.12)', opacity: _isBrouillon1A ? 1 : 0.92}}>
-                       {_profilLabel1A}{_isBrouillon1A && <span style={{fontSize:8, opacity:.85}}>▾</span>}
-                     </button>
+                   // M/2026/05/06/74 — alignement gauche : titre + hairline + pill profil colles, pas d espace vide.
+                   <div style={{display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0, flexWrap:'wrap'}}>
+                     <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:500, color:'#2A1F15', whiteSpace:'nowrap', flexShrink:0}}>{_titleStage1}</span>
+                     <span style={{display:'inline-block', width:1, height:16, background:'#E8DDC9', flexShrink:0}}/>
+                     {_isPrincipal1A ? (
+                       <button ref={profilBtnRef} type="button"
+                         disabled={!_isBrouillon1A}
+                         onClick={(e) => { e.stopPropagation(); if (_isBrouillon1A) toggleProfilPicker(); }}
+                         aria-label={_isBrouillon1A ? 'Choisir le profil' : 'Profil verrouille (dossier enregistre)'}
+                         title={_isBrouillon1A ? 'Choisir le profil' : 'Profil verrouille apres enregistrement'}
+                         style={{padding:'5px 11px', borderRadius:99, border:'none', background: _profilColor1A, color: '#fff', fontSize:10.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor: _isBrouillon1A ? 'pointer' : 'default', fontFamily:'inherit', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, flexShrink:0, boxShadow:'0 1px 3px rgba(0,0,0,0.12)', opacity: _isBrouillon1A ? 1 : 0.92}}>
+                         {_profilLabel1A}{_isBrouillon1A && <span style={{fontSize:8, opacity:.85}}>▾</span>}
+                       </button>
+                     ) : (
+                       <button ref={profilBtnRef} type="button"
+                         onClick={(e) => { e.stopPropagation(); toggleProfilPicker(); }}
+                         title="Choisir un profil"
+                         style={{padding:'5px 11px', borderRadius:99, background:'transparent', border:'1.5px dashed #C9B79A', color:'#5C3B1E', fontStyle:'italic', fontSize:10.5, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, cursor:'pointer'}}>
+                         Choisir un profil
+                       </button>
+                     )}
                    </div>
                  );
                })()}
