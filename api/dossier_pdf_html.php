@@ -573,12 +573,9 @@ header('Content-Type: text/html; charset=utf-8');
   .blk .row b { font-style: normal; font-weight: 500; color: var(--gold-deep); }
   .blk-full { grid-column: 1 / span 2; }
 
-  .foot-p2 { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; padding-top: 9px; margin-top: 10px; border-top: .5px solid var(--gold-deep); flex: none; }
-  .foot-p2 .agent { font-style: italic; font-size: 11px; line-height: 1.4; text-align: left; }
-  .foot-p2 .agent .lab, .foot-p2 .client .lab { display: block; font-style: normal; font-weight: 500; font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold-deep); margin-bottom: 2px; }
+  /* M/2026/05/06/66 — foot-p2 simplifie : seul pgnum centre. Agent + client retires. */
+  .foot-p2 { display: flex; justify-content: center; align-items: center; padding-top: 9px; margin-top: 10px; border-top: .5px solid var(--gold-deep); flex: none; }
   .foot-p2 .pgnum { font-style: italic; font-size: 10.5px; color: var(--gold-deep); letter-spacing: 2.5px; text-transform: uppercase; font-weight: 500; text-align: center; }
-  .foot-p2 .client { font-style: italic; font-size: 11px; line-height: 1.4; text-align: right; }
-  .foot-p2 .client.empty { visibility: hidden; }
 
   /* ============================ PAGE 3 ============================ */
   /* M/2026/05/05/60 — Album P3 : 15 photos en 5 rangees, sans titres intermediaires. Header compacte. */
@@ -616,10 +613,9 @@ header('Content-Type: text/html; charset=utf-8');
   @media print { .page[data-page-disabled="1"] { display: none; } }
   /* M/2026/05/05/64 — blocs masques (visible=false via pastille oeil M/57) absents du PDF final imprime. */
   @media print { [data-pdf-hidden="1"] { display: none !important; } }
-  /* M/2026/05/05/65 — footer rigide P1+P2 : preservation flow grid via visibility:hidden. */
+  /* M/2026/05/05/65 — footer rigide P1 : preservation flow grid via visibility:hidden. M/66 retire P2. */
   @media print {
-    .foot .client[data-pdf-hidden="1"], .foot .agent[data-pdf-hidden="1"],
-    .foot-p2 .client[data-pdf-hidden="1"], .foot-p2 .agent[data-pdf-hidden="1"] {
+    .foot .client[data-pdf-hidden="1"], .foot .agent[data-pdf-hidden="1"] {
       display: block !important; visibility: hidden !important;
     }
   }
@@ -835,22 +831,9 @@ header('Content-Type: text/html; charset=utf-8');
       <div class="grid-2col"><?= $_p2sections ?></div>
       <?php endif; ?>
 
+      <?php /* M/2026/05/06/66 — footer P2 : agent gauche + client droite supprimes, seul pgnum centre conserve. */ ?>
       <div class="foot-p2">
-        <div class="agent">
-          <span class="lab">Agent référent</span>
-          <?php if ($hideIdentity): ?>
-            <span style="color: var(--mute); font-style: italic;">Coordonnées sur demande</span>
-          <?php else: ?>
-            <?= h($agentName) ?><?php if ($agentTel): ?> &middot; <?= h($agentTel) ?><?php endif; ?>
-          <?php endif; ?>
-        </div>
         <div class="pgnum">Page de détails</div>
-        <div class="client<?= $_hasClient ? '' : ' empty' ?>"<?= _pdfEdAttr('client', $_pdfEditorState) ?>>
-          <?php if ($_hasClient): ?>
-            <span class="lab">Client</span>
-            <?= _renderClientLines($_clientFullName, $_clientSociete, $_clientTel, $_clientEmail) ?>
-          <?php endif; ?>
-        </div>
       </div>
     </div>
   </section>
