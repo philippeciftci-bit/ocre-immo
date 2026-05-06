@@ -17780,38 +17780,11 @@ function ListView(props) {
   // Le composant <SearchBar/> gère son propre ref/autofocus.
   const [showSearch, setShowSearch] = useState(Boolean(listSearch));
   const [searchInput, setSearchInput] = useState(listSearch || '');
-  // M/2026/05/06/82.2 — workspaces map client_id -> [WS] pour rendu marker-top sur cards.
-  // M/2026/05/06/82.3 — workspacesList global pour pill WSC popup + filtre.
-  const [clientWorkspacesTick, setClientWorkspacesTick] = useState(0);
-  const [workspacesList, setWorkspacesList] = useState([]);
-  const [wscFilter, setWscFilter] = useState(null); // null | 'all' | {id, nom}
-  const [wscPopupOpen, setWscPopupOpen] = useState(false);
-  useEffect(() => {
-    const tk = localStorage.getItem('ocre_token') || '';
-    fetch('/api/workspaces.php?action=for_all_clients', {headers:{'X-Session-Token': tk}, cache:'no-store'})
-      .then(r => r.json())
-      .then(j => {
-        if (j && j.ok && j.by_client) {
-          window.__ocreClientWorkspaces = j.by_client;
-          setClientWorkspacesTick(t => t + 1);
-        }
-      })
-      .catch(() => {});
-    fetch('/api/workspaces.php?action=list', {headers:{'X-Session-Token': tk}, cache:'no-store'})
-      .then(r => r.json())
-      .then(j => { if (j && j.ok && Array.isArray(j.workspaces)) setWorkspacesList(j.workspaces); })
-      .catch(() => {});
-  }, [clientWorkspacesTick]);
-  // M/2026/05/06/82.2 — listener pour marqueurs cards (dispatch CustomEvent).
+  // M/2026/05/06/82.5 — listener pour marqueur Brouillon (cards). WSC supprime (pivot M83).
   useEffect(() => {
     function onBro() { setListFilter('__drafts__'); window.scrollTo({top: 0, behavior: 'smooth'}); }
-    function onWsc(e) { if (e && e.detail) { setWscFilter({id: e.detail.workspace_id, nom: e.detail.nom}); setListFilter(null); window.scrollTo({top: 0, behavior: 'smooth'}); } }
     window.addEventListener('ocre-filter-brouillon', onBro);
-    window.addEventListener('ocre-filter-wsc', onWsc);
-    return () => {
-      window.removeEventListener('ocre-filter-brouillon', onBro);
-      window.removeEventListener('ocre-filter-wsc', onWsc);
-    };
+    return () => { window.removeEventListener('ocre-filter-brouillon', onBro); };
   }, [setListFilter]);
   // V57 — moteur recherche avancé. State session-only (sessionStorage rehydraté au mount).
   const [advancedOpen, setAdvancedOpen] = React.useState(false);
@@ -17840,7 +17813,8 @@ function ListView(props) {
   // V30 — pipeline filtres : archive → listFilter (profil radio OU '__drafts__') → search.
   // V57 — pipeline étendu : ajoute filtre advancedCriteria si actif (intersection).
   const archivedFiltered = clients.filter(c => !!c.archived === showArchives);
-  let profilFiltered = listFilter === '__drafts__'
+  // M/2026/05/06/82.5 — pipeline simplifie sans filtre WSC (pivot M83).
+  const profilFiltered = listFilter === '__drafts__'
     ? archivedFiltered.filter(c => !!c.is_draft)
     : (listFilter
         ? archivedFiltered.filter(c => {
@@ -17848,16 +17822,6 @@ function ListView(props) {
             return cp === listFilter;
           })
         : archivedFiltered);
-  // M/2026/05/06/82.3 — filtre WSC supplementaire (cumulable avec profil).
-  if (wscFilter) {
-    const _byClient = (typeof window !== 'undefined' && window.__ocreClientWorkspaces) || {};
-    profilFiltered = profilFiltered.filter(c => {
-      const list = _byClient[c.id] || [];
-      if (wscFilter === 'all') return list.length > 0;
-      if (wscFilter && wscFilter.id) return list.some(w => w.id === wscFilter.id);
-      return false;
-    });
-  }
   // V57 — appliquer le moteur recherche avancé en intersection. Score injecté sur chaque dossier matchant.
   const advFilteredScored = React.useMemo(() => {
     if (!advActive) return profilFiltered.map(c => ({...c, _v57_score: null}));
@@ -18048,15 +18012,7 @@ function ListView(props) {
                     Brouillons<span style={{marginLeft:3, opacity:.8, fontWeight:500, fontSize:11}}>({drafts.length})</span>
                   </button>
                 )}
-                {/* M/2026/05/06/82.3 — pill WSC popup. Ouvre liste workspaces ou affiche message vide. */}
-                <button onClick={() => setWscPopupOpen(o => !o)}
-                  style={{background: wscFilter ? '#6B4F8F' : '#EFE9F2', color: wscFilter ? '#fff' : '#6B4F8F', border:'1.5px solid '+(wscFilter ? '#6B4F8F' : '#C8B8D8'), padding:'6px 10px', borderRadius:14, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, display:'inline-flex', alignItems:'center', gap:4}}>
-                  {wscFilter ? (
-                    <>WSC · {wscFilter === 'all' ? 'Tous' : (wscFilter.nom || '')}<span onClick={e => { e.stopPropagation(); setWscFilter(null); }} style={{marginLeft:4, fontSize:11, opacity:.85}}>✕</span></>
-                  ) : (
-                    <>WSC<span style={{fontSize:8, opacity:.85}}>▾</span></>
-                  )}
-                </button>
+                {/* M/2026/05/06/82.5 — pill WSC + popup SUPPRIMES (pivot M83 agents+pacts+matching). */}
                 {PROFILS_ORDER.map(p => {
                   const active = p === listFilter;
                   const n = countByProfil[p] || 0;
@@ -18167,43 +18123,7 @@ function ListView(props) {
           setEditingFromMatch={setEditingFromMatch}
           onClose={closeMatchModal}/>
       )}
-      {/* M/2026/05/06/82.3 — popup WSC : liste workspaces + Tous les partages OU message vide. */}
-      {wscPopupOpen && (() => {
-        const _byClient = (typeof window !== 'undefined' && window.__ocreClientWorkspaces) || {};
-        const _allPartagesCount = Object.keys(_byClient).filter(cid => (_byClient[cid] || []).length > 0).length;
-        return (
-          <div onClick={() => setWscPopupOpen(false)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.4)', zIndex:9100, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
-            <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:12, padding:14, width:'100%', maxWidth:300, boxShadow:'0 8px 32px rgba(0,0,0,.18)'}}>
-              <div style={{fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:18, fontWeight:700, color:'#6B4F8F', marginBottom:10, textAlign:'center'}}>Choisir un workspace</div>
-              {workspacesList.length === 0 ? (
-                <div style={{padding:'12px 0', textAlign:'center', fontSize:12, color:'#8B7F6E', fontStyle:'italic'}}>
-                  Aucun workspace pour l'instant.<br/>Créez votre premier en partageant un dossier.
-                </div>
-              ) : (
-                <>
-                  <div style={{display:'flex', flexDirection:'column', gap:5, maxHeight:'40vh', overflowY:'auto'}}>
-                    {workspacesList.map(ws => (
-                      <button key={ws.id} type="button"
-                        onClick={() => { setWscFilter({id: ws.id, nom: ws.nom}); setWscPopupOpen(false); window.scrollTo({top:0, behavior:'smooth'}); }}
-                        style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 10px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:13, color:'#2A2018', textAlign:'left'}}>
-                        <span style={{fontStyle:'italic', color:'#6B4F8F', fontWeight:600}}>WS {ws.nom}</span>
-                        <span style={{fontSize:10, fontWeight:700, color:'#6B4F8F', background:'rgba(107,79,143,0.10)', padding:'2px 7px', borderRadius:99}}>{ws.clients_count || 0}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button type="button"
-                    onClick={() => { setWscFilter('all'); setWscPopupOpen(false); window.scrollTo({top:0, behavior:'smooth'}); }}
-                    style={{display:'block', width:'100%', marginTop:10, padding:'8px 10px', background:'#6B4F8F', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600}}>
-                    ↳ Tous les partagés ({_allPartagesCount})
-                  </button>
-                </>
-              )}
-              <button type="button" onClick={() => setWscPopupOpen(false)}
-                style={{display:'block', width:'100%', marginTop:8, padding:'7px 10px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:8, cursor:'pointer', fontFamily:'inherit', fontSize:12, fontWeight:600}}>Fermer</button>
-            </div>
-          </div>
-        );
-      })()}
+      {/* M/2026/05/06/82.5 — popup WSC SUPPRIME (pivot M83 agents+pacts+matching anonyme). */}
     </div>
   );
 }
@@ -18694,29 +18614,17 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       onClick={e => { if (swipeX !== 0) { setSwipeX(0); return; } if (onClick) onClick(e); }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       style={{transform:'translateX(' + swipeX + 'px)', transition: swipeStart ? 'none' : 'transform 200ms ease', background:'#fff', position:'relative', zIndex:1, marginBottom:0}}>
-      {/* M/2026/05/06/82.2 — Marker-top centre : Brouillon italique rouge OU spans WS multi italique violet, cliquables filtre. */}
+      {/* M/2026/05/06/82.5 — marker-top simplifie : SEUL le Brouillon italique rouge centre subsiste. WS supprime (pivot M83 agents+pacts+matching anonyme). */}
       {(() => {
         const _isBrouillon = (c.statut === 'brouillon') || (!c.statut && (c.is_draft === 1 || c.is_draft === true));
-        const _wsList = (typeof window !== 'undefined' && window.__ocreClientWorkspaces && window.__ocreClientWorkspaces[c.id]) || [];
-        if (!_isBrouillon && _wsList.length === 0) return null;
+        if (!_isBrouillon) return null;
         const onClickBrouillon = (e) => { e.stopPropagation(); try { window.dispatchEvent(new CustomEvent('ocre-filter-brouillon')); } catch (_) {} };
-        const onClickWs = (ws, e) => { e.stopPropagation(); try { window.dispatchEvent(new CustomEvent('ocre-filter-wsc', {detail: {workspace_id: ws.id, nom: ws.nom}})); } catch (_) {} };
         return (
           <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:6, flexWrap:'wrap', padding:'5px 10px 0', background: tint}}>
-            {_isBrouillon ? (
-              <span data-filter="brouillon" onClick={onClickBrouillon}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(192,57,43,0.08)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                style={{cursor:'pointer', padding:'2px 5px', borderRadius:99, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize:9.5, color:'#C0392B', lineHeight:1.2, transition:'background 120ms'}}>Brouillon</span>
-            ) : _wsList.map((ws, idx) => (
-              <React.Fragment key={'ws-' + ws.id}>
-                {idx > 0 && <span aria-hidden="true" style={{fontSize:8, color:'#9A8B7C', opacity:0.4}}>●</span>}
-                <span data-filter="wsc" data-workspace-id={ws.id} onClick={(e) => onClickWs(ws, e)}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(107,79,143,0.10)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                  style={{cursor:'pointer', padding:'2px 5px', borderRadius:99, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize:9.5, color:'#6B4F8F', lineHeight:1.2, transition:'background 120ms'}}>WS {ws.nom}</span>
-              </React.Fragment>
-            ))}
+            <span data-filter="brouillon" onClick={onClickBrouillon}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(192,57,43,0.08)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              style={{cursor:'pointer', padding:'2px 5px', borderRadius:99, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize:9.5, color:'#C0392B', lineHeight:1.2, transition:'background 120ms'}}>Brouillon</span>
           </div>
         );
       })()}
@@ -20969,107 +20877,6 @@ const M79_COUNTRY_REF = {
 // 8 champs : Type, N° mandat, Date signature, Validite (mois), Reconduction, Notaire/Adoul, Avocat, Penalite.
 // Cles DB existantes preservees : mandat_type, mandat_numero, mandat_date_signature, mandat_duree_mois.
 // Nouvelles cles : mandat_reconduction, mandat_notaire_adoul, mandat_avocat, mandat_penalite_rupture_pct.
-// M/2026/05/06/82.4 — Bloc "Workspaces partages" dans page dossier.
-// Visible uniquement si statut=enregistre. Liste pills WS associes + bouton + Ajouter (popover liste WS existants + creer nouveau).
-function WorkspacesBlock({clientId, statut}) {
-  const [wsList, setWsList] = React.useState([]);
-  const [allWs, setAllWs] = React.useState([]);
-  const [popoverOpen, setPopoverOpen] = React.useState(false);
-  const [newWsName, setNewWsName] = React.useState('');
-  const _isBrouillon = statut === 'brouillon';
-  const refresh = React.useCallback(() => {
-    if (!clientId) return;
-    const tk = localStorage.getItem('ocre_token') || '';
-    fetch('/api/workspaces.php?action=for_client&client_id=' + encodeURIComponent(clientId), {headers:{'X-Session-Token': tk}, cache:'no-store'})
-      .then(r => r.json()).then(j => { if (j && j.ok && Array.isArray(j.workspaces)) setWsList(j.workspaces); }).catch(() => {});
-    fetch('/api/workspaces.php?action=list', {headers:{'X-Session-Token': tk}, cache:'no-store'})
-      .then(r => r.json()).then(j => { if (j && j.ok && Array.isArray(j.workspaces)) setAllWs(j.workspaces); }).catch(() => {});
-  }, [clientId]);
-  React.useEffect(() => { if (!_isBrouillon && clientId) refresh(); }, [refresh, _isBrouillon, clientId]);
-  async function attach(workspaceId) {
-    const tk = localStorage.getItem('ocre_token') || '';
-    await fetch('/api/workspaces.php?action=attach', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({client_id: clientId, workspace_id: workspaceId})});
-    setPopoverOpen(false); refresh();
-  }
-  async function detach(workspaceId) {
-    if (!window.confirm('Retirer ce dossier du WS ?')) return;
-    const tk = localStorage.getItem('ocre_token') || '';
-    await fetch('/api/workspaces.php?action=detach', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({client_id: clientId, workspace_id: workspaceId})});
-    refresh();
-  }
-  async function createAndAttach() {
-    const nom = (newWsName || '').trim();
-    if (!nom) return;
-    const tk = localStorage.getItem('ocre_token') || '';
-    // Verifier si nom existe deja (case-insensitive).
-    const existing = allWs.find(w => w.nom.toLowerCase() === nom.toLowerCase());
-    let wsId = existing ? existing.id : null;
-    if (!wsId) {
-      const r = await fetch('/api/workspaces.php?action=create', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({nom})});
-      const j = await r.json();
-      if (!j || !j.ok || !j.workspace) { alert((j && j.error) || 'Echec creation'); return; }
-      wsId = j.workspace.id;
-    }
-    await attach(wsId);
-    setNewWsName('');
-  }
-  if (!clientId) return null;
-  return (
-    <div style={{margin:'16px 0', padding:'12px', background:'rgba(107,79,143,.06)', border:'1px solid #6B4F8F', borderRadius:11}}>
-      <div style={{fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:14, fontWeight:600, color:'#6B4F8F', marginBottom:8}}>
-        🤝 Workspaces partages
-      </div>
-      {_isBrouillon ? (
-        <div style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic'}}>Disponible apres enregistrement du dossier.</div>
-      ) : (
-        <>
-          <div style={{display:'flex', flexWrap:'wrap', gap:5, marginBottom:8}}>
-            {wsList.length === 0 ? (
-              <span style={{fontSize:11, color:'#8B7F6E', fontStyle:'italic'}}>Aucun workspace associe.</span>
-            ) : wsList.map(ws => (
-              <span key={ws.id} style={{display:'inline-flex', alignItems:'center', gap:5, padding:'4px 8px', background:'#fff', border:'1px solid #6B4F8F', borderRadius:99, fontSize:11, fontWeight:600, color:'#6B4F8F', fontStyle:'italic', fontFamily:'inherit'}}>
-                WS {ws.nom}
-                <button type="button" onClick={() => detach(ws.id)} style={{background:'none', border:'none', color:'#6B4F8F', cursor:'pointer', padding:0, fontSize:13, lineHeight:1, opacity:.7, fontFamily:'inherit'}} title="Retirer">×</button>
-              </span>
-            ))}
-          </div>
-          <button type="button" onClick={() => setPopoverOpen(o => !o)}
-            style={{padding:'6px 11px', background:'#6B4F8F', color:'#fff', border:'none', borderRadius:99, fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
-            + Ajouter un WS
-          </button>
-          {popoverOpen && (
-            <div style={{marginTop:8, padding:10, background:'#fff', border:'1px solid #E8DDC9', borderRadius:8, boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
-              {allWs.filter(w => !wsList.some(x => x.id === w.id)).length > 0 && (
-                <>
-                  <div style={{fontSize:10, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:5}}>Existants</div>
-                  <div style={{display:'flex', flexDirection:'column', gap:3, marginBottom:8}}>
-                    {allWs.filter(w => !wsList.some(x => x.id === w.id)).map(ws => (
-                      <button key={ws.id} type="button" onClick={() => attach(ws.id)}
-                        style={{padding:'6px 9px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:6, cursor:'pointer', fontFamily:'inherit', fontSize:12, color:'#2A2018', textAlign:'left'}}>
-                        <span style={{fontStyle:'italic', color:'#6B4F8F', fontWeight:600}}>WS {ws.nom}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{borderTop:'1px dashed #E8DDC9', margin:'8px 0'}}/>
-                </>
-              )}
-              <div style={{fontSize:10, fontWeight:600, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:5}}>Creer un nouveau</div>
-              <div style={{display:'flex', gap:5}}>
-                <input type="text" value={newWsName} onChange={e => setNewWsName(e.target.value)}
-                  placeholder="Ex : WS Mehdi"
-                  style={{flex:1, padding:'6px 9px', border:'1px solid #E8DDC9', borderRadius:6, fontSize:12, fontFamily:'inherit'}}/>
-                <button type="button" onClick={createAndAttach}
-                  style={{padding:'6px 11px', background:'#6B4F8F', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontFamily:'inherit', fontSize:11, fontWeight:600}}>
-                  Creer + ajouter
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
 
 // M/2026/05/06/80.3 — Bandeau Prix de vente affiche 6c (migration depuis Section III FinancementForm Vendeur).
 // Calcul dynamique : Prix + Liquide + Frais agence total. Lit cur.left depuis state global Currency v5.
@@ -22933,10 +22740,7 @@ function FormView(props) {
             saisies en Section I), pas un destinataire externe. Colonnes destinataire_nom / destinataire_email
             preservees en DB (dormantes, peuvent resservir). */}
 
-        {/* M/2026/05/06/82.4 — Bloc Workspaces partages (visible si dossier enregistre, sinon message disabled). */}
-        <WorkspacesBlock
-          clientId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
-          statut={d.statut || (d.is_draft ? 'brouillon' : 'enregistre')}/>
+        {/* M/2026/05/06/82.5 — Bloc Workspaces partages SUPPRIME (pivot M83 agents+pacts+matching anonyme). */}
 
         {/* V18.17 — boutons dédiés pour staged : Ajouter à mes brouillons + Supprimer téléchargement.
             M/2026/05/02/27 — M139 : wording renommé. Avant 'Enregistrer dans mes dossiers' (ambigu, suggérait
