@@ -8759,9 +8759,10 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           <PriceField2Col label="Liquide" valueKey="prix_liquide" set={set} d={d} hint="Partie cash hors compta" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
-        <V55Bloc title="Frais d'agence" theme="agence">
-          <M53FraisAgenceMulti d={d} set={set} baseAmount={prix} profil="Vendeur" forceUpdate={forceUpdate}/>
-        </V55Bloc>
+        {/* M/2026/05/06/80.2.A — V55Bloc Frais d'agence Section III SUPPRIME. Composant M53FraisAgenceMulti
+            migre vers Section VI 6b (placeholder remplace par instance fonctionnelle). totalAgenceMulti
+            calcul ci-dessus reste valide car lit d.frais_agence_acteurs[] state global. La Synthese
+            Prix vente affiche ci-dessous lit toujours totalAgenceMulti correctement. */}
 
         {/* M/2026/05/03/2.1 — Synthèse Vendeur (Prix de vente affiché PDF) reste APRÈS Frais agence
             ET AVANT Frais notaire (point 8 checklist déjà satisfait pour Vendeur). */}
@@ -22664,10 +22665,14 @@ function FormView(props) {
                 <div style={{padding:'12px 14px', display:'flex', flexDirection:'column', gap:8}}>
                   {/* M/2026/05/06/80.1 — 6a Mandat juridique migre depuis Section III V55Bloc. */}
                   <M80MandatBlock d={d} set={set}/>
-                  <div style={{padding:'10px 12px', background:'#EEF1F5', border:'1px solid #D5DDE8', borderRadius:10}}>
-                    <div style={{fontSize:11, fontWeight:700, color:'#1E3A5F', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>06b · Frais d'agence</div>
-                    <div style={{fontSize:11.5, color:'#1E3A5F', fontStyle:'italic'}}>Frais d'agence multi-acteurs avec dual-currency (utilisera DualCurrencyPair M77). Saisie actuelle en Section III bloc Frais d'agence — migration M80.2 a venir.</div>
-                  </div>
+                  {/* M/2026/05/06/80.2.A — 6b Frais d'agence : composant M53FraisAgenceMulti deplace TEL QUEL
+                      depuis Section III (PriceField2Col conserve, refactor DualCurrencyPair reporte M80.2.B). */}
+                  <V55Bloc title="06b · Frais d'agence" theme="agence">
+                    <M53FraisAgenceMulti d={d} set={set}
+                      baseAmount={Number(d.prix_affiche) || 0}
+                      profil={activeProfil || 'Vendeur'}
+                      forceUpdate={() => {}}/>
+                  </V55Bloc>
                   <div style={{padding:'10px 12px', background:'#5C3B1E', border:'1px solid #5C3B1E', borderRadius:10, color:'#F4EDDC'}}>
                     <div style={{fontSize:11, fontWeight:700, color:'#F4EDDC', textTransform:'uppercase', letterSpacing:.5, marginBottom:4, opacity:.85}}>06c · Prix de vente affiché</div>
                     <div style={{fontSize:11.5, color:'#F4EDDC', fontStyle:'italic', opacity:.92}}>Calcul Prix + Liquide + Frais agence à charge vendeur. Bandeau visible actuellement en Section III — migration M80.3 a venir.</div>
