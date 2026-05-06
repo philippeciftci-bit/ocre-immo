@@ -83,21 +83,34 @@ function pwdScore(p) { let s = 0; if (!p) return 0; if (p.length >= 10) s++; if 
 
 function Wizard() {
   const [step, setStep] = useState(1);
-  const [data, setData] = useState({prenom:'',nom:'',email:'',password:'',password2:'',siret:'',agence:'',ville:'',cp:'',carte_pro:'',tel:'',whatsapp:'',sensibility_preset:'equilibre',channels_email:true,channels_whatsapp:false,cgu:false});
+  const [data, setData] = useState({prenom:'',nom:'',email:'',password:'',password2:'',siret:'',agence:'',ville:'',cp:'',carte_pro:'',tel:'',whatsapp:'',sensibility_preset:'equilibre',channels_email:true,channels_whatsapp:false,cgu:false,rgpd:false});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [emailStatus, setEmailStatus] = useState({state:'idle', msg:''});
   useEffect(() => {
-    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const saved = JSON.parse(raw); if (saved && typeof saved === 'object') setData(d => ({...d, ...saved, password:'', password2:''})); } } catch(_) {}
+    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const saved = JSON.parse(raw); if (saved && typeof saved === 'object') setData(d => ({...d, ...saved, password:'', password2:'', cgu:false, rgpd:false})); } } catch(_) {}
   }, []);
   useEffect(() => {
-    try { const {password, password2, ...p} = data; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(_) {}
+    try { const {password, password2, cgu, rgpd, ...p} = data; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(_) {}
   }, [data]);
   const set = (k, v) => setData(d => ({...d, [k]: v}));
-  const step1Valid = data.prenom.trim() && data.nom.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) && pwdScore(data.password) >= 3 && data.password === data.password2;
+  async function checkEmail() {
+    const e = data.email.trim().toLowerCase();
+    if (!e || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setEmailStatus({state:'idle', msg:''}); return; }
+    setEmailStatus({state:'checking', msg:'Vérification...'});
+    try {
+      const r = await fetch('/api/check_email.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email: e})});
+      const j = await r.json();
+      if (j && j.available === false && j.reason === 'already_used') setEmailStatus({state:'taken', msg:'Cet email est déjà utilisé'});
+      else if (j && j.available === true) setEmailStatus({state:'ok', msg:'Disponible'});
+      else setEmailStatus({state:'idle', msg:''});
+    } catch(_) { setEmailStatus({state:'idle', msg:''}); }
+  }
+  const step1Valid = data.prenom.trim() && data.nom.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) && pwdScore(data.password) >= 3 && data.password === data.password2 && emailStatus.state !== 'taken';
   const siretValid = validateSiret(data.siret);
   const step2Valid = siretValid && data.ville.trim();
   const step3Valid = data.tel.trim();
-  const step4Valid = data.cgu === true;
+  const step4Valid = data.cgu === true && data.rgpd === true;
   async function submit() {
     if (submitting) return;
     setSubmitting(true); setServerError('');
@@ -108,6 +121,7 @@ function Wizard() {
         ville: data.ville.trim(), cp: data.cp.trim(), carte_pro: data.carte_pro.trim(),
         tel: data.tel.trim(), whatsapp: data.whatsapp.trim(), sensibility_preset: data.sensibility_preset,
         channels_enabled: {email: data.channels_email, whatsapp: data.channels_whatsapp},
+        cgu_accepted: data.cgu === true, rgpd_accepted: data.rgpd === true,
       })});
       const j = await r.json();
       if (r.ok && j && j.ok) {
@@ -138,7 +152,7 @@ function Wizard() {
             <div className="field"><label>Prénom<span className="req">*</span></label><input type="text" value={data.prenom} onChange={e=>set('prenom',e.target.value)}/></div>
             <div className="field"><label>Nom<span className="req">*</span></label><input type="text" value={data.nom} onChange={e=>set('nom',e.target.value)} onBlur={e=>set('nom',e.target.value.toUpperCase())}/></div>
           </div>
-          <div className="field"><label>Email professionnel<span className="req">*</span></label><input type="email" value={data.email} onChange={e=>set('email',e.target.value)} autoComplete="email"/></div>
+          <div className="field"><label>Email professionnel<span className="req">*</span></label><input type="email" value={data.email} onChange={e=>{set('email',e.target.value); setEmailStatus({state:'idle', msg:''});}} onBlur={checkEmail} autoComplete="email"/>{emailStatus.state === 'checking' && <div className="help">Vérification…</div>}{emailStatus.state === 'ok' && <div className="help ok">✓ Disponible</div>}{emailStatus.state === 'taken' && <div className="help err">⚠ {emailStatus.msg}</div>}</div>
           <div className="field"><label>Mot de passe<span className="req">*</span></label><input type="password" value={data.password} onChange={e=>set('password',e.target.value)} placeholder="Min 10 chars, 1 maj, 1 chiffre"/><div className="help">Force : {pwdScore(data.password)} / 4</div></div>
           <div className="field"><label>Confirmation<span className="req">*</span></label><input type="password" value={data.password2} onChange={e=>set('password2',e.target.value)}/>{data.password2 && (data.password === data.password2 ? <div className="help ok">✓ Identiques</div> : <div className="help err">⚠ Différents</div>)}</div>
           <button className="btn btn-primary" onClick={()=>setStep(2)} disabled={!step1Valid}>Continuer →</button>
@@ -191,7 +205,8 @@ function Wizard() {
             <div className="recap-line"><span className="lbl">Sensibilité</span><span className="val">{({strict:'Strict',equilibre:'Équilibré',large:'Large',tres_large:'Très large'})[data.sensibility_preset]}</span></div>
             <div className="recap-line"><span className="lbl">Canaux</span><span className="val">{[data.channels_email && 'Email', data.channels_whatsapp && 'WhatsApp'].filter(Boolean).join(' · ') || 'Aucun'}</span></div>
           </div>
-          <div className="cgu-row"><input type="checkbox" id="cgu" checked={data.cgu} onChange={e=>set('cgu',e.target.checked)}/><label htmlFor="cgu">J'accepte les <a href="/cgu" target="_blank">Conditions Générales d'Utilisation</a> et la <a href="/rgpd" target="_blank">politique de confidentialité</a> de Ocre Immo.</label></div>
+          <div className="cgu-row"><input type="checkbox" id="cgu" checked={data.cgu} onChange={e=>set('cgu',e.target.checked)}/><label htmlFor="cgu">J'accepte les <a href="https://ocre.immo/cgu.html" target="_blank" rel="noopener">Conditions Générales d'Utilisation</a> de Ocre Immo.</label></div>
+          <div className="cgu-row"><input type="checkbox" id="rgpd" checked={data.rgpd} onChange={e=>set('rgpd',e.target.checked)}/><label htmlFor="rgpd">J'accepte le traitement de mes données personnelles dans le cadre du RGPD, conformément à la <a href="https://ocre.immo/politique-confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>.</label></div>
           {serverError && <div className="help err" style={{marginBottom:8}}>⚠ {serverError}</div>}
           <div className="nav-row"><button className="btn btn-back" onClick={()=>setStep(3)}>‹ Retour</button><button className="btn btn-success" onClick={submit} disabled={!step4Valid || submitting} style={{flex:1}}>{submitting ? '…' : '✓ Créer mon compte'}</button></div>
         </div>

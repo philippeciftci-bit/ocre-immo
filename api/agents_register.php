@@ -92,6 +92,12 @@ if ($ville === '') $errors['ville'] = 'Ville requise';
 if ($tel === '')   $errors['tel']   = 'Telephone requis';
 if (!in_array($sensibility, ['strict','equilibre','large','tres_large'], true)) $sensibility = 'equilibre';
 
+// M86 — validation backend stricte CGU + RGPD (cf audit M85.1, conformite RGPD art.7 + CNIL SAN-2019-001).
+$cguAccepted  = filter_var($input['cgu_accepted']  ?? false, FILTER_VALIDATE_BOOLEAN);
+$rgpdAccepted = filter_var($input['rgpd_accepted'] ?? false, FILTER_VALIDATE_BOOLEAN);
+if (!$cguAccepted)  $errors['cgu_accepted']  = 'Acceptation des CGU obligatoire';
+if (!$rgpdAccepted) $errors['rgpd_accepted'] = 'Acceptation du traitement RGPD obligatoire';
+
 if (!empty($errors)) {
     http_response_code(422);
     echo json_encode(['ok' => false, 'errors' => $errors]);
@@ -110,8 +116,10 @@ $prefsJson = json_encode([
     ],
 ], JSON_UNESCAPED_UNICODE);
 $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+$userAgent = substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
 $activationToken = bin2hex(random_bytes(32));
 $cguVersion = '1.0';
+$rgpdVersion = '1.0';
 
 try {
     $meta = _meta_pdo();
@@ -130,7 +138,9 @@ try {
                         societe = ?, ville = ?, cp = ?, country_code = 'FR',
                         sensibility_preset = ?, preferences = ?,
                         activation_token = ?, activation_token_expires_at = DATE_ADD(NOW(), INTERVAL 7 DAY),
-                        cgu_accepted_at = NOW(), cgu_version = ?, cgu_version_accepted = ?, cgu_accepted_ip = ?
+                        cgu_accepted_at = NOW(), cgu_version = ?, cgu_version_accepted = ?,
+                        cgu_accepted_ip = ?, cgu_accepted_user_agent = ?,
+                        rgpd_accepted_at = NOW(), rgpd_version = ?, rgpd_accepted_ip = ?, rgpd_accepted_user_agent = ?
                   WHERE id = ?"
             );
             $upd->execute([
@@ -140,7 +150,8 @@ try {
                 ($agence ?: null), $ville, ($cp ?: null),
                 $sensibility, $prefsJson,
                 $activationToken,
-                $cguVersion, $cguVersion, $ip,
+                $cguVersion, $cguVersion, $ip, $userAgent,
+                $rgpdVersion, $ip, $userAgent,
                 (int)$existing['id'],
             ]);
             $userId = (int)$existing['id'];
@@ -173,7 +184,9 @@ try {
              pro_card_number, siret, siren, societe,
              sensibility_preset, preferences,
              activation_token, activation_token_expires_at,
-             cgu_accepted_at, cgu_version, cgu_version_accepted, cgu_accepted_ip,
+             cgu_accepted_at, cgu_version, cgu_version_accepted,
+             cgu_accepted_ip, cgu_accepted_user_agent,
+             rgpd_accepted_at, rgpd_version, rgpd_accepted_ip, rgpd_accepted_user_agent,
              telegram_notifs_enabled, email_notifs_enabled,
              created_at)
          VALUES (?, ?, ?, ?, ?,
@@ -182,6 +195,8 @@ try {
                  ?, ?, ?, ?,
                  ?, ?,
                  ?, DATE_ADD(NOW(), INTERVAL 7 DAY),
+                 NOW(), ?, ?,
+                 ?, ?,
                  NOW(), ?, ?, ?,
                  0, ?,
                  NOW())"
@@ -192,7 +207,9 @@ try {
         ($cartePro ?: null), $siretRaw, $siren, ($agence ?: null),
         $sensibility, $prefsJson,
         $activationToken,
-        $cguVersion, $cguVersion, $ip,
+        $cguVersion, $cguVersion,
+        $ip, $userAgent,
+        $rgpdVersion, $ip, $userAgent,
         !empty($channels['email']) ? 1 : 0,
     ]);
     $userId = (int) $meta->lastInsertId();
