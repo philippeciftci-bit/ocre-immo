@@ -1,6 +1,10 @@
 <?php
-// M/2026/04/29/1 + M/2026/05/06/83.3 — Activation compte : valide token + definit
-// mot de passe + provisioning auto tenant + session 30j + redirect_url cross-subdomain.
+// M/2026/04/29/1 + M/2026/05/06/83.3 + M/2026/05/07/89 — Activation compte.
+// Action par defaut "activate" (M89) : valide token + bascule status=active +
+// provisioning auto tenant + session 30j + retourne redirect_url. Le password
+// est deja set au register (wizard etape 1), pas de re-set ici. Actions
+// "check" (probe info) et "set_password" (re-set legacy) conservees pour
+// retro-compat M83.x.
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/lib/tenant_provisioning.php';
 header('Content-Type: application/json; charset=utf-8');
@@ -13,8 +17,8 @@ $meta = new PDO('mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4', D
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ]);
 
-$action = $_GET['action'] ?? ($body['action'] ?? 'check');
-$token = $_GET['activation_token'] ?? ($body['activation_token'] ?? '');
+$action = $_GET['action'] ?? ($body['action'] ?? 'activate');
+$token = $_GET['activation_token'] ?? ($body['activation_token'] ?? ($_GET['token'] ?? ($body['token'] ?? '')));
 
 if (!$token || !preg_match('/^[a-f0-9]{64}$/', $token)) {
     http_response_code(400);
@@ -27,30 +31,45 @@ $st->execute([$token]);
 $user = $st->fetch();
 if (!$user) { http_response_code(404); echo json_encode(['ok' => false, 'error' => 'token introuvable']); exit; }
 
-// M83.3 idempotence : un 2eme clic sur le meme lien apres set_password reussi
-// arrive ici avec status='active' et token NULL — donc plus rien a faire. Mais
-// si user.slug est deja set, on regenere une session et renvoie le redirect.
+// M89 idempotence : status=active. Si slug deja set, re-emet une session pour
+// permettre au client de retry l'activation (token reconsommable tant que la
+// row existe). Si pas de slug, provisionne en rattrapage.
 if ($user['status'] === 'active') {
-    if (!empty($user['slug']) && $action === 'set_password') {
-        // Le client repete set_password apres activation reussie — re-emet session.
-        $prov = ocre_provision_tenant_for_user((int)$user['id']);
-        if ($prov['ok']) {
-            echo json_encode([
-                'ok' => true,
-                'session_token' => $prov['session_token'],
-                'slug' => $prov['slug'],
-                'redirect' => $prov['redirect_url'],
-                'idempotent' => true,
-            ]);
-            exit;
-        }
+    if ($action === 'check') {
+        echo json_encode([
+            'ok' => true,
+            'email' => $user['email'],
+            'display_name' => $user['display_name'],
+            'slug' => $user['slug'],
+        ]);
+        exit;
     }
-    http_response_code(409);
-    echo json_encode(['ok' => false, 'error' => 'compte déjà actif']);
+    $prov = ocre_provision_tenant_for_user((int)$user['id']);
+    if ($prov['ok']) {
+        echo json_encode([
+            'ok' => true,
+            'session_token' => $prov['session_token'],
+            'slug' => $prov['slug'],
+            'redirect_url' => $prov['redirect_url'],
+            'redirect' => $prov['redirect_url'],
+            'idempotent' => true,
+        ]);
+        exit;
+    }
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => 'PROVISIONING_FAILED', 'detail' => $prov['detail'] ?? '']);
     exit;
 }
-if ($user['status'] !== 'pending_activation') { http_response_code(409); echo json_encode(['ok' => false, 'error' => 'compte non activable']); exit; }
-if (strtotime($user['activation_token_expires_at']) < time()) { http_response_code(410); echo json_encode(['ok' => false, 'error' => 'token expiré']); exit; }
+if ($user['status'] !== 'pending_activation') {
+    http_response_code(409);
+    echo json_encode(['ok' => false, 'error' => 'compte non activable']);
+    exit;
+}
+if (strtotime($user['activation_token_expires_at']) < time()) {
+    http_response_code(410);
+    echo json_encode(['ok' => false, 'error' => 'TOKEN_EXPIRED']);
+    exit;
+}
 
 if ($action === 'check') {
     echo json_encode([
@@ -62,6 +81,37 @@ if ($action === 'check') {
     exit;
 }
 
+// M89 — action par defaut "activate" : bascule status + provisioning auto + session.
+// Pas de re-set password (deja set au register wizard etape 1).
+if ($action === 'activate') {
+    $meta->prepare(
+        "UPDATE users SET status = 'active', activation_token = NULL, activation_token_expires_at = NULL,
+                          first_login_at = COALESCE(first_login_at, NOW())
+         WHERE id = ?"
+    )->execute([(int)$user['id']]);
+
+    $prov = ocre_provision_tenant_for_user((int)$user['id']);
+    if (!$prov['ok']) {
+        http_response_code(500);
+        echo json_encode([
+            'ok' => false,
+            'error' => 'PROVISIONING_FAILED',
+            'detail' => $prov['detail'] ?? ($prov['error'] ?? ''),
+        ]);
+        exit;
+    }
+    echo json_encode([
+        'ok' => true,
+        'session_token' => $prov['session_token'],
+        'slug' => $prov['slug'],
+        'redirect_url' => $prov['redirect_url'],
+        'redirect' => $prov['redirect_url'],
+        'duration_ms' => $prov['duration_ms'] ?? null,
+    ]);
+    exit;
+}
+
+// Retro-compat M83.x : action set_password (legacy, pour le flow ou l'user re-set son password a l'activation).
 if ($action === 'set_password' && $method === 'POST') {
     $password = $body['password'] ?? '';
     if (strlen($password) < 10 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/\d/', $password)) {
@@ -72,19 +122,17 @@ if ($action === 'set_password' && $method === 'POST') {
     $hash = password_hash($password, PASSWORD_BCRYPT);
     $meta->prepare("UPDATE users SET password_hash = ?, status = 'active', activation_token = NULL, activation_token_expires_at = NULL WHERE id = ?")
         ->execute([$hash, $user['id']]);
-
-    // M83.3 — provisioning auto tenant + session token cross-subdomain (X-Session-Token).
     $prov = ocre_provision_tenant_for_user((int)$user['id']);
     if (!$prov['ok']) {
         http_response_code(500);
-        echo json_encode(['ok' => false, 'error' => $prov['error'] ?? 'Provisioning échoué', 'detail' => $prov['detail'] ?? '']);
+        echo json_encode(['ok' => false, 'error' => 'PROVISIONING_FAILED', 'detail' => $prov['detail'] ?? '']);
         exit;
     }
-
     echo json_encode([
         'ok' => true,
         'session_token' => $prov['session_token'],
         'slug' => $prov['slug'],
+        'redirect_url' => $prov['redirect_url'],
         'redirect' => $prov['redirect_url'],
         'duration_ms' => $prov['duration_ms'] ?? null,
     ]);
@@ -92,4 +140,4 @@ if ($action === 'set_password' && $method === 'POST') {
 }
 
 http_response_code(400);
-echo json_encode(['ok' => false, 'error' => 'action invalide (check | set_password)']);
+echo json_encode(['ok' => false, 'error' => 'action invalide (activate | check | set_password)']);

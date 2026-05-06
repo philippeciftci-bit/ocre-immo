@@ -40,7 +40,8 @@ function _validate_siret($siret) {
     return $sum % 10 === 0;
 }
 function _send_activation_email(string $email, string $prenom, string $token): bool {
-    $url = 'https://signup.ocre.immo/api/activate.php?activation_token=' . $token;
+    // M89 : URL pointe vers la page HTML user-facing, pas l'endpoint API JSON brut.
+    $url = 'https://signup.ocre.immo/activation/?token=' . $token;
     $subject = 'Bienvenue sur Ocre Immo — Activez votre compte';
     $safePrenom = htmlspecialchars($prenom, ENT_QUOTES, 'UTF-8');
     $html = '<html><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#3a2e22;background:#FAF6EC;">'
