@@ -1,10 +1,12 @@
 <?php
-// M/2026/05/06/83.2 — Endpoint inscription publique agent.
+// M/2026/05/06/83.2.1 — Endpoint inscription publique agent.
+// Cible : ocre_meta.users (M83.1 superseded, plus de table agents).
 // POST JSON {prenom, nom, email, password, siret, agence, ville, cp, carte_pro, tel, whatsapp, sensibility_preset, channels_enabled}
 // Retours :
-//   201 {ok:true, agent_id, redirect}
+//   201 {ok:true, user_id, redirect}      (insertion neuve)
+//   200 {ok:true, user_id, redirect, resent:true}  (idempotence pending_activation -> regen token)
 //   422 {ok:false, errors:{champ:msg}}
-//   409 {ok:false, error:"Email deja utilise"}
+//   409 {ok:false, error:"Email deja utilise"}     (status='active' ou autre)
 
 require_once __DIR__ . '/db.php';
 setCorsHeaders();
@@ -35,6 +37,14 @@ function _validate_siret($siret) {
         $sum += $d;
     }
     return $sum % 10 === 0;
+}
+function _meta_pdo() {
+    $dsn = 'mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4';
+    return new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ]);
 }
 
 $prenom = _trim_str($input['prenom'] ?? '', 100);
@@ -68,50 +78,113 @@ if (!empty($errors)) {
     exit;
 }
 
-// Verif email pas deja utilise.
-$chk = db()->prepare("SELECT id FROM agents WHERE email = ? AND deleted_at IS NULL LIMIT 1");
-$chk->execute([$email]);
-if ($chk->fetch()) {
-    http_response_code(409);
-    echo json_encode(['ok' => false, 'error' => 'Cet email est deja utilise']);
-    exit;
-}
-
 $siren = substr($siretRaw, 0, 9);
-$pwdHash = password_hash($pwd, PASSWORD_BCRYPT);
+$pwdHash = password_hash($pwd, PASSWORD_BCRYPT, ['cost' => 12]);
 $nomUpper = mb_strtoupper($nom, 'UTF-8');
-$channelsJson = json_encode([
-    'telegram' => false,
-    'email'    => !empty($channels['email']),
-    'whatsapp' => !empty($channels['whatsapp']) && $whatsapp !== '',
+$displayName = trim($prenom . ' ' . $nomUpper);
+$prefsJson = json_encode([
+    'channels_enabled' => [
+        'telegram' => false,
+        'email'    => !empty($channels['email']),
+        'whatsapp' => !empty($channels['whatsapp']) && $whatsapp !== '',
+    ],
 ], JSON_UNESCAPED_UNICODE);
+$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+$activationToken = bin2hex(random_bytes(32));
+$cguVersion = '1.0';
 
 try {
-    $stmt = db()->prepare(
-        "INSERT INTO agents
-            (email, password_hash, prenom, nom, tel, whatsapp,
-             siret, siren, carte_pro, agence, ville, cp, pays,
-             role, verified_at, channels_enabled, sensibility_preset)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'France',
-                 'agent', NULL, ?, ?)"
+    $meta = _meta_pdo();
+
+    $chk = $meta->prepare("SELECT id, status FROM users WHERE email = ? AND archived_at IS NULL LIMIT 1");
+    $chk->execute([$email]);
+    $existing = $chk->fetch();
+
+    if ($existing) {
+        if ($existing['status'] === 'pending_activation') {
+            $upd = $meta->prepare(
+                "UPDATE users
+                    SET prenom = ?, nom = ?, display_name = ?,
+                        password_hash = ?, telephone = ?, whatsapp = ?,
+                        siret = ?, siren = ?, pro_card_number = ?,
+                        societe = ?, ville = ?, cp = ?, country_code = 'FR',
+                        sensibility_preset = ?, preferences = ?,
+                        activation_token = ?, activation_token_expires_at = DATE_ADD(NOW(), INTERVAL 7 DAY),
+                        cgu_accepted_at = NOW(), cgu_version = ?, cgu_version_accepted = ?, cgu_accepted_ip = ?
+                  WHERE id = ?"
+            );
+            $upd->execute([
+                $prenom, $nomUpper, $displayName,
+                $pwdHash, $tel, ($whatsapp ?: null),
+                $siretRaw, $siren, ($cartePro ?: null),
+                ($agence ?: null), $ville, ($cp ?: null),
+                $sensibility, $prefsJson,
+                $activationToken,
+                $cguVersion, $cguVersion, $ip,
+                (int)$existing['id'],
+            ]);
+            $userId = (int)$existing['id'];
+
+            $body = $prenom . ' ' . $nomUpper . ' . ' . $email . ' . token regenere (pending)';
+            @shell_exec('/root/bin/notify --project ocre --priority normal --title ' . escapeshellarg('Inscription token regenere') . ' --body ' . escapeshellarg($body) . ' >/dev/null 2>&1 &');
+
+            http_response_code(200);
+            echo json_encode([
+                'ok' => true,
+                'user_id' => $userId,
+                'resent' => true,
+                'redirect' => '/inscription/confirmee/?prenom=' . rawurlencode($prenom) . '&email=' . rawurlencode($email),
+            ]);
+            exit;
+        }
+        http_response_code(409);
+        echo json_encode(['ok' => false, 'error' => 'Cet email est deja utilise']);
+        exit;
+    }
+
+    $stmt = $meta->prepare(
+        "INSERT INTO users
+            (email, password_hash, display_name, prenom, nom,
+             role, subscription_status, billing_plan, status,
+             telephone, whatsapp, ville, cp, country_code,
+             pro_card_number, siret, siren, societe,
+             sensibility_preset, preferences,
+             activation_token, activation_token_expires_at,
+             cgu_accepted_at, cgu_version, cgu_version_accepted, cgu_accepted_ip,
+             telegram_notifs_enabled, email_notifs_enabled,
+             created_at)
+         VALUES (?, ?, ?, ?, ?,
+                 'agent', 'trial', 'decouverte', 'pending_activation',
+                 ?, ?, ?, ?, 'FR',
+                 ?, ?, ?, ?,
+                 ?, ?,
+                 ?, DATE_ADD(NOW(), INTERVAL 7 DAY),
+                 NOW(), ?, ?, ?,
+                 0, ?,
+                 NOW())"
     );
-    $stmt->execute([$email, $pwdHash, $prenom, $nomUpper, $tel, ($whatsapp ?: null),
-        $siretRaw, $siren, ($cartePro ?: null), ($agence ?: null), $ville, ($cp ?: null),
-        $channelsJson, $sensibility]);
-    $agentId = (int) db()->lastInsertId();
+    $stmt->execute([
+        $email, $pwdHash, $displayName, $prenom, $nomUpper,
+        $tel, ($whatsapp ?: null), $ville, ($cp ?: null),
+        ($cartePro ?: null), $siretRaw, $siren, ($agence ?: null),
+        $sensibility, $prefsJson,
+        $activationToken,
+        $cguVersion, $cguVersion, $ip,
+        !empty($channels['email']) ? 1 : 0,
+    ]);
+    $userId = (int) $meta->lastInsertId();
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'Erreur serveur', 'detail' => $e->getMessage()]);
     exit;
 }
 
-// Notif Telegram a Philippe.
 $body = $prenom . ' ' . $nomUpper . ' . ' . $email . ' . ' . $ville . ' . SIRET ' . $siretRaw;
 @shell_exec('/root/bin/notify --project ocre --priority normal --title ' . escapeshellarg('Nouvelle inscription agent') . ' --body ' . escapeshellarg($body) . ' >/dev/null 2>&1 &');
 
 http_response_code(201);
 echo json_encode([
     'ok' => true,
-    'agent_id' => $agentId,
+    'user_id' => $userId,
     'redirect' => '/inscription/confirmee/?prenom=' . rawurlencode($prenom) . '&email=' . rawurlencode($email),
 ]);
