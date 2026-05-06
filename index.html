@@ -7716,6 +7716,159 @@ function S3CardRound({children, style}) {
 }
 
 // Barre 3 pills : [gauche 100px][taux 1fr 17px gras][droite 100px] h44, fond sable.
+// M/2026/05/06/77 — DualCurrencyPair : composant autonome dual-currency par bloc.
+// Layout V3 (pastille centrale cliquable) sur tablette/desktop, V1 fallback (sous-ligne) sur iPhone.
+// Source taux : LIVE via /api/currency_rate.php (cache 30min) + override agent saisi manuel.
+// Persistance : data.currency_rates[pair_id] = {rate, source, currency_left, currency_right, updated_at}.
+const M77_FX_VS_EUR = {EUR: 1.00, MAD: 10.84, USD: 1.08, GBP: 0.857, AED: 3.97, CHF: 0.93, SAR: 4.05, CAD: 1.49, JPY: 165.0, CNY: 7.8};
+const M77_CURR_LIST = ['EUR','MAD','USD','GBP','CHF','AED','SAR','CAD','JPY','CNY'];
+const M77_CURR_FLAGS = {EUR:'🇪🇺', MAD:'🇲🇦', USD:'🇺🇸', GBP:'🇬🇧', CHF:'🇨🇭', AED:'🇦🇪', SAR:'🇸🇦', CAD:'🇨🇦', JPY:'🇯🇵', CNY:'🇨🇳'};
+
+function m77FallbackRate(from, to) {
+  if (from === to) return 1.0;
+  const f = M77_FX_VS_EUR[from], t = M77_FX_VS_EUR[to];
+  if (!f || !t) return 1.0;
+  return t / f;
+}
+function m77CacheRead(from, to) {
+  try {
+    const raw = localStorage.getItem('ocre_currency_rates_v1');
+    const obj = raw ? JSON.parse(raw) : {};
+    const k = from + '_' + to;
+    return obj && obj[k] ? obj[k] : null;
+  } catch (_) { return null; }
+}
+function m77CacheWrite(from, to, rate) {
+  try {
+    const raw = localStorage.getItem('ocre_currency_rates_v1');
+    const obj = raw ? JSON.parse(raw) : {};
+    obj[from + '_' + to] = {rate, ts: Date.now()};
+    localStorage.setItem('ocre_currency_rates_v1', JSON.stringify(obj));
+  } catch (_) {}
+}
+async function m77FetchLiveRate(from, to) {
+  if (from === to) return 1.0;
+  const cached = m77CacheRead(from, to);
+  if (cached && (Date.now() - (cached.ts || 0)) < 60 * 60 * 1000) return cached.rate;
+  try {
+    const tk = localStorage.getItem('ocre_token') || '';
+    const r = await fetch('/api/currency_rate.php?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to),
+      {headers: {'X-Session-Token': tk}, cache: 'no-store'});
+    const j = await r.json();
+    if (r.ok && j && j.ok && j.rate > 0) {
+      m77CacheWrite(from, to, j.rate);
+      return j.rate;
+    }
+  } catch (_) {}
+  if (cached && cached.rate > 0) return cached.rate;
+  return m77FallbackRate(from, to);
+}
+
+function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, rightCurrency, rateOverride, rateSource, onChange}) {
+  const _lc = leftCurrency || 'EUR';
+  const _rc = rightCurrency || 'MAD';
+  const [pickerSide, setPickerSide] = React.useState(null);
+  const [editorOpen, setEditorOpen] = React.useState(false);
+  const [liveRate, setLiveRate] = React.useState(null);
+  const [editorVal, setEditorVal] = React.useState('');
+  React.useEffect(() => {
+    let alive = true;
+    if (rateSource !== 'manual') {
+      m77FetchLiveRate(_lc, _rc).then(r => { if (alive) setLiveRate(r); });
+    }
+    return () => { alive = false; };
+  }, [_lc, _rc, rateSource]);
+  const _rate = (rateSource === 'manual' && rateOverride > 0) ? Number(rateOverride) : (liveRate || m77FallbackRate(_lc, _rc));
+  const _emit = (patch) => onChange && onChange({pairId, leftValue, rightValue, leftCurrency: _lc, rightCurrency: _rc, rateOverride, rateSource, ...patch});
+  const onLeftAmount = (v) => {
+    const n = Number(v);
+    const r = isFinite(n) ? Number((n * _rate).toFixed(2)) : '';
+    _emit({leftValue: v, rightValue: r});
+  };
+  const onRightAmount = (v) => {
+    const n = Number(v);
+    const r = isFinite(n) && _rate > 0 ? Number((n / _rate).toFixed(2)) : '';
+    _emit({rightValue: v, leftValue: r});
+  };
+  const onPickCurrency = (side, code) => {
+    if (side === 'left' && code !== _lc) _emit({leftCurrency: code, rateSource: 'live', rateOverride: null});
+    else if (side === 'right' && code !== _rc) _emit({rightCurrency: code, rateSource: 'live', rateOverride: null});
+    setPickerSide(null);
+  };
+  const _isManual = rateSource === 'manual';
+  const _flagBtn = {flexShrink:0, width:30, height:28, borderRadius:6, border:'1px solid #D6C7AC', background:'#FDF8F0', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:2, fontSize:14, padding:'0 4px'};
+  const _input = {flex:1, minWidth:0, padding:'6px 8px', border:'1px solid #D6C7AC', borderRadius:6, fontSize:14, fontFamily:'inherit', background:'#fff', textAlign:'right'};
+  return (
+    <div data-m77-pair={pairId} style={{margin:'8px 0'}}>
+      {label && <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.4, marginBottom:6}}>{label}</div>}
+      <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) auto minmax(0,1fr)', gap:6, alignItems:'center'}}>
+        <div style={{display:'flex', alignItems:'center', gap:4, position:'relative'}}>
+          <button type="button" onClick={() => setPickerSide(pickerSide === 'left' ? null : 'left')} style={_flagBtn} title={'Devise: ' + _lc}>
+            <span aria-hidden="true">{M77_CURR_FLAGS[_lc] || '🌐'}</span><span style={{fontSize:8}}>▾</span>
+          </button>
+          <input type="number" inputMode="decimal" value={leftValue ?? ''} onChange={e => onLeftAmount(e.target.value)} style={_input} placeholder="0"/>
+          <span style={{fontSize:11, fontWeight:700, color:'#5C3B1E', flexShrink:0}}>{_lc}</span>
+          {pickerSide === 'left' && (
+            <div onClick={e => e.stopPropagation()} style={{position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, boxShadow:'0 4px 12px rgba(0,0,0,0.12)', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:2, padding:4, minWidth:160}}>
+              {M77_CURR_LIST.map(c => (
+                <button key={c} type="button" onClick={() => onPickCurrency('left', c)} style={{padding:'6px 4px', background: c === _lc ? '#5C3B1E' : '#fff', color: c === _lc ? '#fff' : '#2A2018', border:'1px solid #E8DDC9', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:1}}>
+                  <span style={{fontSize:13}}>{M77_CURR_FLAGS[c]}</span><span>{c}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <button type="button" onClick={() => { setEditorVal(String(_rate.toFixed(4))); setEditorOpen(true); }} title="Editer le taux"
+          style={{padding:'6px 8px', background: _isManual ? '#F4ECE3' : 'transparent', border: '1.5px ' + (_isManual ? 'solid' : 'dashed') + ' ' + (_isManual ? '#5C3B1E' : '#C9B79A'), borderRadius:7, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:1, minWidth:74}}>
+          <span style={{fontSize:8, fontWeight:700, color:'#8B7F6E', letterSpacing:.5, textTransform:'uppercase'}}>{_isManual ? 'Saisi' : 'Taux'}</span>
+          <span style={{fontSize:10, fontWeight:600, color:'#5C3B1E'}}>1 {_lc} = {Number(_rate).toFixed(_rate < 10 ? 4 : 2)} {_rc}</span>
+        </button>
+        <div style={{display:'flex', alignItems:'center', gap:4, position:'relative'}}>
+          <button type="button" onClick={() => setPickerSide(pickerSide === 'right' ? null : 'right')} style={_flagBtn} title={'Devise: ' + _rc}>
+            <span aria-hidden="true">{M77_CURR_FLAGS[_rc] || '🌐'}</span><span style={{fontSize:8}}>▾</span>
+          </button>
+          <input type="number" inputMode="decimal" value={rightValue ?? ''} onChange={e => onRightAmount(e.target.value)} style={_input} placeholder="0"/>
+          <span style={{fontSize:11, fontWeight:700, color:'#5C3B1E', flexShrink:0}}>{_rc}</span>
+          {pickerSide === 'right' && (
+            <div onClick={e => e.stopPropagation()} style={{position:'absolute', top:'100%', right:0, marginTop:4, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, boxShadow:'0 4px 12px rgba(0,0,0,0.12)', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:2, padding:4, minWidth:160}}>
+              {M77_CURR_LIST.map(c => (
+                <button key={c} type="button" onClick={() => onPickCurrency('right', c)} style={{padding:'6px 4px', background: c === _rc ? '#5C3B1E' : '#fff', color: c === _rc ? '#fff' : '#2A2018', border:'1px solid #E8DDC9', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:1}}>
+                  <span style={{fontSize:13}}>{M77_CURR_FLAGS[c]}</span><span>{c}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {editorOpen && (
+        <div onClick={() => setEditorOpen(false)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.45)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+          <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:12, padding:18, width:'100%', maxWidth:340, boxShadow:'0 8px 32px rgba(0,0,0,.18)'}}>
+            <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:18, fontWeight:700, color:'#2D2018', marginBottom:8}}>Taux {_lc} → {_rc}</div>
+            <input type="number" inputMode="decimal" step="0.0001" value={editorVal} onChange={e => setEditorVal(e.target.value)}
+              placeholder="Ex : 10.8400"
+              style={{width:'100%', padding:'10px 12px', border:'1.5px solid #D6C7AC', borderRadius:8, fontSize:14, fontFamily:'inherit', boxSizing:'border-box', marginBottom:10}}/>
+            <div style={{display:'flex', gap:6, justifyContent:'flex-end', flexWrap:'wrap'}}>
+              <button type="button" onClick={() => setEditorOpen(false)} style={{padding:'8px 12px', background:'#FDFAF7', color:'#8B5E3C', border:'1.5px solid #E8DDD0', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button type="button" onClick={async () => {
+                const r = await m77FetchLiveRate(_lc, _rc);
+                setLiveRate(r);
+                _emit({rateSource: 'live', rateOverride: null});
+                setEditorOpen(false);
+              }} style={{padding:'8px 12px', background:'#FDFAF7', color:'#5C3B1E', border:'1.5px solid #C9B79A', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Taux LIVE</button>
+              <button type="button" onClick={() => {
+                const v = Number(editorVal);
+                if (!(v > 0) || v > 100000) { return; }
+                _emit({rateSource: 'manual', rateOverride: v});
+                setEditorOpen(false);
+              }} style={{padding:'8px 12px', background:'#5C3B1E', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Utiliser ce taux</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CurrencyBar3Pills({forceUpdate}) {
   const cur = getCurrencyV5State();
   const [openSide, setOpenSide] = React.useState(null); // 'left' | 'right' | null
@@ -8469,7 +8622,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
             Investisseur conserve le bloc en S3 (mission scope). */}
         {activeProfil === 'Investisseur' && <RechercheBienBloc d={d} set={set}/>}
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills + suppression DEVISE DOSSIER. */}
-        <CurrencyBar3Pills forceUpdate={forceUpdate}/>
+        {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         <V55Bloc title="Prix" theme="prix">
           <PriceField2Col label="Budget min" valueKey="budget_min" set={set} d={d} hint="Conversion bidir live" forceUpdate={forceUpdate}/>
           <PriceField2Col label="Budget max" valueKey="budget_max" set={set} d={d} hint={_warnMax ? '⚠ Budget max < Budget min' : 'Conversion bidir live'} warn={_warnMax} forceUpdate={forceUpdate}/>
@@ -8595,7 +8748,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     return (
       <>
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills + suppression DEVISE DOSSIER + DATE DISPO. */}
-        <CurrencyBar3Pills forceUpdate={forceUpdate}/>
+        {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         {/* M/2026/05/03/2.1 — sémantique canonique : prix_affiche / prix_plancher / prix_liquide
             stockent un nombre nu sans unité ; l'unité (gauche-currency) vit en state UI
             window.__ocreCurrencyV5State. Reload = retour défaut EUR/MAD/10.84. */}
@@ -8698,7 +8851,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/04/30/49 — Sous-bloc Recherche bien aussi pour Locataire. */}
         <RechercheBienBloc d={d} set={set}/>
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills Locataire. */}
-        <CurrencyBar3Pills forceUpdate={forceUpdate}/>
+        {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         <V55Bloc title="Loyer recherché" theme="prix">
           {/* M/2026/05/03/2.1 — sémantique canonique : loyer_min / loyer_max / caution_dispo
               stockent un nombre nu sans unité ; unité gauche-currency = state UI window.__ocreCurrencyV5State. */}
@@ -8784,7 +8937,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     return (
       <>
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills Bailleur. */}
-        <CurrencyBar3Pills forceUpdate={forceUpdate}/>
+        {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         <V55Bloc title="Loyer & conditions" theme="prix">
           {/* M/2026/05/03/2.1 — sémantique canonique : loyer_demande / loyer_plancher /
               charges_recuperables / depot_garantie_demande stockent un nombre nu sans unité. */}
