@@ -8784,22 +8784,10 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         })()}
 
         <FraisNotaireBlock2Col d={d} set={set} paysBien={paysBien} neufAncien={neufAncien} baseAmount={prix} forceUpdate={forceUpdate}/>
-        <V55Bloc title="Mandat" theme="mandat" collapsible expanded={expandedBlocks.mandat} onToggle={() => toggleBlock('mandat')}>
-          <V55Field label="Type" type="select" value={d.mandat_type} onChange={v => set('mandat_type', v)}
-            options={['Simple','Exclusif','Semi-exclusif','Co-exclusif']}/>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <V55Field label="Durée (mois)" type="number" value={d.mandat_duree_mois != null ? d.mandat_duree_mois : 3} onChange={v => set('mandat_duree_mois', v)} suffix="mois"/>
-            <V55Field label="N° mandat" value={d.mandat_numero} onChange={v => set('mandat_numero', v)} placeholder="MV-2026-042"/>
-          </div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-            <V55Field label="Date signature" type="date_fr" value={d.mandat_date_signature} onChange={v => set('mandat_date_signature', v)}/>
-            {/* M/2026/05/02/9 — M117 fix : Date expiration read-only auto-calculee (Date Signature
-                + Duree mois). Si user change duree ou signature, expiration recalcule en live. */}
-            <V55ReadOnly label="Date expiration (auto)"
-              value={dateExpAuto ? fmtDateFRV55(dateExpAuto) : '—'}
-              hint={dateSig && duree ? 'Signature + ' + duree + ' mois' : 'Saisir Date signature + Durée'}/>
-          </div>
-        </V55Bloc>
+        {/* M/2026/05/06/80.1 — V55Bloc Mandat collapsible RETIRE de Section III. Migre vers Section VI 6a
+            (composant M80MandatBlock). Cles DB preservees : mandat_type / mandat_numero /
+            mandat_date_signature / mandat_duree_mois. Date expiration auto plus rendue ici (peut etre
+            recalcule en Section VI a la prochaine sous-mission si Philippe le souhaite). */}
 
         {/* M/2026/05/02/40 — M144.I : Bloc Co-courtage / apporteur SUPPRIMÉ FRANCHEMENT.
             Couvert fonctionnellement par FraisAgenceMultiActeurs M144.D (acteur Co-agence ou Apporteur
@@ -20882,6 +20870,54 @@ const M79_COUNTRY_REF = {
   },
 };
 
+// M/2026/05/06/80.1 — Bloc Mandat juridique 6a Section VI (migration depuis V55Bloc accordeon Section III).
+// 8 champs : Type, N° mandat, Date signature, Validite (mois), Reconduction, Notaire/Adoul, Avocat, Penalite.
+// Cles DB existantes preservees : mandat_type, mandat_numero, mandat_date_signature, mandat_duree_mois.
+// Nouvelles cles : mandat_reconduction, mandat_notaire_adoul, mandat_avocat, mandat_penalite_rupture_pct.
+function M80MandatBlock({d, set}) {
+  const _types = ['Exclusif', 'Simple', 'Co-mandat', 'Semi-exclusif', 'Co-exclusif'];
+  const _validites = ['1', '3', '6', '12', '24'];
+  const _reconductions = ['Aucune', 'Tacite', 'Expresse'];
+  const _onSel = (k, v) => set(k, v, {commit: true});
+  return (
+    <div style={{padding:'12px 14px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:11}}>
+      <div style={{fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:14, color:'#5C3B1E', marginBottom:8, letterSpacing:.3}}>06a &middot; Mandat</div>
+      <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:8}}>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Type de mandat</label>
+          <select value={d.mandat_type || ''} onChange={e => _onSel('mandat_type', e.target.value)}
+            style={{width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E8DDD0', background:'#fff', fontSize:13, fontFamily:'inherit', color:'#2A2018'}}>
+            <option value="">— Choisir —</option>
+            {_types.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <Field label="N° mandat" value={d.mandat_numero || ''} onChange={v => _onSel('mandat_numero', v)} placeholder="MV-2026-042"/>
+        <Field label="Date signature" type="date" value={d.mandat_date_signature || ''} onChange={v => _onSel('mandat_date_signature', v)}/>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Validite (mois)</label>
+          <select value={String(d.mandat_duree_mois || '')} onChange={e => _onSel('mandat_duree_mois', e.target.value)}
+            style={{width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E8DDD0', background:'#fff', fontSize:13, fontFamily:'inherit', color:'#2A2018'}}>
+            <option value="">— Choisir —</option>
+            {_validites.map(t => <option key={t} value={t}>{t} mois</option>)}
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Reconduction</label>
+          <select value={d.mandat_reconduction || ''} onChange={e => _onSel('mandat_reconduction', e.target.value)}
+            style={{width:'100%', padding:'8px 10px', borderRadius:8, border:'1.5px solid #E8DDD0', background:'#fff', fontSize:13, fontFamily:'inherit', color:'#2A2018'}}>
+            <option value="">— Choisir —</option>
+            {_reconductions.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <Field label="Notaire / Adoul" value={d.mandat_notaire_adoul || ''} onChange={v => _onSel('mandat_notaire_adoul', v)} placeholder="Nom du notaire"/>
+        <Field label="Avocat" value={d.mandat_avocat || ''} onChange={v => _onSel('mandat_avocat', v)} placeholder="Nom de l avocat (optionnel)"/>
+        <Field label="Penalite rupture" type="number" value={d.mandat_penalite_rupture_pct || ''} onChange={v => _onSel('mandat_penalite_rupture_pct', v)} placeholder="0" suffix="%"/>
+      </div>
+    </div>
+  );
+}
+
 function Section7({d, set}) {
   const _pays = (d && d.bien && (d.bien.pays || '')).toUpperCase();
   const _ref = M79_COUNTRY_REF[_pays] || null;
@@ -22625,18 +22661,16 @@ function FormView(props) {
           return (
             <div data-stage-anchor="5">
               <Stage title={_stages6[5]} expanded={expanded[5] || isMatched(5)} onToggle={() => toggleStage(5)} highlighted={isMatched(5)}>
-                <div style={{padding:'12px 14px'}}>
-                  <div style={{padding:'10px 12px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:10, marginBottom:8}}>
-                    <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>06a · Mandat</div>
-                    <div style={{fontSize:11.5, color:'#5C3B1E', fontStyle:'italic'}}>Mandat juridique (Type, N°, Date, Validité, Reconduction, Notaire/Adoul, Avocat, Pénalité). Contenu actuellement saisi en Section III accordéon Mandat — migration effective dans une sous-mission ciblée. Voir aussi Section III pour saisir les champs.</div>
-                  </div>
-                  <div style={{padding:'10px 12px', background:'#EEF1F5', border:'1px solid #D5DDE8', borderRadius:10, marginBottom:8}}>
+                <div style={{padding:'12px 14px', display:'flex', flexDirection:'column', gap:8}}>
+                  {/* M/2026/05/06/80.1 — 6a Mandat juridique migre depuis Section III V55Bloc. */}
+                  <M80MandatBlock d={d} set={set}/>
+                  <div style={{padding:'10px 12px', background:'#EEF1F5', border:'1px solid #D5DDE8', borderRadius:10}}>
                     <div style={{fontSize:11, fontWeight:700, color:'#1E3A5F', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>06b · Frais d'agence</div>
-                    <div style={{fontSize:11.5, color:'#1E3A5F', fontStyle:'italic'}}>Frais d'agence multi-acteurs avec dual-currency (utilisera DualCurrencyPair M77). Saisie actuelle en Section III bloc Frais d'agence — migration en sous-mission ciblée.</div>
+                    <div style={{fontSize:11.5, color:'#1E3A5F', fontStyle:'italic'}}>Frais d'agence multi-acteurs avec dual-currency (utilisera DualCurrencyPair M77). Saisie actuelle en Section III bloc Frais d'agence — migration M80.2 a venir.</div>
                   </div>
                   <div style={{padding:'10px 12px', background:'#5C3B1E', border:'1px solid #5C3B1E', borderRadius:10, color:'#F4EDDC'}}>
                     <div style={{fontSize:11, fontWeight:700, color:'#F4EDDC', textTransform:'uppercase', letterSpacing:.5, marginBottom:4, opacity:.85}}>06c · Prix de vente affiché</div>
-                    <div style={{fontSize:11.5, color:'#F4EDDC', fontStyle:'italic', opacity:.92}}>Calcul Prix + Liquide + Frais agence à charge vendeur. Bandeau visible actuellement en Section III — migration en sous-mission ciblée.</div>
+                    <div style={{fontSize:11.5, color:'#F4EDDC', fontStyle:'italic', opacity:.92}}>Calcul Prix + Liquide + Frais agence à charge vendeur. Bandeau visible actuellement en Section III — migration M80.3 a venir.</div>
                   </div>
                 </div>
               </Stage>
