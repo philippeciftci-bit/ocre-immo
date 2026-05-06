@@ -539,4 +539,8 @@ ALTER TABLE clients
   ADD COLUMN IF NOT EXISTS destinataire_nom   VARCHAR(200) NULL,
   ADD COLUMN IF NOT EXISTS destinataire_email VARCHAR(200) NULL;
 
+-- M/2026/05/06/71 — statut dossier (brouillon / enregistre / archive).
+ALTER TABLE clients
+  ADD COLUMN IF NOT EXISTS statut ENUM('brouillon','enregistre','archive') NOT NULL DEFAULT 'enregistre';
+
 SET FOREIGN_KEY_CHECKS=1;

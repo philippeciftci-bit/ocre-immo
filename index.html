@@ -469,35 +469,43 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
   }
 }
 
-// V17.4 UX v3 : ordre strict Acheteur / Vendeur / Investisseur / Bailleur / Locataire / Curieux.
-const PROFILS_ORDER = ['Acheteur','Vendeur','Investisseur','Bailleur','Locataire','Curieux'];
+// V17.4 UX v3 : ordre strict initialement 6 profils.
+// M/2026/05/06/71 — extension 5+1 -> 7+1 : ajout Promoteur + Marchand de biens (clones structure Vendeur).
+//                  Ordre strict Philippe : Acheteur, Vendeur, Bailleur, Locataire, Promoteur, Marchand de biens, Investisseur, Curieux (legacy).
+const PROFILS_ORDER = ['Acheteur','Vendeur','Bailleur','Locataire','Promoteur','MarchandBiens','Investisseur','Curieux'];
 const PROFILS = {
   Acheteur:'#8B5E3C', Vendeur:'#1E3A5F', Investisseur:'#6B4E8B',
-  Bailleur:'#2D6B3F', Locataire:'#8B6B1E', Curieux:'#757575'
+  Bailleur:'#2D6B3F', Locataire:'#8B6B1E', Curieux:'#757575',
+  Promoteur:'#5A3F2A', MarchandBiens:'#4A5A6F'
 };
 // V18.15 — tint backgrounds ligne 1 ClientRow (12% opacity de la couleur profil).
 const PROFILS_TINT = {
   Acheteur:'#F4ECE3', Vendeur:'#E8EBEF', Investisseur:'#EFE9F2',
-  Bailleur:'#E8EFE9', Locataire:'#F4EFE5', Curieux:'#F0F0F0'
+  Bailleur:'#E8EFE9', Locataire:'#F4EFE5', Curieux:'#F0F0F0',
+  Promoteur:'#EDE5DA', MarchandBiens:'#E5E9ED'
 };
-const BADGES = {Acheteur:'ACH', Vendeur:'VDR', Investisseur:'INV', Bailleur:'BAI', Locataire:'LOC', Curieux:'CUR'};
+const BADGES = {Acheteur:'ACH', Vendeur:'VDR', Investisseur:'INV', Bailleur:'BAI', Locataire:'LOC', Curieux:'CUR', Promoteur:'PRO', MarchandBiens:'MDB'};
 // V26 — labels pleins (uppercase) pour remplacer les badges carrés ACH/VDR/INV/BAI/LOC/CUR
 // dans ClientRow (liste d'accueil) + header FormView (page dossier).
 const PROFILS_LABEL = {
   Acheteur:'ACHETEUR', Vendeur:'VENDEUR', Investisseur:'INVESTISSEUR',
-  Bailleur:'BAILLEUR', Locataire:'LOCATAIRE', Curieux:'CURIEUX'
+  Bailleur:'BAILLEUR', Locataire:'LOCATAIRE', Curieux:'CURIEUX',
+  Promoteur:'PROMOTEUR', MarchandBiens:'MARCHAND DE BIENS'
 };
 // V18.26 — titres sections adaptés par profil. Section II varie (ciblé/en vente/à louer/recherché).
 // Section III : "Budget & rendement" pour Investisseur, "Budget & financement" pour les autres.
 // Section IV : "Suivi & notes" pour tous (renommé depuis "Infos complémentaires").
 // M/2026/05/05/30 — M-Photos-Stage-V : ajout 5e stage "V. Photos" pour tous les profils.
 const STAGES = {
-  Acheteur:     ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  Vendeur:      ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  Investisseur: ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Activité & documents", "V. Photos"],
-  Bailleur:     ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  Locataire:    ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  Curieux:      ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"]
+  Acheteur:      ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Vendeur:       ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Investisseur:  ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Activité & documents", "V. Photos"],
+  Bailleur:      ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Locataire:     ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Curieux:       ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  // M/2026/05/06/71 — Promoteur + Marchand de biens : structure clonee Vendeur (bien en vente).
+  Promoteur:     ["I. Le Promoteur",   "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  MarchandBiens: ["I. Le Marchand",    "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos"]
 };
 // V17.4 : suggestions "Aussi…" selon profil courant.
 const BASCULES = {
@@ -21679,6 +21687,12 @@ function FormView(props) {
                   </svg>
                 </button>
               </div>
+              {/* M/2026/05/06/71 — span "Brouillon" italique rouge a gauche de la pastille profil, uniquement si statut=brouillon. */}
+              {((d.statut === 'brouillon') || (!d.statut && (d.is_draft === 1 || d.is_draft === true))) && (
+                <span style={{flexShrink:0, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize: smallScreen ? 9 : 11.5, color:'#C0392B', lineHeight:1, marginRight:2}}>
+                  Brouillon
+                </span>
+              )}
               <span style={{padding:'2px 8px', borderRadius:10, background:_profilColorBar, color:'#fff', fontSize:9.5, fontWeight:700, letterSpacing:0.4, textTransform:'uppercase', whiteSpace:'nowrap', flexShrink:0, fontFamily:'inherit'}}>
                 {_profilLabelBar}
               </span>
@@ -21825,24 +21839,33 @@ function FormView(props) {
                  // pas de reset prix - 1B traitera ces aspects). Pas de stopPropagation sur button
                  // suffisant : le onClick parent du wrapper header (onToggle) se declenche aussi sur
                  // tap exterieur du bouton.
-                 const _titleStage1 = (STAGES[activeProfil] || [])[0] || 'I. Identité';
-                 const _isPrincipal1A = ['Acheteur','Vendeur','Bailleur','Locataire'].includes(activeProfil);
+                 // M/2026/05/06/71 — Section 1 : titre fixe "1. Client" + sélecteur profil verrouillé hors brouillon.
+                 const _titleStage1 = '1. Client';
+                 const _isBrouillon1A = (d.statut === 'brouillon') || (!d.statut && (d.is_draft === 1 || d.is_draft === true));
+                 const _isPrincipal1A = ['Acheteur','Vendeur','Bailleur','Locataire','Promoteur','MarchandBiens','Investisseur'].includes(activeProfil);
                  const _profilColor1A = _isPrincipal1A ? (PROFILS[activeProfil] || '#8B5E3C') : '#A89882';
                  const _profilLabel1A = _isPrincipal1A ? (PROFILS_LABEL[activeProfil] || (activeProfil || '').toUpperCase()) : 'PROFIL';
                  const _profils1A = [
-                   {k:'Acheteur',  l:'Acheteur',  color:'#8B5E3C'},
-                   {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
-                   {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
-                   {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
+                   {k:'Acheteur',       l:'Acheteur',           color:'#8B5E3C'},
+                   {k:'Vendeur',        l:'Vendeur',            color:'#1E3A5F'},
+                   {k:'Bailleur',       l:'Bailleur',           color:'#2D6B3F'},
+                   {k:'Locataire',      l:'Locataire',          color:'#8B6B1E'},
+                   {k:'Promoteur',      l:'Promoteur',          color:'#5A3F2A'},
+                   {k:'MarchandBiens',  l:'Marchand de biens',  color:'#4A5A6F'},
+                   {k:'Investisseur',   l:'Investisseur',       color:'#6B4E8B'},
                  ];
                  return (
                    <div style={{display:'flex', alignItems:'center', gap:6, flex:1, minWidth:0}}>
-                     <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:1, minWidth:0}}>{_titleStage1}</span>
+                     <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:500, color:'#2A1F15', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:1, minWidth:0}}>{_titleStage1}</span>
+                     <span style={{display:'inline-block', width:1, height:16, background:'#E8DDC9', flexShrink:0, marginLeft:4}}/>
                      <div style={{flex:1}}/>
-                     <button ref={profilBtnRef} type="button" onClick={(e) => { e.stopPropagation(); toggleProfilPicker(); }}
-                       aria-label="Choisir le profil"
-                       style={{padding:'3px 9px 3px 11px', borderRadius:12, border:'1.5px solid '+_profilColor1A, background: _isPrincipal1A ? _profilColor1A : '#fff', color: _isPrincipal1A ? '#fff' : _profilColor1A, fontSize:10, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, flexShrink:0}}>
-                       {_profilLabel1A}<span style={{fontSize:8, opacity:.85}}>▾</span>
+                     <button ref={profilBtnRef} type="button"
+                       disabled={!_isBrouillon1A}
+                       onClick={(e) => { e.stopPropagation(); if (_isBrouillon1A) toggleProfilPicker(); }}
+                       aria-label={_isBrouillon1A ? 'Choisir le profil' : 'Profil verrouille (dossier enregistre)'}
+                       title={_isBrouillon1A ? 'Choisir le profil' : 'Profil verrouille apres enregistrement'}
+                       style={{padding:'5px 11px', borderRadius:99, border:'none', background: _isPrincipal1A ? _profilColor1A : '#A89882', color: '#fff', fontSize:10.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', cursor: _isBrouillon1A ? 'pointer' : 'default', fontFamily:'inherit', whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:4, flexShrink:0, boxShadow:'0 1px 3px rgba(0,0,0,0.12)', opacity: _isBrouillon1A ? 1 : 0.92}}>
+                       {_profilLabel1A}{_isBrouillon1A && <span style={{fontSize:8, opacity:.85}}>▾</span>}
                      </button>
                    </div>
                  );
@@ -21851,6 +21874,9 @@ function FormView(props) {
           {/* V32 — Bloc top mode déplié : pills avec hiérarchie (primaire plein fw 700
               opacity 1, secondaires outline opacity 0.55 fw 600 triées created_at ASC) +
               bouton "+" rond pour ouvrir le modal multi-select Variante C v30. */}
+          {/* M/2026/05/06/71 — bloc pill profil principal sous le header SUPPRIME : la pill courante
+              vit deja dans le customHeader (au-dessus). Conservation des pills ALT (autres casquettes du
+              meme client) + bouton "+" pour ajouter casquette. */}
           {(() => {
             const linkedOpen = (Array.isArray(d.linked_dossiers) ? d.linked_dossiers : [])
               .map(id => (clients || []).find(cc => cc.id === id))
@@ -21860,23 +21886,18 @@ function FormView(props) {
                 const tb = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
                 return (ta || a.id || 0) - (tb || b.id || 0);
               });
-            const activeColorOpen = activeProfil ? (PROFILS[activeProfil] || '#8B5E3C') : '#A89882';
             const canAdd = editing && editing.id && !String(editing.id).startsWith('tmp-');
-            // M/2026/05/01/12 — pill activeProfil tolere null : affiche "BROUILLON" gris si pas
-            // encore de profil principal selectionne (Section I accessible avant choix profil).
+            if (linkedOpen.length === 0 && !canAdd) return null;
             return (
               <div style={{display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginBottom:10, padding:'2px 0'}}>
-                <span style={{padding:'2px 6px', borderRadius:6, background:activeColorOpen, color:'#fff', fontSize:9, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', opacity:1}}>
-                  {activeProfil ? (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase()) : 'BROUILLON'}
-                </span>
                 {linkedOpen.map(lc => {
                   const lp = lc.projet || 'Acheteur';
                   const lcol = PROFILS[lp] || '#8B5E3C';
                   return (
                     <button key={'open-pill-' + lc.id} type="button"
                       onClick={() => openExistingDossier && openExistingDossier(lc)}
-                      title={'Ouvrir la casquette ' + lp}
-                      style={{padding:'2px 6px', borderRadius:6, border:'1px solid '+lcol, background:'transparent', color:lcol, fontSize:9, fontWeight:600, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer', opacity:0.55}}>
+                      title={'Ouvrir la casquette ' + (PROFILS_LABEL[lp] || lp)}
+                      style={{padding:'4px 8px', borderRadius:99, border:'1px solid #E8DDC9', background:'transparent', color:lcol, fontSize:8.5, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', cursor:'pointer'}}>
                       {PROFILS_LABEL[lp] || lp.toUpperCase()}
                     </button>
                   );

@@ -286,6 +286,13 @@ switch ($action) {
         $is_investisseur = !empty($c['is_investisseur']) ? 1 : 0;
         $archived = !empty($c['archived']) ? 1 : 0;
         $is_draft = computeIsDraft($c);
+        // M/2026/05/06/71 — statut dossier (brouillon / enregistre / archive) explicit.
+        // Si fourni en payload : utilise. Sinon derive de archived/is_draft.
+        $allowedStatuts = ['brouillon','enregistre','archive'];
+        $statutInput = isset($c['statut']) ? (string)$c['statut'] : null;
+        $statut = in_array($statutInput, $allowedStatuts, true)
+            ? $statutInput
+            : ($archived ? 'archive' : ($is_draft ? 'brouillon' : 'enregistre'));
         // M/2026/05/02/1 — M109 : nouveaux champs profil avancé + multi-pays.
         // Validation matrice de compatibilité serveur (defense en profondeur, le frontend
         // applique deja la matrice cote UI mais on revalide pour eviter toute injection).
@@ -390,6 +397,13 @@ switch ($action) {
             $audit_before = $beforeStmt->fetch(PDO::FETCH_ASSOC);
             if (!$audit_before) jsonError('Accès refusé', 403);
             $wasStaged = (int)($audit_before['is_staged'] ?? 0) === 1;
+            // M/2026/05/06/71 — verrou profil post-publication : si statut courant DB = 'enregistre',
+            // toute mutation du champ projet est refusee (le profil est fige apres transition brouillon -> enregistre).
+            $beforeStatut = (string)($audit_before['statut'] ?? '');
+            $beforeProjet = (string)($audit_before['projet'] ?? '');
+            if ($beforeStatut === 'enregistre' && $projet !== $beforeProjet && $beforeProjet !== '') {
+                jsonError('Profil verrouille apres publication. Pour changer de profil, creer un nouveau dossier (autre casquette).', 409);
+            }
             $stmt = db()->prepare(
                 "UPDATE clients SET data = ?, projet = ?, is_investisseur = ?, archived = ?,
                    is_draft = ?, prenom = ?, nom = ?, societe_nom = ?, tel = ?, email = ?,
@@ -399,6 +413,7 @@ switch ($action) {
                    id_country = ?, id_type = ?, id_number = ?,
                    bien_country = ?,
                    destinataire_nom = ?, destinataire_email = ?,
+                   statut = ?,
                    updated_at = NOW()
                  WHERE id = ? AND user_id = ?"
             );
@@ -410,6 +425,7 @@ switch ($action) {
                             $id_country, $id_type, $id_number,
                             $bien_country,
                             $destinataire_nom, $destinataire_email,
+                            $statut,
                             $id, $user['id']]);
         } else {
             $stmt = db()->prepare(
@@ -421,9 +437,12 @@ switch ($action) {
                                       id_country, id_type, id_number,
                                       bien_country,
                                       destinataire_nom, destinataire_email,
+                                      statut,
                                       created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
             );
+            // M/2026/05/06/71 — toute nouvelle fiche INSERT demarre en statut 'brouillon'.
+            $statutInsert = $is_staged_new ? 'brouillon' : ($archived ? 'archive' : 'brouillon');
             $stmt->execute([$user['id'], $data, $projet, $is_investisseur, $archived, $is_draft, $is_staged_new,
                             $prenom, $nom, $societe_nom, $tel, $email,
                             $payment_plan_json, $received_payments_json,
@@ -431,7 +450,8 @@ switch ($action) {
                             $phone_country, $phone_e164,
                             $id_country, $id_type, $id_number,
                             $bien_country,
-                            $destinataire_nom, $destinataire_email]);
+                            $destinataire_nom, $destinataire_email,
+                            $statutInsert]);
             $id = (int)db()->lastInsertId();
             $wasStaged = (bool)$is_staged_new;
         }
