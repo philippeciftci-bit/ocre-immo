@@ -18543,8 +18543,14 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             {c.is_demo && (
               <span title="Dossier de démonstration" style={{fontSize:9, fontWeight:700, letterSpacing:.5, color:'#fff', background:'#8B5E3C', borderRadius:8, padding:'1px 6px', whiteSpace:'nowrap', flexShrink:0}}>DÉMO</span>
             )}
-            {/* Pill profil principal — toujours collée à droite */}
-            <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:9.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background: PROFILS[profil] || '#8B5E3C', color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+            {/* M/2026/05/06/76 — span "Brouillon" italique rouge a gauche pastille profil si statut=brouillon. */}
+            {((c.statut === 'brouillon') || (!c.statut && (c.is_draft === 1 || c.is_draft === true))) && (
+              <span style={{flexShrink:0, marginLeft:'auto', fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize:11.5, color:'#C0392B', lineHeight:1, marginRight:6}}>
+                Brouillon
+              </span>
+            )}
+            {/* Pill profil principal — toujours collée à droite (marginLeft auto si pas de span Brouillon precedent). */}
+            <span style={{flexShrink:0, marginLeft: ((c.statut === 'brouillon') || (!c.statut && (c.is_draft === 1 || c.is_draft === true))) ? 0 : 'auto', padding:'3px 9px', borderRadius:12, fontSize:9.5, fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background: PROFILS[profil] || '#8B5E3C', color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
               {PROFILS_LABEL[profil] || (profil || '').toUpperCase()}
             </span>
             {/* M/2026/05/02/36 — M140.B livrable C : badge source d'annonce (Mandat/Partenaire/Veille).
