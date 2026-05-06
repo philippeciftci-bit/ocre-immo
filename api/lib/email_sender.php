@@ -1,29 +1,30 @@
 <?php
-// M/2026/04/28/58 — Envoi email réel via msmtp Gmail. Fallback log stub si pas d'App Password.
+// M/2026/05/06/83.2.3 — Envoi email reel via Postfix local + DKIM (selecteur atelier)
+// + SPF + DMARC sur ocre.immo. From noreply@ocre.immo, Reply-To support@ocre.immo.
+// Pipe via /usr/sbin/sendmail. Aucun secret externe, aucun SaaS tiers.
 if (!function_exists('ocre_send_email')) {
 
 function ocre_send_email(string $to, string $subject, string $bodyHtml, ?string $bodyText = null): bool {
-    $passwordFile = '/root/.secrets/gmail_app_password';
-    $logStub = '/var/log/ocre-edit-notifs.log';
-    if (!is_file($passwordFile) || filesize($passwordFile) < 5) {
-        @file_put_contents($logStub, sprintf("[%s] STUB to=%s subject=%s body=%s\n",
-            date('c'), $to, $subject, mb_substr(strip_tags($bodyHtml), 0, 200)
-        ), FILE_APPEND);
-        return false;
-    }
-    if (!is_executable('/usr/bin/msmtp')) {
-        @file_put_contents($logStub, "[" . date('c') . "] FAIL msmtp not installed\n", FILE_APPEND);
+    $logFile = '/var/log/ocre/email-sender.log';
+    $sendmail = '/usr/sbin/sendmail';
+    if (!is_executable($sendmail)) {
+        @file_put_contents($logFile, "[" . date('c') . "] FAIL sendmail not executable at $sendmail\n", FILE_APPEND);
         return false;
     }
     $boundary = 'ocre-' . bin2hex(random_bytes(8));
     $textBody = $bodyText ?: trim(strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>'], "\n", $bodyHtml)));
+    $messageId = '<' . bin2hex(random_bytes(8)) . '.' . time() . '@ocre.immo>';
     $headers = [
-        'From: Ocre Immo <notif@ocre.immo>',
+        'From: Ocre Immo <noreply@ocre.immo>',
+        'Reply-To: support@ocre.immo',
         'To: ' . $to,
         'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=',
         'MIME-Version: 1.0',
         'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
-        'Date: ' . date('r'),
+        'Date: ' . gmdate('r'),
+        'Message-ID: ' . $messageId,
+        'X-Mailer: Ocre Immo SMTP/1.0',
+        'List-Unsubscribe: <mailto:support@ocre.immo?subject=unsubscribe>',
     ];
     $body = "--{$boundary}\r\n";
     $body .= "Content-Type: text/plain; charset=UTF-8\r\n";
@@ -37,11 +38,14 @@ function ocre_send_email(string $to, string $subject, string $bodyHtml, ?string 
     $message = implode("\r\n", $headers) . "\r\n\r\n" . $body;
 
     $proc = proc_open(
-        '/usr/bin/msmtp -a ocre_notif -- ' . escapeshellarg($to),
+        $sendmail . ' -t -f noreply@ocre.immo',
         [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']],
         $pipes
     );
-    if (!is_resource($proc)) return false;
+    if (!is_resource($proc)) {
+        @file_put_contents($logFile, "[" . date('c') . "] FAIL proc_open\n", FILE_APPEND);
+        return false;
+    }
     fwrite($pipes[0], $message);
     fclose($pipes[0]);
     $stdout = stream_get_contents($pipes[1]);
@@ -50,9 +54,14 @@ function ocre_send_email(string $to, string $subject, string $bodyHtml, ?string 
     $exit = proc_close($proc);
 
     if ($exit !== 0) {
-        @file_put_contents($logStub, sprintf("[%s] FAIL msmtp exit=%d stderr=%s\n", date('c'), $exit, mb_substr($stderr, 0, 300)), FILE_APPEND);
+        @file_put_contents($logFile, sprintf("[%s] FAIL sendmail exit=%d to=%s subject=%s stderr=%s\n",
+            date('c'), $exit, $to, $subject, mb_substr($stderr, 0, 300)
+        ), FILE_APPEND);
         return false;
     }
+    @file_put_contents($logFile, sprintf("[%s] SENT to=%s subject=%s msgid=%s\n",
+        date('c'), $to, $subject, $messageId
+    ), FILE_APPEND);
     return true;
 }
 
