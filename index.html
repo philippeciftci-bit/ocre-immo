@@ -496,16 +496,17 @@ const PROFILS_LABEL = {
 // Section III : "Budget & rendement" pour Investisseur, "Budget & financement" pour les autres.
 // Section IV : "Suivi & notes" pour tous (renommé depuis "Infos complémentaires").
 // M/2026/05/05/30 — M-Photos-Stage-V : ajout 5e stage "V. Photos" pour tous les profils.
+// M/2026/05/06/78 — Stage VI "Mandat et frais" ajoute pour Vendeur/Promoteur/MarchandBiens.
 const STAGES = {
   Acheteur:      ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  Vendeur:       ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Vendeur:       ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais"],
   Investisseur:  ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Activité & documents", "V. Photos"],
   Bailleur:      ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
   Locataire:     ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
   Curieux:       ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
   // M/2026/05/06/71 — Promoteur + Marchand de biens : structure clonee Vendeur (bien en vente).
-  Promoteur:     ["I. Le Promoteur",   "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  MarchandBiens: ["I. Le Marchand",    "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos"]
+  Promoteur:     ["I. Le Promoteur",   "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais"],
+  MarchandBiens: ["I. Le Marchand",    "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais"]
 };
 // V17.4 : suggestions "Aussi…" selon profil courant.
 const BASCULES = {
@@ -22428,6 +22429,36 @@ function FormView(props) {
           </div>
         </Stage>
         </div>
+
+        {/* M/2026/05/06/78 — Stage VI "Mandat et frais" : visible uniquement pour profils avec un 6e stage
+            dans STAGES (Vendeur, Promoteur, MarchandBiens). MVP placeholder : la section apparait avec
+            les 3 sous-blocs annonces (Mandat, Frais d agence, Prix de vente affiche) mais leur contenu
+            reste actuellement rendu dans Section III. Migration effective des blocs en sous-missions
+            ulterieures (M78.1 Mandat juridique, M78.2 Frais agence + DualCurrencyPair, M78.3 Prix vente). */}
+        {(() => {
+          const _stages6 = (STAGES[activeProfil] || []);
+          if (!_stages6[5]) return null;
+          return (
+            <div data-stage-anchor="5">
+              <Stage title={_stages6[5]} expanded={expanded[5] || isMatched(5)} onToggle={() => toggleStage(5)} highlighted={isMatched(5)}>
+                <div style={{padding:'12px 14px'}}>
+                  <div style={{padding:'10px 12px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:10, marginBottom:8}}>
+                    <div style={{fontSize:11, fontWeight:700, color:'#8B7F6E', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>06a · Mandat</div>
+                    <div style={{fontSize:11.5, color:'#5C3B1E', fontStyle:'italic'}}>Mandat juridique (Type, N°, Date, Validité, Reconduction, Notaire/Adoul, Avocat, Pénalité). Contenu actuellement saisi en Section III accordéon Mandat — migration effective dans une sous-mission ciblée. Voir aussi Section III pour saisir les champs.</div>
+                  </div>
+                  <div style={{padding:'10px 12px', background:'#EEF1F5', border:'1px solid #D5DDE8', borderRadius:10, marginBottom:8}}>
+                    <div style={{fontSize:11, fontWeight:700, color:'#1E3A5F', textTransform:'uppercase', letterSpacing:.5, marginBottom:4}}>06b · Frais d'agence</div>
+                    <div style={{fontSize:11.5, color:'#1E3A5F', fontStyle:'italic'}}>Frais d'agence multi-acteurs avec dual-currency (utilisera DualCurrencyPair M77). Saisie actuelle en Section III bloc Frais d'agence — migration en sous-mission ciblée.</div>
+                  </div>
+                  <div style={{padding:'10px 12px', background:'#5C3B1E', border:'1px solid #5C3B1E', borderRadius:10, color:'#F4EDDC'}}>
+                    <div style={{fontSize:11, fontWeight:700, color:'#F4EDDC', textTransform:'uppercase', letterSpacing:.5, marginBottom:4, opacity:.85}}>06c · Prix de vente affiché</div>
+                    <div style={{fontSize:11.5, color:'#F4EDDC', fontStyle:'italic', opacity:.92}}>Calcul Prix + Liquide + Frais agence à charge vendeur. Bandeau visible actuellement en Section III — migration en sous-mission ciblée.</div>
+                  </div>
+                </div>
+              </Stage>
+            </div>
+          );
+        })()}
 
         {/* M/2026/05/05/63 — Section "Destinataire personnalise du PDF" (M/58) RETIREE : le bloc droite PDF
             affiche desormais les coordonnees du CLIENT proprietaire (prenom/nom/societe/tel/email deja
