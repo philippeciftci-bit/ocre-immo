@@ -19,7 +19,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 }
 
 $tokenSent = $_SERVER['HTTP_X_INTERNAL_TOKEN'] ?? '';
-$tokenFile = '/root/.secrets/ocre-internal-cron.token';
+$tokenFile = '/etc/ocre/internal-cron.token';
 $expected = is_readable($tokenFile) ? trim((string)@file_get_contents($tokenFile)) : '';
 if ($expected === '' || !hash_equals($expected, $tokenSent)) {
     http_response_code(401);

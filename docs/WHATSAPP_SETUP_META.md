@@ -67,25 +67,26 @@ Dans l'app Meta > WhatsApp > Configuration :
 
 ## 9. Renseigner les credentials côté VPS
 
-SSH sur le VPS atelier (ou via Termius), créer le fichier secret :
+SSH sur le VPS atelier (ou via Termius), créer le fichier secret **dans `/etc/ocre/`** (lisible par PHP-FPM www-ocre via le groupe `www-data`) :
 
 ```bash
 sudo -i
-mkdir -p /root/.secrets
-cat > /root/.secrets/whatsapp-meta.env <<'ENV'
+mkdir -p /etc/ocre && chown root:www-data /etc/ocre && chmod 750 /etc/ocre
+cat > /etc/ocre/whatsapp-meta.env <<'ENV'
 WHATSAPP_TOKEN=EAA...le_token_permanent_a_l_etape_7
 WHATSAPP_PHONE_ID=1234567890123456
 WHATSAPP_WEBHOOK_VERIFY_TOKEN=le_random_hex_de_l_etape_8
 WHATSAPP_WABA_ID=987654321098765
 ENV
-chmod 600 /root/.secrets/whatsapp-meta.env
-chown root:root /root/.secrets/whatsapp-meta.env
+chown root:www-data /etc/ocre/whatsapp-meta.env
+chmod 640 /etc/ocre/whatsapp-meta.env
 ```
 
 Vérifier :
 ```bash
-cat /root/.secrets/whatsapp-meta.env  # doit contenir 4 lignes KEY=VALUE
-ls -la /root/.secrets/whatsapp-meta.env  # mode -rw------- root root
+cat /etc/ocre/whatsapp-meta.env  # doit contenir 4 lignes KEY=VALUE
+ls -la /etc/ocre/whatsapp-meta.env  # mode -rw-r----- root www-data
+runuser -u www-ocre -- cat /etc/ocre/whatsapp-meta.env  # doit afficher le contenu (test acces PHP-FPM)
 ```
 
 ## 10. Templates de messages à valider par Meta
@@ -154,7 +155,7 @@ Variables : `{{1}}` = prénom confrère, `{{2}}` = URL message.
 
 Mode stub (sans credentials) — déjà testable maintenant :
 ```bash
-TOKEN=$(cat /root/.secrets/ocre-internal-cron.token)
+TOKEN=$(cat /etc/ocre/internal-cron.token)
 curl -X POST -H "X-Internal-Token: $TOKEN" -H "Content-Type: application/json" \
   -d '{"phone":"+33651325177","template":"inscription_confirmee","params":["Phil","https://signup.ocre.immo/activation/?token=abc"]}' \
   https://signup.ocre.immo/api/whatsapp_send.php

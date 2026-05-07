@@ -19,7 +19,9 @@ if (!function_exists('_ocre_wa_load_creds')) {
 function _ocre_wa_load_creds(): array {
     static $cache = null;
     if ($cache !== null) return $cache;
-    $envFile = '/root/.secrets/whatsapp-meta.env';
+    // Lecture privilegiee : /etc/ocre/whatsapp-meta.env (mode 0640 root:www-data, accessible www-ocre).
+    // Fallback : /root/.secrets/whatsapp-meta.env (root only, ne marche QUE depuis CLI root).
+    $envFile = is_readable('/etc/ocre/whatsapp-meta.env') ? '/etc/ocre/whatsapp-meta.env' : '/root/.secrets/whatsapp-meta.env';
     $cache = ['token' => '', 'phone_id' => '', 'verify_token' => '', 'waba_id' => ''];
     if (!is_readable($envFile)) return $cache;
     $lines = @file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
