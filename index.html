@@ -115,25 +115,25 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#8B5E3C">
-<title>Ocre Immo</title>
+<title>Oi Agent</title>
 <!-- M/2026/05/07/88 — Favicon Oi cross-vhosts (path /favicon/ + manifest tenant). V19 paths conserves comme alias retro-compat dans /opt/ocre-app/ direct. -->
 <link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon-180x180.png">
 <link rel="manifest" href="/favicon/site-tenant.webmanifest">
-<meta name="apple-mobile-web-app-title" content="Ocre Immo">
-<meta name="description" content="CRM immobilier professionnel Ocre Immo : gestion clients, biens, dossiers offres/demandes, planning RDV">
+<meta name="apple-mobile-web-app-title" content="Oi Agent">
+<meta name="description" content="Oi Agent — CRM immobilier professionnel pour agents (gestion clients, biens, dossiers, planning, matching).">
 <!-- V18.49 — OpenGraph + Twitter Card complets -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://app.ocre.immo/">
-<meta property="og:site_name" content="OCRE immo">
+<meta property="og:site_name" content="Oi Agent">
 <meta property="og:locale" content="fr_FR">
-<meta property="og:title" content="OCRE immo — Gestion immobilière">
+<meta property="og:title" content="Oi Agent — CRM immobilier professionnel">
 <meta property="og:description" content="CRM immobilier professionnel pour agents, concierges et gestionnaires">
 <meta property="og:image" content="https://app.ocre.immo/icons/icon-512.png?v=18.40.1">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="OCRE immo — Gestion immobilière">
+<meta name="twitter:title" content="Oi Agent — CRM immobilier professionnel">
 <meta name="twitter:description" content="CRM immobilier professionnel pour agents, concierges et gestionnaires">
 <meta name="twitter:image" content="https://app.ocre.immo/icons/icon-512.png?v=18.40.1">
 <!-- V18.49 — apple-touch-startup-image (10 résolutions portraits iPhone + iPad) -->
@@ -4831,7 +4831,7 @@ function ShareMenu({dossierId, dossierName, onClose, showToast}) {
   async function share() {
     if (!link) return;
     if (navigator.share) {
-      try { await navigator.share({title:'Ocre Immo · ' + (dossierName || 'Dossier'), text:'Accès lecture seule ' + expiresDays + 'j', url: link.url}); } catch (e) {}
+      try { await navigator.share({title:'Oi Agent · ' + (dossierName || 'Dossier'), text:'Accès lecture seule ' + expiresDays + 'j', url: link.url}); } catch (e) {}
     } else { copy(); }
   }
   async function revoke() {
@@ -10413,7 +10413,7 @@ function ShareDossiersModal({onClose, showToast}) {
       const file = new File([blob], filename, {type: 'application/zip'});
       if (navigator.canShare && navigator.canShare({files: [file]})) {
         try {
-          await navigator.share({files: [file], title: 'Export Ocre Immo', text: 'Dossiers Ocre Immo — consultation offline via viewer.html'});
+          await navigator.share({files: [file], title: 'Export Oi Agent', text: 'Dossiers Oi Agent — consultation offline via viewer.html'});
           setStatus('✓ Partagé.');
           setTimeout(() => onClose && onClose(), 800);
           return;
@@ -11495,7 +11495,7 @@ function App() {
   if (apiLoading) {
     return (
       <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F0E8D8'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:32, color:'#8B5E3C', fontWeight:700, marginBottom:16}}>Ocre Immo</div>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:32, color:'#8B5E3C', fontWeight:700, marginBottom:16}}>Oi Agent</div>
         <div style={{width:40, height:40, border:'3px solid #E8DDD0', borderTopColor:'#8B5E3C', borderRadius:'50%', animation:'spin 0.7s linear infinite'}}/>
       </div>
     );
@@ -15792,7 +15792,7 @@ function PdfShareModal({dossierId, currency = 'EUR', showPrice: initShowPrice = 
         const params = buildHideParams();
         const fullUrl = params ? (r.url + (r.url.indexOf('?') >= 0 ? '&' : '?') + params) : r.url;
         if (navigator.share) {
-          try { await navigator.share({title: 'Dossier Ocre Immo', text: 'Voici le dossier', url: fullUrl}); }
+          try { await navigator.share({title: 'Dossier Oi Agent', text: 'Voici le dossier', url: fullUrl}); }
           catch (e) { /* abort silently */ }
         } else if (navigator.clipboard) {
           await navigator.clipboard.writeText(fullUrl);
@@ -17462,9 +17462,10 @@ function OcreLogoButton() {
   // M/2026/04/29/22 — TestBadge sous le wordmark via flex column (single source of truth).
   return (
     <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', userSelect:'none', minHeight:36}}>
-      <div style={{display:'flex', alignItems:'baseline', justifyContent:'center', gap:3}}>
-        <span style={{fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:22, letterSpacing:1.5, color:'#8B5E3C', lineHeight:1}}>OCRE</span>
-        <span style={{fontFamily:'Caveat,cursive', fontWeight:400, fontSize:24, color:'#2A1810', marginLeft:2, lineHeight:1}}>immo</span>
+      {/* M/2026/05/07/117 — wordmark rebrand "OCRE immo" -> "Oi Agent" (Cormorant + DM Sans, OI_VISION figee 7 mai 2026). */}
+      <div style={{display:'flex', alignItems:'baseline', justifyContent:'center', gap:4}}>
+        <span style={{fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:24, color:'#8B5E3C', lineHeight:1}}>Oi</span>
+        <span style={{fontFamily:'DM Sans,sans-serif', fontWeight:600, fontSize:14, letterSpacing:.5, color:'#2A1810', lineHeight:1}}>Agent</span>
       </div>
       <TestBadge/>
     </div>
@@ -19423,7 +19424,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
         if (navigator.canShare({files: [file]})) {
           await navigator.share({
             files: [file],
-            title: 'Export dossiers Ocre Immo',
+            title: 'Export dossiers Oi Agent',
             text: 'Sauvegarde des dossiers — ' + new Date().toLocaleDateString('fr-FR'),
           });
           return;
