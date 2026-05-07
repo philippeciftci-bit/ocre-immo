@@ -128,7 +128,7 @@ let currentTab = 'overview';
 let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '', q: ''};
 async function renderConsole() {
   const root = document.getElementById('root');
-  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule <button class="logout" onclick="logout()">Se déconnecter</button><button class="search-btn" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button></div>'
+  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule <button class="logout" onclick="logout()">Se déconnecter</button><button class="search-btn" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button><a class="search-btn" href="/atelier-live.html" style="text-decoration:none;color:#8B5E3C">⚡ Atelier (live) <kbd>MVP</kbd></a></div>'
                  + '<h1>Console super-admin</h1>'
                  + '<div class="tabs">'
                  + '<div class="tab active" data-t="overview">Vue d\'ensemble</div>'

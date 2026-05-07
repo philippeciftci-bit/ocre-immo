@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atelier (live) — Ocre Admin</title>
+<link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
+<style>
+  :root { --ocre:#8B5E3C; --bg:#0E0E10; --panel:#171719; --txt:#E5E5E5; --dim:#7A7A82; --green:#4ADE80; --red:#F87171; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--txt); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+  header { padding: 12px 18px; background:#1F1F22; border-bottom:1px solid #2A2A2E; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+  header h1 { margin:0; font-size:16px; font-weight:600; }
+  header h1 .badge { display:inline-block; margin-left:8px; padding:2px 8px; border-radius:10px; background:var(--ocre); color:#fff; font-size:11px; font-weight:700; letter-spacing:.5px; }
+  header .nav a { color:var(--dim); text-decoration:none; margin-right:14px; font-size:13px; }
+  header .nav a:hover { color:var(--txt); }
+  main { flex:1; display:grid; grid-template-columns: 1fr 1fr; gap:0; overflow:hidden; }
+  .pane { display:flex; flex-direction:column; background:var(--panel); border-right:1px solid #2A2A2E; overflow:hidden; }
+  .pane:last-child { border-right:none; }
+  .pane-head { padding: 8px 14px; background:#1F1F22; border-bottom:1px solid #2A2A2E; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; font-size:12px; }
+  .pane-title { font-weight:600; }
+  .pane-status { display:flex; gap:10px; align-items:center; color:var(--dim); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--red); }
+  .dot.live { background:var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+  .pane-body { flex:1; overflow:auto; padding: 10px 14px; font-family: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace; font-size:11.5px; line-height:1.4; white-space:pre; color:#D4D4D8; }
+  .pane-body::-webkit-scrollbar { width:8px; }
+  .pane-body::-webkit-scrollbar-track { background:transparent; }
+  .pane-body::-webkit-scrollbar-thumb { background:#3A3A3F; border-radius:4px; }
+  .pause-btn { background:transparent; color:var(--dim); border:1px solid #3A3A3F; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:11px; }
+  .pause-btn.active { color:var(--ocre); border-color:var(--ocre); }
+  @media (max-width: 800px) {
+    main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+    .pane { border-right:none; border-bottom:1px solid #2A2A2E; }
+    .pane:last-child { border-bottom:none; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Atelier <span class="badge">⚡ LIVE MVP</span></h1>
+    <nav class="nav">
+      <a href="/">← Dashboard super-admin</a>
+    </nav>
+  </header>
+  <main id="root"></main>
+
+<script>
+(function() {
+  const TOKEN_KEY = 'ocre_super_admin_token';
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) {
+    document.getElementById('root').innerHTML = '<div style="padding:40px;text-align:center;color:#7A7A82">Non authentifié. <a href="/" style="color:#8B5E3C">Login super-admin</a></div>';
+    return;
+  }
+
+  const SESSIONS = [
+    { id: 'claude:0', label: 'claude:0 (chat principal)' },
+    { id: 'cc-atelier:0', label: 'cc-atelier:0 (atelier multi-CC)' },
+  ];
+
+  const root = document.getElementById('root');
+  const panes = {};
+
+  SESSIONS.forEach(s => {
+    const el = document.createElement('section');
+    el.className = 'pane';
+    el.innerHTML = `
+      <div class="pane-head">
+        <span class="pane-title">${s.label}</span>
+        <span class="pane-status">
+          <span class="dot" data-dot></span>
+          <span data-status>connexion…</span>
+          <span data-age>—</span>
+          <button class="pause-btn" data-pause>⏸ Pause scroll</button>
+        </span>
+      </div>
+      <pre class="pane-body" data-body>(en attente du premier event…)</pre>
+    `;
+    root.appendChild(el);
+    panes[s.id] = {
+      el,
+      body: el.querySelector('[data-body]'),
+      dot: el.querySelector('[data-dot]'),
+      status: el.querySelector('[data-status]'),
+      age: el.querySelector('[data-age]'),
+      pauseBtn: el.querySelector('[data-pause]'),
+      lastTs: 0,
+      paused: false,
+      es: null,
+    };
+    panes[s.id].pauseBtn.addEventListener('click', () => {
+      panes[s.id].paused = !panes[s.id].paused;
+      panes[s.id].pauseBtn.classList.toggle('active', panes[s.id].paused);
+      panes[s.id].pauseBtn.textContent = panes[s.id].paused ? '▶ Reprendre' : '⏸ Pause scroll';
+    });
+  });
+
+  function connect(sessId) {
+    const p = panes[sessId];
+    if (p.es) try { p.es.close(); } catch(_) {}
+    const url = '/api/superadmin_atelier_live.php?session=' + encodeURIComponent(sessId)
+      + '&_t=' + encodeURIComponent(token);
+    const es = new EventSource(url, { withCredentials: false });
+    p.es = es;
+
+    es.addEventListener('open', () => {
+      p.dot.classList.add('live');
+      p.status.textContent = '🟢 LIVE';
+    });
+    es.addEventListener('error', () => {
+      p.dot.classList.remove('live');
+      p.status.textContent = '🔴 reconnexion…';
+      try { es.close(); } catch(_) {}
+      setTimeout(() => connect(sessId), 2000);
+    });
+    es.addEventListener('pane_update', (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        p.lastTs = data.ts;
+        if (!p.paused) {
+          p.body.textContent = data.content;
+          p.body.scrollTop = p.body.scrollHeight;
+        }
+      } catch(_) {}
+    });
+    es.addEventListener('timeout', () => {
+      try { es.close(); } catch(_) {}
+      setTimeout(() => connect(sessId), 200);
+    });
+  }
+
+  // Auth via header impossible sur EventSource standard. On envoie le token en query string,
+  // l endpoint fait fallback : check $_GET['_t'] si pas de header X-Session-Token.
+  // Pour MVP : on se fie au cookie de session si present + on accepte le query arg.
+  // Le routeur ocre lit X-Session-Token. Adapter en M97 complet (xterm.js cote serveur).
+
+  SESSIONS.forEach(s => connect(s.id));
+
+  // Maj age every second
+  setInterval(() => {
+    const now = Math.floor(Date.now() / 1000);
+    Object.values(panes).forEach(p => {
+      if (p.lastTs > 0) {
+        const age = now - p.lastTs;
+        p.age.textContent = age + 's';
+        p.age.style.color = age > 5 ? '#F87171' : '#7A7A82';
+      }
+    });
+  }, 1000);
+})();
+</script>
+</body>
+</html>
