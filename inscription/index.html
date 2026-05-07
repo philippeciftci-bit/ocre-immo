@@ -91,6 +91,19 @@ const STORAGE_KEY = 'ocre_inscription_draft';
 function validateSiret(s) { const c = (s || '').replace(/\D/g, ''); if (c.length !== 14) return false; let sum = 0; for (let i = 0; i < 14; i++) { let d = parseInt(c[i], 10); if (i % 2 === 0) { d *= 2; if (d > 9) d -= 9; } sum += d; } return sum % 10 === 0; }
 function fmtSiret(s) { const c = (s || '').replace(/\D/g, '').slice(0, 14); if (c.length <= 3) return c; if (c.length <= 6) return c.slice(0, 3) + ' ' + c.slice(3); if (c.length <= 9) return c.slice(0, 3) + ' ' + c.slice(3, 6) + ' ' + c.slice(6); return c.slice(0, 3) + ' ' + c.slice(3, 6) + ' ' + c.slice(6, 9) + ' ' + c.slice(9); }
 function pwdScore(p) { let s = 0; if (!p) return 0; if (p.length >= 10) s++; if (/[A-Z]/.test(p)) s++; if (/[0-9]/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; return s; }
+// M/2026/05/07/95 — validation telephone : maxLength 20 + format E.164 international (+33...) OU francais (06/07 mobile, 01-09 fixe).
+function validatePhone(p) {
+  const cleaned = (p || '').replace(/[\s\-\.\(\)]/g, '');
+  if (!cleaned) return false;
+  if (cleaned.length > 20) return false;
+  // Format E.164 : + suivi de 8-15 chiffres
+  if (/^\+\d{8,15}$/.test(cleaned)) return true;
+  // Format FR mobile : 06/07 + 8 chiffres
+  if (/^0[67]\d{8}$/.test(cleaned)) return true;
+  // Format FR fixe : 01-05/08-09 + 8 chiffres
+  if (/^0[1-5]\d{8}$/.test(cleaned) || /^0[89]\d{8}$/.test(cleaned)) return true;
+  return false;
+}
 function pwdCriteria(p) {
   return {
     len: !!p && p.length >= 10,
@@ -130,7 +143,10 @@ function Wizard() {
   // M90.3 — SIRET optionnel : valide si vide OU Luhn-valide.
   const siretOk = data.siret.length === 0 || siretValid;
   const step2Valid = siretOk && data.ville.trim();
-  const step3Valid = data.tel.trim();
+  // M/2026/05/07/95 — validation tel + whatsapp : tel obligatoire valide, whatsapp optionnel (vide OK ou valide)
+  const telValid = validatePhone(data.tel);
+  const whatsappOk = !data.whatsapp.trim() || validatePhone(data.whatsapp);
+  const step3Valid = telValid && whatsappOk;
   const step4Valid = data.cgu === true && data.rgpd === true;
   async function submit() {
     if (submitting) return;
@@ -220,8 +236,20 @@ function Wizard() {
       {step === 3 && (
         <div className="card">
           <h2>3. Coordonnées + préférences</h2>
-          <div className="field"><label>Téléphone<span className="req">*</span></label><input type="tel" value={data.tel} onChange={e=>set('tel',e.target.value)}/></div>
-          <div className="field"><label>WhatsApp pro (optionnel)</label><input type="tel" value={data.whatsapp} onChange={e=>set('whatsapp',e.target.value)} placeholder="+33 6 51 32 51 77"/></div>
+          <div className="field"><label>Téléphone<span className="req">*</span></label>
+            <input type="tel" value={data.tel} onChange={e=>set('tel',e.target.value.slice(0,20))} maxLength={20} placeholder="06 12 34 56 78 ou +33 6 12 34 56 78"
+              style={data.tel.length > 0 && !telValid ? {borderColor:'#C0392B'} : (telValid ? {borderColor:'#2D7A3E'} : {})}/>
+            {data.tel.length > 0 && !telValid && <div className="help err">⚠ Numéro invalide (format FR 06/07/01-09 ou international +33...)</div>}
+            {telValid && <div className="help ok">✓ Numéro valide</div>}
+            <div style={{fontSize:10,color:'#A89882',textAlign:'right',marginTop:2}}>{data.tel.length}/20</div>
+          </div>
+          <div className="field"><label>WhatsApp pro (optionnel)</label>
+            <input type="tel" value={data.whatsapp} onChange={e=>set('whatsapp',e.target.value.slice(0,20))} maxLength={20} placeholder="+33 6 51 32 51 77"
+              style={data.whatsapp.length > 0 && !validatePhone(data.whatsapp) ? {borderColor:'#C0392B'} : (data.whatsapp.length > 0 && validatePhone(data.whatsapp) ? {borderColor:'#2D7A3E'} : {})}/>
+            {data.whatsapp.length > 0 && !validatePhone(data.whatsapp) && <div className="help err">⚠ Numéro invalide</div>}
+            {data.whatsapp.length > 0 && validatePhone(data.whatsapp) && <div className="help ok">✓ Numéro valide</div>}
+            {data.whatsapp.length > 0 && <div style={{fontSize:10,color:'#A89882',textAlign:'right',marginTop:2}}>{data.whatsapp.length}/20</div>}
+          </div>
           <label>Sensibilité matching</label>
           <div className="preset-grid" style={{marginBottom:16}}>
             {[{k:'strict',n:'Strict',d:'Très précis, peu de propositions'},{k:'equilibre',n:'Équilibré',d:'Recommandé · ratio qualité/quantité'},{k:'large',n:'Large',d:'Plus de pistes, moins précises'},{k:'tres_large',n:'Très large',d:'Maximum de pistes à explorer'}].map(p => (
