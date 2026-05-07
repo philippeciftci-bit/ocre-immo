@@ -50,6 +50,18 @@
   .badge-archive { color: #6B5E4A; background: #EDE6DC; border: 1px solid #D9C9A8; }
   .badge-enregistre { color: #2D7A3E; background: #D1FAE5; border: 1px solid #6EE7B7; }
   .logout { float: right; padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: #8B5E3C; }
+  .search-btn { float: right; margin-right: 8px; padding: 6px 14px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: #8B5E3C; display: inline-flex; align-items: center; gap: 6px; }
+  .search-btn kbd { font-family: ui-monospace, monospace; font-size: 10px; padding: 1px 5px; background: #F5EDDF; border: 1px solid #D9C9A8; border-radius: 3px; color: #6B4429; }
+  .cmdk-overlay { position: fixed; inset: 0; background: rgba(60,40,20,0.4); z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; }
+  .cmdk-modal { width: 100%; max-width: 580px; background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(60,40,20,0.25); overflow: hidden; }
+  .cmdk-input { width: 100%; padding: 18px 20px; border: none; outline: none; font-size: 16px; font-family: inherit; border-bottom: 1px solid #E5DDC8; }
+  .cmdk-results { max-height: 460px; overflow-y: auto; padding: 6px 0; }
+  .cmdk-cat { font-size: 10px; font-weight: 700; color: #8B7F6E; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 16px 4px; }
+  .cmdk-row { padding: 9px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+  .cmdk-row:hover, .cmdk-row.active { background: #FBF1E4; }
+  .cmdk-row .lbl { font-size: 13px; font-weight: 600; color: #2A2018; }
+  .cmdk-row .sub { font-size: 11px; color: #8B7F6E; }
+  .cmdk-empty { padding: 30px; text-align: center; color: #8B7F6E; font-size: 13px; font-style: italic; }
 </style>
 </head>
 <body>
@@ -116,7 +128,7 @@ let currentTab = 'overview';
 let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '', q: ''};
 async function renderConsole() {
   const root = document.getElementById('root');
-  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule <button class="logout" onclick="logout()">Se déconnecter</button></div>'
+  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule <button class="logout" onclick="logout()">Se déconnecter</button><button class="search-btn" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button></div>'
                  + '<h1>Console super-admin</h1>'
                  + '<div class="tabs">'
                  + '<div class="tab active" data-t="overview">Vue d\'ensemble</div>'
@@ -203,6 +215,87 @@ function searchDebounced(v) {
 if (localStorage.getItem(TOKEN_KEY)) {
   api('/api/auth_v20.php?action=me').then(r => { if (r.ok && (r.user || {}).role === 'super_admin') renderConsole(); });
 }
+
+// M/2026/05/07/98.1 — Command Palette Cmd+K (Stripe/Linear/Notion pattern)
+let cmdkActiveIdx = 0;
+let cmdkResults = [];
+let cmdkSearchTimer = null;
+function openCmdK() {
+  if (document.getElementById('cmdk-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'cmdk-overlay';
+  overlay.className = 'cmdk-overlay';
+  overlay.innerHTML =
+    '<div class="cmdk-modal" onclick="event.stopPropagation()">' +
+      '<input id="cmdk-input" class="cmdk-input" type="text" placeholder="Rechercher dans clients, biens, users, workspaces, audit... (min 2 caractères)" autofocus>' +
+      '<div id="cmdk-results" class="cmdk-results"></div>' +
+    '</div>';
+  overlay.onclick = closeCmdK;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('cmdk-input').focus(), 50);
+  document.getElementById('cmdk-input').addEventListener('input', e => {
+    clearTimeout(cmdkSearchTimer);
+    cmdkSearchTimer = setTimeout(() => doCmdKSearch(e.target.value), 200);
+  });
+  document.getElementById('cmdk-input').addEventListener('keydown', cmdkKeyDown);
+}
+function closeCmdK() { const o = document.getElementById('cmdk-overlay'); if (o) o.remove(); cmdkResults = []; cmdkActiveIdx = 0; }
+function cmdkKeyDown(e) {
+  if (e.key === 'Escape') { e.preventDefault(); closeCmdK(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); cmdkActiveIdx = Math.min(cmdkResults.length - 1, cmdkActiveIdx + 1); renderCmdKResults(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); cmdkActiveIdx = Math.max(0, cmdkActiveIdx - 1); renderCmdKResults(); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (cmdkResults[cmdkActiveIdx]) cmdkSelect(cmdkResults[cmdkActiveIdx]); }
+}
+async function doCmdKSearch(q) {
+  q = (q || '').trim();
+  const c = document.getElementById('cmdk-results');
+  if (q.length < 2) { c.innerHTML = '<div class="cmdk-empty">Tape au moins 2 caractères pour chercher</div>'; cmdkResults = []; return; }
+  c.innerHTML = '<div class="cmdk-empty">Recherche…</div>';
+  try {
+    const r = await api('/api/superadmin_search.php?q=' + encodeURIComponent(q));
+    cmdkResults = r.results || [];
+    cmdkActiveIdx = 0;
+    renderCmdKResults();
+  } catch (_) { c.innerHTML = '<div class="cmdk-empty">Erreur réseau</div>'; }
+}
+function renderCmdKResults() {
+  const c = document.getElementById('cmdk-results');
+  if (!cmdkResults.length) { c.innerHTML = '<div class="cmdk-empty">Aucun résultat</div>'; return; }
+  // Group by category
+  const groups = {};
+  cmdkResults.forEach((r, i) => {
+    if (!groups[r.category]) groups[r.category] = [];
+    groups[r.category].push({...r, _idx: i});
+  });
+  let html = '';
+  Object.entries(groups).forEach(([cat, items]) => {
+    html += `<div class="cmdk-cat">${cat}</div>`;
+    items.forEach(item => {
+      const act = item._idx === cmdkActiveIdx ? ' active' : '';
+      html += `<div class="cmdk-row${act}" data-idx="${item._idx}" onclick="cmdkSelect(cmdkResults[${item._idx}])"><span class="lbl">${escapeHtml(item.label)}</span><span class="sub">${escapeHtml(item.sublabel || '')}</span></div>`;
+    });
+  });
+  c.innerHTML = html;
+}
+function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function cmdkSelect(item) {
+  closeCmdK();
+  // Pour M98.1, juste alert. Future M98 brancherait sur les bons onglets.
+  const url = item.url || '/';
+  // Si url commence par /?tab=X, basculer sur l'onglet
+  const m = (url + '').match(/tab=([a-z]+)/);
+  if (m && document.querySelector('[data-t="' + m[1] + '"]')) {
+    document.querySelector('[data-t="' + m[1] + '"]').click();
+  } else {
+    alert('Ressource sélectionnée : ' + item.label + '\n(navigation détaillée à venir M98.x)');
+  }
+}
+window.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && localStorage.getItem(TOKEN_KEY)) {
+    e.preventDefault();
+    openCmdK();
+  }
+});
 </script>
 </body>
 </html>
