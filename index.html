@@ -22055,9 +22055,9 @@ function FormView(props) {
                   </svg>
                 </button>
               </div>
-              {/* M/2026/05/06/71 + M/2026/05/07/91.3 — badge BROUILLON visible (uppercase, fond ocre clair, taille lisible) a gauche de la pastille profil, uniquement si statut=brouillon. Pattern Notion/Linear/Figma. */}
+              {/* M/2026/05/07/92.1 — badge BROUILLON rouge cote-a-cote avec pastille profil, meme taille/padding/borderRadius. Pattern GitHub/Linear "DRAFT". */}
               {_isBrouillonBar && (
-                <span style={{flexShrink:0, fontFamily:'inherit', fontWeight:700, fontSize: smallScreen ? 9 : 10.5, letterSpacing:0.5, textTransform:'uppercase', color:'#8B5E3C', backgroundColor:'#FBF1E4', border:'1px solid #E8D9BE', padding:'2px 7px', borderRadius:6, lineHeight:1.4, marginRight:2}}>
+                <span style={{flexShrink:0, fontFamily:'inherit', fontWeight:700, fontSize:9.5, letterSpacing:0.4, textTransform:'uppercase', color:'#B91C1C', backgroundColor:'#FEE2E2', border:'1px solid #FCA5A5', padding:'2px 8px', borderRadius:10, whiteSpace:'nowrap', marginRight:6}}>
                   Brouillon
                 </span>
               )}
@@ -23078,12 +23078,7 @@ function FormView(props) {
             })()}
           </div>
           )}
-          {/* V23 — Note discrète pour profils demande (Acheteur/Locataire/Curieux). */}
-          {['Acheteur','Locataire','Curieux'].includes(activeProfil) && (
-            <div style={{fontSize:10.5, color:'#A89882', textAlign:'center', padding:'0 8px 6px', lineHeight:1.4, fontStyle:'italic'}}>
-              Recherche Internet disponible uniquement pour les biens en offre (Vendeur / Bailleur / Investisseur).
-            </div>
-          )}
+          {/* M/2026/05/07/92.2 — note "Recherche Internet disponible uniquement..." retiree (parasite UX agent consultant un dossier Acheteur/Locataire/Curieux). */}
           {publishOpen && (
             <PublishPreviewModal dossierId={editing && editing.id}
               onClose={() => setPublishOpen(false)}
