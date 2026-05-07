@@ -131,8 +131,10 @@ switch ($action) {
         $expires_days = max(1, min(90, (int)($input['expires_days'] ?? 7)));
         if (!$dossier_id) jsonError('dossier_id requis');
 
-        // Vérifier ownership
-        $chk = db()->prepare("SELECT id FROM clients WHERE id = ? AND user_id = ?");
+        // Vérifier ownership.
+        // M/2026/05/07/106 — exclure les dossiers supprimes pour empecher la creation
+        // d un share-link sur un dossier soft-delete (incoherence donnees).
+        $chk = db()->prepare("SELECT id FROM clients WHERE id = ? AND user_id = ? AND deleted_at IS NULL");
         $chk->execute([$dossier_id, $user['id']]);
         if (!$chk->fetch()) jsonError('Accès refusé', 403);
 

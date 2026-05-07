@@ -50,9 +50,12 @@ function normalizeClient($row): array {
 
 function fetchDossiers(int $user_id): array {
     // V18.17 schéma : is_staged + promoted_at. On ramène TOUT (main + staged + archivé).
+    // M/2026/05/07/106 — exclure les dossiers supprimes (soft-delete). Sans ce filtre,
+    // la modale Partager affichait "1 dossier" pour un dossier deja supprime, et le ZIP
+    // genere contenait le dossier fantome.
     $stmt = db()->prepare(
         "SELECT id, data, is_draft, is_staged, archived, projet, is_investisseur, created_at, updated_at
-         FROM clients WHERE user_id = ? ORDER BY updated_at DESC"
+         FROM clients WHERE user_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC"
     );
     $stmt->execute([$user_id]);
     $rows = $stmt->fetchAll();

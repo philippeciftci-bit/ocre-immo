@@ -13,7 +13,8 @@ $user = requireAuth();
 $dossier_id = (int)($_GET['dossier_id'] ?? 0);
 if (!$dossier_id) { http_response_code(400); echo 'dossier_id requis'; exit; }
 
-$stmt = db()->prepare("SELECT * FROM clients WHERE id = ? AND user_id = ? LIMIT 1");
+// M/2026/05/07/106 — exclure les dossiers supprimes (soft-delete) de l export single.
+$stmt = db()->prepare("SELECT * FROM clients WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1");
 $stmt->execute([$dossier_id, $user['id']]);
 $r = $stmt->fetch();
 if (!$r) { http_response_code(404); echo 'Introuvable'; exit; }
