@@ -116,19 +116,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#8B5E3C">
 <title>Ocre Immo</title>
-<!-- V19 — Refonte favicons haut contraste iOS : O blanc épais sur fond ocre uni (#8B5E3C)
-     pour petits formats 16/32 (switcher Safari iOS), Oi complet sur fond crème #F5EFE6
-     pour apple-touch (écran d'accueil PWA). Nouveaux noms icon*/ocre-ios-* pour forcer
-     refetch Safari (anciens noms gardés en non-régression avec même contenu). -->
-<link rel="icon" href="/icon.ico?v=20260507" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png?v=20260507">
-<link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png?v=20260507">
-<link rel="apple-touch-icon" sizes="180x180" href="/ocre-ios-180.png?v=20260507">
-<link rel="apple-touch-icon" sizes="167x167" href="/ocre-ios-167.png?v=20260507">
-<link rel="apple-touch-icon" sizes="152x152" href="/ocre-ios-152.png?v=20260507">
-<link rel="apple-touch-icon" href="/ocre-ios-180.png?v=20260507">
-<link rel="manifest" href="/manifest.json?v=20260507">
-<meta name="apple-mobile-web-app-title" content="OCRE immo">
+<!-- M/2026/05/07/88 — Favicon Oi cross-vhosts (path /favicon/ + manifest tenant). V19 paths conserves comme alias retro-compat dans /opt/ocre-app/ direct. -->
+<link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon-180x180.png">
+<link rel="manifest" href="/favicon/site-tenant.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Ocre Immo">
 <meta name="description" content="CRM immobilier professionnel Ocre Immo : gestion clients, biens, dossiers offres/demandes, planning RDV">
 <!-- V18.49 — OpenGraph + Twitter Card complets -->
 <meta property="og:type" content="website">
