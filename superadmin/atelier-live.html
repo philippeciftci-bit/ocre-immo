@@ -47,7 +47,8 @@
 
 <script>
 (function() {
-  const TOKEN_KEY = 'ocre_super_admin_token';
+  // M/2026/05/07/97-MVP-FIX-AUTH — clé alignée avec superadmin/index.html (etait 'ocre_super_admin_token' = mismatch -> Non authentifie alors que login OK).
+  const TOKEN_KEY = 'ocre_sa_token';
   const token = localStorage.getItem(TOKEN_KEY);
   if (!token) {
     document.getElementById('root').innerHTML = '<div style="padding:40px;text-align:center;color:#7A7A82">Non authentifié. <a href="/" style="color:#8B5E3C">Login super-admin</a></div>';
