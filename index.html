@@ -11273,6 +11273,9 @@ function App() {
     // M/2026/05/01/11 — pattern draft-on-input : retry x3 avec backoff sur le tout premier
     // commit (creation INSERT). Pour les UPDATE (id deja set), un seul appel : la
     // sauvegarde debounced 800ms reessaiera spontanement au prochain change.
+    // M/2026/05/08/9 — handling 401 explicite : si session backend expiree, ne PAS retry
+    // (le frontend repete inutilement et l UI affiche "Echec sauvegarde retry" alors que
+    // la cause est juste la session a expirer). Stop early + clear token + redirect login.
     const token = localStorage.getItem('ocre_token');
     const isFirstCommit = !data.id;
     const maxAttempts = isFirstCommit ? 3 : 1;
@@ -11282,6 +11285,12 @@ function App() {
           method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token},
           body: JSON.stringify({client: data}),
         });
+        if (r.status === 401) {
+          // Session expiree : pas de retry. Clear localStorage et redirect vers login.
+          try { localStorage.removeItem('ocre_token'); } catch (_) {}
+          try { window.location = '/login/?expired=1'; } catch (_) {}
+          return null;
+        }
         const d = await r.json();
         if (d && d.ok) return d.client;
       } catch (e) { /* fall-through to retry */ }
