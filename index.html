@@ -9508,6 +9508,23 @@ function BackButton({onClick, ariaLabel = 'Retour'}) {
   );
 }
 
+// M/2026/05/07/107 — PageHeader convention navigation pages enfants tenant.
+// Pattern iOS Settings / Notion / Linear : 3 zones [back] [titre centre Cormorant] [rightAction].
+// Hauteur fixe 56px, border-bottom subtle, fond blanc, sticky top. Titre centre absolu pour
+// rester pile au milieu meme avec rightAction de largeur variable. NE PAS utiliser sur la home
+// tenant ni sur le super-admin (autres univers).
+function PageHeader({onBack, title, rightAction}) {
+  return (
+    <div style={{position:'sticky', top:0, zIndex:10, height:56, background:'#fff', borderBottom:'1px solid rgba(74,44,30,.08)', display:'flex', alignItems:'center', padding:'0 14px', flexShrink:0}}>
+      <div style={{position:'relative', flex:1, height:'100%', display:'flex', alignItems:'center'}}>
+        {onBack && <BackButton onClick={onBack}/>}
+        <div style={{position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#5C3B1E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'62%', textAlign:'center', pointerEvents:'none'}}>{title}</div>
+        <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:8}}>{rightAction}</div>
+      </div>
+    </div>
+  );
+}
+
 // TargetWithBadge — composant cible canonique.
 // M/2026/04/29/32 — Single source of truth : count derive de matchesById passe en prop
 // par le parent. Symetrie absolue avec les badges individuels (chaque dossier badge =
@@ -12767,10 +12784,7 @@ function HelpPage({onBack}) {
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
-      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
-        <BackButton onClick={onBack}/>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C'}}>Aide & FAQ</div>
-      </div>
+      <PageHeader onBack={onBack} title="Aide & FAQ"/>
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 30px'}}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher dans la FAQ…"
           style={{width:'100%', padding:10, border:'1px solid #D8CCB4', borderRadius:8, fontFamily:'inherit', fontSize:13, marginBottom:14, boxSizing:'border-box'}}/>
@@ -14240,21 +14254,20 @@ function CalendarView({onBack, showToast, toast}) {
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
-      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
-        <BackButton onClick={onBack}/>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C'}}>Calendrier</div>
-        <button onClick={() => {
-          const tk = localStorage.getItem('ocre_token') || '';
-          const from = new Date().toISOString().slice(0,10);
-          const to = new Date(Date.now() + 90*86400000).toISOString().slice(0,10);
-          window.open('/api/event_ics.php?from=' + from + '&to=' + to + '&token=' + encodeURIComponent(tk), '_blank');
-        }} title="Exporter mon agenda 90 jours en .ics" style={{background:'none', border:'1px solid #C9B79A', padding:'5px 10px', borderRadius:8, fontSize:11.5, cursor:'pointer', fontFamily:'inherit', color:'#5C3B1E'}}>Exporter .ics</button>
-        <div style={{display:'flex', gap:4, background:'#F0E8D8', padding:2, borderRadius:6}}>
-          {[{k:'liste', l:'Liste'}, {k:'semaine', l:'Semaine'}].map(m => (
-            <button key={m.k} onClick={() => setCalMode(m.k)} style={{padding:'4px 10px', background: calMode===m.k ? '#8B5E3C' : 'transparent', color: calMode===m.k ? '#fff' : '#5A4E3D', border:'none', borderRadius:4, fontFamily:'inherit', fontSize:11.5, fontWeight:600, cursor:'pointer'}}>{m.l}</button>
-          ))}
-        </div>
-      </div>
+      <PageHeader onBack={onBack} title="Calendrier"
+        rightAction={<>
+          <button onClick={() => {
+            const tk = localStorage.getItem('ocre_token') || '';
+            const from = new Date().toISOString().slice(0,10);
+            const to = new Date(Date.now() + 90*86400000).toISOString().slice(0,10);
+            window.open('/api/event_ics.php?from=' + from + '&to=' + to + '&token=' + encodeURIComponent(tk), '_blank');
+          }} title="Exporter mon agenda 90 jours en .ics" style={{background:'none', border:'1px solid #C9B79A', padding:'5px 10px', borderRadius:8, fontSize:11.5, cursor:'pointer', fontFamily:'inherit', color:'#5C3B1E'}}>Exporter .ics</button>
+          <div style={{display:'flex', gap:4, background:'#F0E8D8', padding:2, borderRadius:6}}>
+            {[{k:'liste', l:'Liste'}, {k:'semaine', l:'Semaine'}].map(m => (
+              <button key={m.k} onClick={() => setCalMode(m.k)} style={{padding:'4px 10px', background: calMode===m.k ? '#8B5E3C' : 'transparent', color: calMode===m.k ? '#fff' : '#5A4E3D', border:'none', borderRadius:4, fontFamily:'inherit', fontSize:11.5, fontWeight:600, cursor:'pointer'}}>{m.l}</button>
+            ))}
+          </div>
+        </>}/>
       <div style={{flex:1, overflowY:'auto', padding:'4px 0 calc(env(safe-area-inset-bottom, 0px) + 80px)'}}>
         {loading && <div style={{textAlign:'center', color:'#8B7F6E', padding:30}}>Chargement…</div>}
         {!loading && events.length === 0 && (
@@ -14762,13 +14775,10 @@ function NotificationsView({onBack, openEditReview, showToast}) {
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
-      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
-        <BackButton onClick={onBack}/>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C'}}>Notifications</div>
-        {items.some(n => !n.is_read) && (
-          <button onClick={markAllRead} style={{background:'none', border:'none', color:'#8B5E3C', fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Tout marquer lu</button>
-        )}
-      </div>
+      <PageHeader onBack={onBack} title="Notifications"
+        rightAction={items.some(n => !n.is_read)
+          ? <button onClick={markAllRead} style={{background:'none', border:'none', color:'#8B5E3C', fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Tout marquer lu</button>
+          : null}/>
       <div style={{flex:1, overflowY:'auto', padding:'10px 14px'}}>
         {loading && <div style={{padding:20, textAlign:'center', color:'#8B7F6E'}}>Chargement…</div>}
         {!loading && items.length === 0 && <div style={{padding:30, textAlign:'center', color:'#8B7F6E'}}>Aucune notification</div>}
@@ -14996,10 +15006,7 @@ function ExportPage({onBack, showToast}) {
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
-      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
-        <BackButton onClick={onBack}/>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C'}}>Exporter mes données</div>
-      </div>
+      <PageHeader onBack={onBack} title="Exporter mes données"/>
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 30px'}}>
         <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:14}}>Triple résilience : exportez vos dossiers à tout moment vers Google Drive, iCloud, OneDrive ou votre ordinateur. Format universel CSV ou complet XLSX/ZIP.</div>
 
@@ -16339,11 +16346,8 @@ function PreferencesPage({onBack, showToast, currentUser}) {
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background:'#F0E8D8'}}>
-      <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
-        <BackButton onClick={onBack}/>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C'}}>Mes préférences</div>
-        <button onClick={save} disabled={saving} style={{padding:'6px 14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor: saving ? 'wait' : 'pointer'}}>{saving ? '…' : 'Sauvegarder'}</button>
-      </div>
+      <PageHeader onBack={onBack} title="Mes préférences"
+        rightAction={<button onClick={save} disabled={saving} style={{padding:'6px 14px', background:'#8B5E3C', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor: saving ? 'wait' : 'pointer'}}>{saving ? '…' : 'Sauvegarder'}</button>}/>
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 30px'}}>
 
         <Section title="Notifications">
