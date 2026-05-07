@@ -125,6 +125,18 @@ $activationToken = bin2hex(random_bytes(32));
 $cguVersion = '1.0';
 $rgpdVersion = '1.0';
 
+// M/2026/05/07/5 — slug auto-genere depuis agence ou prenom-nom. Slugify [a-z0-9-]
+// + suffixe random hex 4 chars pour eviter collision (verif post-INSERT optionnelle, scope strict).
+function _slugify(string $base): string {
+    $s = mb_strtolower(trim($base), 'UTF-8');
+    $s = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+    $s = preg_replace('/[^a-z0-9]+/', '-', $s);
+    $s = trim($s, '-');
+    return $s !== '' ? substr($s, 0, 32) : 'agent';
+}
+$_slugBase = $agence !== '' ? $agence : ($prenom . '-' . $nomUpper);
+$autoSlug = _slugify($_slugBase) . '-' . substr(bin2hex(random_bytes(2)), 0, 4);
+
 try {
     $meta = _meta_pdo();
 
@@ -142,9 +154,9 @@ try {
                         societe = ?, ville = ?, cp = ?, country_code = 'FR',
                         sensibility_preset = ?, preferences = ?,
                         activation_token = ?, activation_token_expires_at = DATE_ADD(NOW(), INTERVAL 7 DAY),
-                        cgu_accepted_at = NOW(), cgu_version = ?, cgu_version_accepted = ?,
+                        cgu_accepted = 1, cgu_accepted_at = NOW(), cgu_version = ?, cgu_version_accepted = ?,
                         cgu_accepted_ip = ?, cgu_accepted_user_agent = ?,
-                        rgpd_accepted_at = NOW(), rgpd_version = ?, rgpd_accepted_ip = ?, rgpd_accepted_user_agent = ?
+                        rgpd_accepted = 1, rgpd_accepted_at = NOW(), rgpd_version = ?, rgpd_accepted_ip = ?, rgpd_accepted_user_agent = ?
                   WHERE id = ?"
             );
             $upd->execute([
@@ -185,30 +197,30 @@ try {
             (email, password_hash, display_name, prenom, nom,
              role, subscription_status, billing_plan, status,
              telephone, whatsapp, ville, cp, country_code,
-             pro_card_number, siret, siren, societe,
+             pro_card_number, siret, siren, societe, slug,
              sensibility_preset, preferences,
              activation_token, activation_token_expires_at,
-             cgu_accepted_at, cgu_version, cgu_version_accepted,
+             cgu_accepted, cgu_accepted_at, cgu_version, cgu_version_accepted,
              cgu_accepted_ip, cgu_accepted_user_agent,
-             rgpd_accepted_at, rgpd_version, rgpd_accepted_ip, rgpd_accepted_user_agent,
+             rgpd_accepted, rgpd_accepted_at, rgpd_version, rgpd_accepted_ip, rgpd_accepted_user_agent,
              telegram_notifs_enabled, email_notifs_enabled,
              created_at)
          VALUES (?, ?, ?, ?, ?,
                  'agent', 'trial', 'decouverte', 'pending_activation',
                  ?, ?, ?, ?, 'FR',
-                 ?, ?, ?, ?,
+                 ?, ?, ?, ?, ?,
                  ?, ?,
                  ?, DATE_ADD(NOW(), INTERVAL 7 DAY),
-                 NOW(), ?, ?,
+                 1, NOW(), ?, ?,
                  ?, ?,
-                 NOW(), ?, ?, ?,
+                 1, NOW(), ?, ?, ?,
                  0, ?,
                  NOW())"
     );
     $stmt->execute([
         $email, $pwdHash, $displayName, $prenom, $nomUpper,
         $tel, ($whatsapp ?: null), $ville, ($cp ?: null),
-        ($cartePro ?: null), $siretSql, $siren, ($agence ?: null),
+        ($cartePro ?: null), $siretSql, $siren, ($agence ?: null), $autoSlug,
         $sensibility, $prefsJson,
         $activationToken,
         $cguVersion, $cguVersion,
