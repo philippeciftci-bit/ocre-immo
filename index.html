@@ -20810,7 +20810,11 @@ function M80MandatBlock({d, set}) {
 }
 
 function Section7({d, set}) {
-  const _pays = (d && d.bien && (d.bien.pays || '')).toUpperCase();
+  // M/2026/05/07/100-FIX-CRASH — ROOT CAUSE: pattern (d && d.bien && (d.bien.pays || '')).toUpperCase()
+  // crash "undefined is not an object" sur Safari iPad quand d.bien est null/undefined :
+  // l expression retourne undefined avant d arriver au || '', puis .toUpperCase() plante.
+  // FIX : sortir le || '' a l exterieur du && pour garantir une string avant toUpperCase().
+  const _pays = ((d && d.bien && d.bien.pays) || '').toUpperCase();
   const _ref = M79_COUNTRY_REF[_pays] || null;
   const _avocat = (d && d.avocat) || {};
   const _checklist = (d && d.country_checklist) || {};
