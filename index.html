@@ -7577,8 +7577,7 @@ function V62SubTitle({children}) {
 
 // M/2026/04/30/49 — Sous-bloc Recherche bien (Section III pour Acheteur/Locataire/Investisseur).
 function RechercheBienBloc({d, set}) {
-  const paysList = Array.isArray(d.recherche_pays) ? d.recherche_pays : [];
-  const villesList = Array.isArray(d.recherche_villes) ? d.recherche_villes : [];
+  // M/2026/05/07/92ter — paysList + villesList computed mais non rendus en UI (champs Pays/Villes retires du bloc, doublon UX avec Section II Localisation). Conserves comme variables au cas ou TypeBienMultiPicker utiliserait recherche_pays comme filtre alternatif futur.
   const typesList = Array.isArray(d.recherche_types_bien) ? d.recherche_types_bien : [];
   const criteres = Array.isArray(d.recherche_criteres_confort) ? d.recherche_criteres_confort : [];
   const profilBien = d.recherche_profil_bien || '';
@@ -7587,17 +7586,10 @@ function RechercheBienBloc({d, set}) {
   return (
     <V55Bloc title="Recherche bien">
       <div style={{display:'flex', flexDirection:'column', gap:10}}>
-        <div>
-          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays cibles</label>
-          <CountryMultiPicker value={paysList} onChange={v => set('recherche_pays', v)} max={5} placeholder="Pays cibles"/>
-        </div>
-        <div>
-          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Villes cibles</label>
-          <CityMultiPicker value={villesList} onChange={v => set('recherche_villes', v)} selectedCountries={paysList} placeholder="Villes cibles"/>
-        </div>
+        {/* M/2026/05/07/92ter — Pays cibles + Villes cibles RETIRES (doublon UX avec Section II Localisation BienForm bloc 01 mono pays/ville). Champs JSON recherche_pays + recherche_villes preserves DB pour rollback ou re-exposition future si refonte multi-pays prospection. TypeBien utilise selectedCountries=bien.pays array (single wrapped) au lieu de paysList. */}
         <div>
           <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Types bien souhaités</label>
-          <TypeBienMultiPicker value={typesList} onChange={v => set('recherche_types_bien', v)} selectedCountries={paysList} max={5} placeholder="Types bien"/>
+          <TypeBienMultiPicker value={typesList} onChange={v => set('recherche_types_bien', v)} selectedCountries={(d.bien && d.bien.pays) ? [d.bien.pays] : []} max={5} placeholder="Types bien"/>
         </div>
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
           <V55Field label="Surface habitable min (m²)" type="number" value={d.recherche_surface_hab_min} onChange={v => set('recherche_surface_hab_min', v)}/>
