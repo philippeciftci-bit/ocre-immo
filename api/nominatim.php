@@ -5,7 +5,12 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/lib/router.php';
 setCorsHeaders();
-$user = requireAuth();
+// M/2026/05/08/10 — requireAuth() retire : les donnees Nominatim/OSM sont publiques (l autocomplete
+// de noms d adresses ne fuite aucune info sensible). Fix bug Philippe 8 mai 01h21 : sa session
+// backend etait expiree -> nominatim 401 -> autocomplete adresse cassee. Le proxy reste utile
+// pour respecter rate limit Nominatim (1 req/s) + cache 24h. Anti-abus minimal : query >=3 chars
+// + cache forte. Si abus detecte plus tard, ajouter rate limit basique par IP.
+// $user = requireAuth();  // RETIRE intentionnellement.
 
 $q = trim((string) ($_GET['q'] ?? ''));
 $countries = preg_replace('/[^a-z,]/', '', strtolower((string) ($_GET['countrycodes'] ?? '')));
