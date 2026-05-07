@@ -11082,6 +11082,37 @@ function App() {
       // restent dispo pour une entrée menu future.
     })();
   }, []);
+  // M/2026/05/07/102 — refetch silent au focus tab + visibilitychange pour synchroniser
+  // la liste avec la DB apres une mutation faite ailleurs (autre onglet, navigation back,
+  // app revenant en foreground). Pattern Linear/Notion/Stripe Dashboard. Throttle 5s pour
+  // eviter spam si focus/blur rapides successifs.
+  useEffect(() => {
+    let lastFetch = Date.now();
+    async function refetchClients() {
+      if (document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (now - lastFetch < 5000) return;
+      lastFetch = now;
+      const token = localStorage.getItem('ocre_token');
+      if (!token) return;
+      try {
+        const cl = await fetch(API + '/clients.php?action=list', {headers:{'X-Session-Token': token}, cache:'no-store'}).then(r => r.json());
+        if (cl && cl.ok) {
+          const migrated = (cl.clients || []).map(c =>
+            c.is_investisseur && c.projet !== 'Investisseur' ? {...c, projet: 'Investisseur'} : c
+          );
+          setClients(migrated);
+          if (cl.meta && typeof cl.meta.staged_count === 'number') setStagedCount(cl.meta.staged_count);
+        }
+      } catch (_) {}
+    }
+    window.addEventListener('focus', refetchClients);
+    document.addEventListener('visibilitychange', refetchClients);
+    return () => {
+      window.removeEventListener('focus', refetchClients);
+      document.removeEventListener('visibilitychange', refetchClients);
+    };
+  }, []);
   // V18.30 — capture beforeinstallprompt (Android Chrome) pour auto-install en 1 tap.
   useEffect(() => {
     function onBip(e) {
@@ -17691,8 +17722,10 @@ function ListView(props) {
     return scored.slice(0, 100).map(x => ({...x.c, _v57_score: x.score}));
   }, [advActive, advancedCriteria, profilFiltered]);
   const filtered = applySearchRank(advFilteredScored, listSearch);
-  const drafts = filtered.filter(c => c.is_draft);
-  const contacts = filtered.filter(c => !c.is_draft);
+  // M/2026/05/07/102 — exclure les dossiers en cours de retrait (_removing) pour que le
+  // compteur Dossiers·N et la liste rendue refletent immediatement la suppression cote UI.
+  const drafts = filtered.filter(c => c.is_draft && !c._removing);
+  const contacts = filtered.filter(c => !c.is_draft && !c._removing);
   // V18.37 — Union-Find sur linked_dossiers pour regrouper les casquettes d'un même client.
   // Retourne [{ids:[id…], dossiers:[…], latest:ts}, …] trié par latest DESC, chaque groupe
   // trié updated_at DESC. Les dossiers non liés forment des groupes solo.
@@ -17738,7 +17771,7 @@ function ListView(props) {
   function renderGroup(g) {
     if (g.dossiers.length === 1) {
       const c = g.dossiers[0];
-      return <ClientRow key={'s-'+c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)} openDossierPdf={props.openDossierPdf} onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}/>;
+      return <ClientRow key={'s-'+c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)} openDossierPdf={props.openDossierPdf} onRemoveStart={(rid) => setClients(prev => prev.map(x => x.id === rid ? {...x, _removing: true} : x))} onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}/>;
     }
     return (
       <div key={'g-'+g.ids.join('-')} className="dossier-group"
@@ -17754,6 +17787,7 @@ function ListView(props) {
               onOpenSection={openClientAtSection}
               onClick={() => openClient(c)}
               openDossierPdf={props.openDossierPdf}
+              onRemoveStart={(rid) => setClients(prev => prev.map(x => x.id === rid ? {...x, _removing: true} : x))}
               onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}/>
           </div>
         ))}
@@ -18369,6 +18403,9 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       const j = await r.json();
       if (j && j.ok) {
         // M/2026/05/07/101 — optimistic fade-out + onRemove (au lieu de window.location.reload()).
+        // M/2026/05/07/102 — onRemoveStart marque _removing IMMEDIATEMENT cote parent pour
+        // que le compteur Dossiers·N exclue ce dossier des le clic, sans attendre 200ms.
+        if (props.onRemoveStart) props.onRemoveStart(c.id);
         setRemoving(true);
         setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);
       }
@@ -18394,6 +18431,8 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       const j = await r.json();
       if (j && j.ok) {
         // M/2026/05/07/101 — optimistic fade-out + onRemove (au lieu de window.location.reload()).
+        // M/2026/05/07/102 — onRemoveStart pour compteur instantanement coherent.
+        if (props.onRemoveStart) props.onRemoveStart(c.id);
         setRemoving(true);
         setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);
       }
