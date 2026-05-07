@@ -9153,7 +9153,22 @@ function FinancementForm({activeProfil, d, set, dossierId, showToast}) {
 
 // V18.7 — Stage accordéon strict + status badge + ligne stats compacte fermé.
 // V18.27 — prop highlighted : match loupe → border jaune #F59E0B + bg très léger #FFFBEB.
-function Stage({title, expanded, onToggle, children, status, summary, highlighted, customHeader, hideChevron, summaryAlwaysVisible}) {
+// M/2026/05/07/108 — palette douce 7 sections fiche dossier. Pattern Linear/Notion :
+// couleur = repère mémoriel par section, pas decoration. Saturation basse (~20-30%) pour
+// rester dans la brand Ocre Immo (palette ocre/cream/brown). Header collapsed -> teinte
+// principale. Header expanded -> bascule vers couleur body (continuite visuelle dans le
+// dossier ouvert). Toujours override par highlighted (recherche match) qui reste ambre.
+const SECTION_PALETTE_M108 = [
+  { name: 'Client',                header: '#E8DFD3', body: '#F5EFE6', border: '#D4C5B0' }, // I  ocre sable
+  { name: 'Bien',                  header: '#DCE3D8', body: '#EEF1EB', border: '#C5D0BF' }, // II sauge
+  { name: 'Budget & financement',  header: '#EDE0C4', body: '#F8F1DE', border: '#DBC892' }, // III champagne
+  { name: 'Activité & documents',  header: '#DDD6E0', body: '#EFEAEF', border: '#C5BBC9' }, // IV lavande poussiere
+  { name: 'Photos',                header: '#E5D4CB', body: '#F4ECE6', border: '#D2BBA9' }, // V  terre rosee
+  { name: 'Mandat et frais',       header: '#DDC9B8', body: '#EFE0CC', border: '#C9A687' }, // VI ocre signature
+  { name: 'Notaire & Avocat',      header: '#D4D6D8', body: '#ECEDEE', border: '#B8BCBF' }, // VII gris perle
+];
+
+function Stage({title, expanded, onToggle, children, status, summary, highlighted, customHeader, hideChevron, summaryAlwaysVisible, idx}) {
   // status : 'complete' (✓ vert) | 'partial' (… orange) | 'empty' (— gris)
   // M/2026/05/03/27 — cleanup total sticky/fixed Section I (revert M11/14/15/19/23/24/25/26).
   // Retour comportement normal : Stage component sans prop sticky, sans fixedDims state,
@@ -9163,11 +9178,15 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
     : status === 'partial'
       ? {char:'…', color:'#D4A437', bg:'#FFF5E0'}
       : {char:'—', color:'#B5A78F', bg:'#F4EEE6'};
-  const borderColor = highlighted ? '#F59E0B' : '#A67F5A';
-  const cardBg = highlighted ? '#FFFBEB' : '#fff';
+  // M/2026/05/07/108 — applique la palette douce si idx fourni, sauf si highlighted (recherche
+  // match) qui garde l ambre attention. cardBg = body color pour continuite visuelle quand le
+  // contenu est ouvert ; le header bascule vers body color en mode expanded.
+  const _palette = (typeof idx === 'number' && idx >= 0 && idx < SECTION_PALETTE_M108.length) ? SECTION_PALETTE_M108[idx] : null;
+  const borderColor = highlighted ? '#F59E0B' : (_palette ? _palette.border : '#A67F5A');
+  const cardBg = highlighted ? '#FFFBEB' : (_palette ? _palette.body : '#fff');
   const headerBg = expanded
-    ? (highlighted ? '#FEF3C7' : '#F4ECE3')
-    : (highlighted ? '#FFFBEB' : '#FBF7F2');
+    ? (highlighted ? '#FEF3C7' : (_palette ? _palette.body : '#F4ECE3'))
+    : (highlighted ? '#FFFBEB' : (_palette ? _palette.header : '#FBF7F2'));
   return (
     <div style={{background: cardBg, borderRadius:12, marginBottom:12, border:'1.5px solid ' + borderColor, overflow:'hidden', boxShadow: highlighted ? '0 2px 6px rgba(245,158,11,.2)' : '0 1px 3px rgba(139,94,60,.06)'}}>
       <div onClick={onToggle} style={{cursor:'pointer', display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background: headerBg, borderBottom: expanded ? '1.5px solid ' + borderColor : 'none', transition:'background .15s'}}>
@@ -22289,7 +22308,7 @@ function FormView(props) {
         {/* M/2026/05/03/27 — wrapper data-stage-anchor externe RESTAURE pour Section I (symetrie
             avec Sections II/III/IV). Cleanup sticky/fixed (revert M19). */}
         <div data-stage-anchor="0">
-        <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[0]}
+        <Stage idx={0} title={(STAGES[activeProfil] || STAGES.Acheteur)[0]}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status}
                customHeader={(() => {
@@ -22628,7 +22647,7 @@ function FormView(props) {
             TOUJOURS, quel que soit le profil (y compris null/Curieux). Auto-save M103 (set
             commit:true -> userBlurredRef -> debounce save) deja en place via onBlur des inputs
             en aval (BienForm, etc.). */}
-        <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
+        <Stage idx={1} title={(STAGES[activeProfil] || STAGES.Acheteur)[1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
                status={stageStatus[1].status} summary={stageStatus[1].summary}>
           {/* M/2026/05/07/100 — RechercheBienBloc SUPPRIME (directive Philippe). Section II BienForm contient deja pays/ville/types/surface/neuf_ancien/notes natifs. Champs DB clients.data.recherche_* PRESERVES en JSON pour rollback (pas de DROP). Dispatch multi-pays/multi-villes/criteres_confort/delai reportes M100.2 si demande. */}
           <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
@@ -22644,7 +22663,7 @@ function FormView(props) {
         </div>
         <div data-stage-anchor="2">
         {/* M/2026/05/03/38 — placeholder verrou supprime franchement. Section III accessible TOUJOURS. */}
-        <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
+        <Stage idx={2} title={(STAGES[activeProfil] || STAGES.Acheteur)[2]} expanded={expanded[2] || isMatched(2)} onToggle={() => toggleStage(2)} highlighted={isMatched(2)}
                status={stageStatus[2].status} summary={stageStatus[2].summary}>
             {/* M/2026/05/02/39 — M144.H : suppression franche PaymentPlanModule legacy V45.
                 Cause Philippe iPad 14:27 (navigation privée) : voyait uniquement le V45 PaymentPlanModule
@@ -22674,7 +22693,7 @@ function FormView(props) {
 
         </div>
         <div data-stage-anchor="3">
-        <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[3] || 'IV. Suivi & notes'} expanded={expanded[3] || isMatched(3)} onToggle={() => toggleStage(3)} highlighted={isMatched(3)}
+        <Stage idx={3} title={(STAGES[activeProfil] || STAGES.Acheteur)[3] || 'IV. Suivi & notes'} expanded={expanded[3] || isMatched(3)} onToggle={() => toggleStage(3)} highlighted={isMatched(3)}
                status={stageStatus[3].status} summary={stageStatus[3].summary}>
           {/* V18.1 — Module Suivi (4 cards : prochain RDV, todos, agenda, journal). */}
           {/* M/2026/04/28/31 — Section IV refondue Activité & documents.
@@ -22692,7 +22711,7 @@ function FormView(props) {
 
         {/* M/2026/05/05/30 — M-Photos-Stage-V : 5e stage autonome Photos. Sortie de Stage II. */}
         <div data-stage-anchor="4">
-        <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[4] || 'V. Photos'} expanded={expanded[4] || isMatched(4)} onToggle={() => toggleStage(4)} highlighted={isMatched(4)}
+        <Stage idx={4} title={(STAGES[activeProfil] || STAGES.Acheteur)[4] || 'V. Photos'} expanded={expanded[4] || isMatched(4)} onToggle={() => toggleStage(4)} highlighted={isMatched(4)}
                status={stageStatus[4].status} summary={stageStatus[4].summary}>
           <div id="stage-photos-anchor" style={{scrollMarginTop:60}}>
             {/* M/2026/05/05/31 — M-Hotfix-DossierId-Typo : dossierId n existe pas dans le scope FormView,
@@ -22721,7 +22740,7 @@ function FormView(props) {
           if (!_stages6[5]) return null;
           return (
             <div data-stage-anchor="5">
-              <Stage title={_stages6[5]} expanded={expanded[5] || isMatched(5)} onToggle={() => toggleStage(5)} highlighted={isMatched(5)}>
+              <Stage idx={5} title={_stages6[5]} expanded={expanded[5] || isMatched(5)} onToggle={() => toggleStage(5)} highlighted={isMatched(5)}>
                 <div style={{padding:'12px 14px', display:'flex', flexDirection:'column', gap:8}}>
                   {/* M/2026/05/06/80.1 — 6a Mandat juridique migre depuis Section III V55Bloc. */}
                   <M80MandatBlock d={d} set={set}/>
@@ -22748,7 +22767,7 @@ function FormView(props) {
           if (!_stages7[6]) return null;
           return (
             <div data-stage-anchor="6">
-              <Stage title={_stages7[6]} expanded={expanded[6] || isMatched(6)} onToggle={() => toggleStage(6)} highlighted={isMatched(6)}>
+              <Stage idx={6} title={_stages7[6]} expanded={expanded[6] || isMatched(6)} onToggle={() => toggleStage(6)} highlighted={isMatched(6)}>
                 <Section7 d={d} set={set}/>
               </Stage>
             </div>
