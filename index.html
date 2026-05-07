@@ -8602,8 +8602,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
   }
   const neufAncien = (d.bien && d.bien.neuf_ancien) || 'ancien';
 
-  // ─── ACHETEUR ─────────────────────────────────────────────────────────
-  if (activeProfil === 'Acheteur' || activeProfil === 'Investisseur') {
+  // M/2026/05/07/94bis — UNIFICATION : 4 branches activeProfil transformees en IIFE
+  // toujours executees. Chaque bloc rendu inconditionnellement, profil = tag informatif
+  // PAS un filtre UI. L utilisateur saisit ce qui le concerne, ignore le reste.
+  // Bloc Acheteur/Investisseur (Prix budget + Frais agence + Cout total + Strategie/Performance invest)
+  const blocAcheteurInvest = (() => {
     const mode = d.mode_financement || '';
     const showPret = mode === 'Crédit' || mode === 'Mixte';
     const honoCharge = d.honoraires_charge || '';
@@ -8727,8 +8730,10 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     );
   }
 
-  // ─── VENDEUR ──────────────────────────────────────────────────────────
-  if (activeProfil === 'Vendeur') {
+  })();
+
+  // Bloc Vendeur (Prix vente + Mandat + Frais agence + Estimation nette)
+  const blocVendeur = (() => {
     const prix = Number(d.prix_affiche) || 0;
     // M/2026/05/02/40 — M144.I : commission calculée depuis frais_agence_acteurs[] (M144.D Multi-acteurs).
     // Variables legacy commMode/commTaux/commForfait/commCalc/coCourtage/coPct/coMontant SUPPRIMÉES franchement.
@@ -8819,9 +8824,11 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     );
   }
 
-  // ─── LOCATAIRE ────────────────────────────────────────────────────────
-  // V62 — réordonné : Loyer / Honoraires location / Durée+emménagement / Garanties (en bas)
-  if (activeProfil === 'Locataire') {
+  })();
+
+  // Bloc Locataire (Loyer + Honoraires location + Duree + Garanties)
+  // V62 — Loyer / Honoraires location / Duree+emmenagement / Garanties (en bas)
+  const blocLocataire = (() => {
     return (
       <>
         {/* M/2026/04/30/49 + M/2026/05/07/94 — RechercheBienBloc retire ici (Section III Locataire). Maintenant rendu unique en Section II via Stage 2 inline (tous profils, M94 unification). */}
@@ -8899,8 +8906,10 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     );
   }
 
-  // ─── BAILLEUR ─────────────────────────────────────────────────────────
-  if (activeProfil === 'Bailleur') {
+  })();
+
+  // Bloc Bailleur (Loyer demande + Charges + Honoraires gestion + Garants)
+  const blocBailleur = (() => {
     const loyer = Number(d.loyer_demande) || 0;
     const honoMode = d.honoraires_bailleur_mode || '% loyer mensuel';
     const honoTaux = d.honoraires_bailleur_taux != null ? Number(d.honoraires_bailleur_taux) : 100;
@@ -9009,9 +9018,18 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         )}
       </>
     );
-  }
+  })();
 
-  return null;
+  // M/2026/05/07/94bis — UNION des 4 blocs financiers, rendus inconditionnellement.
+  // Profil = tag informatif. L utilisateur saisit ce qui le concerne. Pas de retour null.
+  return (
+    <>
+      {blocAcheteurInvest}
+      {blocVendeur}
+      {blocLocataire}
+      {blocBailleur}
+    </>
+  );
 }
 
 // V17.6 Section III — FinancementForm : mode + budget + banque + timeline + docs.
