@@ -14,57 +14,59 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+<!-- M/2026/05/08/4 — DESIGN-TOKENS.2.6 link tokens.css -->
+<link rel="stylesheet" href="/styles/tokens.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', sans-serif; background: #FAF8F2; color: #2A2018; padding: 24px; }
-  h1 { font-family: 'Cormorant Garamond', serif; color: #8B5E3C; margin-bottom: 6px; font-size: 28px; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--color-bg-page); color: var(--color-text-primary); padding: 24px; }
+  h1 { font-family: 'Cormorant Garamond', serif; color: var(--color-accent); margin-bottom: 6px; font-size: 28px; }
   .banner { background: #FCD5D0; color: #8B0000; padding: 8px 14px; text-align: center; font-weight: 600; margin-bottom: 20px; border-radius: 6px; }
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 20px 0; }
   .stat { background: #fff; padding: 18px; border-radius: 10px; border: 1px solid #E5DDC8; text-align: center; }
-  .stat-v { font-family: 'Cormorant Garamond', serif; font-size: 32px; color: #8B5E3C; font-weight: 700; }
-  .stat-l { font-size: 11px; color: #8B7F6E; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+  .stat-v { font-family: 'Cormorant Garamond', serif; font-size: 32px; color: var(--color-accent); font-weight: 700; }
+  .stat-l { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
   table { width: 100%; background: #fff; border-radius: 10px; overflow: hidden; border-collapse: collapse; margin-top: 16px; border: 1px solid #E5DDC8; }
-  th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #F0E8D8; }
-  th { background: #F0E8D8; color: #6B4429; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--color-bg-page); }
+  th { background: var(--color-bg-page); color: #6B4429; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
   .login { max-width: 380px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; border: 1px solid #E5DDC8; }
   .login input { width: 100%; padding: 10px 12px; border: 1px solid #B89968; border-radius: 6px; margin-bottom: 10px; font-family: inherit; }
-  .login button { width: 100%; padding: 12px; background: #8B5E3C; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600; }
-  /* M/2026/05/07/96.1bis — fix oeil debordait bouton Se connecter sur iPad. ROOT CAUSE : selecteur .login button (specificite 0,1,1) plus fort que .pwd-eye (0,1,0) -> .pwd-eye heritait width:100% + padding:12px + background:#8B5E3C du bouton login = bouton geant qui debordait sur le bouton suivant. FIX : selecteur .login button.pwd-eye (0,2,1) gagne en specificite. wrapper porte margin (pas input), padding-right reserve zone oeil, centrage top:50% translateY -50% independant hauteur input, z-index 2 modere. */
+  .login button { width: 100%; padding: 12px; background: var(--color-accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  /* M/2026/05/07/96.1bis — fix oeil debordait bouton Se connecter sur iPad. ROOT CAUSE : selecteur .login button (specificite 0,1,1) plus fort que .pwd-eye (0,1,0) -> .pwd-eye heritait width:100% + padding:12px + background:var(--color-accent) du bouton login = bouton geant qui debordait sur le bouton suivant. FIX : selecteur .login button.pwd-eye (0,2,1) gagne en specificite. wrapper porte margin (pas input), padding-right reserve zone oeil, centrage top:50% translateY -50% independant hauteur input, z-index 2 modere. */
   .pwd-wrap { position: relative; margin-bottom: 10px; }
   .login .pwd-wrap input { margin-bottom: 0; padding-right: 44px; }
-  .login button.pwd-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; padding: 0; margin: 0; background: transparent; border: none; color: #8B5E3C; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; -webkit-appearance: none; appearance: none; box-shadow: none; font-weight: 400; }
+  .login button.pwd-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; padding: 0; margin: 0; background: transparent; border: none; color: var(--color-accent); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; -webkit-appearance: none; appearance: none; box-shadow: none; font-weight: 400; }
   .login button.pwd-eye:hover { color: #6B4429; background: transparent; }
   .login button.pwd-eye svg { width: 18px; height: 18px; display: block; pointer-events: none; }
-  .forgot { display: block; text-align: center; margin-top: 10px; color: #8B5E3C; font-size: 12px; font-style: italic; cursor: pointer; text-decoration: none; }
+  .forgot { display: block; text-align: center; margin-top: 10px; color: var(--color-accent); font-size: 12px; font-style: italic; cursor: pointer; text-decoration: none; }
   .forgot:hover { text-decoration: underline; }
   .reset-form { margin-top: 12px; padding: 12px; background: #FBF1E4; border-radius: 8px; }
   .reset-form input { margin-bottom: 0; }
   .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
   .tab { padding: 8px 14px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; }
-  .tab.active { background: #8B5E3C; color: #fff; border-color: #8B5E3C; }
+  .tab.active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
   .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
   .filters select, .filters input { padding: 6px 10px; border: 1px solid #E5DDC8; border-radius: 6px; font-family: inherit; font-size: 12px; }
   .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
   .pagination button { padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; }
-  .pagination button.active { background: #8B5E3C; color: #fff; border-color: #8B5E3C; }
+  .pagination button.active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
   .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
   .badge-brouillon { color: #B91C1C; background: #FEE2E2; border: 1px solid #FCA5A5; }
   .badge-archive { color: #6B5E4A; background: #EDE6DC; border: 1px solid #D9C9A8; }
   .badge-enregistre { color: #2D7A3E; background: #D1FAE5; border: 1px solid #6EE7B7; }
-  .logout { float: right; padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: #8B5E3C; }
-  .search-btn { float: right; margin-right: 8px; padding: 6px 14px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: #8B5E3C; display: inline-flex; align-items: center; gap: 6px; }
+  .logout { float: right; padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: var(--color-accent); }
+  .search-btn { float: right; margin-right: 8px; padding: 6px 14px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: var(--color-accent); display: inline-flex; align-items: center; gap: 6px; }
   .search-btn kbd { font-family: ui-monospace, monospace; font-size: 10px; padding: 1px 5px; background: #F5EDDF; border: 1px solid #D9C9A8; border-radius: 3px; color: #6B4429; }
   .cmdk-overlay { position: fixed; inset: 0; background: rgba(60,40,20,0.4); z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; }
   .cmdk-modal { width: 100%; max-width: 580px; background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(60,40,20,0.25); overflow: hidden; }
   .cmdk-input { width: 100%; padding: 18px 20px; border: none; outline: none; font-size: 16px; font-family: inherit; border-bottom: 1px solid #E5DDC8; }
   .cmdk-results { max-height: 460px; overflow-y: auto; padding: 6px 0; }
-  .cmdk-cat { font-size: 10px; font-weight: 700; color: #8B7F6E; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 16px 4px; }
+  .cmdk-cat { font-size: 10px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 16px 4px; }
   .cmdk-row { padding: 9px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
   .cmdk-row:hover, .cmdk-row.active { background: #FBF1E4; }
-  .cmdk-row .lbl { font-size: 13px; font-weight: 600; color: #2A2018; }
-  .cmdk-row .sub { font-size: 11px; color: #8B7F6E; }
-  .cmdk-empty { padding: 30px; text-align: center; color: #8B7F6E; font-size: 13px; font-style: italic; }
+  .cmdk-row .lbl { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+  .cmdk-row .sub { font-size: 11px; color: var(--color-text-muted); }
+  .cmdk-empty { padding: 30px; text-align: center; color: var(--color-text-muted); font-size: 13px; font-style: italic; }
 </style>
 </head>
 <body>
@@ -131,7 +133,7 @@ let currentTab = 'overview';
 let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '', q: ''};
 async function renderConsole() {
   const root = document.getElementById('root');
-  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule <button class="logout" onclick="logout()">Se déconnecter</button><button class="search-btn" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button><a class="search-btn" href="/atelier-live.html" style="text-decoration:none;color:#8B5E3C">⚡ Atelier (live) <kbd>MVP</kbd></a></div>'
+  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule <button class="logout" onclick="logout()">Se déconnecter</button><button class="search-btn" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button><a class="search-btn" href="/atelier-live.html" style="text-decoration:none;color:var(--color-accent)">⚡ Atelier (live) <kbd>MVP</kbd></a></div>'
                  + '<h1>Console super-admin</h1>'
                  + '<div class="tabs">'
                  + '<div class="tab active" data-t="overview">Vue d\'ensemble</div>'
@@ -202,9 +204,9 @@ async function renderClientsTab() {
     for (let p = 1; p <= r.pages; p++) {
       pagination += `<button class="${p===r.page?'active':''}" onclick="gotoPage(${p})">${p}</button>`;
     }
-    pagination += `<span style="font-size:11px;color:#8B7F6E;align-self:center;margin-left:8px">${r.total} clients</span></div>`;
+    pagination += `<span style="font-size:11px;color:var(--color-text-muted);align-self:center;margin-left:8px">${r.total} clients</span></div>`;
   } else {
-    pagination = `<p style="text-align:center;color:#8B7F6E;font-size:11px;margin-top:12px">${r.total} client${r.total>1?'s':''}</p>`;
+    pagination = `<p style="text-align:center;color:var(--color-text-muted);font-size:11px;margin-top:12px">${r.total} client${r.total>1?'s':''}</p>`;
   }
   c.innerHTML = filters + tableHead + rows + tableEnd + pagination;
 }
