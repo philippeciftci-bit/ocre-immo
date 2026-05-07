@@ -59,13 +59,21 @@ function provision_agent_workspace(string $slug, PDO $pdoMeta): array {
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => true]
         );
 
-        // Decoupage statements par ';' suivi de fin de ligne (preserve ; dans json_valid).
-        // Les CREATE TABLE et INSERT du template ne contiennent pas de ; dans des strings.
+        // Decoupage statements par ';' suivi de fin de ligne. Strip ligne-par-ligne les commentaires
+        // -- car preg_split prend les commentaires d entete ensemble avec le 1er CREATE TABLE.
         $statements = preg_split('/;\s*\n/', $templateSql);
         foreach ($statements as $stmt) {
-            $stmt = trim($stmt);
-            if ($stmt === '' || str_starts_with($stmt, '--')) continue;
-            $pdoNew->exec($stmt);
+            // Strip lignes de commentaires
+            $lines = preg_split('/\R/', $stmt);
+            $clean = [];
+            foreach ($lines as $line) {
+                $t = ltrim($line);
+                if ($t === '' || str_starts_with($t, '--')) continue;
+                $clean[] = $line;
+            }
+            $stmtSql = trim(implode("\n", $clean));
+            if ($stmtSql === '') continue;
+            $pdoNew->exec($stmtSql);
         }
 
         // Verification post-creation : SHOW TABLES doit retourner exactement les tables attendues.
