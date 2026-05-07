@@ -22233,7 +22233,7 @@ function FormView(props) {
         {/* M/2026/05/03/27 — wrapper data-stage-anchor externe RESTAURE pour Section I (symetrie
             avec Sections II/III/IV). Cleanup sticky/fixed (revert M19). */}
         <div data-stage-anchor="0">
-        <Stage title={(STAGES[activeProfil] || [])[0] || 'I. Identité'}
+        <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[0]}
                expanded={expanded[0] || isMatched(0)} onToggle={() => toggleStage(0)} highlighted={isMatched(0)}
                status={stageStatus[0].status}
                customHeader={(() => {
@@ -22660,7 +22660,9 @@ function FormView(props) {
             reste actuellement rendu dans Section III. Migration effective des blocs en sous-missions
             ulterieures (M78.1 Mandat juridique, M78.2 Frais agence + DualCurrencyPair, M78.3 Prix vente). */}
         {(() => {
-          const _stages6 = (STAGES[activeProfil] || []);
+          // M/2026/05/07/99 — fallback STAGES.Acheteur (7 stages depuis M94) si profil null,
+          // pour rendre Stage VI visible avant choix profil. Profil = TAG informatif, PAS filtre UI.
+          const _stages6 = (STAGES[activeProfil] || STAGES.Acheteur);
           if (!_stages6[5]) return null;
           return (
             <div data-stage-anchor="5">
@@ -22686,7 +22688,8 @@ function FormView(props) {
 
         {/* M/2026/05/06/79 — Stage VII "Notaire & Avocat" : visible uniquement pour profils avec un 7e stage. */}
         {(() => {
-          const _stages7 = (STAGES[activeProfil] || []);
+          // M/2026/05/07/99 — fallback STAGES.Acheteur (7 stages M94) si profil null pour Stage VII visible avant choix profil.
+          const _stages7 = (STAGES[activeProfil] || STAGES.Acheteur);
           if (!_stages7[6]) return null;
           return (
             <div data-stage-anchor="6">
