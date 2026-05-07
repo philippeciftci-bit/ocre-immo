@@ -10996,12 +10996,13 @@ function App() {
   const [confirmReq, setConfirmReq] = useState(null);
   const confirmResolverRef = useRef(null);
   useEffect(() => {
-    window.__ocreAsk = ({title, message, danger, confirmLabel, cancelLabel} = {}) => new Promise((resolve) => {
+    window.__ocreAsk = ({title, message, danger, success, confirmLabel, cancelLabel} = {}) => new Promise((resolve) => {
       confirmResolverRef.current = resolve;
       setConfirmReq({
         title: title || 'Confirmer ?',
         message: message || '',
         danger: !!danger,
+        success: !!success,
         confirmLabel: confirmLabel || (danger ? 'Supprimer' : 'Confirmer'),
         cancelLabel: cancelLabel || 'Annuler',
       });
@@ -11614,6 +11615,7 @@ function App() {
   {confirmReq && (
     <ConfirmModal title={confirmReq.title} message={confirmReq.message}
       danger={confirmReq.danger}
+      success={confirmReq.success}
       confirmLabel={confirmReq.confirmLabel} cancelLabel={confirmReq.cancelLabel}
       onConfirm={() => resolveConfirm(true)} onCancel={() => resolveConfirm(false)}/>
   )}
@@ -18769,7 +18771,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
 
 // V18.20 — ConfirmModal global. Monté par App quand state confirmReq est actif.
 // Promesse résolue true/false via les deux boutons.
-function ConfirmModal({title, message, danger, confirmLabel, cancelLabel, onConfirm, onCancel}) {
+function ConfirmModal({title, message, danger, success, confirmLabel, cancelLabel, onConfirm, onCancel}) {
   // M/2026/04/30/16 — verrou lightbox : empeche le swipe-delete card sous-jacente.
   useLightboxLock(true);
   useEffect(() => {
@@ -18793,8 +18795,8 @@ function ConfirmModal({title, message, danger, confirmLabel, cancelLabel, onConf
             {cancelLabel || 'Annuler'}
           </button>
           <button onClick={onConfirm}
-            style={{padding:'10px 14px', background: danger ? '#C04B20' : 'linear-gradient(135deg,#8B5E3C,#A06B45)', color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
-            {confirmLabel || (danger ? 'Supprimer' : 'Confirmer')}
+            style={{padding:'10px 14px', background: success ? 'linear-gradient(135deg,#2D7A3E,#3E9651)' : (danger ? '#C04B20' : 'linear-gradient(135deg,#8B5E3C,#A06B45)'), color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+            {confirmLabel || (success ? 'Enregistrer' : (danger ? 'Supprimer' : 'Confirmer'))}
           </button>
         </div>
       </div>
@@ -21150,23 +21152,41 @@ function FormView(props) {
     // M/2026/05/04/3 — Mission 39.3 : modal rouge dans 2 cas (avec/sans prix), seul le message change.
     // M/2026/05/07/90.4 — wording dynamique : "Confirmer le profil ?" si premiere creation
     // (activeProfil null/vide), "Confirmer le changement ?" si modification d'un profil deja choisi.
+    // M/2026/05/07/109 — REFONTE 3 cas : (CAS 1) creation initiale = ZERO modale (badge BROUILLON
+    // signale deja l etat). (CAS 2) changement profil sur brouillon dirty = modale "Changer de
+    // profil ?" avec wording precis. (CAS 3) Enregistrer = modale separee, voir onPublishDossier.
     if (targetProfil === activeProfil) { setProfilPickerOpen(false); return; }
     const cur = (latestRef && latestRef.current) || d;
-    const _hasPrix = _PRIX_FIELDS_M39.some(k => {
-      const v = cur[k];
-      return v != null && v !== '' && Number(v) > 0;
-    });
     const _isFirstChoice = !activeProfil;
-    const _title = _isFirstChoice ? 'Profil sélectionné' : 'Profil modifié';
-    let _message;
+    // CAS 1 : creation initiale -> apply directement, pas de modale.
     if (_isFirstChoice) {
-      _message = 'Confirmer ce profil ? Le dossier sera enregistré en brouillon, vous pourrez le finaliser plus tard.';
-    } else if (_hasPrix) {
-      _message = 'Les prix et budgets vont être effacés (les fourchettes ne correspondent pas entre profils).';
-    } else {
-      _message = 'Confirmer le changement de profil ?';
+      setActiveProfil(targetProfil);
+      set('_touch', Date.now(), {commit: true});
+      setProfilPickerOpen(false);
+      return;
     }
-    setConfirmProfilSwitch({target: targetProfil, message: _message, title: _title, firstChoice: _isFirstChoice});
+    // CAS 2 : detecter is_dirty (au moins 1 champ rempli au-dela du profil).
+    // Heuristique : champs principaux Section I + structure bien + notes/multi.
+    const _isDirty = !!(cur.prenom || cur.nom || cur.societe_nom || cur.email || cur.tel || cur.whatsapp
+      || (Array.isArray(cur.telephones) && cur.telephones.some(t => t && t.valeur))
+      || (Array.isArray(cur.emails) && cur.emails.some(e => e && e.valeur))
+      || (cur.bien && Object.values(cur.bien).some(v => v != null && v !== '' && (typeof v !== 'object' || (Array.isArray(v) ? v.length : Object.keys(v).length))))
+      || cur.notes || cur.adresse || cur.code_postal || cur.ville);
+    if (!_isDirty) {
+      // Brouillon vide : bascule directe sans modale (rien a perdre).
+      setActiveProfil(targetProfil);
+      set('_touch', Date.now(), {commit: true});
+      setProfilPickerOpen(false);
+      return;
+    }
+    // Brouillon avec donnees : modale "Changer de profil ?".
+    setConfirmProfilSwitch({
+      target: targetProfil,
+      title: 'Changer de profil ?',
+      message: 'En mode brouillon, tu peux changer le profil. Les informations saisies non compatibles avec le nouveau profil seront supprimées.',
+      firstChoice: false,
+      confirmLabel: 'Changer le profil',
+    });
     setProfilPickerOpen(false);
   }
   function applyProfilSwitchM39() {
@@ -22205,8 +22225,8 @@ function FormView(props) {
                   Annuler
                 </button>
                 <button type="button" onClick={applyProfilSwitchM39}
-                  style={{padding:'8px 16px', border:'none', borderRadius:8, background:(confirmProfilSwitch && confirmProfilSwitch.firstChoice) ? '#2D7A3E' : '#C0392B', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
-                  Valider
+                  style={{padding:'8px 16px', border:'none', borderRadius:8, background: '#8B5E3C', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                  {(confirmProfilSwitch && confirmProfilSwitch.confirmLabel) || 'Changer le profil'}
                 </button>
               </div>
             </div>
@@ -22828,6 +22848,16 @@ function FormView(props) {
               const onPublishDossier = async () => {
                 if (!_hasRealId) { showToast && showToast('Enregistre d abord le dossier'); return; }
                 if (!activeProfil) { showToast && showToast('Choisis un profil avant d enregistrer'); return; }
+                // M/2026/05/07/109 — CAS 3 : modale verrou final brouillon -> enregistre.
+                // Wording mission strict + bouton vert success (passage positif).
+                const _confirmed = await askConfirm({
+                  title: 'Enregistrer ce dossier ?',
+                  message: 'Une fois enregistré, le profil du client ne pourra plus être modifié. Tu pourras toujours modifier les autres informations.',
+                  confirmLabel: 'Enregistrer',
+                  cancelLabel: 'Annuler',
+                  success: true,
+                });
+                if (!_confirmed) return;
                 // M/2026/05/07/103 — check tel + email valides avant publish (validatePhone/validateEmail factorises).
                 // Collecte tous les tel/email non-vides du dossier (client + multi + sections optionnelles si presentes).
                 const _invalidFields = [];
