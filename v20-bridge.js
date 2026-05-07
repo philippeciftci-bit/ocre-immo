@@ -516,42 +516,11 @@
     });
   }
 
-  // === Phase 5 — Tour produit 3 slides ===
-  async function maybeShowProductTour(user) {
-    if (!user || user.tour_completed_at) return;
-    const slides = [
-      { h: 'Tes dossiers, tes contacts', p: 'Crée et suis tes clients, tes biens, tes mandats dans un espace strictement privé.' },
-      { h: 'Workspace partagé', p: 'Crée un partenariat avec un autre agent : pacte digital, dossiers partagés, rupture 48h.' },
-    ];
-    let i = 0;
-    const overlay = el('div', { class: 'v20-overlay' });
-    function render() {
-      overlay.innerHTML = '';
-      const slide = slides[i];
-      const skip = el('button', { style: 'position:absolute;top:14px;right:18px;background:none;border:none;color:#8B7F6E;cursor:pointer;font-size:13px;font-family:inherit', onclick: finish }, 'Passer');
-      const dots = el('div', { style: 'display:flex;gap:6px;justify-content:center;margin:14px 0' },
-        ...slides.map((_, j) => el('span', { style: 'width:8px;height:8px;border-radius:50%;background:' + (j === i ? '#8B5E3C' : '#E5DDC8') })));
-      const card = el('div', { class: 'v20-overlay-content', style: 'position:relative;text-align:center;max-width:380px' },
-        skip,
-        el('h2', { style: 'margin:14px 0 10px' }, slide.h),
-        el('p', { style: 'color:#6B5E4A;line-height:1.6;font-size:14.5px' }, slide.p),
-        dots,
-        el('div', { style: 'display:flex;gap:8px;justify-content:center;margin-top:14px' },
-          i > 0 ? el('button', { class: 'v20-cta-secondary', onclick: () => { i--; render(); } }, '← Précédent') : null,
-          i < slides.length - 1
-            ? el('button', { class: 'v20-cta', onclick: () => { i++; render(); } }, 'Suivant →')
-            : el('button', { class: 'v20-cta', onclick: finish }, 'Commencer')
-        )
-      );
-      overlay.appendChild(card);
-    }
-    async function finish() {
-      await apiFetch('/api/cgu_v20.php?action=tour_completed', { method: 'POST' });
-      overlay.remove();
-    }
-    document.body.appendChild(overlay);
-    render();
-  }
+  // === Phase 5 — Tour produit ===
+  // M/2026/05/07/91.2 — supprime sur decision Philippe : les modales onboarding
+  // gênaient le decouverte autonome. La fonction reste exportee comme no-op pour
+  // ne pas casser les call-sites (cf maybeShowProductTour appel ligne 611).
+  async function maybeShowProductTour() { /* no-op M91.2 */ }
 
   // === Phase 3 — Bannière permission notifs ===
   function maybeShowNotifBanner(user) {

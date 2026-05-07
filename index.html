@@ -21142,7 +21142,7 @@ function FormView(props) {
     const _title = _isFirstChoice ? 'Profil sélectionné' : 'Profil modifié';
     let _message;
     if (_isFirstChoice) {
-      _message = 'Confirmer ce profil ? Vous pourrez le modifier plus tard.';
+      _message = 'Confirmer ce profil ? Le dossier sera enregistré en brouillon, vous pourrez le finaliser plus tard.';
     } else if (_hasPrix) {
       _message = 'Les prix et budgets vont être effacés (les fourchettes ne correspondent pas entre profils).';
     } else {
@@ -22055,9 +22055,9 @@ function FormView(props) {
                   </svg>
                 </button>
               </div>
-              {/* M/2026/05/06/71 — span "Brouillon" italique rouge a gauche de la pastille profil, uniquement si statut=brouillon. */}
+              {/* M/2026/05/06/71 + M/2026/05/07/91.3 — badge BROUILLON visible (uppercase, fond ocre clair, taille lisible) a gauche de la pastille profil, uniquement si statut=brouillon. Pattern Notion/Linear/Figma. */}
               {_isBrouillonBar && (
-                <span style={{flexShrink:0, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize: smallScreen ? 9 : 11.5, color:'#C0392B', lineHeight:1, marginRight:2}}>
+                <span style={{flexShrink:0, fontFamily:'inherit', fontWeight:700, fontSize: smallScreen ? 9 : 10.5, letterSpacing:0.5, textTransform:'uppercase', color:'#8B5E3C', backgroundColor:'#FBF1E4', border:'1px solid #E8D9BE', padding:'2px 7px', borderRadius:6, lineHeight:1.4, marginRight:2}}>
                   Brouillon
                 </span>
               )}
