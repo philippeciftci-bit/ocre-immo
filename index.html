@@ -18546,7 +18546,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       onClick={e => { if (swipeX !== 0) { setSwipeX(0); return; } if (onClick) onClick(e); }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       style={{transform:'translateX(' + swipeX + 'px)', transition: swipeStart ? 'none' : 'transform 200ms ease', background:'#fff', position:'relative', zIndex:1, marginBottom:0}}>
-      {/* M/2026/05/06/82.5 — marker-top simplifie : SEUL le Brouillon italique rouge centre subsiste. WS supprime (pivot M83 agents+pacts+matching anonyme). */}
+      {/* M/2026/05/07/92bis — label BROUILLON unifie : texte rouge upper-case simple (sans pill/fond/border) coherent home + detail dossier. color #B91C1C, fontWeight 700, letterSpacing 0.5. Hover preserve pour signal cliquable filtre. */}
       {(() => {
         const _isBrouillon = (c.statut === 'brouillon') || (!c.statut && (c.is_draft === 1 || c.is_draft === true));
         if (!_isBrouillon) return null;
@@ -18554,9 +18554,9 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         return (
           <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:6, flexWrap:'wrap', padding:'5px 10px 0', background: tint}}>
             <span data-filter="brouillon" onClick={onClickBrouillon}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(192,57,43,0.08)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-              style={{cursor:'pointer', padding:'2px 5px', borderRadius:99, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontWeight:600, fontSize:9.5, color:'#C0392B', lineHeight:1.2, transition:'background 120ms'}}>Brouillon</span>
+              onMouseEnter={e => { e.currentTarget.style.opacity = '0.75'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+              style={{cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:9.5, letterSpacing:0.5, textTransform:'uppercase', color:'#B91C1C', lineHeight:1.2, transition:'opacity 120ms'}}>Brouillon</span>
           </div>
         );
       })()}
@@ -21228,6 +21228,22 @@ function FormView(props) {
     return () => clearTimeout(t);
   }, [initialExpandedSection]);
 
+  // M/2026/05/07/92bis — sync local state d depuis editing apres auto-save success.
+  // Fix bug : le badge BROUILLON header n'apparaissait pas immediatement apres la 1ere
+  // auto-save car d (initialise au mount avec editing) ne reflechissait pas le retour serveur
+  // (is_draft, statut, id). Au prochain editing.id change (tmp-X -> id DB) ou is_draft toggle,
+  // on merge les champs critiques sans ecraser les saisies user en cours.
+  useEffect(() => {
+    if (!editing) return;
+    setD(prev => ({
+      ...prev,
+      ...(editing.id != null ? {id: editing.id} : {}),
+      ...(editing.is_draft !== undefined ? {is_draft: editing.is_draft} : {}),
+      ...(editing.statut !== undefined ? {statut: editing.statut} : {}),
+      ...(editing.archived !== undefined ? {archived: editing.archived} : {}),
+    }));
+  }, [editing && editing.id, editing && editing.is_draft, editing && editing.statut, editing && editing.archived]);
+
   // M/2026/05/01/11 — pattern draft-on-input : flag user-interacted (userInteractedRef).
   // M/2026/05/01/18 — wrapper set() avec opts.fromUser pour distinguer user vs programmatic.
   // M/2026/05/01/25 — pattern revise draft-on-BLUR strict (M103). Le tap pill profil ne cree
@@ -22055,9 +22071,9 @@ function FormView(props) {
                   </svg>
                 </button>
               </div>
-              {/* M/2026/05/07/92.1 — badge BROUILLON rouge cote-a-cote avec pastille profil, meme taille/padding/borderRadius. Pattern GitHub/Linear "DRAFT". */}
+              {/* M/2026/05/07/92bis — label BROUILLON unifie : texte rouge upper-case simple (sans pill/fond/border) coherent home + detail. color #B91C1C, fontWeight 700, letterSpacing 0.5. Sync state d.is_draft via useEffect post-auto-save (fix bug 1). */}
               {_isBrouillonBar && (
-                <span style={{flexShrink:0, fontFamily:'inherit', fontWeight:700, fontSize:9.5, letterSpacing:0.4, textTransform:'uppercase', color:'#B91C1C', backgroundColor:'#FEE2E2', border:'1px solid #FCA5A5', padding:'2px 8px', borderRadius:10, whiteSpace:'nowrap', marginRight:6}}>
+                <span style={{flexShrink:0, fontFamily:'inherit', fontWeight:700, fontSize:10, letterSpacing:0.5, textTransform:'uppercase', color:'#B91C1C', whiteSpace:'nowrap', marginRight:8}}>
                   Brouillon
                 </span>
               )}
