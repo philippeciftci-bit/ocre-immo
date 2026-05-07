@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion requise — Oi Agent</title>
+<meta name="theme-color" content="#8B5E3C">
+<link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
+<link rel="apple-touch-icon" href="/favicon/apple-touch-icon-180x180.png">
+<link rel="manifest" href="/favicon/site-tenant.webmanifest">
+<link rel="stylesheet" href="/styles/tokens.css">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--color-bg-page, #FCFAF6); color: var(--color-text-primary, #2A2018); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+  .wordmark { display: flex; align-items: baseline; gap: 5px; margin-bottom: 18px; }
+  .wordmark .oi { font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 56px; color: var(--color-accent, #8B5E3C); line-height: 1; }
+  .wordmark .agent { font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 26px; color: var(--color-text-primary, #2A1810); line-height: 1; }
+  .icon { font-size: 56px; margin-bottom: 12px; opacity: .5; }
+  h1 { font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 28px; color: var(--color-accent, #8B5E3C); margin-bottom: 8px; }
+  p { font-size: 14px; color: var(--color-text-secondary, #5A4E3D); max-width: 360px; line-height: 1.5; margin-bottom: 24px; }
+  button { padding: 12px 28px; background: var(--color-accent, #8B5E3C); color: #fff; border: none; border-radius: 8px; font-family: inherit; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 1px 3px rgba(139, 94, 60, .15); }
+  button:hover { background: var(--color-accent-hover, #5C3E27); }
+  footer { position: fixed; bottom: 16px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--color-text-muted, rgba(42,32,24,.5)); }
+</style>
+</head>
+<body>
+  <div class="wordmark">
+    <span class="oi">Oi</span><span class="agent">Agent</span>
+  </div>
+  <div class="icon">⚠</div>
+  <h1>Connexion requise</h1>
+  <p>Oi Agent a besoin d'une connexion internet pour synchroniser tes dossiers, photos et matches. Vérifie ton réseau puis réessaye.</p>
+  <button onclick="location.reload()">Réessayer</button>
+  <footer>Un produit Ocre · ocre.immo</footer>
+<script>
+// Auto-retry quand la connexion revient
+window.addEventListener('online', () => { setTimeout(() => location.reload(), 500); });
+</script>
+</body>
+</html>
