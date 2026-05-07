@@ -497,14 +497,16 @@ const PROFILS_LABEL = {
 // Section IV : "Suivi & notes" pour tous (renommé depuis "Infos complémentaires").
 // M/2026/05/05/30 — M-Photos-Stage-V : ajout 5e stage "V. Photos" pour tous les profils.
 // M/2026/05/06/78 — Stage VI "Mandat et frais" ajoute pour Vendeur/Promoteur/MarchandBiens.
+// M/2026/05/07/94 — UNIFICATION : tous les profils ont les 7 stages I-VII (Mandat + Notaire
+// inclus). Profil = tag informatif, PAS un filtre UI. Titres de section adaptes au profil
+// pour clarte semantique (Le bien cible vs en vente vs a louer) mais structure identique.
 const STAGES = {
-  Acheteur:      ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
+  Acheteur:      ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
   Vendeur:       ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
-  Investisseur:  ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Activité & documents", "V. Photos"],
-  Bailleur:      ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  Locataire:     ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  Curieux:       ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos"],
-  // M/2026/05/06/71 — Promoteur + Marchand de biens : structure clonee Vendeur (bien en vente).
+  Investisseur:  ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
+  Bailleur:      ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
+  Locataire:     ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
+  Curieux:       ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
   Promoteur:     ["I. Le Promoteur",   "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
   MarchandBiens: ["I. Le Marchand",    "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"]
 };
@@ -7577,7 +7579,10 @@ function V62SubTitle({children}) {
 
 // M/2026/04/30/49 — Sous-bloc Recherche bien (Section III pour Acheteur/Locataire/Investisseur).
 function RechercheBienBloc({d, set}) {
-  // M/2026/05/07/92ter — paysList + villesList computed mais non rendus en UI (champs Pays/Villes retires du bloc, doublon UX avec Section II Localisation). Conserves comme variables au cas ou TypeBienMultiPicker utiliserait recherche_pays comme filtre alternatif futur.
+  // M/2026/05/07/94 — RESTAURATION Pays/Villes (rollback M92ter) : semantique distincte de
+  // Section II Localisation (mono bien.pays vs multi recherche_pays prospection). Pas un doublon.
+  const paysList = Array.isArray(d.recherche_pays) ? d.recherche_pays : [];
+  const villesList = Array.isArray(d.recherche_villes) ? d.recherche_villes : [];
   const typesList = Array.isArray(d.recherche_types_bien) ? d.recherche_types_bien : [];
   const criteres = Array.isArray(d.recherche_criteres_confort) ? d.recherche_criteres_confort : [];
   const profilBien = d.recherche_profil_bien || '';
@@ -7586,10 +7591,18 @@ function RechercheBienBloc({d, set}) {
   return (
     <V55Bloc title="Recherche bien">
       <div style={{display:'flex', flexDirection:'column', gap:10}}>
-        {/* M/2026/05/07/92ter — Pays cibles + Villes cibles RETIRES (doublon UX avec Section II Localisation BienForm bloc 01 mono pays/ville). Champs JSON recherche_pays + recherche_villes preserves DB pour rollback ou re-exposition future si refonte multi-pays prospection. TypeBien utilise selectedCountries=bien.pays array (single wrapped) au lieu de paysList. */}
+        {/* M/2026/05/07/94 — RESTAURE Pays cibles + Villes cibles (rollback M92ter). Semantique multi-pays prospection distincte de Section II Localisation (mono bien identifie). Pattern Notion CRM : tous les profils peuvent renseigner ces champs si pertinents pour leur dossier (informatif, pas filtre par profil). */}
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Pays cibles</label>
+          <CountryMultiPicker value={paysList} onChange={v => set('recherche_pays', v)} max={5} placeholder="Pays cibles"/>
+        </div>
+        <div>
+          <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Villes cibles</label>
+          <CityMultiPicker value={villesList} onChange={v => set('recherche_villes', v)} selectedCountries={paysList} placeholder="Villes cibles"/>
+        </div>
         <div>
           <label style={{display:'block', fontSize:11, fontWeight:600, color:'#8B7F6E', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Types bien souhaités</label>
-          <TypeBienMultiPicker value={typesList} onChange={v => set('recherche_types_bien', v)} selectedCountries={(d.bien && d.bien.pays) ? [d.bien.pays] : []} max={5} placeholder="Types bien"/>
+          <TypeBienMultiPicker value={typesList} onChange={v => set('recherche_types_bien', v)} selectedCountries={paysList} max={5} placeholder="Types bien"/>
         </div>
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
           <V55Field label="Surface habitable min (m²)" type="number" value={d.recherche_surface_hab_min} onChange={v => set('recherche_surface_hab_min', v)}/>
@@ -8610,10 +8623,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     const _totalA = _bMax + _liqA + _notaireA;
     return (
       <>
-        {/* M/2026/04/30/49 — Sous-bloc Recherche bien en tete.
-            M/2026/05/03/3 — Acheteur deplace en Section II (rôle S2 Le bien cible).
-            Investisseur conserve le bloc en S3 (mission scope). */}
-        {activeProfil === 'Investisseur' && <RechercheBienBloc d={d} set={set}/>}
+        {/* M/2026/04/30/49 + M/2026/05/07/94 — RechercheBienBloc retire ici (Section III Investisseur). Maintenant rendu unique en Section II via Stage 2 inline (tous profils, M94 unification). */}
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills + suppression DEVISE DOSSIER. */}
         {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         <V55Bloc title="Prix" theme="prix">
@@ -8814,8 +8824,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
   if (activeProfil === 'Locataire') {
     return (
       <>
-        {/* M/2026/04/30/49 — Sous-bloc Recherche bien aussi pour Locataire. */}
-        <RechercheBienBloc d={d} set={set}/>
+        {/* M/2026/04/30/49 + M/2026/05/07/94 — RechercheBienBloc retire ici (Section III Locataire). Maintenant rendu unique en Section II via Stage 2 inline (tous profils, M94 unification). */}
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills Locataire. */}
         {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         <V55Bloc title="Loyer recherché" theme="prix">
@@ -22559,8 +22568,8 @@ function FormView(props) {
             en aval (BienForm, etc.). */}
         <Stage title={(STAGES[activeProfil] || STAGES.Acheteur)[1]} expanded={expanded[1] || isMatched(1)} onToggle={() => toggleStage(1)} highlighted={isMatched(1)}
                status={stageStatus[1].status} summary={stageStatus[1].summary}>
-          {/* M/2026/05/03/3 — RechercheBienBloc deplace S3 Acheteur -> S2 Acheteur (semantique : recherche bien = rôle S2 Le bien cible). */}
-          {activeProfil === 'Acheteur' && <RechercheBienBloc d={d} set={set}/>}
+          {/* M/2026/05/03/3 + M/2026/05/07/94 — RechercheBienBloc affiche pour TOUS les profils en Section II (M94 unification : profil = tag, pas un filtre UI). L utilisateur remplit si pertinent pour son dossier. */}
+          <RechercheBienBloc d={d} set={set}/>
           <BienForm activeProfil={activeProfil} isInvestisseur={isInvestisseur}
             d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
             showToast={showToast}/>
