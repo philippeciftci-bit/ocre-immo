@@ -53,12 +53,6 @@
      l usage métier (legacy hex) sans alterer --color-text-secondary rgba existant. */
   --color-text-brown: #5C3B1E;       /* ocre brun profond — labels, items list */
   --color-text-taupe: #5A4E3D;       /* taupe brun — sub-labels, helpers */
-  /* M/2026/05/08/8 — DESIGN-TOKENS.2.7.3 : tints cream semantiquement distincts (audit ligne-
-     par-ligne 5 hex revele usages distincts). #FDFAF7 deja couvert par --color-bg-input. */
-  --color-bg-tint-warm: #FBF1E4;     /* selected/active state, ocre soft (--ocre-bg-soft legacy) */
-  --color-bg-tint-hover: #FFF3EC;    /* hover state ocre */
-  --color-bg-tint-cream: #F4EEE6;    /* neutral cream chip/border bg */
-  --color-bg-tint-soft: #FFFCF5;     /* filled state input */
   --color-border-subtle: rgba(74, 44, 30, 0.08);
   --color-border-default: rgba(74, 44, 30, 0.15);
   --color-border-strong: rgba(74, 44, 30, 0.30);
