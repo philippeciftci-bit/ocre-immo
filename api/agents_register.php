@@ -41,14 +41,17 @@ function _validate_siret($siret) {
 }
 function _send_activation_email(string $email, string $prenom, string $token): bool {
     // M89 : URL pointe vers la page HTML user-facing, pas l'endpoint API JSON brut.
-    $url = 'https://signup.ocre.immo/activation/?token=' . $token;
+    // M/2026/05/07/7 : nouvelle URL canonique app.ocre.immo/api/agents_activate.php qui declenche
+    // provisioning DB workspace + flip status active automatiquement (au lieu de l ancien
+    // endpoint activate.php M89 qui ne provisionnait pas le workspace).
+    $url = 'https://app.ocre.immo/api/agents_activate.php?token=' . $token;
     $subject = 'Bienvenue sur Oi Agent — Activez votre compte';
     $safePrenom = htmlspecialchars($prenom, ENT_QUOTES, 'UTF-8');
     $html = '<html><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#3a2e22;background:#FAF6EC;">'
         . '<div style="max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(60,40,20,0.08);">'
         . '<h1 style="font-family:\'Cormorant Garamond\',Georgia,serif;font-style:italic;color:#8B5E3C;font-weight:500;margin:0 0 12px;font-size:28px;">Bienvenue sur Oi Agent</h1>'
         . '<p style="font-size:15px;line-height:1.5;">Bonjour <b>' . $safePrenom . '</b>,</p>'
-        . '<p style="font-size:15px;line-height:1.5;">Votre dossier d\'inscription a bien été reçu. Pour activer votre compte et choisir votre mot de passe, cliquez sur le bouton ci-dessous (lien valide 7 jours) :</p>'
+        . '<p style="font-size:15px;line-height:1.5;">Votre dossier d\'inscription a bien été reçu. Pour activer votre compte et choisir votre mot de passe, cliquez sur le bouton ci-dessous (lien valide 48 heures) :</p>'
         . '<p style="text-align:center;margin:28px 0;"><a href="' . $url . '" style="display:inline-block;padding:14px 32px;background:#2D7A3E;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">Activer mon compte</a></p>'
         . '<p style="font-size:12px;color:#999;line-height:1.5;">Si le bouton ne fonctionne pas, copiez-collez ce lien :<br><span style="word-break:break-all;">' . $url . '</span></p>'
         . '<p style="font-size:11px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">Oi Agent — un produit Ocre · contact@ocre.immo</p>'
@@ -153,7 +156,7 @@ try {
                         siret = ?, siren = ?, pro_card_number = ?,
                         societe = ?, ville = ?, cp = ?, country_code = 'FR',
                         sensibility_preset = ?, preferences = ?,
-                        activation_token = ?, activation_token_expires_at = DATE_ADD(NOW(), INTERVAL 7 DAY),
+                        activation_token = ?, activation_token_expires_at = DATE_ADD(NOW(), INTERVAL 48 HOUR),
                         cgu_accepted = 1, cgu_accepted_at = NOW(), cgu_version = ?, cgu_version_accepted = ?,
                         cgu_accepted_ip = ?, cgu_accepted_user_agent = ?,
                         rgpd_accepted = 1, rgpd_accepted_at = NOW(), rgpd_version = ?, rgpd_accepted_ip = ?, rgpd_accepted_user_agent = ?
@@ -210,7 +213,7 @@ try {
                  ?, ?, ?, ?, 'FR',
                  ?, ?, ?, ?, ?,
                  ?, ?,
-                 ?, DATE_ADD(NOW(), INTERVAL 7 DAY),
+                 ?, DATE_ADD(NOW(), INTERVAL 48 HOUR),
                  1, NOW(), ?, ?,
                  ?, ?,
                  1, NOW(), ?, ?, ?,
