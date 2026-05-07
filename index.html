@@ -3808,7 +3808,7 @@ function EmailMulti({value, onChange, showToast}) {
 // V17.9 — ContactChooser : action sheet pour choisir parmi plusieurs tels/emails.
 function ContactChooser({entries, scheme, title, onClose}) {
   return (
-    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.45)', zIndex:200, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
+    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.45)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:460, borderRadius:'16px 16px 0 0', padding:14, paddingBottom:20}}>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', marginBottom:10, textAlign:'center'}}>{title}</div>
         {entries.map((e, i) => (
@@ -4847,7 +4847,7 @@ function ShareMenu({dossierId, dossierName, onClose, showToast}) {
   }
 
   return (
-    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.45)', zIndex:200, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
+    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.45)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:460, borderRadius:'16px 16px 0 0', padding:20, paddingBottom:30}}>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:12}}>Partager le dossier</div>
         <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14}}>Lien public en <b>lecture seule</b>, expire après {expiresDays} jour{expiresDays > 1 ? 's' : ''}, révocable à tout moment.</div>
@@ -9915,7 +9915,7 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
 
   return (
     <div onClick={onClose}
-      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
+      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.55)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
       <div onClick={e => e.stopPropagation()}
         style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:12, padding:'14px 12px 10px', width:'100%', maxWidth:240, boxShadow:'0 10px 30px rgba(0,0,0,.22)'}}>
         <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:15, fontWeight:700, color:'#8B5E3C', marginBottom:2}}>Casquettes</div>
@@ -9966,7 +9966,7 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
       {/* V35 — Modal de confirmation secondaire (rouge si suppression) */}
       {confirmPlan && (
         <div onClick={() => !busy && setConfirmPlan(null)}
-          style={{position:'fixed', inset:0, background:'rgba(20,15,10,.65)', zIndex:210, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
+          style={{position:'fixed', inset:0, background:'rgba(20,15,10,.65)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:16}}>
           <div onClick={e => e.stopPropagation()}
             style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:12, padding:'14px 14px 12px', width:'100%', maxWidth:320, boxShadow:'0 10px 30px rgba(0,0,0,.25)'}}>
             <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:16, fontWeight:700, color:'#8B5E3C', marginBottom:8}}>Confirmer les changements</div>
@@ -10234,7 +10234,7 @@ function CrossSearchFooter({d, dossierId, onMatchesUpdate, showToast}) {
 function CrossSearchConfirmModal({ville, onCancel, onConfirm}) {
   const villeLabel = ville && ville.trim() ? ville.trim() : 'votre région';
   return (
-    <div onClick={onCancel} style={{position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:230, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+    <div onClick={onCancel} style={{position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <div onClick={e => e.stopPropagation()} style={{background:'#FFFDF8', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, maxWidth:420, width:'100%'}}>
         <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:10, display:'flex', alignItems:'center', gap:8}}>
           <IconSearchAmber size={18}/> Rechercher ce bien sur Internet
@@ -10273,7 +10273,7 @@ function CrossSearchResultsModal({matches, ville, onClose}) {
   const pMed = prices.length ? [...prices].sort((a, b) => a - b)[Math.floor(prices.length / 2)] : null;
   const curRef = (matches && matches[0] && matches[0].currency_found) || 'MAD';
   return (
-    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:230, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:20, maxWidth:540, width:'100%', maxHeight:'85vh', display:'flex', flexDirection:'column'}}>
         <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:4}}>
           Ce bien trouvé sur {matches ? matches.length : 0} site{matches && matches.length > 1 ? 's' : ''} ({villeLabel})
@@ -10402,7 +10402,7 @@ function ShareDossiersModal({onClose, showToast}) {
 
   return (
     <div onClick={onClose}
-      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <div onClick={e => e.stopPropagation()}
         style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, width:'100%', maxWidth:380, boxShadow:'0 20px 50px rgba(0,0,0,.25)'}}>
         <div style={{fontFamily:'"Cormorant Garamond", serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:6, display:'flex', alignItems:'center', gap:8}}>
@@ -10642,7 +10642,7 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
 
   if (loading || !preview) {
     return (
-      <div style={{position:'fixed', inset:0, background:'#F5EFE6', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center'}}>
+      <div style={{position:'fixed', inset:0, background:'#F5EFE6', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center'}}>
         <div style={{color:'#8B7F6E'}}>Chargement…</div>
       </div>
     );
@@ -10655,7 +10655,7 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
   const alreadyPublished = !!preview.is_published;
 
   return (
-    <div style={{position:'fixed', inset:0, background:'#F5EFE6', zIndex:200, overflowY:'auto', display:'flex', flexDirection:'column', borderTop:'3px solid #8B5E3C'}}>
+    <div style={{position:'fixed', inset:0, background:'#F5EFE6', zIndex:9999, overflowY:'auto', display:'flex', flexDirection:'column', borderTop:'3px solid #8B5E3C'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #E0CDAE', padding:'12px 14px', display:'flex', alignItems:'center', gap:10, position:'sticky', top:0, zIndex:10}}>
         <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:19, fontWeight:700, color:'#8B5E3C'}}>{alreadyPublished ? 'Gérer la publication' : 'Aperçu publication'}</div>
         <button onClick={onClose} aria-label="Fermer" style={{background:'none', border:'none', fontSize:24, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', padding:'0 6px'}}>×</button>
@@ -10790,7 +10790,7 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
 
 function PublishSuccessModal({result, onClose}) {
   return (
-    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:210, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:24, maxWidth:420, width:'100%', textAlign:'center'}}>
         <div style={{width:56, height:56, borderRadius:'50%', background:'#E8F5E8', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px', fontSize:30, color:'#2E7D32'}}>✓</div>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:22, fontWeight:700, color:'#8B5E3C', marginBottom:10}}>Annonce enregistrée</div>
@@ -13569,7 +13569,7 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
 
       {/* Modal résultat reset MDP */}
       {resetResult && (
-        <div onClick={() => setResetResult(null)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+        <div onClick={() => setResetResult(null)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
           <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, maxWidth:420, width:'100%'}}>
             <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:18, fontWeight:700, color:'#8B5E3C', marginBottom:8}}>⚠ Envoi email échoué — MDP à communiquer</div>
             <div style={{fontSize:12, color:'#C04B20', marginBottom:8}}>Raison : {resetResult.emailError || 'inconnue'}</div>
@@ -13591,7 +13591,7 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
 
       {/* Drawer logs user */}
       {logsFor && (
-        <div onClick={() => setLogsFor(null)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'flex-end', justifyContent:'center', padding:0}}>
+        <div onClick={() => setLogsFor(null)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center', padding:0}}>
           <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:'14px 14px 0 0', padding:18, width:'100%', maxWidth:560, maxHeight:'80vh', overflowY:'auto'}}>
             <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:17, fontWeight:700, color:'#8B5E3C', marginBottom:8}}>📊 Logs accès · {logsFor.email}</div>
             {(logsFor.logs || []).length === 0 ? (
@@ -13626,7 +13626,7 @@ function InviteModal({onClose, onSubmit}) {
     setBusy(false);
   }
   return (
-    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, maxWidth:420, width:'100%'}}>
         <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:19, fontWeight:700, color:'#8B5E3C', marginBottom:14}}>+ Inviter un utilisateur</div>
         <label style={{fontSize:11, color:'#8B7F6E', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, display:'block', marginBottom:4}}>Email</label>
@@ -13949,7 +13949,7 @@ function AgentPreviewModal({profile: p, onClose}) {
   const zones = Array.isArray(p.zones_intervention) ? p.zones_intervention : [];
   const specs = Array.isArray(p.specialites) ? p.specialites : [];
   return (
-    <div style={{position:'fixed', inset:0, background:'#F5EFE6', zIndex:220, overflowY:'auto'}}>
+    <div style={{position:'fixed', inset:0, background:'#F5EFE6', zIndex:9999, overflowY:'auto'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #E0CDAE', padding:'12px 14px', display:'flex', alignItems:'center', gap:10, position:'sticky', top:0, zIndex:10}}>
         <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:19, fontWeight:700, color:'#8B5E3C'}}>Aperçu vitrine</div>
         <button onClick={onClose} style={{background:'none', border:'none', fontSize:24, color:'#8B5E3C', cursor:'pointer', fontFamily:'inherit', padding:'0 6px'}}>×</button>
@@ -18086,7 +18086,7 @@ function MatchModal({clientId, clients, findClientById, setEditingFromMatch, onC
   }
 
   return (
-    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.55)', zIndex:200, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
+    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.55)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:520, maxHeight:'85vh', borderRadius:'16px 16px 0 0', padding:18, paddingBottom:24, overflowY:'auto'}}>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'#8B5E3C', marginBottom:4, textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:8}}><IconTarget size={18}/> Matchs potentiels</div>
         <div style={{fontSize:12, color:'#8B7F6E', marginBottom:14, textAlign:'center'}}>Pour <b>{srcName}</b></div>
@@ -18782,7 +18782,7 @@ function ConfirmModal({title, message, danger, confirmLabel, cancelLabel, onConf
   }, [onConfirm, onCancel]);
   return (
     <div onClick={onCancel}
-      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+      style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <div onClick={e => e.stopPropagation()}
         style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:20, width:'100%', maxWidth:340, boxShadow:'0 20px 50px rgba(0,0,0,.25)'}}>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color: danger ? '#C04B20' : '#8B5E3C', marginBottom:8}}>{title}</div>
@@ -18839,7 +18839,7 @@ function Toast({msg}) {
                  color:'#fff', fontSize:14, fontWeight:600,
                  maxWidth:'min(90vw, 420px)',
                  textAlign:'center', whiteSpace:'normal',
-                 animation:'toastFadeIn 180ms ease-out', zIndex:9999,
+                 animation:'toastFadeIn 180ms ease-out', zIndex:10000,
                  boxShadow:'0 4px 12px rgba(0, 0, 0, 0.08)'}}>{msg}</div>
   );
 }
@@ -18932,7 +18932,7 @@ function EventModal({clientId, defaultLocation, initial, onClose, onSaved, showT
     window.open(API + '/suivi.php?action=ics_event&id=' + ed.id + '&token=' + encodeURIComponent(token), '_blank');
   }
   return (
-    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.5)', zIndex:300, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
+    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.5)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div style={{background:'#fff', borderRadius:'16px 16px 0 0', width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', padding:'14px 16px 24px', animation:'slideUp .25s'}} onClick={e => e.stopPropagation()}>
         <div style={{width:40, height:4, background:'#E2D8CC', borderRadius:2, margin:'0 auto 10px'}}/>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', textAlign:'center', marginBottom:12}}>{ed.id ? 'Modifier' : 'Nouveau'} {EVENT_TYPE_LABEL[type] || 'RDV'}</div>
@@ -19005,7 +19005,7 @@ function TodoModal({clientId, initial, onClose, onSaved, showToast}) {
     else showToast(r && r.error ? r.error : 'Erreur');
   }
   return (
-    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.5)', zIndex:300, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
+    <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.5)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div style={{background:'#fff', borderRadius:'16px 16px 0 0', width:'100%', maxWidth:560, padding:'14px 16px 24px', animation:'slideUp .25s'}} onClick={e => e.stopPropagation()}>
         <div style={{width:40, height:4, background:'#E2D8CC', borderRadius:2, margin:'0 auto 10px'}}/>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#8B5E3C', textAlign:'center', marginBottom:12}}>{ed.id ? 'Modifier la tâche' : 'Nouvelle tâche'}</div>
@@ -22161,7 +22161,7 @@ function FormView(props) {
       {/* V18.18 — overlay fullscreen image staging. */}
       {isStaged && imageOverlay && stagedImageUrl && (
         <div onClick={() => setImageOverlay(false)}
-          style={{position:'fixed', inset:0, background:'rgba(0,0,0,.92)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', cursor:'zoom-out', padding:20}}>
+          style={{position:'fixed', inset:0, background:'rgba(0,0,0,.92)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', cursor:'zoom-out', padding:20}}>
           <img src={stagedImageUrl} alt="" style={{maxWidth:'100%', maxHeight:'100%', objectFit:'contain'}}/>
           <button onClick={() => setImageOverlay(false)}
             style={{position:'absolute', top:16, right:16, background:'rgba(255,255,255,.15)', color:'#fff', border:'1px solid rgba(255,255,255,.3)', borderRadius:20, padding:'6px 12px', fontSize:13, cursor:'pointer', fontFamily:'inherit', fontWeight:700}}>
