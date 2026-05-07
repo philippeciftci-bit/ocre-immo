@@ -166,7 +166,7 @@
 /* V18.9 — palette unifiée + contraste WCAG AA. */
 :root{
   --text-primary:var(--color-text-primary);
-  --text-secondary:#5A4E3D;
+  --text-secondary:var(--color-text-taupe);
   --text-hint:var(--color-text-muted);
   --border-input:#C9B79A;
   --border-subtle:#E8DDD0;
@@ -1050,7 +1050,7 @@ function CadastreButton({pays, getMap}) {
       <button type="button"
         onClick={() => window.open(provider.url, '_blank', 'noopener,noreferrer')}
         title={'Ouvrir ' + provider.url + ' dans un nouvel onglet'}
-        style={{...baseStyle, background:'#FAF6EE', color:'#5C3B1E', cursor:'pointer'}}>
+        style={{...baseStyle, background:'#FAF6EE', color:'var(--color-text-brown)', cursor:'pointer'}}>
         {Icon}<span>{provider.label}</span>
       </button>
     );
@@ -1122,7 +1122,7 @@ function CadastreButton({pays, getMap}) {
       <button type="button"
         onClick={() => active ? deactivate() : activate()}
         title={active ? 'Masquer overlay cadastre' : 'Afficher overlay cadastre WMS'}
-        style={{...baseStyle, background: active ? 'var(--color-accent)' : '#FAF6EE', color: active ? '#fff' : '#5C3B1E', cursor:'pointer', border: '1px solid ' + (active ? 'var(--color-accent)' : '#D9C9A8')}}>
+        style={{...baseStyle, background: active ? 'var(--color-accent)' : '#FAF6EE', color: active ? '#fff' : 'var(--color-text-brown)', cursor:'pointer', border: '1px solid ' + (active ? 'var(--color-accent)' : '#D9C9A8')}}>
         {Icon}<span>{active ? 'Cadastre actif' : provider.label}</span>
       </button>
     );
@@ -1215,7 +1215,7 @@ function PhotosExifButton({dossierId, bien, onApply, showToast}) {
       title={!enabled ? 'Enregistrez d\'abord le dossier' : 'Détecter la position depuis les photos GPS'}
       style={{...baseStyle,
               background: enabled ? '#FAF6EE' : '#F5EFE6',
-              color: enabled ? '#5C3B1E' : 'var(--color-text-muted)',
+              color: enabled ? 'var(--color-text-brown)' : 'var(--color-text-muted)',
               opacity: enabled ? 1 : 0.5,
               cursor: enabled && !loading ? 'pointer' : 'not-allowed'}}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -2325,7 +2325,7 @@ function CountryMultiPicker({value = [], onChange, max = 5, placeholder = 'Pays'
         style={{width:'100%', padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
                 border:'1.5px solid ' + (filled ? 'var(--color-accent)' : '#C9B79A'),
                 background: filled ? '#FBF1E4' : '#FFFCF5',
-                color:'#5C3B1E', borderRadius:8, cursor:'pointer',
+                color:'var(--color-text-brown)', borderRadius:8, cursor:'pointer',
                 display:'flex', alignItems:'center', justifyContent:'space-between', minWidth:0, minHeight:38}}>
         <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{display || placeholder}</span>
         <span style={{color:'var(--color-accent)', flexShrink:0, marginLeft:4}}>▾</span>
@@ -2366,7 +2366,7 @@ function CountryMultiPicker({value = [], onChange, max = 5, placeholder = 'Pays'
                        padding:'8px 12px', borderTop:'1px solid #E8DDC9'}}>
             <button type="button" onClick={close}
               style={{padding:'7px 12px', background:'#fff', border:'1.5px solid #C9B79A',
-                      color:'#5A4E3D', borderRadius:6, fontFamily:'inherit', fontSize:12,
+                      color:'var(--color-text-taupe)', borderRadius:6, fontFamily:'inherit', fontSize:12,
                       fontWeight:600, cursor:'pointer'}}>Annuler</button>
             <span style={{flex:1, fontSize:11, color:'var(--color-text-muted)', textAlign:'center'}}>
               {tempSel.length}/{max} pays
@@ -2435,7 +2435,7 @@ function CityMultiPicker({value = '', onChange, selectedCountries = [], placehol
         style={{width:'100%', padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
                 border:'1.5px solid ' + (filled ? 'var(--color-accent)' : '#C9B79A'),
                 background: filled ? '#FBF1E4' : '#FFFCF5',
-                color:'#5C3B1E', borderRadius:8, cursor:'pointer',
+                color:'var(--color-text-brown)', borderRadius:8, cursor:'pointer',
                 display:'flex', alignItems:'center', justifyContent:'space-between', minWidth:0, minHeight:38}}>
         <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{_vStr || placeholder}</span>
         <span style={{color:'var(--color-accent)', flexShrink:0, marginLeft:4}}>▾</span>
@@ -2476,7 +2476,7 @@ function CityMultiPicker({value = '', onChange, selectedCountries = [], placehol
                             padding:'8px 12px', cursor:'pointer', fontSize:13,
                             background:'#FFF8EE', borderTop:'1px dashed #E0CDAE'}}>
                     <span style={{color:'var(--color-accent)', fontWeight:700}}>+</span>
-                    <span style={{flex:1, color:'#5C3B1E'}}>Ajouter "{search.trim()}"</span>
+                    <span style={{flex:1, color:'var(--color-text-brown)'}}>Ajouter "{search.trim()}"</span>
                   </div>
                 )}
               </>
@@ -2545,7 +2545,7 @@ function TypeBienMultiPicker({value = [], onChange, selectedCountries = [], max 
         style={{width:'100%', padding:'9px 10px', fontSize:12.5, fontFamily:'inherit', textAlign:'left',
                 border:'1.5px solid ' + (filled ? 'var(--color-accent)' : '#C9B79A'),
                 background: filled ? '#FBF1E4' : '#FFFCF5',
-                color:'#5C3B1E', borderRadius:8, cursor:'pointer',
+                color:'var(--color-text-brown)', borderRadius:8, cursor:'pointer',
                 display:'flex', alignItems:'center', justifyContent:'space-between', minWidth:0, minHeight:38}}>
         <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{fmt(value) || placeholder}</span>
         <span style={{color:'var(--color-accent)', flexShrink:0, marginLeft:4}}>▾</span>
@@ -2588,7 +2588,7 @@ function TypeBienMultiPicker({value = [], onChange, selectedCountries = [], max 
                          padding:'8px 12px', borderTop:'1px solid #E8DDC9'}}>
               <button type="button" onClick={close}
                 style={{padding:'7px 12px', background:'#fff', border:'1.5px solid #C9B79A',
-                        color:'#5A4E3D', borderRadius:6, fontFamily:'inherit', fontSize:12,
+                        color:'var(--color-text-taupe)', borderRadius:6, fontFamily:'inherit', fontSize:12,
                         fontWeight:600, cursor:'pointer'}}>Annuler</button>
               <span style={{flex:1, fontSize:11, color:'var(--color-text-muted)', textAlign:'center'}}>{tempSel.length}/{max}</span>
               <button type="button" onClick={ok}
@@ -3099,7 +3099,7 @@ function CurrencyPicker({value, onChange, style={}}) {
                             borderBottom:'1px solid #F4EEE6', display:'flex', alignItems:'center', gap:8}}>
                     <span style={{fontSize:16, flexShrink:0}}>{d.flag}</span>
                     <span style={{fontWeight:700, color:'var(--color-accent)', minWidth:42}}>{d.code}</span>
-                    <span style={{flex:1, fontSize:12, color:'#5A4E3D'}}>{d.name}</span>
+                    <span style={{flex:1, fontSize:12, color:'var(--color-text-taupe)'}}>{d.name}</span>
                     <span style={{fontSize:11, color:'var(--color-text-muted)', minWidth:20, textAlign:'right'}}>{d.symbol}</span>
                   </div>
                 </React.Fragment>
@@ -3279,7 +3279,7 @@ function MultiSelectPicker({label, options, value, onChange, placeholder='Sélec
                 style={{display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, cursor:'pointer',
                         background: on ? '#FFF3EC' : '#FDFAF7',
                         border:'1.5px solid ' + (on ? '#8B6F47' : '#E8DDD0'),
-                        color: on ? 'var(--color-accent)' : '#5A4E3D', fontSize:12, fontWeight:600, fontFamily:'inherit'}}>
+                        color: on ? 'var(--color-accent)' : 'var(--color-text-taupe)', fontSize:12, fontWeight:600, fontFamily:'inherit'}}>
                 <input type="checkbox" checked={on} onChange={() => toggle(o.value)} style={{accentColor:'#8B6F47'}}/>
                 <span>{o.label}</span>
               </label>
@@ -3519,9 +3519,9 @@ function QuotaExceededModal({quota, onClose}) {
       <div onClick={e => e.stopPropagation()}
         style={{background:'#fff', borderRadius:14, padding:18, maxWidth:420, width:'100%', boxShadow:'0 12px 40px rgba(0,0,0,.25)', position:'relative'}}>
         <button type="button" onClick={onClose} aria-label="Fermer"
-          style={{position:'absolute', top:8, right:10, width:30, height:30, borderRadius:15, border:'none', background:'#F4ECE0', color:'#5A4E3D', fontSize:18, cursor:'pointer', fontFamily:'inherit'}}>×</button>
+          style={{position:'absolute', top:8, right:10, width:30, height:30, borderRadius:15, border:'none', background:'#F4ECE0', color:'var(--color-text-taupe)', fontSize:18, cursor:'pointer', fontFamily:'inherit'}}>×</button>
         <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:20, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Limite Google Maps atteinte</div>
-        <div style={{fontSize:13, color:'#5A4E3D', marginBottom:12, lineHeight:1.4}}>
+        <div style={{fontSize:13, color:'var(--color-text-taupe)', marginBottom:12, lineHeight:1.4}}>
           Tu as utilise tes {quota ? quota.limit : 10} consultations Google Maps aujourd'hui.
           Tu peux continuer avec OpenStreetMap (gratuit illimite) ou demander une extension de 10 consultations supplementaires au super-administrateur.
         </div>
@@ -4584,7 +4584,7 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
             <div style={{position:'relative', width:40, height:40}}>
               <div style={{position:'absolute', inset:0, border:'3px solid rgba(139,94,60,0.20)', borderTopColor:'var(--color-accent)', borderRadius:'50%', animation:'ocreSpin 1.0s linear infinite'}}/>
             </div>
-            <div style={{fontSize:12, color:'#5C3B1E', fontWeight:600}}>
+            <div style={{fontSize:12, color:'var(--color-text-brown)', fontWeight:600}}>
               {bulkDeleteRemaining > 0
                 ? ('Suppression ' + bulkDeleteRemaining + ' restante' + (bulkDeleteRemaining > 1 ? 's' : '') + '...')
                 : ('Telechargement ' + uploading + ' restant' + (uploading > 1 ? 'es' : 'e') + '...')}
@@ -5113,7 +5113,7 @@ function NumericPicker({label, value, onChange, max=9, allowPlus=true, placehold
                     style={{padding:'14px 0', borderRadius:10, fontSize:16, fontWeight:700, fontFamily:'inherit',
                             border:'1.5px solid '+(active ? 'var(--color-accent)' : '#E8DDD0'),
                             background: active ? '#FFF3EC' : '#FDFAF7',
-                            color: active ? 'var(--color-accent)' : '#5A4E3D', cursor:'pointer'}}>{n}</button>
+                            color: active ? 'var(--color-accent)' : 'var(--color-text-taupe)', cursor:'pointer'}}>{n}</button>
                 );
               })}
             </div>
@@ -5170,7 +5170,7 @@ function PillRadio({label, value, onChange, options}) {
               style={{padding:'7px 12px', borderRadius:18, fontSize:12.5, fontWeight:600, fontFamily:'inherit',
                       border:'1.5px solid '+(active ? 'var(--color-accent)' : '#E8DDD0'),
                       background: active ? '#FFF3EC' : '#FDFAF7',
-                      color: active ? 'var(--color-accent)' : '#5A4E3D', cursor:'pointer'}}>{lbl}</button>
+                      color: active ? 'var(--color-accent)' : 'var(--color-text-taupe)', cursor:'pointer'}}>{lbl}</button>
           );
         })}
       </div>
@@ -5193,7 +5193,7 @@ function PillsMulti({label, value, onChange, options}) {
               style={{padding:'7px 11px', borderRadius:18, fontSize:12.5, fontWeight:600, fontFamily:'inherit',
                       border:'1.5px solid '+(active ? 'var(--color-accent)' : '#E8DDD0'),
                       background: active ? '#FFF3EC' : '#FDFAF7',
-                      color: active ? 'var(--color-accent)' : '#5A4E3D', cursor:'pointer',
+                      color: active ? 'var(--color-accent)' : 'var(--color-text-taupe)', cursor:'pointer',
                       display:'inline-flex', alignItems:'center', gap:5}}>
               {active && <span style={{fontSize:11}}>✓</span>}{lbl}
             </button>
@@ -5361,7 +5361,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
     <div style={{marginTop: n === 1 ? 0 : 28, marginBottom: 16}}>
       <div style={{
         fontFamily:"'Cormorant Garamond', Georgia, serif",
-        fontSize:22, fontWeight:600, color:'#5C3B1E', lineHeight:1.1,
+        fontSize:22, fontWeight:600, color:'var(--color-text-brown)', lineHeight:1.1,
         display:'inline-block', paddingBottom:6,
         borderBottom:'2px solid #A07842',
       }}>
@@ -5449,7 +5449,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           {types.length > 0 && (
             <div style={{display:'flex', flexWrap:'wrap', gap:5, marginBottom:10}}>
               {types.map(t => (
-                <span key={t} style={{padding:'3px 8px', background:'#FBF1E4', border:'1px solid #C9B79A', borderRadius:12, fontSize:11, fontWeight:600, color:'#5C3B1E', display:'inline-flex', alignItems:'center', gap:4}}>
+                <span key={t} style={{padding:'3px 8px', background:'#FBF1E4', border:'1px solid #C9B79A', borderRadius:12, fontSize:11, fontWeight:600, color:'var(--color-text-brown)', display:'inline-flex', alignItems:'center', gap:4}}>
                   {t}
                   <button type="button" onClick={() => toggleType(t)} style={{background:'none', border:'none', color:'#B26D3A', cursor:'pointer', padding:0, fontSize:14, lineHeight:1, fontFamily:'inherit'}}>×</button>
                 </span>
@@ -5624,7 +5624,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
                     const _hasValue = _v > 0;
                     const _displayNum = _hasValue ? (_v >= 1000 ? _v.toLocaleString('fr-FR') : String(_v)) : '';
                     return (
-                      <div key={a.k} style={{display:'inline-flex', alignItems:'center', gap:6, padding:'5px 8px 5px 12px', borderRadius:14, background: _hasValue ? '#F4ECE3' : '#FAF5EE', border:'1.5px solid '+(_hasValue ? '#BBA88B' : '#D9C9A8'), fontSize:12, fontWeight:600, color: _hasValue ? '#5C3B1E' : 'var(--color-text-muted)'}}>
+                      <div key={a.k} style={{display:'inline-flex', alignItems:'center', gap:6, padding:'5px 8px 5px 12px', borderRadius:14, background: _hasValue ? '#F4ECE3' : '#FAF5EE', border:'1.5px solid '+(_hasValue ? '#BBA88B' : '#D9C9A8'), fontSize:12, fontWeight:600, color: _hasValue ? 'var(--color-text-brown)' : 'var(--color-text-muted)'}}>
                         <span>{a.l} · {_hasValue ? (_displayNum + ' m²') : 'saisir m²'}</span>
                         <input type="number" inputMode="decimal" value={bien[a.k] || ''}
                           onChange={e => setB(a.k, e.target.value)}
@@ -5668,7 +5668,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
                     <div title="Somme habitable + toutes les annexes saisies"
                       style={{padding:'6px 10px', background:'#FBF1E4', border:'1.5px solid #C9B79A', borderRadius:8, marginBottom:4, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                       <span style={{fontSize:11, fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4}}>Total brut</span>
-                      <span style={{fontSize:13, fontWeight:700, color:'#5C3B1E'}}>{sum > 0 ? sum + ' m²' : '—'}</span>
+                      <span style={{fontSize:13, fontWeight:700, color:'var(--color-text-brown)'}}>{sum > 0 ? sum + ' m²' : '—'}</span>
                     </div>
                     {_isFR && ponderee > 0 && (
                       <div title="Coeffs : habitable 1.0, terrasse/toiture 0.5, balcon/loggia 0.3, patio 0.5"
@@ -6774,7 +6774,7 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
           style={{padding:'7px 8px', borderRadius:8,
                   border:'1.5px solid ' + (mapOpen ? '#A07842' : '#A8896A'),
                   background: mapOpen ? '#A07842' : '#E8DCC0',
-                  color: mapOpen ? '#fff' : '#5C3B1E',
+                  color: mapOpen ? '#fff' : 'var(--color-text-brown)',
                   cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center'}}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
@@ -7171,7 +7171,7 @@ function PaymentRow({line, onChange, onRemove, withDate}) {
       <button type="button" onClick={cycleCurrency}
         style={{
           flexShrink:0, padding:'7px 9px', borderRadius:8, fontSize:11, fontWeight:700, fontFamily:'inherit',
-          border:'1.5px solid #C9B79A', background:'#FDF8F0', color:'#5C3B1E', cursor:'pointer',
+          border:'1.5px solid #C9B79A', background:'#FDF8F0', color:'var(--color-text-brown)', cursor:'pointer',
           letterSpacing:.4, minWidth:48,
         }}>{line.currency}</button>
       <button type="button" onClick={cycleMethod}
@@ -7311,7 +7311,7 @@ function V55Field({label, value, onChange, type='text', options, suffix, placeho
                     background: value ? 'var(--color-accent)' : '#E8DDD0', transition:'background .2s', flexShrink:0}}>
             <span style={{position:'absolute', top:2, left: value ? 24 : 2, width:24, height:24, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.25)', transition:'left .2s'}}/>
           </button>
-          <span style={{fontSize:13, color: value ? '#5C3B1E' : 'var(--color-text-muted)'}}>{value ? 'Activé' : 'Désactivé'}</span>
+          <span style={{fontSize:13, color: value ? 'var(--color-text-brown)' : 'var(--color-text-muted)'}}>{value ? 'Activé' : 'Désactivé'}</span>
         </div>
       ) : type === 'date_fr' ? (
         <input type="text" inputMode="numeric" maxLength={10} placeholder="JJ/MM/AAAA"
@@ -7365,7 +7365,7 @@ function V55Field({label, value, onChange, type='text', options, suffix, placeho
 // gradient ocre fort var(--color-accent) -> #A06B45 fond, color blanc, valeur font 22 fontWeight 800.
 // Pas de borderLeft 3px (était l'ancien design V55 colorisé M144). Compactage iPhone-first.
 const V55_THEMES = {
-  prix:        {bg:'#FBF1E4', bord:'#C9B79A', lbl:'#5C3B1E'},
+  prix:        {bg:'#FBF1E4', bord:'#C9B79A', lbl:'var(--color-text-brown)'},
   agence:      {bg:'#EFF4FA', bord:'var(--color-info)', lbl:'var(--color-info)'},
   notaire:     {bg:'#E5F0F9', bord:'#7FAFD3', lbl:'#1F5784'},
   synthese:    {bg:'gradient', bord:'transparent', lbl:'#fff'},
@@ -7582,7 +7582,7 @@ function FraisAgenceMultiActeurs({d, set, devise, baseAmount, profil}) {
             <select value={a.id} onChange={e => {
               const t = FRAIS_AGENCE_TYPES.find(x => x.v === e.target.value);
               updateActeur(idx, {id: e.target.value, label: t ? t.l : 'Autre'});
-            }} style={{padding:'4px 6px', border:'1px solid #C9B79A', borderRadius:5, fontSize:11, background:'#FBF1E4', fontFamily:'inherit', color:'#5C3B1E', fontWeight:600}}>
+            }} style={{padding:'4px 6px', border:'1px solid #C9B79A', borderRadius:5, fontSize:11, background:'#FBF1E4', fontFamily:'inherit', color:'var(--color-text-brown)', fontWeight:600}}>
               {FRAIS_AGENCE_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
             </select>
             <div style={{display:'flex', background:'#FDFAF7', border:'1px solid #E8DDC9', borderRadius:5, overflow:'hidden', height:26}}>
@@ -7772,11 +7772,11 @@ function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, r
             <span aria-hidden="true">{M77_CURR_FLAGS[_lc] || '🌐'}</span><span style={{fontSize:8}}>▾</span>
           </button>
           <input type="number" inputMode="decimal" value={leftValue ?? ''} onChange={e => onLeftAmount(e.target.value)} style={_input} placeholder="0"/>
-          <span style={{fontSize:11, fontWeight:700, color:'#5C3B1E', flexShrink:0}}>{_lc}</span>
+          <span style={{fontSize:11, fontWeight:700, color:'var(--color-text-brown)', flexShrink:0}}>{_lc}</span>
           {pickerSide === 'left' && (
             <div onClick={e => e.stopPropagation()} style={{position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, boxShadow:'0 4px 12px rgba(0,0,0,0.12)', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:2, padding:4, minWidth:160}}>
               {M77_CURR_LIST.map(c => (
-                <button key={c} type="button" onClick={() => onPickCurrency('left', c)} style={{padding:'6px 4px', background: c === _lc ? '#5C3B1E' : '#fff', color: c === _lc ? '#fff' : 'var(--color-text-primary)', border:'1px solid #E8DDC9', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:1}}>
+                <button key={c} type="button" onClick={() => onPickCurrency('left', c)} style={{padding:'6px 4px', background: c === _lc ? 'var(--color-text-brown)' : '#fff', color: c === _lc ? '#fff' : 'var(--color-text-primary)', border:'1px solid #E8DDC9', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:1}}>
                   <span style={{fontSize:13}}>{M77_CURR_FLAGS[c]}</span><span>{c}</span>
                 </button>
               ))}
@@ -7784,20 +7784,20 @@ function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, r
           )}
         </div>
         <button type="button" onClick={() => { setEditorVal(String(_rate.toFixed(4))); setEditorOpen(true); }} title="Editer le taux"
-          style={{padding:'6px 8px', background: _isManual ? '#F4ECE3' : 'transparent', border: '1.5px ' + (_isManual ? 'solid' : 'dashed') + ' ' + (_isManual ? '#5C3B1E' : '#C9B79A'), borderRadius:7, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:1, minWidth:74}}>
+          style={{padding:'6px 8px', background: _isManual ? '#F4ECE3' : 'transparent', border: '1.5px ' + (_isManual ? 'solid' : 'dashed') + ' ' + (_isManual ? 'var(--color-text-brown)' : '#C9B79A'), borderRadius:7, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:1, minWidth:74}}>
           <span style={{fontSize:8, fontWeight:700, color:'var(--color-text-muted)', letterSpacing:.5, textTransform:'uppercase'}}>{_isManual ? 'Saisi' : 'Taux'}</span>
-          <span style={{fontSize:10, fontWeight:600, color:'#5C3B1E'}}>1 {_lc} = {Number(_rate).toFixed(_rate < 10 ? 4 : 2)} {_rc}</span>
+          <span style={{fontSize:10, fontWeight:600, color:'var(--color-text-brown)'}}>1 {_lc} = {Number(_rate).toFixed(_rate < 10 ? 4 : 2)} {_rc}</span>
         </button>
         <div style={{display:'flex', alignItems:'center', gap:4, position:'relative'}}>
           <button type="button" onClick={() => setPickerSide(pickerSide === 'right' ? null : 'right')} style={_flagBtn} title={'Devise: ' + _rc}>
             <span aria-hidden="true">{M77_CURR_FLAGS[_rc] || '🌐'}</span><span style={{fontSize:8}}>▾</span>
           </button>
           <input type="number" inputMode="decimal" value={rightValue ?? ''} onChange={e => onRightAmount(e.target.value)} style={_input} placeholder="0"/>
-          <span style={{fontSize:11, fontWeight:700, color:'#5C3B1E', flexShrink:0}}>{_rc}</span>
+          <span style={{fontSize:11, fontWeight:700, color:'var(--color-text-brown)', flexShrink:0}}>{_rc}</span>
           {pickerSide === 'right' && (
             <div onClick={e => e.stopPropagation()} style={{position:'absolute', top:'100%', right:0, marginTop:4, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, boxShadow:'0 4px 12px rgba(0,0,0,0.12)', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:2, padding:4, minWidth:160}}>
               {M77_CURR_LIST.map(c => (
-                <button key={c} type="button" onClick={() => onPickCurrency('right', c)} style={{padding:'6px 4px', background: c === _rc ? '#5C3B1E' : '#fff', color: c === _rc ? '#fff' : 'var(--color-text-primary)', border:'1px solid #E8DDC9', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:1}}>
+                <button key={c} type="button" onClick={() => onPickCurrency('right', c)} style={{padding:'6px 4px', background: c === _rc ? 'var(--color-text-brown)' : '#fff', color: c === _rc ? '#fff' : 'var(--color-text-primary)', border:'1px solid #E8DDC9', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:1}}>
                   <span style={{fontSize:13}}>{M77_CURR_FLAGS[c]}</span><span>{c}</span>
                 </button>
               ))}
@@ -7819,13 +7819,13 @@ function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, r
                 setLiveRate(r);
                 _emit({rateSource: 'live', rateOverride: null});
                 setEditorOpen(false);
-              }} style={{padding:'8px 12px', background:'#FDFAF7', color:'#5C3B1E', border:'1.5px solid #C9B79A', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Taux LIVE</button>
+              }} style={{padding:'8px 12px', background:'#FDFAF7', color:'var(--color-text-brown)', border:'1.5px solid #C9B79A', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Taux LIVE</button>
               <button type="button" onClick={() => {
                 const v = Number(editorVal);
                 if (!(v > 0) || v > 100000) { return; }
                 _emit({rateSource: 'manual', rateOverride: v});
                 setEditorOpen(false);
-              }} style={{padding:'8px 12px', background:'#5C3B1E', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Utiliser ce taux</button>
+              }} style={{padding:'8px 12px', background:'var(--color-text-brown)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Utiliser ce taux</button>
             </div>
           </div>
         </div>
@@ -7871,7 +7871,7 @@ function CurrencyBar3Pills({forceUpdate}) {
             </div>
           )}
         </div>
-        <div onClick={() => showRateBar && setRateOpen(true)} style={{...pillBase, fontSize: showRateBar ? 17 : 12, fontWeight: showRateBar ? 800 : 500, color: showRateBar ? '#5C3B1E' : 'var(--color-text-muted)', cursor: showRateBar ? 'pointer' : 'default', fontStyle: showRateBar ? 'normal' : 'italic'}}>
+        <div onClick={() => showRateBar && setRateOpen(true)} style={{...pillBase, fontSize: showRateBar ? 17 : 12, fontWeight: showRateBar ? 800 : 500, color: showRateBar ? 'var(--color-text-brown)' : 'var(--color-text-muted)', cursor: showRateBar ? 'pointer' : 'default', fontStyle: showRateBar ? 'normal' : 'italic'}}>
           {showRateBar ? `1 ${cur.left} = ${Number(cur.rate).toFixed(2)} ${cur.right}` : 'Choisir 2 devises'}
         </div>
         <div onClick={() => setOpenSide(openSide === 'right' ? null : 'right')} style={pillBase}>
@@ -7911,7 +7911,7 @@ function RatePopup2Col({onClose, forceUpdate}) {
         <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:10, marginBottom:14}}>
           <div onClick={() => apply(officialRate)} style={{padding:'10px 8px', borderRadius:10, background:'#FBF1E4', border:'1.5px solid #C9B79A', cursor:'pointer', textAlign:'center'}}>
             <div style={{fontSize:10, fontWeight:700, color:'var(--color-accent)', textTransform:'uppercase', letterSpacing:.4, marginBottom:4}}>Officiel</div>
-            <div style={{fontSize:18, fontWeight:800, color:'#5C3B1E'}}>{officialRate.toFixed(4)}</div>
+            <div style={{fontSize:18, fontWeight:800, color:'var(--color-text-brown)'}}>{officialRate.toFixed(4)}</div>
             <div style={{fontSize:9.5, color:'var(--color-text-muted)', fontStyle:'italic', marginTop:3}}>Tap pour appliquer</div>
           </div>
           <div style={{padding:'10px 8px', borderRadius:10, background:'#fff', border:'1.5px solid #D6C7AC'}}>
@@ -7921,7 +7921,7 @@ function RatePopup2Col({onClose, forceUpdate}) {
           </div>
         </div>
         <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
-          <button type="button" onClick={onClose} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+          <button type="button" onClick={onClose} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'var(--color-text-brown)', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
           <button type="button" onClick={() => apply(manualNum > 0 ? manualNum : officialRate)} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'var(--color-accent)', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
         </div>
       </div>
@@ -7979,7 +7979,7 @@ function FraisAgencePillDropdown({value, onChange}) {
   const isPreset = FRAIS_AGENCE_PCT_PRESETS.includes(v);
   return (
     <div style={{position:'relative', display:'inline-block'}}>
-      <div onClick={() => setOpen(!open)} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(v > 0 ? 'var(--color-info)' : '#C9B79A'), background: v > 0 ? 'var(--color-info)' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: v > 0 ? '#fff' : '#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
+      <div onClick={() => setOpen(!open)} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(v > 0 ? 'var(--color-info)' : '#C9B79A'), background: v > 0 ? 'var(--color-info)' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: v > 0 ? '#fff' : 'var(--color-text-brown)', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
         <span>{v > 0 ? String(v).replace('.', ',') + ' %' : '— %'}</span>
         <span style={{fontSize:9, color: v > 0 ? '#fff' : 'var(--color-text-muted)'}}>▾</span>
       </div>
@@ -8009,7 +8009,7 @@ function FraisAgenceForfaitPopup({value, onApply}) {
   const preview = v * (Number(cur.rate) || 1);
   return (
     <div style={{position:'relative', display:'inline-block'}}>
-      <div onClick={() => { setMontant(String(Number(value) || 0)); setOpen(true); }} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(value > 0 ? 'var(--color-info)' : '#C9B79A'), background: value > 0 ? 'var(--color-info)' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: value > 0 ? '#fff' : '#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
+      <div onClick={() => { setMontant(String(Number(value) || 0)); setOpen(true); }} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(value > 0 ? 'var(--color-info)' : '#C9B79A'), background: value > 0 ? 'var(--color-info)' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: value > 0 ? '#fff' : 'var(--color-text-brown)', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
         <span>{value > 0 ? fmtNumV5(value) + ' ' + CURRENCY_SYMBOL_V5[cur.left] : 'Forfait'}</span>
         <span style={{fontSize:9, color: value > 0 ? '#fff' : 'var(--color-text-muted)'}}>▾</span>
       </div>
@@ -8024,11 +8024,11 @@ function FraisAgenceForfaitPopup({value, onApply}) {
               </div>
               <div>
                 <label style={{fontSize:10, fontWeight:700, color:'var(--color-accent)', textTransform:'uppercase', letterSpacing:.4, display:'block', marginBottom:4}}>Aperçu ({cur.right})</label>
-                <div style={{padding:'8px 10px', border:'1.5px solid #E8DDC9', borderRadius:6, fontSize:14, fontWeight:700, color:'#5C3B1E', background:'#FBF1E4', minHeight:38, boxSizing:'border-box', display:'flex', alignItems:'center'}}>{fmtNumV5(preview) || '—'}</div>
+                <div style={{padding:'8px 10px', border:'1.5px solid #E8DDC9', borderRadius:6, fontSize:14, fontWeight:700, color:'var(--color-text-brown)', background:'#FBF1E4', minHeight:38, boxSizing:'border-box', display:'flex', alignItems:'center'}}>{fmtNumV5(preview) || '—'}</div>
               </div>
             </div>
             <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
-              <button type="button" onClick={() => setOpen(false)} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button type="button" onClick={() => setOpen(false)} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'var(--color-text-brown)', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
               <button type="button" onClick={() => { onApply(v); setOpen(false); }} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'var(--color-info)', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
             </div>
           </div>
@@ -8313,7 +8313,7 @@ const S3_THEME_COLORS = {
 
 const S3_QUI_PAIE_OPTIONS = {
   vente: [
-    {key:'V',   label:'Vendeur',  color:'#5C3B1E'},
+    {key:'V',   label:'Vendeur',  color:'var(--color-text-brown)'},
     {key:'A',   label:'Acheteur', color:'var(--color-success)'},
     {key:'V+A', label:'V+A',      color:'var(--color-accent)'},
   ],
@@ -8399,7 +8399,7 @@ function S3PopinMode({mode, value, baseAmount, onChange, onClose, themeColor='na
           : `${fmtNumV5(Math.round(forNum))} ${CURRENCY_SYMBOL_V5[cur.left] || cur.left} · ${fmtNumV5(Math.round(forNum * safeRate))} ${CURRENCY_SYMBOL_V5[cur.right] || cur.right}`}
       </div>
       <div style={{display:'flex', gap:6, justifyContent:'flex-end'}}>
-        <button type="button" onClick={onClose} style={{padding:'5px 11px', border:'1px solid #D6C7AC', borderRadius:6, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+        <button type="button" onClick={onClose} style={{padding:'5px 11px', border:'1px solid #D6C7AC', borderRadius:6, background:'#fff', color:'var(--color-text-brown)', fontWeight:600, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
         <button type="button" onClick={validate} style={{padding:'5px 11px', border:'none', borderRadius:6, background:t.chip, color:'#fff', fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>Valider</button>
       </div>
     </div>
@@ -8422,7 +8422,7 @@ function S3PopinQuiPaie({value, transactionType, onChange, onClose}) {
   return (
     <div ref={ref} style={{position:'relative', width:'100%', padding:10, background:'#fff', border:'1px solid var(--color-info)', borderRadius:8, marginTop:8, boxSizing:'border-box', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
       <div style={{position:'absolute', top:-7, right:24, width:12, height:12, background:'#fff', borderTop:'1px solid var(--color-info)', borderLeft:'1px solid var(--color-info)', transform:'rotate(45deg)'}} aria-hidden="true"></div>
-      <div style={{fontSize:9.5, fontWeight:700, color:isVente?'#5C3B1E':'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:5}}>Vente</div>
+      <div style={{fontSize:9.5, fontWeight:700, color:isVente?'var(--color-text-brown)':'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:5}}>Vente</div>
       <div style={{display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:5, marginBottom:8}}>
         {S3_QUI_PAIE_OPTIONS.vente.map(o => <Cell key={o.key} opt={o} disabled={!isVente} selected={isVente && value === o.key}/>)}
       </div>
@@ -8495,7 +8495,7 @@ function S3SplitTotal({totals, transactionType='vente'}) {
   const safeRate = Number(cur.rate) > 0 ? Number(cur.rate) : 11;
   const t = totals || {};
   const cells = transactionType === 'vente'
-    ? [{key:'V', label:'Vendeur', amount:Number(t.vendeur)||0, color:'#5C3B1E'},
+    ? [{key:'V', label:'Vendeur', amount:Number(t.vendeur)||0, color:'var(--color-text-brown)'},
        {key:'A', label:'Acheteur', amount:Number(t.acheteur)||0, color:'var(--color-success)'}]
     : [{key:'B', label:'Bailleur', amount:Number(t.bailleur)||0, color:'#1F5784'},
        {key:'L', label:'Locataire', amount:Number(t.locataire)||0, color:'#5F3F8B'}];
@@ -9216,7 +9216,7 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
                accordeon ouvert. Tap sur la barre toggle l'accordeon (onClick parent). */
             typeof summary === 'string'
               ? <div style={{fontSize:11, color:'var(--color-text-muted)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginTop:2}}>{summary}</div>
-              : <div style={{fontSize:12.5, color:'#5A4E3D', lineHeight:1.4, marginTop:4}}>{summary}</div>
+              : <div style={{fontSize:12.5, color:'var(--color-text-taupe)', lineHeight:1.4, marginTop:4}}>{summary}</div>
           )}
         </div>
         {!hideChevron && (
@@ -9302,7 +9302,7 @@ function PhonePill({tel, size = 'md', style}) {
         display: 'inline-flex', alignItems: 'center', gap: s.gap,
         padding: s.padding, background: '#FDF8F0',
         border: '1px solid #C9B79A', borderRadius: 20,
-        color: '#5C3B1E', textDecoration: 'none',
+        color: 'var(--color-text-brown)', textDecoration: 'none',
         fontSize: s.fontSize, fontWeight: 500,
         boxShadow: '0 1px 2px rgba(60,40,20,.08)',
         whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
@@ -9324,7 +9324,7 @@ function PhonePillCollapsible({tel}) {
   return (
     <button type="button" onClick={(e) => { e.stopPropagation(); setOpen(true); }}
       aria-label="Afficher le numero de telephone" title="Afficher le numero"
-      style={{width:28, height:28, borderRadius:'50%', border:'1px solid #C9B79A', background:'#FDF8F0', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, color:'#5C3B1E', flexShrink:0}}>
+      style={{width:28, height:28, borderRadius:'50%', border:'1px solid #C9B79A', background:'#FDF8F0', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, color:'var(--color-text-brown)', flexShrink:0}}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
       </svg>
@@ -9341,7 +9341,7 @@ function PillIconButton({icon, onClick, title, active, style}) {
         background: active ? '#F4ECE3' : '#FDF8F0',
         padding: '6px 10px',
         borderRadius: 20,
-        color: active ? 'var(--color-accent)' : '#5C3B1E',
+        color: active ? 'var(--color-accent)' : 'var(--color-text-brown)',
         cursor: 'pointer',
         display: 'inline-flex',
         alignItems: 'center',
@@ -9404,7 +9404,7 @@ function DossierPicker({clients, value, onChange, placeholder = '(Aucun dossier)
         style={{width:'100%', padding:'9px 11px', borderRadius:8, fontSize:14, fontFamily:'inherit',
                 border:'1.5px solid '+(sel?'#B26D3A':'#E8DDD0'),
                 background: sel?'#FBF1E4':'#FDFAF7',
-                color: sel?'#5C3B1E':'#B5A78F',
+                color: sel?'var(--color-text-brown)':'#B5A78F',
                 textAlign:'left', cursor:'pointer',
                 display:'flex', justifyContent:'space-between', alignItems:'center', minHeight:38}}>
         <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
@@ -9528,7 +9528,7 @@ function PageHeader({onBack, title, rightAction}) {
     <div style={{position:'sticky', top:0, zIndex:10, height:56, background:'#fff', borderBottom:'1px solid rgba(74,44,30,.08)', display:'flex', alignItems:'center', padding:'0 14px', flexShrink:0}}>
       <div style={{position:'relative', flex:1, height:'100%', display:'flex', alignItems:'center'}}>
         {onBack && <BackButton onClick={onBack}/>}
-        <div style={{position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'#5C3B1E', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'62%', textAlign:'center', pointerEvents:'none'}}>{title}</div>
+        <div style={{position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)', fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'var(--color-text-brown)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'62%', textAlign:'center', pointerEvents:'none'}}>{title}</div>
         <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:8}}>{rightAction}</div>
       </div>
     </div>
@@ -10118,7 +10118,7 @@ function CrossRefPanel({d, dossierId, onMatchesUpdate, showToast}) {
       <div style={{padding:14}}>
         {matches.length === 0 ? (
           <>
-            <div style={{fontSize:12.5, color:'#5A4E3D', lineHeight:1.5, marginBottom:10}}>
+            <div style={{fontSize:12.5, color:'var(--color-text-taupe)', lineHeight:1.5, marginBottom:10}}>
               Cherche si ce bien apparaît sur d'autres sites (Mubawab, Vaneau, Leboncoin, SeLoger, Facebook…). Utile pour comparer les prix et détecter les republications.
             </div>
             <button type="button" onClick={runSearch} disabled={loading}
@@ -10134,7 +10134,7 @@ function CrossRefPanel({d, dossierId, onMatchesUpdate, showToast}) {
                   style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px', background:'#FDFAF4', border:'1px solid #E0CDAE', borderRadius:9, textDecoration:'none', color:'inherit', cursor:'pointer'}}>
                   <div style={{flex:1, minWidth:0}}>
                     <div style={{fontSize:12, fontWeight:700, color:'var(--color-accent)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{m.source_domain || 'Lien'}</div>
-                    {m.title_found && <div style={{fontSize:11, color:'#5A4E3D', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{m.title_found}</div>}
+                    {m.title_found && <div style={{fontSize:11, color:'var(--color-text-taupe)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{m.title_found}</div>}
                   </div>
                   <div style={{textAlign:'right', flexShrink:0}}>
                     <div style={{fontSize:12, fontWeight:700, color:'var(--color-text-primary)'}}>{fmtPrice(m.price_found, m.currency_found)}</div>
@@ -10147,7 +10147,7 @@ function CrossRefPanel({d, dossierId, onMatchesUpdate, showToast}) {
               ))}
             </div>
             {prices.length > 1 && (
-              <div style={{fontSize:11, color:'#5A4E3D', padding:'6px 8px', background:'#F4EEE6', borderRadius:7, marginBottom:10, display:'flex', justifyContent:'space-between', gap:6}}>
+              <div style={{fontSize:11, color:'var(--color-text-taupe)', padding:'6px 8px', background:'#F4EEE6', borderRadius:7, marginBottom:10, display:'flex', justifyContent:'space-between', gap:6}}>
                 <span>Écart : <b>{fmtPrice(pMin, curRef)}</b> → <b>{fmtPrice(pMax, curRef)}</b></span>
                 <span>médiane <b>{fmtPrice(pMed, curRef)}</b></span>
               </div>
@@ -10325,7 +10325,7 @@ function CrossSearchResultsModal({matches, ville, onClose}) {
           Ce bien trouvé sur {matches ? matches.length : 0} site{matches && matches.length > 1 ? 's' : ''} ({villeLabel})
         </div>
         {prices.length > 0 && (
-          <div style={{fontSize:12, color:'#5A4E3D', marginBottom:12}}>
+          <div style={{fontSize:12, color:'var(--color-text-taupe)', marginBottom:12}}>
             Prix médian : <b>{fmtPrice(pMed, curRef)}</b> · Écart {fmtPrice(pMin, curRef)} / {fmtPrice(pMax, curRef)}
           </div>
         )}
@@ -10455,7 +10455,7 @@ function ShareDossiersModal({onClose, showToast}) {
           <ShareIcon size={22}/>
           <span>Partager mes dossiers</span>
         </div>
-        <div style={{fontSize:12.5, color:'#5A4E3D', lineHeight:1.5, marginBottom:14}}>
+        <div style={{fontSize:12.5, color:'var(--color-text-taupe)', lineHeight:1.5, marginBottom:14}}>
           Génère un ZIP avec tous tes dossiers et photos. Partage-le par Mail, WhatsApp, AirDrop, iCloud…
         </div>
 
@@ -10482,7 +10482,7 @@ function ShareDossiersModal({onClose, showToast}) {
         </button>
 
         {status && (
-          <div style={{fontSize:11.5, color: status.indexOf('✓') === 0 ? '#065F46' : (status.indexOf('✗') === 0 ? '#991B1B' : '#5A4E3D'), marginBottom:10, textAlign:'center'}}>
+          <div style={{fontSize:11.5, color: status.indexOf('✓') === 0 ? '#065F46' : (status.indexOf('✗') === 0 ? '#991B1B' : 'var(--color-text-taupe)'), marginBottom:10, textAlign:'center'}}>
             {status}
           </div>
         )}
@@ -10563,7 +10563,7 @@ function PWAInstallOverlay({onClose}) {
             <div style={{width: 30, height: 30, borderRadius: 15, background: 'var(--color-accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, flexShrink: 0}}>1</div>
             <div style={{flex: 1}}>
               <div style={{fontWeight: 700, fontSize: 14, color: 'var(--color-text-primary)', marginBottom: 4}}>Appuyez sur <span style={{color: 'var(--color-accent)'}}>Partager</span></div>
-              <div style={{fontSize: 12, color: '#5A4E3D', lineHeight: 1.5}}>En bas de Safari, tapez l'icône <span style={{display: 'inline-block', width: 22, height: 22, verticalAlign: 'middle', background: '#F4ECE3', border: '1px solid #BBA88B', borderRadius: 4, lineHeight: '20px', textAlign: 'center', fontSize: 14, color: 'var(--color-accent)', fontWeight: 700, margin: '0 2px', animation: 'ocreBounce 1.6s ease-in-out infinite'}}>⎙</span> (carré avec flèche vers le haut).</div>
+              <div style={{fontSize: 12, color: 'var(--color-text-taupe)', lineHeight: 1.5}}>En bas de Safari, tapez l'icône <span style={{display: 'inline-block', width: 22, height: 22, verticalAlign: 'middle', background: '#F4ECE3', border: '1px solid #BBA88B', borderRadius: 4, lineHeight: '20px', textAlign: 'center', fontSize: 14, color: 'var(--color-accent)', fontWeight: 700, margin: '0 2px', animation: 'ocreBounce 1.6s ease-in-out infinite'}}>⎙</span> (carré avec flèche vers le haut).</div>
             </div>
           </div>
           {/* Étape 2 */}
@@ -10571,7 +10571,7 @@ function PWAInstallOverlay({onClose}) {
             <div style={{width: 30, height: 30, borderRadius: 15, background: 'var(--color-accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, flexShrink: 0}}>2</div>
             <div style={{flex: 1}}>
               <div style={{fontWeight: 700, fontSize: 14, color: 'var(--color-text-primary)', marginBottom: 4}}>Choisissez « <span style={{color: 'var(--color-accent)'}}>Sur l'écran d'accueil</span> »</div>
-              <div style={{fontSize: 12, color: '#5A4E3D', lineHeight: 1.5}}>Dans le menu partage iOS, faites défiler et tapez <b>➕ Sur l'écran d'accueil</b>.</div>
+              <div style={{fontSize: 12, color: 'var(--color-text-taupe)', lineHeight: 1.5}}>Dans le menu partage iOS, faites défiler et tapez <b>➕ Sur l'écran d'accueil</b>.</div>
             </div>
           </div>
           {/* Étape 3 */}
@@ -10579,7 +10579,7 @@ function PWAInstallOverlay({onClose}) {
             <div style={{width: 30, height: 30, borderRadius: 15, background: 'var(--color-accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, flexShrink: 0}}>3</div>
             <div style={{flex: 1}}>
               <div style={{fontWeight: 700, fontSize: 14, color: 'var(--color-text-primary)', marginBottom: 4}}>Appuyez sur <span style={{color: 'var(--color-accent)'}}>Ajouter</span></div>
-              <div style={{fontSize: 12, color: '#5A4E3D', lineHeight: 1.5}}>Confirmez en haut à droite. L'icône apparaît sur votre écran d'accueil — un tap et c'est ouvert en plein écran avec notifications natives.</div>
+              <div style={{fontSize: 12, color: 'var(--color-text-taupe)', lineHeight: 1.5}}>Confirmez en haut à droite. L'icône apparaît sur votre écran d'accueil — un tap et c'est ouvert en plein écran avec notifications natives.</div>
             </div>
           </div>
         </div>
@@ -10708,11 +10708,11 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
       </div>
       <div style={{flex:1, padding:'14px 16px 120px', maxWidth:640, margin:'0 auto', width:'100%', boxSizing:'border-box'}}>
         {alreadyPublished && (
-          <div style={{background:'#FDFAF4', border:'1px solid #E0CDAE', borderRadius:10, padding:'10px 12px', marginBottom:12, fontSize:13, color:'#5A4E3D'}}>
+          <div style={{background:'#FDFAF4', border:'1px solid #E0CDAE', borderRadius:10, padding:'10px 12px', marginBottom:12, fontSize:13, color:'var(--color-text-taupe)'}}>
             Cette annonce est <b>{preview.public_visible ? 'en ligne' : 'masquée'}</b> depuis le {String(preview.published_at || '').replace('T',' ').slice(0,16)}.
           </div>
         )}
-        <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:14, lineHeight:1.5}}>
+        <div style={{fontSize:12.5, color:'var(--color-text-taupe)', marginBottom:14, lineHeight:1.5}}>
           Voici comment ton annonce apparaîtra sur le site <b>ocre.immo</b>. Tu peux modifier le titre et la description avant de valider.
         </div>
 
@@ -10742,7 +10742,7 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
         </div>
 
         {/* Localisation */}
-        {data.ville && <div style={{fontSize:13, color:'#5A4E3D', marginBottom:14}}>📍 {data.ville}{data.quartier ? ' — ' + data.quartier : ''}</div>}
+        {data.ville && <div style={{fontSize:13, color:'var(--color-text-taupe)', marginBottom:14}}>📍 {data.ville}{data.quartier ? ' — ' + data.quartier : ''}</div>}
 
         <hr style={{border:'none', borderTop:'1px solid #E0CDAE', margin:'16px 0'}}/>
 
@@ -10777,7 +10777,7 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
                 </div>
                 <div style={{flex:1, minWidth:0}}>
                   <div style={{fontWeight:700, fontSize:14, color:'var(--color-text-primary)'}}>{agentProfile.prenom} {agentProfile.nom} <span style={{display:'inline-block', marginLeft:6, fontSize:9, background:'var(--color-accent)', color:'#fff', padding:'1px 7px', borderRadius:10, fontWeight:700, letterSpacing:.4, verticalAlign:'middle'}}>AGENT OCRE</span></div>
-                  {agentProfile.tagline && <div style={{fontSize:11.5, color:'#5A4E3D', marginTop:2}}>{agentProfile.tagline}</div>}
+                  {agentProfile.tagline && <div style={{fontSize:11.5, color:'var(--color-text-taupe)', marginTop:2}}>{agentProfile.tagline}</div>}
                 </div>
               </div>
               <div style={{marginTop:10, fontSize:12.5}}>
@@ -10929,7 +10929,7 @@ function UpdateBanner() {
     <div style={{position:'fixed', left:12, right:12, bottom:12, zIndex:180, background: 'var(--color-bg-page)', border:'1.5px solid var(--color-accent)', borderRadius:12, padding:'12px 14px', boxShadow:'0 4px 16px rgba(60,40,20,.15)', display:'flex', alignItems:'center', gap:10, fontFamily:'inherit', maxWidth:560, margin:'0 auto'}}>
       <div style={{flex:1, minWidth:0, fontSize:13, color:'var(--color-text-primary)', lineHeight:1.4}}>
         <div style={{fontWeight:700, color:'var(--color-accent)', marginBottom:2}}>Nouvelle version disponible</div>
-        <div style={{fontSize:11.5, color:'#5A4E3D'}}>Recharge pour profiter des dernières améliorations.</div>
+        <div style={{fontSize:11.5, color:'var(--color-text-taupe)'}}>Recharge pour profiter des dernières améliorations.</div>
       </div>
       <button onClick={() => { setDismissed(true); setVisible(false); }} style={{background:'none', border:'1.5px solid var(--color-accent)', color:'var(--color-accent)', borderRadius:8, padding:'6px 10px', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>Plus tard</button>
       <button onClick={applyUpdate} style={{background:'linear-gradient(135deg,var(--color-accent),#A06B45)', color:'#fff', border:'none', borderRadius:8, padding:'7px 14px', fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>Actualiser</button>
@@ -12612,7 +12612,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
                       flex:1, padding:'10px 8px', borderRadius:10, cursor:'pointer', fontFamily:'inherit',
                       border: active ? '1.5px solid var(--color-accent)' : '1.5px solid #C9B79A',
                       background: active ? 'var(--color-accent)' : '#FBF1E4',
-                      color: active ? '#fff' : '#5C3B1E',
+                      color: active ? '#fff' : 'var(--color-text-brown)',
                       fontWeight: active ? 700 : 600,
                       transition: 'background .25s ease, color .25s ease, border-color .25s ease',
                       boxShadow: active ? 'inset 0 0 0 2px rgba(0,0,0,0.06), 0 2px 6px rgba(139,94,60,0.25)' : 'none',
@@ -12809,7 +12809,7 @@ function HelpPage({onBack}) {
                     style={{width:'100%', textAlign:'left', padding:'10px 12px', background:'transparent', border:'none', fontFamily:'inherit', fontSize:13.5, color:'var(--color-text-primary)', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                     <span>{it.q}</span><span style={{color:'var(--color-accent)'}}>{opened[k] ? '−' : '+'}</span>
                   </button>
-                  {opened[k] && <div style={{padding:'4px 12px 12px', fontSize:12.5, color:'#5A4E3D', lineHeight:1.5}}>{it.a}</div>}
+                  {opened[k] && <div style={{padding:'4px 12px 12px', fontSize:12.5, color:'var(--color-text-taupe)', lineHeight:1.5}}>{it.a}</div>}
                 </div>
               );
             })}
@@ -12909,7 +12909,7 @@ function AuditLogView({showToast}) {
               <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'var(--color-accent)'}}>{drawer.action}</div>
               <button onClick={() => setDrawer(null)} style={{background:'none', border:'none', fontSize:18, cursor:'pointer'}}>×</button>
             </div>
-            <div style={{fontSize:12, color:'#5A4E3D'}}>
+            <div style={{fontSize:12, color:'var(--color-text-taupe)'}}>
               <div><b>Date :</b> {drawer.created_at}</div>
               <div><b>User :</b> uid={drawer.user_id}</div>
               <div><b>Target :</b> {drawer.target_type}{drawer.target_id ? ' #' + drawer.target_id : ''}</div>
@@ -13055,7 +13055,7 @@ function GoogleQuotaAdmin({showToast}) {
                 {r.status}
               </span>
             </div>
-            {r.motif && <div style={{fontSize:11.5, color:'#5A4E3D', fontStyle:'italic', marginBottom:4}}>"{r.motif}"</div>}
+            {r.motif && <div style={{fontSize:11.5, color:'var(--color-text-taupe)', fontStyle:'italic', marginBottom:4}}>"{r.motif}"</div>}
             {r.response_message && <div style={{fontSize:11.5, color:'var(--color-text-muted)', marginBottom:4}}>Reponse : {r.response_message}</div>}
             {r.status === 'pending' && (
               <div style={{display:'flex', gap:6, marginTop:6}}>
@@ -13079,7 +13079,7 @@ function GoogleQuotaAdmin({showToast}) {
               <span style={{color:'var(--color-text-primary)', fontWeight:600}}>{(u.prenom || '') + ' ' + (u.nom || '') || u.email}</span>
               <span style={{color:'var(--color-text-muted)', fontSize:11, marginLeft:6}}>{u.email}</span>
             </div>
-            <div style={{color:'#5A4E3D'}}>{u.today_count}/{u.daily_limit} jour · {u.month_count} mois</div>
+            <div style={{color:'var(--color-text-taupe)'}}>{u.today_count}/{u.daily_limit} jour · {u.month_count} mois</div>
           </div>
         ))}
       </div>
@@ -13093,7 +13093,7 @@ function GoogleQuotaAdmin({showToast}) {
             <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:18, fontWeight:700, color:'var(--color-accent)', marginBottom:6}}>
               {respondingFor.action === 'approve' ? 'Approuver' : 'Refuser'} la demande #{respondingFor.request.id}
             </div>
-            <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:8}}>
+            <div style={{fontSize:12.5, color:'var(--color-text-taupe)', marginBottom:8}}>
               Agent : {respondingFor.request.agent_email}<br/>
               Motif : {respondingFor.request.motif || '(non renseigne)'}
             </div>
@@ -13102,7 +13102,7 @@ function GoogleQuotaAdmin({showToast}) {
               style={{width:'100%', boxSizing:'border-box', padding:'8px 10px', fontSize:13, fontFamily:'inherit', borderRadius:8, border:'1px solid #C9B79A', resize:'vertical', marginBottom:10}}/>
             <div style={{display:'flex', gap:6}}>
               <button onClick={() => setRespondingFor(null)}
-                style={{flex:1, padding:'9px 12px', borderRadius:8, border:'1.5px solid #C9B79A', background:'#fff', color:'#5A4E3D', fontFamily:'inherit', fontWeight:600, fontSize:13, cursor:'pointer'}}>Annuler</button>
+                style={{flex:1, padding:'9px 12px', borderRadius:8, border:'1.5px solid #C9B79A', background:'#fff', color:'var(--color-text-taupe)', fontFamily:'inherit', fontWeight:600, fontSize:13, cursor:'pointer'}}>Annuler</button>
               <button onClick={() => respond(respondingFor.action)}
                 style={{flex:1, padding:'9px 12px', borderRadius:8, border:'none', background: respondingFor.action === 'approve' ? '#2E8B57' : 'var(--color-error)', color:'#fff', fontFamily:'inherit', fontWeight:700, fontSize:13, cursor:'pointer'}}>
                 Confirmer
@@ -13185,7 +13185,7 @@ function FeatureFlagsAdmin({showToast}) {
             </button>
             <button onClick={() => loadOverrides(f.flag_key)} style={{padding:'4px 10px', background:'transparent', border:'1px solid #B89968', borderRadius:6, fontSize:11.5, color:'var(--color-accent)', cursor:'pointer'}}>Overrides ({f.overrides_count || 0})</button>
           </div>
-          <div style={{display:'flex', alignItems:'center', gap:8, marginTop:6, fontSize:11.5, color:'#5A4E3D'}}>
+          <div style={{display:'flex', alignItems:'center', gap:8, marginTop:6, fontSize:11.5, color:'var(--color-text-taupe)'}}>
             <span>Rollout : <b>{f.rollout_pct}%</b></span>
             <input type="range" min={0} max={100} step={5} value={f.rollout_pct}
               onChange={e => updateRollout(f.flag_key, Number(e.target.value))}
@@ -13338,7 +13338,7 @@ function SuperAdminDashboard({onBack, showToast, currentUser}) {
           return (
             <button key={t.k} onClick={() => setTab(t.k)}
               style={{padding:'7px 12px', borderRadius:16, border:'1px solid ' + (active ? 'var(--color-accent)' : '#D8CCB4'),
-                      background: active ? 'var(--color-accent)' : '#fff', color: active ? '#fff' : '#5A4E3D',
+                      background: active ? 'var(--color-accent)' : '#fff', color: active ? '#fff' : 'var(--color-text-taupe)',
                       fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap'}}>{t.l}</button>
           );
         })}
@@ -13369,7 +13369,7 @@ function SuperAdminDashboard({onBack, showToast, currentUser}) {
               <div style={{fontSize:11, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>Tenants</div>
               {(stats.tenants || []).map(t => (
                 <div key={t.db} style={{display:'flex', justifyContent:'space-between', padding:'4px 0', borderBottom:'1px solid #F4EFE6', fontSize:12}}>
-                  <span style={{color:'#5A4E3D'}}>{t.db}</span>
+                  <span style={{color:'var(--color-text-taupe)'}}>{t.db}</span>
                   <span style={{color:'var(--color-text-muted)'}}>{t.dossiers} dossiers · {t.matches} matches</span>
                 </div>
               ))}
@@ -13446,7 +13446,7 @@ function SuperAdminDashboard({onBack, showToast, currentUser}) {
         {tab === 'settings' && (
           <div>
             <div style={{background:'#fff', borderRadius:10, border:'1px solid #EDE6DC', padding:14, marginBottom:12}}>
-              <div style={{fontSize:13, color:'#5A4E3D', marginBottom:6}}>Paramètres système (photos, matching, etc.) sur <code>/api/system_settings.php</code>.</div>
+              <div style={{fontSize:13, color:'var(--color-text-taupe)', marginBottom:6}}>Paramètres système (photos, matching, etc.) sur <code>/api/system_settings.php</code>.</div>
             </div>
             <FeatureFlagsAdmin showToast={showToast}/>
           </div>
@@ -13551,7 +13551,7 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
       <div style={{background:'#fff', borderBottom:'1px solid #EDE6DC', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:10}}>
         <BackButton onClick={onBack}/>
         <OcreLogoButton/>
-        <button onClick={fetchAll} style={{background:'none', border:'1px solid #C9B79A', padding:'5px 10px', borderRadius:8, fontSize:12, cursor:'pointer', fontFamily:'inherit', color:'#5C3B1E'}}>↻</button>
+        <button onClick={fetchAll} style={{background:'none', border:'1px solid #C9B79A', padding:'5px 10px', borderRadius:8, fontSize:12, cursor:'pointer', fontFamily:'inherit', color:'var(--color-text-brown)'}}>↻</button>
       </div>
 
       <div style={{flex:1, overflowY:'auto', padding:'12px 14px 30px'}}>
@@ -13616,7 +13616,7 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
               <div key={l.id} style={{padding:'8px 12px', borderBottom:'1px solid #F2EBE2', display:'flex', gap:8, alignItems:'baseline'}}>
                 <span style={{color:'var(--color-text-muted)', fontFamily:'monospace', flexShrink:0}}>{String(l.created_at || '').replace('T',' ').slice(0,16)}</span>
                 <span style={{fontWeight:700, color:'var(--color-accent)', flexShrink:0}}>{l.action}</span>
-                <span style={{color:'#5A4E3D', flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>by {l.admin_email || ('#' + l.admin_user_id)}{l.target_email ? ' → ' + l.target_email : ''}{l.meta ? ' · ' + String(l.meta).slice(0, 60) : ''}</span>
+                <span style={{color:'var(--color-text-taupe)', flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>by {l.admin_email || ('#' + l.admin_user_id)}{l.target_email ? ' → ' + l.target_email : ''}{l.meta ? ' · ' + String(l.meta).slice(0, 60) : ''}</span>
               </div>
             ))}
           </div>
@@ -13656,7 +13656,7 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
               <div key={l.id} style={{padding:'6px 8px', borderBottom:'1px solid #F2EBE2', fontSize:11, fontFamily:'monospace'}}>
                 <span style={{color:'var(--color-text-muted)'}}>{String(l.created_at || '').replace('T',' ').slice(0,19)}</span>{' '}
                 <span style={{color:'var(--color-accent)', fontWeight:700}}>{l.action}</span>{' '}
-                <span style={{color:'#5A4E3D'}}>{l.endpoint || ''}</span>{' '}
+                <span style={{color:'var(--color-text-taupe)'}}>{l.endpoint || ''}</span>{' '}
                 <span style={{color:'var(--color-text-muted)'}}>{l.ip || ''}</span>
               </div>
             ))}
@@ -13841,7 +13841,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
         <span style={{fontSize:11, fontWeight:700, color:'#fff', background:statutColor, padding:'2px 8px', borderRadius:10}}>{statutLabel}</span>
       </div>
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 40px'}}>
-        <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:16, lineHeight:1.5}}>
+        <div style={{fontSize:12.5, color:'var(--color-text-taupe)', marginBottom:16, lineHeight:1.5}}>
           Ces informations apparaîtront sur la vitrine <b>ocre.immo</b> (bientôt disponible) ainsi que sur tes annonces publiées. Tu peux sauvegarder en brouillon et publier uniquement quand ton profil est prêt.
         </div>
 
@@ -13863,7 +13863,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
             </div>
           </div>
           <label className="ocre-lbl">Prénom / Nom (éditable dans Préférences générales)</label>
-          <div style={{padding:'8px 10px', background:'#FBF7EE', border:'1px solid #E0CDAE', borderRadius:8, fontSize:13, color:'#5A4E3D', marginBottom:10}}>{p.prenom} {p.nom}</div>
+          <div style={{padding:'8px 10px', background:'#FBF7EE', border:'1px solid #E0CDAE', borderRadius:8, fontSize:13, color:'var(--color-text-taupe)', marginBottom:10}}>{p.prenom} {p.nom}</div>
           <label className="ocre-lbl">URL de ta fiche publique</label>
           <input defaultValue={p.slug || ''} onBlur={e => { const v = e.target.value.trim(); if (v && v !== p.slug) save({slug: v}); }}
             placeholder="slug-url-de-ta-fiche"
@@ -13931,7 +13931,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
               const on = specs.includes(s);
               return (
                 <button key={s} type="button" onClick={() => toggleSpec(s)}
-                  style={{padding:'6px 10px', background: on ? 'var(--color-accent)' : '#FDFAF7', color: on ? '#fff' : '#5A4E3D', border:'1px solid ' + (on ? 'var(--color-accent)' : '#E0CDAE'), borderRadius:14, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
+                  style={{padding:'6px 10px', background: on ? 'var(--color-accent)' : '#FDFAF7', color: on ? '#fff' : 'var(--color-text-taupe)', border:'1px solid ' + (on ? 'var(--color-accent)' : '#E0CDAE'), borderRadius:14, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
                   {s}
                 </button>
               );
@@ -13942,7 +13942,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
         {/* Section 6 — Mentions légales */}
         <div className="ocre-card" style={{marginBottom:14}}>
           <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'var(--color-accent)', fontWeight:700, marginBottom:6}}>Mentions légales</div>
-          <div style={{fontSize:11.5, color:'#5A4E3D', marginBottom:10, lineHeight:1.4}}>Ces informations apparaîtront obligatoirement sur chacune de tes annonces, en conformité avec la <b>Loi Hoguet</b> (France) et la réglementation immobilière marocaine.</div>
+          <div style={{fontSize:11.5, color:'var(--color-text-taupe)', marginBottom:10, lineHeight:1.4}}>Ces informations apparaîtront obligatoirement sur chacune de tes annonces, en conformité avec la <b>Loi Hoguet</b> (France) et la réglementation immobilière marocaine.</div>
           <label className="ocre-lbl">Numéro de carte professionnelle</label>
           <input defaultValue={p.carte_pro_numero || ''} onBlur={e => save({carte_pro_numero: e.target.value})}
             style={{width:'100%', padding:'9px 11px', border:'1.5px solid #E0CDAE', borderRadius:8, fontSize:13, fontFamily:'inherit', boxSizing:'border-box', marginBottom:8}}/>
@@ -13967,7 +13967,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
         {/* Section 7 — Statut */}
         <div className="ocre-card" style={{marginBottom:14}}>
           <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, color:'var(--color-accent)', fontWeight:700, marginBottom:6}}>Statut de publication</div>
-          <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:12, lineHeight:1.5}}>
+          <div style={{fontSize:12.5, color:'var(--color-text-taupe)', marginBottom:12, lineHeight:1.5}}>
             {p.statut_public === 'brouillon' && "Ton profil n'est pas visible publiquement. Complète les champs obligatoires pour passer en actif."}
             {p.statut_public === 'actif' && 'Ton profil et tes annonces publiées sont visibles sur ocre.immo.'}
             {p.statut_public === 'suspendu' && 'Ton profil est masqué temporairement. Tes annonces restent masquées aussi.'}
@@ -14017,7 +14017,7 @@ function AgentPreviewModal({profile: p, onClose}) {
           </div>
           <div style={{flex:1, minWidth:0}}>
             <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:24, fontWeight:700, color:'var(--color-accent)'}}>{p.prenom} {p.nom}</div>
-            {p.tagline && <div style={{fontSize:13, color:'#5A4E3D', marginTop:4}}>{p.tagline}</div>}
+            {p.tagline && <div style={{fontSize:13, color:'var(--color-text-taupe)', marginTop:4}}>{p.tagline}</div>}
           </div>
         </div>
         {p.bio && <div style={{fontSize:13.5, color:'var(--color-text-primary)', lineHeight:1.6, whiteSpace:'pre-wrap', marginBottom:16}}>{p.bio}</div>}
@@ -14036,7 +14036,7 @@ function AgentPreviewModal({profile: p, onClose}) {
         {specs.length > 0 && (
           <div style={{marginBottom:18}}>
             <div style={{fontSize:10, color:'var(--color-text-muted)', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:6}}>Spécialités</div>
-            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>{specs.map((s, i) => <span key={i} style={{background:'#fff', border:'1px solid #BBA88B', borderRadius:14, padding:'3px 10px', fontSize:12, color:'#5A4E3D', fontWeight:600}}>{s}</span>)}</div>
+            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>{specs.map((s, i) => <span key={i} style={{background:'#fff', border:'1px solid #BBA88B', borderRadius:14, padding:'3px 10px', fontSize:12, color:'var(--color-text-taupe)', fontWeight:600}}>{s}</span>)}</div>
           </div>
         )}
         <div style={{background:'#fff', border:'1px dashed #BBA88B', borderRadius:10, padding:'14px', fontSize:12, color:'var(--color-text-muted)', textAlign:'center', marginBottom:20}}>Vos annonces publiées apparaîtront ici.</div>
@@ -14101,11 +14101,11 @@ function WeekGridView({events, showToast, onChanged}) {
   return (
     <div style={{padding:'10px 14px'}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginBottom:10}}>
-        <button onClick={() => setWeekOffset(weekOffset - 1)} style={{padding:'4px 10px', background:'transparent', border:'1px solid #C9B79A', borderRadius:6, fontSize:13, cursor:'pointer', color:'#5A4E3D'}}>←</button>
+        <button onClick={() => setWeekOffset(weekOffset - 1)} style={{padding:'4px 10px', background:'transparent', border:'1px solid #C9B79A', borderRadius:6, fontSize:13, cursor:'pointer', color:'var(--color-text-taupe)'}}>←</button>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:16, fontWeight:700, color:'var(--color-accent)'}}>
           {monday.toLocaleDateString('fr-FR', {day:'numeric', month:'short'})} → {days[6].toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'})}
         </div>
-        <button onClick={() => setWeekOffset(weekOffset + 1)} style={{padding:'4px 10px', background:'transparent', border:'1px solid #C9B79A', borderRadius:6, fontSize:13, cursor:'pointer', color:'#5A4E3D'}}>→</button>
+        <button onClick={() => setWeekOffset(weekOffset + 1)} style={{padding:'4px 10px', background:'transparent', border:'1px solid #C9B79A', borderRadius:6, fontSize:13, cursor:'pointer', color:'var(--color-text-taupe)'}}>→</button>
         {weekOffset !== 0 && <button onClick={() => setWeekOffset(0)} style={{padding:'4px 10px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:6, fontSize:11, cursor:'pointer'}}>Aujourd'hui</button>}
       </div>
       <div style={{display:'grid', gridTemplateColumns:'40px repeat(7, 1fr)', background:'#fff', border:'1px solid #EDE6DC', borderRadius:8, fontSize:11, overflow:'hidden'}}>
@@ -14113,7 +14113,7 @@ function WeekGridView({events, showToast, onChanged}) {
         {days.map((d, i) => {
           const isToday = dateKey(d) === todayKey;
           return (
-            <div key={i} style={{padding:'6px 4px', borderRight: i < 6 ? '1px solid #EDE6DC' : 'none', textAlign:'center', background: isToday ? '#FAF3E0' : '#fff', fontWeight: isToday ? 700 : 500, color:'#5A4E3D'}}>
+            <div key={i} style={{padding:'6px 4px', borderRight: i < 6 ? '1px solid #EDE6DC' : 'none', textAlign:'center', background: isToday ? '#FAF3E0' : '#fff', fontWeight: isToday ? 700 : 500, color:'var(--color-text-taupe)'}}>
               <div style={{fontSize:10, color:'var(--color-text-muted)', textTransform:'uppercase'}}>{labels[i]}</div>
               <div style={{fontSize:14, fontFamily:'Cormorant Garamond,serif', color: isToday ? 'var(--color-accent)' : 'var(--color-text-primary)'}}>{d.getDate()}</div>
             </div>
@@ -14271,10 +14271,10 @@ function CalendarView({onBack, showToast, toast}) {
             const from = new Date().toISOString().slice(0,10);
             const to = new Date(Date.now() + 90*86400000).toISOString().slice(0,10);
             window.open('/api/event_ics.php?from=' + from + '&to=' + to + '&token=' + encodeURIComponent(tk), '_blank');
-          }} title="Exporter mon agenda 90 jours en .ics" style={{background:'none', border:'1px solid #C9B79A', padding:'5px 10px', borderRadius:8, fontSize:11.5, cursor:'pointer', fontFamily:'inherit', color:'#5C3B1E'}}>Exporter .ics</button>
+          }} title="Exporter mon agenda 90 jours en .ics" style={{background:'none', border:'1px solid #C9B79A', padding:'5px 10px', borderRadius:8, fontSize:11.5, cursor:'pointer', fontFamily:'inherit', color:'var(--color-text-brown)'}}>Exporter .ics</button>
           <div style={{display:'flex', gap:4, background: 'var(--color-bg-page)', padding:2, borderRadius:6}}>
             {[{k:'liste', l:'Liste'}, {k:'semaine', l:'Semaine'}].map(m => (
-              <button key={m.k} onClick={() => setCalMode(m.k)} style={{padding:'4px 10px', background: calMode===m.k ? 'var(--color-accent)' : 'transparent', color: calMode===m.k ? '#fff' : '#5A4E3D', border:'none', borderRadius:4, fontFamily:'inherit', fontSize:11.5, fontWeight:600, cursor:'pointer'}}>{m.l}</button>
+              <button key={m.k} onClick={() => setCalMode(m.k)} style={{padding:'4px 10px', background: calMode===m.k ? 'var(--color-accent)' : 'transparent', color: calMode===m.k ? '#fff' : 'var(--color-text-taupe)', border:'none', borderRadius:4, fontFamily:'inherit', fontSize:11.5, fontWeight:600, cursor:'pointer'}}>{m.l}</button>
             ))}
           </div>
         </>}/>
@@ -14574,7 +14574,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
           const sel = typeFilter === p.k;
           return (
             <button key={p.k} type="button" onClick={() => setTypeFilter(p.k)}
-              style={{padding:'5px 11px', borderRadius:14, border:'1px solid '+(sel?'#5C3B1E':'#D9C9A8'), background: sel?'#5C3B1E':'#FBF4E5', color: sel?'#fff':'#5C3B1E', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
+              style={{padding:'5px 11px', borderRadius:14, border:'1px solid '+(sel?'var(--color-text-brown)':'#D9C9A8'), background: sel?'var(--color-text-brown)':'#FBF4E5', color: sel?'#fff':'var(--color-text-brown)', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>
               {p.l} ({p.n})
             </button>
           );
@@ -14652,7 +14652,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
           style={{position:'fixed', inset:0, zIndex:9999, background:'rgba(42,32,24,.42)', display:'flex', alignItems:'flex-end', justifyContent:'center', animation:'fadeIn 200ms ease'}}>
           <div onClick={e => e.stopPropagation()}
             style={{width:'100%', maxWidth:460, maxHeight:'90vh', overflowY:'auto', background:'#FDFAF7', borderRadius:'14px 14px 0 0', boxShadow:'0 -10px 40px rgba(42,32,24,.25)', padding:'18px 18px calc(18px + env(safe-area-inset-bottom, 0px))'}}>
-            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:22, fontWeight:600, color:'#5C3B1E', marginBottom:14, paddingBottom:8, borderBottom:'2px solid #A07842', display:'inline-block'}}>
+            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:22, fontWeight:600, color:'var(--color-text-brown)', marginBottom:14, paddingBottom:8, borderBottom:'2px solid #A07842', display:'inline-block'}}>
               {modal.type === 'appel' ? 'Nouvel appel' : modal.type === 'rdv' ? 'Nouveau RDV' : modal.type === 'document' ? 'Nouveau document' : 'Nouvelle note'}
             </div>
             <label style={{display:'block', fontSize:11, fontWeight:600, color:'var(--color-text-muted)', marginTop:8, marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Titre</label>
@@ -14704,14 +14704,14 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
           style={{position:'fixed', inset:0, zIndex:9999, background:'rgba(42,32,24,.42)', display:'flex', alignItems:'flex-end', justifyContent:'center', animation:'fadeIn 200ms ease'}}>
           <div onClick={e => e.stopPropagation()}
             style={{width:'100%', maxWidth:460, maxHeight:'90vh', overflowY:'auto', background:'#FDFAF7', borderRadius:'14px 14px 0 0', boxShadow:'0 -10px 40px rgba(42,32,24,.25)', padding:'18px 18px calc(18px + env(safe-area-inset-bottom, 0px))'}}>
-            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:22, fontWeight:600, color:'#5C3B1E', marginBottom:14, paddingBottom:8, borderBottom:'2px solid #A07842', display:'inline-block'}}>
+            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:22, fontWeight:600, color:'var(--color-text-brown)', marginBottom:14, paddingBottom:8, borderBottom:'2px solid #A07842', display:'inline-block'}}>
               Catégorie du document
             </div>
             <div style={{fontSize:12, color:'var(--color-text-muted)', marginBottom:10}}>{modal.file && modal.file.name}</div>
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:6}}>
               {CATEGORIES.map(c => (
                 <button key={c.k} type="button" onClick={() => setModal({...modal, cat: c.k})}
-                  style={{padding:'9px 10px', borderRadius:8, border: modal.cat === c.k ? '2px solid var(--color-accent)' : '1.5px solid #D9C9A8', background: modal.cat === c.k ? '#FFF3EC' : '#fff', color:'#5C3B1E', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', textAlign:'left'}}>
+                  style={{padding:'9px 10px', borderRadius:8, border: modal.cat === c.k ? '2px solid var(--color-accent)' : '1.5px solid #D9C9A8', background: modal.cat === c.k ? '#FFF3EC' : '#fff', color:'var(--color-text-brown)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', textAlign:'left'}}>
                   {c.l}
                 </button>
               ))}
@@ -14806,7 +14806,7 @@ function NotificationsView({onBack, openEditReview, showToast}) {
             <div style={{flexShrink:0, marginTop:2}}>{iconFor(n.type)}</div>
             <div style={{flex:1, minWidth:0}}>
               <div style={{fontSize:13.5, fontWeight: n.is_read ? 500 : 700, color:'var(--color-text-primary)', marginBottom:2}}>{n.title}</div>
-              {n.body && <div style={{fontSize:12, color:'#5A4E3D', marginBottom:4}}>{n.body}</div>}
+              {n.body && <div style={{fontSize:12, color:'var(--color-text-taupe)', marginBottom:4}}>{n.body}</div>}
               <div style={{fontSize:11, color:'var(--color-text-muted)'}}>{relTime(n.created_at)}</div>
             </div>
           </div>
@@ -15008,7 +15008,7 @@ function ExportPage({onBack, showToast}) {
     return (
       <div style={{background:'#fff', borderRadius:10, border:'1px solid #EDE6DC', padding:14, marginBottom:14}}>
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'var(--color-accent)', marginBottom:4}}>{title}</div>
-        <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:10}}>{sub}</div>
+        <div style={{fontSize:12.5, color:'var(--color-text-taupe)', marginBottom:10}}>{sub}</div>
         <button onClick={onClick} disabled={busy} style={{padding:'8px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor: busy ? 'wait' : 'pointer'}}>{busy ? '…' : btnLabel}</button>
       </div>
     );
@@ -15018,7 +15018,7 @@ function ExportPage({onBack, showToast}) {
     <div style={{height:'100%', display:'flex', flexDirection:'column', background: 'var(--color-bg-page)'}}>
       <PageHeader onBack={onBack} title="Exporter mes données"/>
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 30px'}}>
-        <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:14}}>Triple résilience : exportez vos dossiers à tout moment vers Google Drive, iCloud, OneDrive ou votre ordinateur. Format universel CSV ou complet XLSX/ZIP.</div>
+        <div style={{fontSize:12.5, color:'var(--color-text-taupe)', marginBottom:14}}>Triple résilience : exportez vos dossiers à tout moment vers Google Drive, iCloud, OneDrive ou votre ordinateur. Format universel CSV ou complet XLSX/ZIP.</div>
 
         <Card title="CSV" sub="1 fichier plat de tous vos dossiers (UTF-8 BOM, séparateur point-virgule, compatible Excel FR)."
           btnLabel="Télécharger CSV" onClick={() => dl('csv')}/>
@@ -15028,7 +15028,7 @@ function ExportPage({onBack, showToast}) {
 
         <div style={{background:'#fff', borderRadius:10, border:'1px solid #EDE6DC', padding:14}}>
           <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color:'var(--color-accent)', marginBottom:4}}>ZIP complet</div>
-          <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:10}}>3 CSVs + dossier <code>photos/&lt;id&gt;/</code> + dossier <code>documents/&lt;id&gt;/</code> + README. Lien valide 1h.</div>
+          <div style={{fontSize:12.5, color:'var(--color-text-taupe)', marginBottom:10}}>3 CSVs + dossier <code>photos/&lt;id&gt;/</code> + dossier <code>documents/&lt;id&gt;/</code> + README. Lien valide 1h.</div>
           {zipState.status === 'idle' && (
             <button onClick={requestZip} style={{padding:'8px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer'}}>Générer le ZIP</button>
           )}
@@ -15838,19 +15838,19 @@ function PdfShareModal({dossierId, currency = 'EUR', showPrice: initShowPrice = 
         {/* M/2026/04/30/59 + M/2026/05/01/5 — icones SVG + toggles cliquables (state interne). */}
         <div style={{background: 'var(--color-bg-page)', borderRadius:12, padding:'4px 0', marginBottom:14}}>
           <div onClick={() => setShowPrice(v => !v)} style={{padding:'12px 16px', borderBottom:'1px solid #E8DDC9', display:'flex', alignItems:'center', gap:12, cursor:'pointer'}}>
-            <span style={{display:'inline-block', width:20, fontSize:11, fontWeight:700, color:'#5C3B1E', letterSpacing:.5, textAlign:'center'}}>EUR</span>
+            <span style={{display:'inline-block', width:20, fontSize:11, fontWeight:700, color:'var(--color-text-brown)', letterSpacing:.5, textAlign:'center'}}>EUR</span>
             <span style={{flex:1, fontSize:14, color:'#2D2018'}}>Prix</span>
             <ToggleBadge visible={showPrice} onClick={(e) => { e.stopPropagation(); setShowPrice(v => !v); }}/>
           </div>
           <div onClick={() => setShowAddress(v => !v)} style={{padding:'12px 16px', borderBottom:'1px solid #E8DDC9', display:'flex', alignItems:'center', gap:12, cursor:'pointer'}}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5C3B1E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Adresse" style={{flexShrink:0}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Adresse" style={{flexShrink:0}}>
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
             </svg>
             <span style={{flex:1, fontSize:14, color:'#2D2018'}}>Adresse complète</span>
             <ToggleBadge visible={showAddress} onClick={(e) => { e.stopPropagation(); setShowAddress(v => !v); }}/>
           </div>
           <div onClick={() => setShowIdentity(v => !v)} style={{padding:'12px 16px', display:'flex', alignItems:'center', gap:12, cursor:'pointer'}}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5C3B1E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Identité" style={{flexShrink:0}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Identité" style={{flexShrink:0}}>
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
             <span style={{flex:1, fontSize:14, color:'#2D2018'}}>Identité {genitiveProfil(profil)}</span>
@@ -15867,7 +15867,7 @@ function PdfShareModal({dossierId, currency = 'EUR', showPrice: initShowPrice = 
               const sel = expiresIn === v.k;
               return (
                 <button key={v.k} type="button" onClick={() => setExpiresIn(v.k)}
-                  style={{flexShrink:0, minHeight:36, padding:'8px 14px', borderRadius:18, border:'1px solid '+(sel?'#5C3B1E':'#D9C9A8'), background: sel?'#5C3B1E':'#FBF4E5', color: sel?'#fff':'#5C3B1E', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap'}}>
+                  style={{flexShrink:0, minHeight:36, padding:'8px 14px', borderRadius:18, border:'1px solid '+(sel?'var(--color-text-brown)':'#D9C9A8'), background: sel?'var(--color-text-brown)':'#FBF4E5', color: sel?'#fff':'var(--color-text-brown)', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap'}}>
                   {v.l}
                 </button>
               );
@@ -15973,7 +15973,7 @@ function AIDraftNoteModal({clientId, onClose, onUse, showToast}) {
           {['Professionnel', 'Décontracté', 'Détaillé'].map(t => (
             <button key={t} onClick={() => setTone(t)} style={{
               flex:1, padding:'6px 8px', fontSize:11.5, fontFamily:'inherit',
-              background: tone===t ? 'var(--color-accent)' : '#fff', color: tone===t ? '#fff' : '#5A4E3D',
+              background: tone===t ? 'var(--color-accent)' : '#fff', color: tone===t ? '#fff' : 'var(--color-text-taupe)',
               border:'1px solid ' + (tone===t ? 'var(--color-accent)' : '#D8CCB4'),
               borderRadius:5, cursor:'pointer',
             }}>{t}</button>
@@ -16054,7 +16054,7 @@ function AIDraftMessageModal({clientId, clientPhone, onClose, showToast}) {
             {[{k:'whatsapp',l:'WhatsApp'},{k:'sms',l:'SMS'},{k:'email',l:'Email'}].map(c => (
               <button key={c.k} onClick={() => setChannel(c.k)} style={{
                 flex:1, padding:'6px 10px', fontSize:12,
-                background: channel===c.k ? 'var(--color-accent)' : '#fff', color: channel===c.k ? '#fff' : '#5A4E3D',
+                background: channel===c.k ? 'var(--color-accent)' : '#fff', color: channel===c.k ? '#fff' : 'var(--color-text-taupe)',
                 border:'1px solid ' + (channel===c.k ? 'var(--color-accent)' : '#D8CCB4'), borderRadius:5, cursor:'pointer', fontFamily:'inherit',
               }}>{c.l}</button>
             ))}
@@ -16105,7 +16105,7 @@ function AIQuotaSection({showToast}) {
   if (!quota) return <div style={{color:'var(--color-text-muted)', fontSize:12}}>Chargement…</div>;
   if (!quota.monthly) {
     return (
-      <div style={{fontSize:13, color:'#5A4E3D'}}>
+      <div style={{fontSize:13, color:'var(--color-text-taupe)'}}>
         Cette fonctionnalité requiert le plan <b>Pro</b> ou <b>Équipe</b>.
         <div style={{marginTop:8}}>
           <a href="https://ocre.immo#tarifs" target="_blank" style={{padding:'6px 12px', background:'var(--color-accent)', color:'#fff', borderRadius:5, fontSize:12, textDecoration:'none', display:'inline-block'}}>Voir les plans</a>
@@ -16241,7 +16241,7 @@ function CalendarSubscriptionField() {
   }
   return (
     <div style={{padding:'4px 0'}}>
-      <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:6}}>Ajoutez cette URL à Apple Calendar (Comptes &rsaquo; Ajouter compte &rsaquo; Autre &rsaquo; Compte CalDAV) ou Google Calendar (Autres agendas &rsaquo; À partir d'une URL) pour sync automatique.</div>
+      <div style={{fontSize:12.5, color:'var(--color-text-taupe)', marginBottom:6}}>Ajoutez cette URL à Apple Calendar (Comptes &rsaquo; Ajouter compte &rsaquo; Autre &rsaquo; Compte CalDAV) ou Google Calendar (Autres agendas &rsaquo; À partir d'une URL) pour sync automatique.</div>
       <input readOnly value={url} onClick={e => e.target.select()} style={{width:'100%', padding:8, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'monospace', fontSize:11.5, boxSizing:'border-box', marginBottom:6}}/>
       <button onClick={copy} disabled={!url} style={{padding:'6px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'var(--color-accent)', fontFamily:'inherit', fontSize:12, cursor: url ? 'pointer' : 'wait'}}>{copied ? 'Copié ✓' : 'Copier'}</button>
     </div>
@@ -16445,7 +16445,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
             </div>
             {tgLink.status === 'pending' && tgLink.deep_link_https && (
               <div style={{padding:'10px 12px', background:'#FAF6EE', border:'1px dashed #C9B79A', borderRadius:8, marginTop:4}}>
-                <div style={{fontSize:11.5, color:'#5A4E3D', marginBottom:8, lineHeight:1.4}}>1. Tap le lien ci-dessous (Telegram s'ouvrira) puis confirme avec <b>/start</b>.</div>
+                <div style={{fontSize:11.5, color:'var(--color-text-taupe)', marginBottom:8, lineHeight:1.4}}>1. Tap le lien ci-dessous (Telegram s'ouvrira) puis confirme avec <b>/start</b>.</div>
                 <a href={tgLink.deep_link_https} target="_blank" rel="noopener" style={{display:'inline-block', padding:'8px 14px', background:'#229ED9', color:'#fff', borderRadius:6, textDecoration:'none', fontWeight:600, fontSize:12.5, marginRight:6}}>Ouvrir Telegram</a>
                 <button onClick={copyTgLink} style={{padding:'8px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'var(--color-accent)', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer'}}>Copier le lien</button>
                 <div style={{fontSize:10.5, color:'var(--color-text-muted)', marginTop:6, fontStyle:'italic'}}>Le statut se mettra à jour automatiquement.</div>
@@ -16460,7 +16460,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
           </div>
           <Toggle checked={E.enabled} onChange={v => update('notif.email.enabled', v)} label="Email" sub={prefs._email || '—'}/>
           {E.enabled && (
-            <div style={{padding:'4px 0 8px', fontSize:12.5, color:'#5A4E3D'}}>
+            <div style={{padding:'4px 0 8px', fontSize:12.5, color:'var(--color-text-taupe)'}}>
               <label>Si hors ligne depuis : <b>{E.offline_threshold_min}</b> min</label>
               <input type="range" min={5} max={120} step={5} value={E.offline_threshold_min}
                 onChange={e => update('notif.email.offline_threshold_min', Number(e.target.value))}
@@ -16483,31 +16483,31 @@ function PreferencesPage({onBack, showToast, currentUser}) {
         </Section>
 
         <Section title="Mes critères de matching">
-          <div style={{padding:'8px 0', fontSize:12.5, color:'#5A4E3D'}}>
+          <div style={{padding:'8px 0', fontSize:12.5, color:'var(--color-text-taupe)'}}>
             <label>Seuil minimum : <b>{M.seuil_min_pct}%</b></label>
             <input type="range" min={50} max={95} step={1} value={M.seuil_min_pct}
               onChange={e => update('match_pref.seuil_min_pct', Number(e.target.value))}
               style={{width:'100%', marginTop:4}}/>
           </div>
-          <div style={{padding:'8px 0', fontSize:12.5, color:'#5A4E3D'}}>
+          <div style={{padding:'8px 0', fontSize:12.5, color:'var(--color-text-taupe)'}}>
             <label>Tolérance budget : <b>{M.tolerances.budget_pct}%</b></label>
             <input type="range" min={5} max={30} value={M.tolerances.budget_pct}
               onChange={e => update('match_pref.tolerances.budget_pct', Number(e.target.value))}
               style={{width:'100%'}}/>
           </div>
-          <div style={{padding:'8px 0', fontSize:12.5, color:'#5A4E3D'}}>
+          <div style={{padding:'8px 0', fontSize:12.5, color:'var(--color-text-taupe)'}}>
             <label>Tolérance surface hab. : <b>{M.tolerances.surface_hab_pct}%</b></label>
             <input type="range" min={10} max={40} value={M.tolerances.surface_hab_pct}
               onChange={e => update('match_pref.tolerances.surface_hab_pct', Number(e.target.value))}
               style={{width:'100%'}}/>
           </div>
-          <div style={{padding:'8px 0', fontSize:12.5, color:'#5A4E3D'}}>
+          <div style={{padding:'8px 0', fontSize:12.5, color:'var(--color-text-taupe)'}}>
             <label>Tolérance terrain : <b>{M.tolerances.surface_terrain_pct}%</b></label>
             <input type="range" min={20} max={60} value={M.tolerances.surface_terrain_pct}
               onChange={e => update('match_pref.tolerances.surface_terrain_pct', Number(e.target.value))}
               style={{width:'100%'}}/>
           </div>
-          <div style={{padding:'8px 0', fontSize:12.5, color:'#5A4E3D'}}>
+          <div style={{padding:'8px 0', fontSize:12.5, color:'var(--color-text-taupe)'}}>
             <label>Tolérance chambres : <b>±{M.tolerances.chambres}</b></label>
             <input type="range" min={0} max={3} value={M.tolerances.chambres}
               onChange={e => update('match_pref.tolerances.chambres', Number(e.target.value))}
@@ -16616,7 +16616,7 @@ function ScanWebModal({onClose, showToast, clientId}) {
         </div>
         {!results && (
           <>
-            <div style={{fontSize:12.5, color:'#5A4E3D', marginBottom:10}}>Recherchez des biens sur des sources externes (cache 6h, rate limit respecté).</div>
+            <div style={{fontSize:12.5, color:'var(--color-text-taupe)', marginBottom:10}}>Recherchez des biens sur des sources externes (cache 6h, rate limit respecté).</div>
             <input value={ville} onChange={e => setVille(e.target.value)} placeholder="Ville (Marrakech, Paris…)"
               style={{width:'100%', padding:8, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:8, boxSizing:'border-box'}}/>
             <div style={{display:'flex', gap:8, marginBottom:10}}>
@@ -16796,7 +16796,7 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
           return (
             <button key={t.k} onClick={() => setTab(t.k)}
               style={{padding:'7px 12px', borderRadius:16, border:'1px solid ' + (active ? 'var(--color-accent)' : '#D8CCB4'),
-                      background: active ? 'var(--color-accent)' : '#fff', color: active ? '#fff' : '#5A4E3D',
+                      background: active ? 'var(--color-accent)' : '#fff', color: active ? '#fff' : 'var(--color-text-taupe)',
                       fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap',
                       display:'flex', alignItems:'center', gap:6}}>
               <span>{t.l}</span>
@@ -16870,7 +16870,7 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
               </div>
               {/* Sous-titre photo */}
               <div style={{marginBottom:10}}>
-                <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:15, color:'#5C3B1E', fontWeight:600, lineHeight:1.2}}>
+                <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:15, color:'var(--color-text-brown)', fontWeight:600, lineHeight:1.2}}>
                   {[owner.bienLbl, owner.locationLbl].filter(x => x && x !== '—').join(' · ')}
                 </div>
                 <div style={{fontFamily:"'DM Sans', sans-serif", fontSize:11, color:'var(--color-text-muted)', marginTop:2}}>
@@ -16908,7 +16908,7 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
               </div>
               {/* Pills critères ✓/✗ */}
               {(matched.length + divergent.length > 0) && (
-                <div style={{marginTop:10, fontSize:11, color:'#5A4E3D', display:'flex', flexWrap:'wrap', gap:4}}>
+                <div style={{marginTop:10, fontSize:11, color:'var(--color-text-taupe)', display:'flex', flexWrap:'wrap', gap:4}}>
                   {matched.map((c,i) => (
                     <span key={'m'+i} style={{display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', background:'#E6F3E1', color:'#2F7D32', borderRadius:10, fontSize:11, fontWeight:600}}>{ICONS.check}{c}</span>
                   ))}
@@ -17696,7 +17696,7 @@ function V57ChipsMulti({options, value, onToggle, color = 'var(--color-accent)'}
             style={{padding:'5px 10px', fontSize:11, fontWeight:600, fontFamily:'inherit',
                     border:'1.5px solid ' + (on ? color : '#C9B79A'),
                     background: on ? color : '#FBF1E4',
-                    color: on ? '#fff' : '#5C3B1E',
+                    color: on ? '#fff' : 'var(--color-text-brown)',
                     borderRadius:14, cursor:'pointer'}}>
             {opt}
           </button>
@@ -17757,7 +17757,7 @@ function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCo
               style={{padding:'6px 11px', fontSize:12, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
                       border:'1.5px solid ' + (on ? 'var(--color-accent)' : '#C9B79A'),
                       background: on ? 'var(--color-accent)' : '#FBF1E4',
-                      color: on ? '#fff' : '#5C3B1E',
+                      color: on ? '#fff' : 'var(--color-text-brown)',
                       borderRadius:14, cursor:'pointer'}}>
               {p}
             </button>
@@ -17769,7 +17769,7 @@ function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCo
           style={{padding:'6px 11px', fontSize:12, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0,
                   border:'1.5px solid ' + (criteria.investisseur ? '#6B4A8E' : '#C9B79A'),
                   background: criteria.investisseur ? '#6B4A8E' : '#FBF1E4',
-                  color: criteria.investisseur ? '#fff' : '#5C3B1E',
+                  color: criteria.investisseur ? '#fff' : 'var(--color-text-brown)',
                   borderRadius:14, cursor:'pointer'}}>
           ⊕ Investisseur
         </button>
@@ -18039,7 +18039,7 @@ function ListView(props) {
           style={{flexShrink:0, padding:'6px 10px', borderRadius:14, fontSize:12, fontWeight:700, fontFamily:'inherit',
                   border:'1.5px solid ' + (advancedOpen || advActive ? 'var(--color-accent)' : '#C9B79A'),
                   background: advancedOpen || advActive ? 'var(--color-accent)' : '#FBF1E4',
-                  color: advancedOpen || advActive ? '#fff' : '#5C3B1E',
+                  color: advancedOpen || advActive ? '#fff' : 'var(--color-text-brown)',
                   cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, whiteSpace:'nowrap'}}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -18111,7 +18111,7 @@ function ListView(props) {
       )}
       {advActive && !advancedOpen && (
         <div style={{padding:'8px 14px', background:'#FFF9F0', borderBottom:'1px solid #E8DDD0', display:'flex', alignItems:'center', gap:10}}>
-          <span style={{flex:1, fontSize:12, fontWeight:600, color:'#5C3B1E'}}>Résultats : {advFilteredScored.length} dossier{advFilteredScored.length !== 1 ? 's' : ''}</span>
+          <span style={{flex:1, fontSize:12, fontWeight:600, color:'var(--color-text-brown)'}}>Résultats : {advFilteredScored.length} dossier{advFilteredScored.length !== 1 ? 's' : ''}</span>
           <button onClick={() => setAdvancedCriteria(v57DefaultCriteria())}
             style={{padding:'5px 10px', fontSize:11, fontWeight:600, fontFamily:'inherit', border:'1.5px solid #C9B79A', background:'#FBF1E4', color:'var(--color-accent)', borderRadius:10, cursor:'pointer'}}>
             Effacer
@@ -18292,7 +18292,7 @@ function AdressePill({adresse, ville, cp, quartier, pays, lat, lng}) {
       onTouchStart={e => e.stopPropagation()}
       style={{display:'inline-flex', alignItems:'flex-start', gap:5, padding:'4px 9px',
               background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:14,
-              color:'#5C3B1E', textDecoration:'none', fontSize:11, fontWeight:500,
+              color:'var(--color-text-brown)', textDecoration:'none', fontSize:11, fontWeight:500,
               fontFamily:'inherit', minWidth:0, maxWidth:'100%', boxSizing:'border-box',
               flexShrink:1, overflow:'hidden', lineHeight:1.25}}>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -18744,7 +18744,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         </button>
         {/* Type bien sous la photo. Truncate si long. Cliquable -> openSec(1, e). */}
         <div onClick={e => { e.stopPropagation(); openSec(1, e); }}
-          style={{fontSize:10, fontWeight:600, color:'#5C3B1E', textAlign:'center', width:54, lineHeight:1.2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', cursor:'pointer'}}>
+          style={{fontSize:10, fontWeight:600, color:'var(--color-text-brown)', textAlign:'center', width:54, lineHeight:1.2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', cursor:'pointer'}}>
           {typeBien ? typeBien.split(' · ')[0].slice(0, 10) : '—'}
         </div>
         </div>
@@ -18809,7 +18809,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
               <a href={'mailto:' + primaryEmail}
                 onClick={e => e.stopPropagation()}
                 onTouchStart={e => e.stopPropagation()}
-                style={{display:'inline-flex', alignItems:'center', gap:3, padding:'3px 8px', background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:14, color:'#5C3B1E', textDecoration:'none', fontSize:11, fontWeight:500, whiteSpace:'nowrap', fontFamily:'inherit', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, maxWidth:150, boxSizing:'border-box', flexShrink:1}}>
+                style={{display:'inline-flex', alignItems:'center', gap:3, padding:'3px 8px', background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:14, color:'var(--color-text-brown)', textDecoration:'none', fontSize:11, fontWeight:500, whiteSpace:'nowrap', fontFamily:'inherit', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, maxWidth:150, boxSizing:'border-box', flexShrink:1}}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                   <polyline points="22,6 12,13 2,6"/>
@@ -18839,7 +18839,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
               onTouchStart={e => e.stopPropagation()}
               style={{display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px',
                       background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:14,
-                      color:'#5C3B1E', textDecoration:'none', fontSize:11, fontWeight:500,
+                      color:'var(--color-text-brown)', textDecoration:'none', fontSize:11, fontWeight:500,
                       fontFamily:'inherit', maxWidth:'100%', boxSizing:'border-box',
                       overflow:'hidden', minWidth:0, alignSelf:'flex-start'}}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
@@ -19575,7 +19575,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
         <div style={{display:'flex', gap:4}}>
           {[['all','Tous'],['Vdr','Vdr'],['Ach','Ach'],['Bai','Bai'],['Loc','Loc'],['Inv','Inv']].map(([k, lbl]) => (
             <button key={k} type="button" onClick={() => setFilter(k)}
-              style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'1.5px solid ' + (filter === k ? 'var(--color-accent)' : '#C9B79A'), background: filter === k ? 'var(--color-accent)' : '#FBF1E4', color: filter === k ? '#fff' : '#5C3B1E', borderRadius:14, cursor:'pointer'}}>
+              style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'1.5px solid ' + (filter === k ? 'var(--color-accent)' : '#C9B79A'), background: filter === k ? 'var(--color-accent)' : '#FBF1E4', color: filter === k ? '#fff' : 'var(--color-text-brown)', borderRadius:14, cursor:'pointer'}}>
               {lbl}
             </button>
           ))}
@@ -19583,7 +19583,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
         <div style={{display:'flex', gap:0, border:'1.5px solid #C9B79A', borderRadius:8, overflow:'hidden'}}>
           {[['compact','Compact'],['normal','Normal'],['relaxed','Relâché']].map(([k, lbl], i) => (
             <button key={k} type="button" onClick={() => setDensity(k)}
-              style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'none', borderLeft: i > 0 ? '1px solid #C9B79A' : 'none', background: density === k ? 'var(--color-accent)' : '#FBF1E4', color: density === k ? '#fff' : '#5C3B1E', cursor:'pointer'}}>
+              style={{padding:'5px 10px', fontSize:11, fontWeight:700, fontFamily:'inherit', border:'none', borderLeft: i > 0 ? '1px solid #C9B79A' : 'none', background: density === k ? 'var(--color-accent)' : '#FBF1E4', color: density === k ? '#fff' : 'var(--color-text-brown)', cursor:'pointer'}}>
               {lbl}
             </button>
           ))}
@@ -19717,7 +19717,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
                   <td style={cellStyle}>
                     {c.email ? (
                       <a href={'mailto:' + c.email} onClick={e => e.stopPropagation()}
-                        style={{textDecoration:'none', color:'#5C3B1E', display:'inline-flex', alignItems:'center', gap:4, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                        style={{textDecoration:'none', color:'var(--color-text-brown)', display:'inline-flex', alignItems:'center', gap:4, maxWidth:200, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
                           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
                         </svg>
@@ -19790,12 +19790,12 @@ function SheetView({onBack, clients, openClient, showToast}) {
                   </td>
                   {/* III.11 Prix demandé */}
                   <td style={cellStyle}>
-                    {prixDem ? <span><b style={{fontFamily:'Cormorant Garamond,serif', fontSize:13.5, color:'var(--color-text-primary)'}}>{fmtSheetMoney(prixDem)}</b> <small style={{color:'#5C3B1E', fontSize:10, fontWeight:600}}>{planCur}</small></span> : <span style={{color:'#C4B5A0'}}>—</span>}
+                    {prixDem ? <span><b style={{fontFamily:'Cormorant Garamond,serif', fontSize:13.5, color:'var(--color-text-primary)'}}>{fmtSheetMoney(prixDem)}</b> <small style={{color:'var(--color-text-brown)', fontSize:10, fontWeight:600}}>{planCur}</small></span> : <span style={{color:'#C4B5A0'}}>—</span>}
                   </td>
                   {/* III.12 Prix accepté */}
                   <td style={cellStyle}><span style={{color:'#C4B5A0'}}>—</span></td>
                   {/* III.13 Période */}
-                  <td style={cellStyle}><span style={{fontSize:11, color:'#5C3B1E'}}>{periode}</span></td>
+                  <td style={cellStyle}><span style={{fontSize:11, color:'var(--color-text-brown)'}}>{periode}</span></td>
                   {/* III.14 Frais % */}
                   <td style={cellStyle}>
                     {fin.frais_pct ? <span style={{padding:'1px 6px', fontSize:10, fontWeight:700, borderRadius:8, background:'#E8F5EC', color:'#3E8B5E'}}>{fin.frais_pct} %</span> : <span style={{color:'#C4B5A0'}}>—</span>}
@@ -20217,7 +20217,7 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
                   {v: 'partenaire', l: 'Annonce partenaire (accord pour partager)'},
                   {v: 'veille', l: 'Veille marché (référence interne)'},
                 ].map(opt => (
-                  <label key={opt.v} style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'1.5px solid '+(sourceType === opt.v ? '#B26D3A' : '#E0CDAE'), background: sourceType === opt.v ? '#FBF1E4' : '#FDFAF7', cursor:'pointer', fontSize:13, fontFamily:'inherit', color: sourceType === opt.v ? '#5C3B1E' : 'var(--color-text-primary)', fontWeight: sourceType === opt.v ? 600 : 500}}>
+                  <label key={opt.v} style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8, border:'1.5px solid '+(sourceType === opt.v ? '#B26D3A' : '#E0CDAE'), background: sourceType === opt.v ? '#FBF1E4' : '#FDFAF7', cursor:'pointer', fontSize:13, fontFamily:'inherit', color: sourceType === opt.v ? 'var(--color-text-brown)' : 'var(--color-text-primary)', fontWeight: sourceType === opt.v ? 600 : 500}}>
                     <input type="radio" name="source-annonce" value={opt.v} checked={sourceType === opt.v} onChange={() => setSourceType(opt.v)} style={{margin:0, accentColor:'#B26D3A'}}/>
                     <span>{opt.l}</span>
                   </label>
@@ -20325,7 +20325,7 @@ function ClientAutocomplete({prenom, nom, societeNom, profilType, clients, curre
     <div style={{marginTop:-4, marginBottom:10, border:'1px solid #C9B79A', borderRadius:8, background:'#fff', boxShadow:'0 2px 8px rgba(0,0,0,0.06)', maxHeight:240, overflowY:'auto'}}>
       <div style={{padding:'6px 10px', fontSize:10.5, color:'var(--color-text-muted)', fontStyle:'italic', borderBottom:'1px solid #F0E9DC', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
         <span>Clients existants — tap pour pré-remplir (Esc/Espace pour ignorer)</span>
-        <span onClick={() => setDismissed(true)} style={{cursor:'pointer', color:'#5C3B1E', fontWeight:700, padding:'0 4px'}}>✕</span>
+        <span onClick={() => setDismissed(true)} style={{cursor:'pointer', color:'var(--color-text-brown)', fontWeight:700, padding:'0 4px'}}>✕</span>
       </div>
       {matches.map(c => {
         const isSoc = c.profil_type === 'Société';
@@ -20813,7 +20813,7 @@ function PhotosGalleryV28({dossier, showToast}) {
            onDrop={(e) => { e.preventDefault(); setDragOverZone(false); handleFiles(e.dataTransfer.files); }}
            onClick={() => fileInputRef.current && fileInputRef.current.click()}
            style={{border:'2px dashed ' + (dragOverZone ? 'var(--color-accent)' : '#C9B79A'), borderRadius:8, padding:'14px', textAlign:'center', cursor:'pointer', background: dragOverZone ? '#FFF4E0' : 'transparent', marginBottom:10, transition:'all 150ms'}}>
-        <div style={{fontSize:13, color:'#5C3B1E', fontWeight:600}}>
+        <div style={{fontSize:13, color:'var(--color-text-brown)', fontWeight:600}}>
           {uploading > 0 ? 'Upload… (' + uploading + ' restant·e·s)' : 'Glisser des photos ici ou cliquer pour choisir'}
         </div>
         <div style={{fontSize:11, color:'var(--color-text-muted)', marginTop:4}}>JPG / PNG / HEIC · converties en WebP · 20 MB max</div>
@@ -20987,7 +20987,7 @@ function M80PrixVenteBlock({d}) {
   if (_total <= 0) return null;
   const fmt = (n) => fmtNumV5(n) + ' ' + (CURRENCY_SYMBOL_V5[cur.left] || cur.left || '');
   return (
-    <div style={{padding:'14px 16px', background:'#5C3B1E', border:'1px solid #5C3B1E', borderRadius:11, color:'#F4EDDC'}}>
+    <div style={{padding:'14px 16px', background:'var(--color-text-brown)', border:'1px solid var(--color-text-brown)', borderRadius:11, color:'#F4EDDC'}}>
       <div style={{fontSize:11, fontWeight:700, color:'#F4EDDC', textTransform:'uppercase', letterSpacing:.5, marginBottom:6, opacity:.85}}>06c &middot; Prix de vente affiche</div>
       <div style={{fontSize:22, fontWeight:800, color:'#fff', marginBottom:4, lineHeight:1.2}}>{fmt(_total)}</div>
       <div style={{fontSize:11, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
@@ -21005,7 +21005,7 @@ function M80MandatBlock({d, set}) {
   const _onSel = (k, v) => set(k, v, {commit: true});
   return (
     <div style={{padding:'12px 14px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:11}}>
-      <div style={{fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:14, color:'#5C3B1E', marginBottom:8, letterSpacing:.3}}>06a &middot; Mandat</div>
+      <div style={{fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:14, color:'var(--color-text-brown)', marginBottom:8, letterSpacing:.3}}>06a &middot; Mandat</div>
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:8}}>
         <div>
           <label style={{display:'block', fontSize:11, fontWeight:600, color:'var(--color-text-muted)', marginBottom:4, textTransform:'uppercase', letterSpacing:.4}}>Type de mandat</label>
@@ -21071,7 +21071,7 @@ function Section7({d, set}) {
       {/* Bandeau Cadre legal detecte */}
       <div style={{padding:'7px 11px', background:'linear-gradient(90deg, #F4E5C8, #FFF8E8)', border:'1px solid #C9A961', borderRadius:9, marginBottom:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
         <span style={{fontSize:18, flexShrink:0}}>{_ref ? _ref.flag : '🌐'}</span>
-        <span style={{flex:1, minWidth:0, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:13, color:'#5C3B1E'}}>
+        <span style={{flex:1, minWidth:0, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:13, color:'var(--color-text-brown)'}}>
           Cadre legal &middot; <b style={{fontStyle:'normal', fontWeight:700}}>{_ref ? _ref.name : (_pays || 'Pays non renseigne')}</b>
         </span>
         <span style={{fontSize:10, color:'var(--color-text-muted)', fontStyle:'italic'}}>detecte Section II</span>
@@ -21118,7 +21118,7 @@ function Section7({d, set}) {
 
       {/* 7c Pieces / Diagnostics pays-dependant */}
       <div style={{padding:'10px 12px', background:'#fff', border:'1px solid #E8DDC9', borderRadius:11, marginBottom:8}}>
-        <div style={{fontSize:11, fontWeight:700, color:'#5C3B1E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>{_ref ? _ref.blockHeaders.pieces : '07c · Pieces & diagnostics'}</div>
+        <div style={{fontSize:11, fontWeight:700, color:'var(--color-text-brown)', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>{_ref ? _ref.blockHeaders.pieces : '07c · Pieces & diagnostics'}</div>
         {_ref ? (
           <div style={{display:'flex', flexDirection:'column', gap:6}}>
             {((_ref.diagnostics) || (_ref.pieces) || []).map(item => {
@@ -21156,7 +21156,7 @@ function Section7({d, set}) {
 
       {/* 7d Cadre legal pays-dependant */}
       <div style={{padding:'10px 12px', background:'#fff', border:'1.5px dashed #C9A961', borderRadius:10}}>
-        <div style={{fontSize:11, fontWeight:700, color:'#5C3B1E', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>{_ref ? _ref.blockHeaders.legal : '07d · Cadre legal'}</div>
+        <div style={{fontSize:11, fontWeight:700, color:'var(--color-text-brown)', textTransform:'uppercase', letterSpacing:.5, marginBottom:8}}>{_ref ? _ref.blockHeaders.legal : '07d · Cadre legal'}</div>
         {_ref ? (
           <ul style={{listStyle:'none', padding:0, margin:0, display:'flex', flexDirection:'column', gap:6}}>
             {_ref.legal.map(item => {
@@ -21171,7 +21171,7 @@ function Section7({d, set}) {
                   <span style={{flexShrink:0, marginTop:6, width:5, height:5, borderRadius:'50%', background:'var(--color-accent)'}}/>
                   <div style={{flex:1, minWidth:0}}>
                     <span style={{fontSize:12, fontWeight:700, color:'var(--color-text-primary)'}}>{item.label}</span>
-                    <div style={{fontSize:11, color:'#5C3B1E', marginTop:1, lineHeight:1.4}}>{item.text}</div>
+                    <div style={{fontSize:11, color:'var(--color-text-brown)', marginTop:1, lineHeight:1.4}}>{item.text}</div>
                   </div>
                 </li>
               );
@@ -21830,7 +21830,7 @@ function FormView(props) {
           <a href={'mailto:' + sec1Email}
             onClick={e => e.stopPropagation()}
             onTouchStart={e => e.stopPropagation()}
-            style={{flexShrink:0, flexGrow:0, display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:20, color:'#5C3B1E', textDecoration:'none', fontSize:12, fontWeight:500, boxShadow:'0 1px 2px rgba(60,40,20,.08)', whiteSpace:'nowrap', fontFamily:'inherit', maxWidth:'100%', boxSizing:'border-box'}}>
+            style={{flexShrink:0, flexGrow:0, display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', background:'#FDF8F0', border:'1px solid #C9B79A', borderRadius:20, color:'var(--color-text-brown)', textDecoration:'none', fontSize:12, fontWeight:500, boxShadow:'0 1px 2px rgba(60,40,20,.08)', whiteSpace:'nowrap', fontFamily:'inherit', maxWidth:'100%', boxSizing:'border-box'}}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
               <polyline points="22,6 12,13 2,6"/>
@@ -22120,7 +22120,7 @@ function FormView(props) {
         borderBottom: '1px solid ' + (_peIsAuthor ? '#D8CCB4' : '#D6B287'),
         padding: '8px 14px',
         fontSize: 12.5,
-        color: _peIsAuthor ? '#5A4E3D' : 'var(--color-accent)',
+        color: _peIsAuthor ? 'var(--color-text-taupe)' : 'var(--color-accent)',
         cursor: _peIsAuthor ? 'default' : 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -22213,7 +22213,7 @@ function FormView(props) {
           // M/2026/05/03/31 — emails + calendrier ajoutes dans le bloc identite.
           const _emailsBar = Array.isArray(d.emails) && d.emails.length > 0 ? d.emails : (d.email ? [{valeur: d.email}] : []);
           const _emailBar = (_emailsBar[0] && _emailsBar[0].valeur) || '';
-          const _iconBtnStyle = {width:28, height:28, borderRadius:'50%', border:'1px solid #C9B79A', background:'#FDF8F0', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, color:'#5C3B1E', flexShrink:0, textDecoration:'none'};
+          const _iconBtnStyle = {width:28, height:28, borderRadius:'50%', border:'1px solid #C9B79A', background:'#FDF8F0', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, color:'var(--color-text-brown)', flexShrink:0, textDecoration:'none'};
           return (
             <div style={{display:'flex', alignItems:'center', gap:6, padding:'4px 10px', background:'#FFF8EB', border:'1px solid #E8DDC9', borderRadius:10, minWidth:0}}>
               <span style={{flex:'0 1 auto', minWidth:0, fontSize:13.5, fontWeight:700, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontFamily:'inherit'}}>
@@ -22362,12 +22362,12 @@ function FormView(props) {
                 </div>
                 <div style={{fontSize:17, fontWeight:700, color:'var(--color-text-primary)', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>{(confirmProfilSwitch && confirmProfilSwitch.title) || 'Profil modifié'}</div>
               </div>
-              <div style={{fontSize:13, color:'#5A4E3D', lineHeight:1.5, marginBottom:18}}>
+              <div style={{fontSize:13, color:'var(--color-text-taupe)', lineHeight:1.5, marginBottom:18}}>
                 {(confirmProfilSwitch && confirmProfilSwitch.message) || 'Confirmer le changement de profil ?'}
               </div>
               <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
                 <button type="button" onClick={() => setConfirmProfilSwitch(null)}
-                  style={{padding:'8px 16px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                  style={{padding:'8px 16px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'var(--color-text-brown)', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
                   Annuler
                 </button>
                 <button type="button" onClick={applyProfilSwitchM39}
@@ -23382,7 +23382,7 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{padding:'40px 24px', textAlign:'center', fontFamily:"'DM Sans', sans-serif", color:'#5C3B1E', maxWidth:480, margin:'40px auto', background:'#fff', borderRadius:14, border:'1px solid #EDE6DC'}}>
+        <div style={{padding:'40px 24px', textAlign:'center', fontFamily:"'DM Sans', sans-serif", color:'var(--color-text-brown)', maxWidth:480, margin:'40px auto', background:'#fff', borderRadius:14, border:'1px solid #EDE6DC'}}>
           <h2 style={{fontFamily:"'Cormorant Garamond', Georgia, serif", color:'var(--color-accent)', fontSize:26, fontWeight:700, marginBottom:10}}>Une erreur est survenue</h2>
           <p style={{fontSize:13, color:'var(--color-text-muted)', lineHeight:1.5, marginBottom:18}}>
             L'app a rencontre un probleme inattendu. Tes donnees sont sauvegardees automatiquement.<br/>
