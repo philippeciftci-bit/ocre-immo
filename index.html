@@ -326,7 +326,7 @@ input, select, textarea, button { font-size:13px }
 .dossier-group .client-row-card{margin-bottom:0;border-radius:8px}
 .dossier-group > div:first-child .client-row-card{border-top-left-radius:10px;border-top-right-radius:10px}
 .dossier-group > div:last-child .client-row-card{border-bottom-left-radius:10px;border-bottom-right-radius:10px}
-.client-row-sector-urgent{color:#C04B20;font-weight:700}
+.client-row-sector-urgent{color:var(--color-error);font-weight:700}
 @media (min-width: 768px) {
   .client-row-sector{min-height:58px}
   .client-row-sector-l1{font-size:12.5px}
@@ -353,8 +353,8 @@ input, select, textarea, button { font-size:13px }
 /* V17.4 UX v3 : statut foncier MA — 3 états couleurs notaire. */
 .foncier-titre{background:#E8F5EC !important;border:1.5px solid #B8DEC4 !important;color:#3E8B5E !important}
 .foncier-titre.state-selected{background:#D3ECD8 !important;border:2px solid #3E8B5E !important;color:#2A6B44 !important;font-weight:700 !important}
-.foncier-requisition{background:#FFF5E0 !important;border:1.5px solid #EBD38F !important;color:#D4A437 !important}
-.foncier-requisition.state-selected{background:#F9E7BC !important;border:2px solid #D4A437 !important;color:#9C7A1F !important;font-weight:700 !important}
+.foncier-requisition{background:#FFF5E0 !important;border:1.5px solid #EBD38F !important;color:var(--color-warning) !important}
+.foncier-requisition.state-selected{background:#F9E7BC !important;border:2px solid var(--color-warning) !important;color:#9C7A1F !important;font-weight:700 !important}
 .foncier-moulkia{background:#FFE8E8 !important;border:1.5px solid #F0BEBE !important;color:#C04848 !important}
 .foncier-moulkia.state-selected{background:#F7CFCF !important;border:2px solid #C04848 !important;color:#8C2D2D !important;font-weight:700 !important}
 
@@ -394,7 +394,7 @@ input, select, textarea, button { font-size:13px }
 .phone-unified input{flex:1 1 auto;min-width:0;padding:9px 11px;border:0;outline:none;background:transparent;font:inherit;font-size:14px;color:var(--color-text-primary)}
 .phone-unified.is-empty{border:1.5px solid #E8DDD0;background:#FDFAF7}
 .phone-unified.is-filled{border:1.5px solid #BBA88B;background:#FFFCF5}
-.phone-unified.is-warn{border:1.5px solid #D4A437;background:#FFFBEF}
+.phone-unified.is-warn{border:1.5px solid var(--color-warning);background:#FFFBEF}
 .phone-unified.is-focus{border-color:var(--color-accent) !important;background:#fff}
 .phone-popover{position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:#fff;border:1.5px solid #BBA88B;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:100;margin-top:2px}
 .phone-popover .item{padding:10px 12px;font-size:14px;cursor:pointer;border-bottom:1px solid #F4EEE6;display:flex;gap:8px;align-items:center}
@@ -479,7 +479,7 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
 const PROFILS_ORDER = ['Acheteur','Vendeur','Bailleur','Locataire','Promoteur','MarchandBiens','Investisseur','Curieux'];
 const PROFILS = {
   Acheteur:'var(--color-accent)', Vendeur:'#1E3A5F', Investisseur:'#6B4E8B',
-  Bailleur:'#2D6B3F', Locataire:'#8B6B1E', Curieux:'#757575',
+  Bailleur:'var(--color-success)', Locataire:'#8B6B1E', Curieux:'#757575',
   Promoteur:'#5A3F2A', MarchandBiens:'#4A5A6F'
 };
 // V18.15 — tint backgrounds ligne 1 ClientRow (12% opacity de la couleur profil).
@@ -986,7 +986,7 @@ function fraisAcquisitionPct(pays) {
   return 7;
 }
 const PRIORITES = [
-  {k:'redhibitoire', l:'Rédhibitoire', c:'#D64545', bg:'#FEF6F6'},
+  {k:'redhibitoire', l:'Rédhibitoire', c:'var(--color-error)', bg:'#FEF6F6'},
   {k:'souhaite',     l:'Souhaité',     c:'#4BB77B', bg:'#F6FCF8'},
   {k:'bonus',        l:'Bonus',        c:'#4A7CBD', bg:'#F4F8FC'},
   {k:'indifferent',  l:'Indifférent',  c:'var(--color-text-muted)', bg:'#FDFAF7'},
@@ -1452,7 +1452,7 @@ function DraftSaveIndicator() {
     color = '#A07842';
   } else if (status === 'error') {
     text = errorMessage ? ('Échec enregistrement : ' + errorMessage) : 'Échec enregistrement, retry…';
-    color = '#DC2626';
+    color = 'var(--color-error)';
   } else {
     return null; // idle initial : pas d affichage
   }
@@ -2241,7 +2241,7 @@ function PhoneInput({value, onChange, country, onCountryChange, defaultCountry =
   if (lib && localText && localText.replace(/[^0-9]/g, '').length >= 6) {
     try { valid = lib.isValidPhoneNumber(localText, _country); } catch (e) { valid = null; }
   }
-  const borderColor = valid === false ? '#B73E3E' : valid === true ? '#2D6B3F' : '#D9C9A8';
+  const borderColor = valid === false ? '#B73E3E' : valid === true ? 'var(--color-success)' : '#D9C9A8';
   return (
     <div style={Object.assign({display:'flex', flexDirection:'column', gap:4}, style)}>
       <label style={{display:'block', fontSize:11, fontWeight:600, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4}}>{label}</label>
@@ -2739,8 +2739,8 @@ function PhoneField({label, value, onChange, onBlur, residenceCountry='', style=
   let helpColor = '';
   if (empty) { /* neutre */ }
   else if (valid) { borderColor = '#4BB77B'; bgColor = '#F6FCF8'; icon = '✓'; iconColor = '#4BB77B'; }
-  else if (tooShort) { borderColor = '#D4A437'; bgColor = '#FFFBEF'; icon = '…'; iconColor = '#D4A437'; helpText = 'Numéro trop court'; helpColor = '#D4A437'; }
-  else { borderColor = '#D64545'; bgColor = '#FEF6F6'; icon = '⚠'; iconColor = '#D64545'; helpText = 'Numéro invalide'; helpColor = '#D64545'; }
+  else if (tooShort) { borderColor = 'var(--color-warning)'; bgColor = '#FFFBEF'; icon = '…'; iconColor = 'var(--color-warning)'; helpText = 'Numéro trop court'; helpColor = 'var(--color-warning)'; }
+  else { borderColor = 'var(--color-error)'; bgColor = '#FEF6F6'; icon = '⚠'; iconColor = 'var(--color-error)'; helpText = 'Numéro invalide'; helpColor = 'var(--color-error)'; }
 
   return (
     <div style={{marginBottom:10, minWidth:0, ...style}}>
@@ -2778,8 +2778,8 @@ function EmailField({label, value, onChange, onBlur, style={}}) {
   let iconColor = 'var(--color-text-muted)';
   if (empty) { /* neutre */ }
   else if (valid) { borderStyle = {border:'1.5px solid #4BB77B', background:'#F6FCF8'}; icon = '✓'; iconColor = '#4BB77B'; }
-  else if (showInvalid) { borderStyle = {border:'1.5px solid #D64545', background:'#FEF6F6'}; icon = '✗'; iconColor = '#D64545'; }
-  else { borderStyle = {border:'1.5px solid #D4A437', background:'#FFFBEF'}; icon = '…'; iconColor = '#D4A437'; }
+  else if (showInvalid) { borderStyle = {border:'1.5px solid var(--color-error)', background:'#FEF6F6'}; icon = '✗'; iconColor = 'var(--color-error)'; }
+  else { borderStyle = {border:'1.5px solid var(--color-warning)', background:'#FFFBEF'}; icon = '…'; iconColor = 'var(--color-warning)'; }
 
   const base = {width:'100%', boxSizing:'border-box', padding:'9px 36px 9px 11px', borderRadius:8, fontSize:14, outline:'none', fontFamily:'inherit', color:'var(--color-text-primary)'};
   return (
@@ -2794,7 +2794,7 @@ function EmailField({label, value, onChange, onBlur, style={}}) {
           style={{...base, ...borderStyle}}/>
         {icon && <span style={{position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', color:iconColor, fontWeight:700, fontSize:16}}>{icon}</span>}
       </div>
-      {showInvalid && <div style={{fontSize:11, color:'#D64545', marginTop:2}}>Email invalide</div>}
+      {showInvalid && <div style={{fontSize:11, color:'var(--color-error)', marginTop:2}}>Email invalide</div>}
     </div>
   );
 }
@@ -3531,7 +3531,7 @@ function QuotaExceededModal({quota, onClose}) {
             rows={3}
             style={{width:'100%', boxSizing:'border-box', padding:'8px 10px', fontSize:13, fontFamily:'inherit', borderRadius:8, border:'1px solid #C9B79A', resize:'vertical', marginBottom:10}}/>
         )}
-        {error && <div style={{fontSize:12, color:'#C73E3E', marginBottom:8}}>{error}</div>}
+        {error && <div style={{fontSize:12, color:'var(--color-error)', marginBottom:8}}>{error}</div>}
         {sent ? (
           <>
             <div style={{fontSize:13, color:'#2E8B57', fontWeight:600, marginBottom:10}}>Demande envoyee. Le super-admin sera notifie.</div>
@@ -3829,7 +3829,7 @@ function ContactChooser({entries, scheme, title, onClose}) {
           </a>
         ))}
         <button type="button" onClick={onClose}
-          style={{width:'100%', padding:'12px', marginTop:8, background:'#FDFAF7', color:'#C04B20', border:'1.5px solid #E8DDD0', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+          style={{width:'100%', padding:'12px', marginTop:8, background:'#FDFAF7', color:'var(--color-error)', border:'1.5px solid #E8DDD0', borderRadius:10, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
       </div>
     </div>
   );
@@ -4538,7 +4538,7 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
                 Annuler
               </button>
               <button type="button" onClick={bulkDelete} disabled={noneSelected || bulkDeleteRemaining > 0}
-                style={{background: noneSelected ? '#E5DCC9' : '#C73E3E', border:'none', color: noneSelected ? '#999' : '#fff', fontSize:12, fontWeight:600, cursor: noneSelected ? 'not-allowed' : 'pointer', fontFamily:'inherit', padding:'6px 14px', borderRadius:100}}>
+                style={{background: noneSelected ? '#E5DCC9' : 'var(--color-error)', border:'none', color: noneSelected ? '#999' : '#fff', fontSize:12, fontWeight:600, cursor: noneSelected ? 'not-allowed' : 'pointer', fontFamily:'inherit', padding:'6px 14px', borderRadius:100}}>
                 Supprimer ({selectedUuids.length})
               </button>
             </div>
@@ -4892,7 +4892,7 @@ function ShareMenu({dossierId, dossierName, onClose, showToast}) {
               <button type="button" onClick={copy} style={{flex:1, padding:'11px', background:'#FFF3EC', color:'var(--color-accent)', border:'1.5px solid #BBA88B', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Copier</button>
               <button type="button" onClick={share} style={{flex:1, padding:'11px', background:'linear-gradient(135deg,var(--color-accent),#A06B45)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Partager…</button>
             </div>
-            <button type="button" onClick={revoke} style={{width:'100%', padding:'9px', background:'#fff', color:'#C04B20', border:'1.5px solid #E8DDD0', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Révoquer ce lien</button>
+            <button type="button" onClick={revoke} style={{width:'100%', padding:'9px', background:'#fff', color:'var(--color-error)', border:'1.5px solid #E8DDD0', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Révoquer ce lien</button>
           </>
         )}
         <button type="button" onClick={onClose} style={{width:'100%', padding:'9px', marginTop:10, background:'transparent', color:'var(--color-text-muted)', border:'none', fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Fermer</button>
@@ -6493,7 +6493,7 @@ function MapPicker({bien, setB, setBMany, dossierId, showToast}) {
   const CIRCLE_STYLE = {color:'#B26D3A', fillColor:'#FBF1E4', fillOpacity:.25, weight:2};
   // M/2026/04/30/6 — cercle proximite rouge tres clair (zone de recherche/proximite 500m).
   const PROXIMITY_RADIUS = 500;
-  const PROXIMITY_STYLE = {radius: PROXIMITY_RADIUS, color:'#C73E3E', fillColor:'#C73E3E', fillOpacity:0.08, weight:1.5};
+  const PROXIMITY_STYLE = {radius: PROXIMITY_RADIUS, color:'var(--color-error)', fillColor:'var(--color-error)', fillOpacity:0.08, weight:1.5};
   // M/2026/04/30/9 — drop pin Google Maps rouge (au lieu de l epingle Leaflet bleue par defaut).
   const googlePinIconRef = React.useRef(null);
   function getGooglePinIcon(L) {
@@ -7366,11 +7366,11 @@ function V55Field({label, value, onChange, type='text', options, suffix, placeho
 // Pas de borderLeft 3px (était l'ancien design V55 colorisé M144). Compactage iPhone-first.
 const V55_THEMES = {
   prix:        {bg:'#FBF1E4', bord:'#C9B79A', lbl:'#5C3B1E'},
-  agence:      {bg:'#EFF4FA', bord:'#1E3A8A', lbl:'#1E3A8A'},
+  agence:      {bg:'#EFF4FA', bord:'var(--color-info)', lbl:'var(--color-info)'},
   notaire:     {bg:'#E5F0F9', bord:'#7FAFD3', lbl:'#1F5784'},
   synthese:    {bg:'gradient', bord:'transparent', lbl:'#fff'},
   mandat:      {bg:'#F2EEE9', bord:'#A89A8C', lbl:'#5F4F40'},
-  paiement:    {bg:'#EEF1ED', bord:'#9DCB94', lbl:'#2D6B3F'},
+  paiement:    {bg:'#EEF1ED', bord:'#9DCB94', lbl:'var(--color-success)'},
   financement: {bg:'#ECEFF4', bord:'#7FAFD3', lbl:'#1F5784'},
   repartition: {bg:'#F1ECF1', bord:'#B79DD3', lbl:'#5F3F8B'},
 };
@@ -7493,7 +7493,7 @@ function ConversionPair({label, eurKey, madKey, legacyKey, set, d, hint, warn, d
   // après padding card 14px). minmax(0, 1fr) sur grid + minWidth:0 sur les enfants flex/grid =
   // pattern CSS standard pour forcer le shrink en dessous de la min-content native.
   const iwBase = {display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 6, padding: '6px 8px', height: 38, gap: 5, boxSizing: 'border-box', minWidth: 0, overflow: 'hidden'};
-  const iwBorder = warn ? '1px solid #C73E3E' : '1px solid #D6C7AC';
+  const iwBorder = warn ? '1px solid var(--color-error)' : '1px solid #D6C7AC';
   const inputStyle = {flex: 1, border: 'none', outline: 'none', fontSize: 13, background: 'transparent', minWidth: 0, width: '100%', padding: 0, fontFamily: 'inherit', color: 'var(--color-text-primary)'};
   return (
     <div style={{marginBottom: 8}}>
@@ -7508,7 +7508,7 @@ function ConversionPair({label, eurKey, madKey, legacyKey, set, d, hint, warn, d
           <span style={{fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600, flexShrink: 0}}>MAD</span>
         </div>
       </div>
-      {hint && <div style={{fontSize: 10, color: warn ? '#C73E3E' : 'var(--color-text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: 3, fontWeight: warn ? 600 : 400}}>{hint}</div>}
+      {hint && <div style={{fontSize: 10, color: warn ? 'var(--color-error)' : 'var(--color-text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: 3, fontWeight: warn ? 600 : 400}}>{hint}</div>}
     </div>
   );
 }
@@ -7947,7 +7947,7 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
     set(valueKey, rate > 0 ? v / rate : 0, {commit: true});
   };
   const iwBase = {display:'flex', alignItems:'center', background:'#fff', borderRadius:6, padding:'6px 8px', height:38, gap:5, boxSizing:'border-box', minWidth:0, overflow:'hidden'};
-  const iwBorder = warn ? '1px solid #C73E3E' : '1px solid #D6C7AC';
+  const iwBorder = warn ? '1px solid var(--color-error)' : '1px solid #D6C7AC';
   const iwBg = warn ? '#FEF6F6' : '#fff';
   const inputStyle = {flex:1, border:'none', outline:'none', fontSize:13, background:'transparent', minWidth:0, width:'100%', padding:0, fontFamily:'inherit', color:'var(--color-text-primary)'};
   return (
@@ -7965,7 +7965,7 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
           <span style={{fontSize:11, color:'var(--color-text-muted)', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right] || cur.right}</span>
         </div>
       </div>
-      {hint && <div style={{fontSize:10, color:warn ? '#C73E3E' : 'var(--color-text-muted)', fontStyle:'italic', textAlign:'center', marginTop:3, fontWeight:warn ? 600 : 400}}>{hint}</div>}
+      {hint && <div style={{fontSize:10, color:warn ? 'var(--color-error)' : 'var(--color-text-muted)', fontStyle:'italic', textAlign:'center', marginTop:3, fontWeight:warn ? 600 : 400}}>{hint}</div>}
     </div>
   );
 }
@@ -7979,20 +7979,20 @@ function FraisAgencePillDropdown({value, onChange}) {
   const isPreset = FRAIS_AGENCE_PCT_PRESETS.includes(v);
   return (
     <div style={{position:'relative', display:'inline-block'}}>
-      <div onClick={() => setOpen(!open)} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(v > 0 ? '#1E3A8A' : '#C9B79A'), background: v > 0 ? '#1E3A8A' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: v > 0 ? '#fff' : '#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
+      <div onClick={() => setOpen(!open)} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(v > 0 ? 'var(--color-info)' : '#C9B79A'), background: v > 0 ? 'var(--color-info)' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: v > 0 ? '#fff' : '#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
         <span>{v > 0 ? String(v).replace('.', ',') + ' %' : '— %'}</span>
         <span style={{fontSize:9, color: v > 0 ? '#fff' : 'var(--color-text-muted)'}}>▾</span>
       </div>
       {open && (
-        <div style={{position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', border:'1.5px solid #1E3A8A', borderRadius:8, zIndex:60, minWidth:160, boxShadow:'0 4px 12px rgba(0,0,0,0.12)'}}>
+        <div style={{position:'absolute', top:'100%', left:0, marginTop:4, background:'#fff', border:'1.5px solid var(--color-info)', borderRadius:8, zIndex:60, minWidth:160, boxShadow:'0 4px 12px rgba(0,0,0,0.12)'}}>
           {FRAIS_AGENCE_PCT_PRESETS.map(p => (
-            <div key={p} onClick={() => { onChange(p); setOpen(false); }} style={{padding:'8px 12px', cursor:'pointer', fontSize:12, fontWeight:600, color: v === p ? '#fff' : 'var(--color-text-primary)', borderBottom:'1px solid #F0E9DC', background: v === p ? '#1E3A8A' : '#fff'}}>
+            <div key={p} onClick={() => { onChange(p); setOpen(false); }} style={{padding:'8px 12px', cursor:'pointer', fontSize:12, fontWeight:600, color: v === p ? '#fff' : 'var(--color-text-primary)', borderBottom:'1px solid #F0E9DC', background: v === p ? 'var(--color-info)' : '#fff'}}>
               {String(p).replace('.', ',')} %
             </div>
           ))}
-          <div style={{padding:'8px 10px', borderTop:'1px solid #1E3A8A', display:'flex', gap:4, alignItems:'center'}}>
-            <input type="number" step="0.1" value={autre} onChange={e => setAutre(e.target.value)} placeholder="Autre %" style={{flex:1, minWidth:0, padding:'4px 6px', border:'1px solid #1E3A8A', borderRadius:5, fontSize:12, fontFamily:'inherit', boxSizing:'border-box'}}/>
-            <button type="button" onClick={() => { const n = parseNumV5(autre); if (n > 0) { onChange(n); setOpen(false); setAutre(''); } }} style={{padding:'4px 8px', border:'none', borderRadius:5, background:'#1E3A8A', color:'#fff', fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>OK</button>
+          <div style={{padding:'8px 10px', borderTop:'1px solid var(--color-info)', display:'flex', gap:4, alignItems:'center'}}>
+            <input type="number" step="0.1" value={autre} onChange={e => setAutre(e.target.value)} placeholder="Autre %" style={{flex:1, minWidth:0, padding:'4px 6px', border:'1px solid var(--color-info)', borderRadius:5, fontSize:12, fontFamily:'inherit', boxSizing:'border-box'}}/>
+            <button type="button" onClick={() => { const n = parseNumV5(autre); if (n > 0) { onChange(n); setOpen(false); setAutre(''); } }} style={{padding:'4px 8px', border:'none', borderRadius:5, background:'var(--color-info)', color:'#fff', fontWeight:700, fontSize:11, cursor:'pointer', fontFamily:'inherit'}}>OK</button>
           </div>
         </div>
       )}
@@ -8009,7 +8009,7 @@ function FraisAgenceForfaitPopup({value, onApply}) {
   const preview = v * (Number(cur.rate) || 1);
   return (
     <div style={{position:'relative', display:'inline-block'}}>
-      <div onClick={() => { setMontant(String(Number(value) || 0)); setOpen(true); }} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(value > 0 ? '#1E3A8A' : '#C9B79A'), background: value > 0 ? '#1E3A8A' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: value > 0 ? '#fff' : '#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
+      <div onClick={() => { setMontant(String(Number(value) || 0)); setOpen(true); }} style={{padding:'6px 12px', borderRadius:14, border:'1.5px solid '+(value > 0 ? 'var(--color-info)' : '#C9B79A'), background: value > 0 ? 'var(--color-info)' : '#FBF1E4', cursor:'pointer', fontSize:12, fontWeight:700, color: value > 0 ? '#fff' : '#5C3B1E', display:'flex', alignItems:'center', gap:6, fontFamily:'inherit'}}>
         <span>{value > 0 ? fmtNumV5(value) + ' ' + CURRENCY_SYMBOL_V5[cur.left] : 'Forfait'}</span>
         <span style={{fontSize:9, color: value > 0 ? '#fff' : 'var(--color-text-muted)'}}>▾</span>
       </div>
@@ -8029,7 +8029,7 @@ function FraisAgenceForfaitPopup({value, onApply}) {
             </div>
             <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
               <button type="button" onClick={() => setOpen(false)} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'#5C3B1E', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
-              <button type="button" onClick={() => { onApply(v); setOpen(false); }} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'#1E3A8A', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
+              <button type="button" onClick={() => { onApply(v); setOpen(false); }} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'var(--color-info)', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
             </div>
           </div>
         </div>
@@ -8141,12 +8141,12 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
 
   return (
     <S3CardRound>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid #2D6B3F40'}}>
-        <span style={{fontSize:11, fontWeight:700, color:'#2D6B3F', textTransform:'uppercase', letterSpacing:.4}}>Frais notaire — total global</span>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid var(--color-success)40'}}>
+        <span style={{fontSize:11, fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.4}}>Frais notaire — total global</span>
         <div style={{display:'flex', gap:6, alignItems:'center'}}>
-          <span style={{fontSize:13, fontWeight:800, color:'#2D6B3F'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
-          <span style={{fontSize:11, color:'#2D6B3F'}}>·</span>
-          <span style={{fontSize:13, fontWeight:800, color:'#2D6B3F'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
+          <span style={{fontSize:13, fontWeight:800, color:'var(--color-success)'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
+          <span style={{fontSize:11, color:'var(--color-success)'}}>·</span>
+          <span style={{fontSize:13, fontWeight:800, color:'var(--color-success)'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
         </div>
       </div>
       {acteurs.length === 0 && (
@@ -8170,12 +8170,12 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
       ))}
       {acteurs.length > 0 && (
         <div style={{marginTop:6}}>
-          <div style={{fontSize:9.5, fontWeight:700, color:'#2D6B3F', textTransform:'uppercase', letterSpacing:.4, marginBottom:3}}>Répartition par camp</div>
+          <div style={{fontSize:9.5, fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.4, marginBottom:3}}>Répartition par camp</div>
           <S3SplitTotal totals={splitTotals} transactionType={transactionType}/>
         </div>
       )}
       {acteurs.length < 4 && (
-        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:8, marginTop:8, background:'#fff', border:'1.5px dashed #2D6B3F', borderRadius:8, color:'#2D6B3F', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un notaire ({acteurs.length}/4)</button>
+        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:8, marginTop:8, background:'#fff', border:'1.5px dashed var(--color-success)', borderRadius:8, color:'var(--color-success)', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un notaire ({acteurs.length}/4)</button>
       )}
       <div style={{fontSize:10, color:'var(--color-text-muted)', fontStyle:'italic', marginTop:6}}>{refTexte} · à charge acheteur par défaut</div>
     </S3CardRound>
@@ -8251,12 +8251,12 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
   });
   return (
     <S3CardRound style={{background:'transparent', border:'none', padding:0, marginBottom:0}}>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid #1E3A8A40'}}>
-        <span style={{fontSize:11, fontWeight:700, color:'#1E3A8A', textTransform:'uppercase', letterSpacing:.4}}>Total global</span>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, paddingBottom:6, borderBottom:'1px solid var(--color-info)40'}}>
+        <span style={{fontSize:11, fontWeight:700, color:'var(--color-info)', textTransform:'uppercase', letterSpacing:.4}}>Total global</span>
         <div style={{display:'flex', gap:6, alignItems:'center'}}>
-          <span style={{fontSize:13, fontWeight:800, color:'#1E3A8A'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
-          <span style={{fontSize:11, color:'#1E3A8A'}}>·</span>
-          <span style={{fontSize:13, fontWeight:800, color:'#1E3A8A'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
+          <span style={{fontSize:13, fontWeight:800, color:'var(--color-info)'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
+          <span style={{fontSize:11, color:'var(--color-info)'}}>·</span>
+          <span style={{fontSize:13, fontWeight:800, color:'var(--color-info)'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
         </div>
       </div>
       {acteurs.length === 0 && (
@@ -8280,12 +8280,12 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
       ))}
       {acteurs.length > 0 && (
         <div style={{marginTop:6}}>
-          <div style={{fontSize:9.5, fontWeight:700, color:'#1E3A8A', textTransform:'uppercase', letterSpacing:.4, marginBottom:3}}>Répartition par camp</div>
+          <div style={{fontSize:9.5, fontWeight:700, color:'var(--color-info)', textTransform:'uppercase', letterSpacing:.4, marginBottom:3}}>Répartition par camp</div>
           <S3SplitTotal totals={splitTotals} transactionType={transactionType}/>
         </div>
       )}
       {acteurs.length < 4 && (
-        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:8, marginTop:8, background:'#fff', border:'1.5px dashed #1E3A8A', borderRadius:8, color:'#1E3A8A', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter une agence ({acteurs.length}/4)</button>
+        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:8, marginTop:8, background:'#fff', border:'1.5px dashed var(--color-info)', borderRadius:8, color:'var(--color-info)', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter une agence ({acteurs.length}/4)</button>
       )}
     </S3CardRound>
   );
@@ -8306,15 +8306,15 @@ const S3_PCT_PRESETS = [2, 2.5, 3, 5, 8, 10];
 const S3_FORFAIT_PRESETS = [5000, 10000, 15000, 20000, 25000];
 
 const S3_THEME_COLORS = {
-  navy:  {border:'#1E3A8A', bg:'#EFF4FA', label:'#1E3A8A', chip:'#1E3A8A'},
-  green: {border:'#2D6B3F', bg:'#EEF1ED', label:'#2D6B3F', chip:'#2D6B3F'},
+  navy:  {border:'var(--color-info)', bg:'#EFF4FA', label:'var(--color-info)', chip:'var(--color-info)'},
+  green: {border:'var(--color-success)', bg:'#EEF1ED', label:'var(--color-success)', chip:'var(--color-success)'},
   mauve: {border:'#5F3F8B', bg:'#F1ECF1', label:'#5F3F8B', chip:'#5F3F8B'},
 };
 
 const S3_QUI_PAIE_OPTIONS = {
   vente: [
     {key:'V',   label:'Vendeur',  color:'#5C3B1E'},
-    {key:'A',   label:'Acheteur', color:'#2D6B3F'},
+    {key:'A',   label:'Acheteur', color:'var(--color-success)'},
     {key:'V+A', label:'V+A',      color:'var(--color-accent)'},
   ],
   location: [
@@ -8414,14 +8414,14 @@ function S3PopinQuiPaie({value, transactionType, onChange, onClose}) {
   const isVente = transactionType === 'vente';
   const pick = (key) => { onChange(key); onClose(); };
   const Cell = ({opt, disabled, selected}) => (
-    <div onClick={disabled ? undefined : () => pick(opt.key)} style={{display:'flex', alignItems:'center', gap:5, padding:'7px 8px', borderRadius:7, border:'1px solid '+(selected?'#1E3A8A':'#D6C7AC'), background:selected?'#EFF4FA':'#fff', cursor:disabled?'default':'pointer', opacity:disabled?0.4:1, pointerEvents:disabled?'none':'auto', fontSize:11, fontWeight:600, color:'var(--color-text-primary)', fontFamily:'inherit', minWidth:0}}>
+    <div onClick={disabled ? undefined : () => pick(opt.key)} style={{display:'flex', alignItems:'center', gap:5, padding:'7px 8px', borderRadius:7, border:'1px solid '+(selected?'var(--color-info)':'#D6C7AC'), background:selected?'#EFF4FA':'#fff', cursor:disabled?'default':'pointer', opacity:disabled?0.4:1, pointerEvents:disabled?'none':'auto', fontSize:11, fontWeight:600, color:'var(--color-text-primary)', fontFamily:'inherit', minWidth:0}}>
       <span style={{width:8, height:8, borderRadius:'50%', background:opt.color, flexShrink:0}} aria-hidden="true"></span>
       <span style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{opt.label}</span>
     </div>
   );
   return (
-    <div ref={ref} style={{position:'relative', width:'100%', padding:10, background:'#fff', border:'1px solid #1E3A8A', borderRadius:8, marginTop:8, boxSizing:'border-box', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
-      <div style={{position:'absolute', top:-7, right:24, width:12, height:12, background:'#fff', borderTop:'1px solid #1E3A8A', borderLeft:'1px solid #1E3A8A', transform:'rotate(45deg)'}} aria-hidden="true"></div>
+    <div ref={ref} style={{position:'relative', width:'100%', padding:10, background:'#fff', border:'1px solid var(--color-info)', borderRadius:8, marginTop:8, boxSizing:'border-box', boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+      <div style={{position:'absolute', top:-7, right:24, width:12, height:12, background:'#fff', borderTop:'1px solid var(--color-info)', borderLeft:'1px solid var(--color-info)', transform:'rotate(45deg)'}} aria-hidden="true"></div>
       <div style={{fontSize:9.5, fontWeight:700, color:isVente?'#5C3B1E':'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:5}}>Vente</div>
       <div style={{display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 1fr))', gap:5, marginBottom:8}}>
         {S3_QUI_PAIE_OPTIONS.vente.map(o => <Cell key={o.key} opt={o} disabled={!isVente} selected={isVente && value === o.key}/>)}
@@ -8459,7 +8459,7 @@ function S3ActeurRow({name, mode, value, payePar, onModeChange, onPayeParChange,
           {whoOpt ? <React.Fragment><span style={{width:6, height:6, borderRadius:'50%', background:whoOpt.color, flexShrink:0}} aria-hidden="true"></span><span>{whoOpt.key}</span></React.Fragment> : <span style={{color:'var(--color-text-muted)'}}>—</span>}
         </div>
         {onRemove && (
-          <div onClick={onRemove} style={{width:24, height:24, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background:'#FCEFEC', color:'#C73E3E', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, lineHeight:1}} aria-label="Supprimer">×</div>
+          <div onClick={onRemove} style={{width:24, height:24, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background:'#FCEFEC', color:'var(--color-error)', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0, lineHeight:1}} aria-label="Supprimer">×</div>
         )}
       </div>
       <div style={{display:'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap:5, marginBottom:5}}>
@@ -8496,7 +8496,7 @@ function S3SplitTotal({totals, transactionType='vente'}) {
   const t = totals || {};
   const cells = transactionType === 'vente'
     ? [{key:'V', label:'Vendeur', amount:Number(t.vendeur)||0, color:'#5C3B1E'},
-       {key:'A', label:'Acheteur', amount:Number(t.acheteur)||0, color:'#2D6B3F'}]
+       {key:'A', label:'Acheteur', amount:Number(t.acheteur)||0, color:'var(--color-success)'}]
     : [{key:'B', label:'Bailleur', amount:Number(t.bailleur)||0, color:'#1F5784'},
        {key:'L', label:'Locataire', amount:Number(t.locataire)||0, color:'#5F3F8B'}];
   const Cell = ({c}) => {
@@ -8640,9 +8640,9 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
                   <V55Field label="Signature acte" type="number" value={d.plan_paiement_signature_pct} onChange={v => set('plan_paiement_signature_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
                   <V55Field label="Solde livraison" type="number" value={d.plan_paiement_solde_pct} onChange={v => set('plan_paiement_solde_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
                 </div>
-                <div style={{padding:'8px 10px', borderRadius:6, background: _ok ? '#EAF7E8' : '#FEF6F6', border:'1px solid '+(_ok ? '#9DCB94' : '#D64545'), display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13, fontWeight:700}}>
-                  <span style={{color: _ok ? '#2D6B3F' : '#C04B20'}}>Total</span>
-                  <span style={{color: _ok ? '#2D6B3F' : '#C04B20'}}>{_tot.toFixed(1)}% {_ok ? '✓' : '⚠ ≠ 100%'}</span>
+                <div style={{padding:'8px 10px', borderRadius:6, background: _ok ? '#EAF7E8' : '#FEF6F6', border:'1px solid '+(_ok ? '#9DCB94' : 'var(--color-error)'), display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13, fontWeight:700}}>
+                  <span style={{color: _ok ? 'var(--color-success)' : 'var(--color-error)'}}>Total</span>
+                  <span style={{color: _ok ? 'var(--color-success)' : 'var(--color-error)'}}>{_tot.toFixed(1)}% {_ok ? '✓' : '⚠ ≠ 100%'}</span>
                 </div>
               </>
             );
@@ -8758,9 +8758,9 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
                   <V55Field label="Signature acte" type="number" value={d.plan_paiement_signature_pct} onChange={v => set('plan_paiement_signature_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
                   <V55Field label="Solde livraison" type="number" value={d.plan_paiement_solde_pct} onChange={v => set('plan_paiement_solde_pct', v, {commit: true})} suffix="%" style={{marginBottom:0}}/>
                 </div>
-                <div style={{padding:'8px 10px', borderRadius:6, background: _ok ? '#EAF7E8' : '#FEF6F6', border:'1px solid '+(_ok ? '#9DCB94' : '#D64545'), display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13, fontWeight:700}}>
-                  <span style={{color: _ok ? '#2D6B3F' : '#C04B20'}}>Total</span>
-                  <span style={{color: _ok ? '#2D6B3F' : '#C04B20'}}>{_tot.toFixed(1)}% {_ok ? '✓' : '⚠ ≠ 100%'}</span>
+                <div style={{padding:'8px 10px', borderRadius:6, background: _ok ? '#EAF7E8' : '#FEF6F6', border:'1px solid '+(_ok ? '#9DCB94' : 'var(--color-error)'), display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:13, fontWeight:700}}>
+                  <span style={{color: _ok ? 'var(--color-success)' : 'var(--color-error)'}}>Total</span>
+                  <span style={{color: _ok ? 'var(--color-success)' : 'var(--color-error)'}}>{_tot.toFixed(1)}% {_ok ? '✓' : '⚠ ≠ 100%'}</span>
                 </div>
               </>
             );
@@ -9186,7 +9186,7 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
   const badge = status === 'complete'
     ? {char:'✓', color:'#3E8B5E', bg:'#E8F5EC'}
     : status === 'partial'
-      ? {char:'…', color:'#D4A437', bg:'#FFF5E0'}
+      ? {char:'…', color:'var(--color-warning)', bg:'#FFF5E0'}
       : {char:'—', color:'#B5A78F', bg:'#F4EEE6'};
   // M/2026/05/07/108 — applique la palette douce si idx fourni, sauf si highlighted (recherche
   // match) qui garde l ambre attention. cardBg = body color pour continuite visuelle quand le
@@ -9394,7 +9394,7 @@ function DossierPicker({clients, value, onChange, placeholder = '(Aucun dossier)
     return [(c.prenom||''),(c.nom||''),c.societe_nom||''].filter(Boolean).join(' ').trim() || ('Dossier #' + c.id);
   }
   function profilColor(p) {
-    return ({Acheteur:'var(--color-accent)', Vendeur:'#1E3A5F', Locataire:'#8B6B1E', Bailleur:'#2D6B3F', Investisseur:'#6B3D8B', Curieux:'#7A6B5C'})[p] || '#7A6B5C';
+    return ({Acheteur:'var(--color-accent)', Vendeur:'#1E3A5F', Locataire:'#8B6B1E', Bailleur:'var(--color-success)', Investisseur:'#6B3D8B', Curieux:'#7A6B5C'})[p] || '#7A6B5C';
   }
   const filtered = filterList(query);
   const sel = value;
@@ -9551,7 +9551,7 @@ function TargetWithBadge({onClick, title, count = 0}) {
         <span style={{
           position:'absolute', top:-4, right:-4,
           minWidth:16, height:16, padding:'0 4px',
-          background:'#DC2626', color:'#fff',
+          background:'var(--color-error)', color:'#fff',
           borderRadius:8, fontSize:10, fontWeight:700,
           fontFamily:'inherit', lineHeight:'16px',
           textAlign:'center', boxShadow:'0 0 0 2px #fff',
@@ -9597,7 +9597,7 @@ function NotifBellWithBadge({onClick, title}) {
         <span style={{
           position:'absolute', top:-4, right:-4,
           minWidth:16, height:16, padding:'0 4px',
-          background:'#DC2626', color:'#fff',
+          background:'var(--color-error)', color:'#fff',
           borderRadius:8, fontSize:10, fontWeight:700,
           fontFamily:'inherit', lineHeight:'16px',
           textAlign:'center', boxShadow:'0 0 0 2px #fff',
@@ -9998,7 +9998,7 @@ function AddCasquetteModal({sourceDossier, sourceId, clients, currentProfil, onC
           <div style={{marginBottom:8, padding:'5px 8px', background:'#FFF3EC', color:'var(--color-accent)', borderRadius:5, fontSize:11, borderLeft:'3px solid #D97706', lineHeight:1.4}}>{actionMsg}</div>
         )}
         {error && (
-          <div style={{marginBottom:8, padding:'6px 8px', background:'#FEE2E2', color:'#991B1B', borderRadius:5, fontSize:11, borderLeft:'3px solid #DC2626'}}>{error}</div>
+          <div style={{marginBottom:8, padding:'6px 8px', background:'#FEE2E2', color:'#991B1B', borderRadius:5, fontSize:11, borderLeft:'3px solid var(--color-error)'}}>{error}</div>
         )}
         <div style={{display:'flex', gap:8}}>
           <button type="button" onClick={onClose} disabled={busy}
@@ -10070,7 +10070,7 @@ function CrossRefPanel({d, dossierId, onMatchesUpdate, showToast}) {
   }
   function deltaColor(pct) {
     if (pct == null) return 'var(--color-text-muted)';
-    if (pct > 0) return '#C04B20';       // plus cher
+    if (pct > 0) return 'var(--color-error)';       // plus cher
     if (pct < 0) return '#3E8B5E';       // moins cher (bonne affaire)
     return 'var(--color-text-muted)';
   }
@@ -10473,7 +10473,7 @@ function ShareDossiersModal({onClose, showToast}) {
                 {preview.counts.photos} photo{preview.counts.photos > 1 ? 's' : ''} · ~{fmtSize(preview.size_estimate_bytes)} estimé
               </div>
             </>
-          ) : <div style={{color:'#C04B20'}}>{status || 'Preview indisponible'}</div>}
+          ) : <div style={{color:'var(--color-error)'}}>{status || 'Preview indisponible'}</div>}
         </div>
 
         <button onClick={generate} disabled={generating || loadingPreview}
@@ -10504,7 +10504,7 @@ function ShareDossiersModal({onClose, showToast}) {
 // header, dismissible, actions CTA inline. InstallPwaBanner v18.5 retiré (remplacé par
 // AlertBanner + PWAInstallOverlay).
 const ALERT_PALETTE = {
-  urgent:  {bg:'#FEE2E2', border:'#DC2626', text:'#991B1B', icon:'⚠'},
+  urgent:  {bg:'#FEE2E2', border:'var(--color-error)', text:'#991B1B', icon:'⚠'},
   warning: {bg:'#FEF3C7', border:'#F59E0B', text:'#92400E', icon:'⚠'},
   info:    {bg:'#DBEAFE', border:'#2563EB', text:'#1E40AF', icon:'ℹ'},
   success: {bg:'#D1FAE5', border:'#059669', text:'#065F46', icon:'✓'},
@@ -10814,7 +10814,7 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
               {preview.public_visible ? '👁 Masquer l\'annonce' : '👁 Rendre visible'}
             </button>
             <button onClick={doUnpublish} disabled={saving}
-              style={{flex:1, padding:'10px', background:'#fff', color:'#D64545', border:'1.5px solid #D64545', borderRadius:8, fontWeight:600, fontSize:12.5, cursor:'pointer', fontFamily:'inherit'}}>
+              style={{flex:1, padding:'10px', background:'#fff', color:'var(--color-error)', border:'1.5px solid var(--color-error)', borderRadius:8, fontWeight:600, fontSize:12.5, cursor:'pointer', fontFamily:'inherit'}}>
               Retirer de la vitrine
             </button>
           </div>
@@ -12231,7 +12231,7 @@ function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, sho
     <div style={{background:'#fff', borderRadius:12, padding:16, border:'1.5px solid #B26D3A', display:'flex', flexDirection:'column', gap:10, maxHeight:'72vh', overflowY:'auto'}}>
       <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, color:'var(--color-accent)', fontWeight:700}}>{intentLabel}</div>
       <div style={{fontSize:11, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, display:'flex', alignItems:'center', gap:5}}><IconClipboard size={12}/> Récapitulatif · {count} point{count > 1 ? 's' : ''} relevé{count > 1 ? 's' : ''}</div>
-      {preview.mode === 'heuristic' && <div style={{fontSize:11, color:'#C04B20', fontStyle:'italic'}}>(Extraction heuristique — vérifie les champs)</div>}
+      {preview.mode === 'heuristic' && <div style={{fontSize:11, color:'var(--color-error)', fontStyle:'italic'}}>(Extraction heuristique — vérifie les champs)</div>}
 
       {/* Groupes bullets */}
       {groups.map((g, i) => (
@@ -12248,7 +12248,7 @@ function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, sho
           </ul>
         </div>
       ))}
-      {count === 0 && <div style={{fontSize:12, color:'#C04B20', fontStyle:'italic'}}>Aucune information extraite. Re-dicte ou modifie le texte.</div>}
+      {count === 0 && <div style={{fontSize:12, color:'var(--color-error)', fontStyle:'italic'}}>Aucune information extraite. Re-dicte ou modifie le texte.</div>}
 
       {/* Résolution dossier (intents non-dossier). M/2026/04/29/39 : si intent=recherche_dossier,
           le tap dans le picker navigue directement vers la fiche. Pour les autres intents, le tap
@@ -12266,7 +12266,7 @@ function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, sho
             }}
             placeholder={candidates.length === 0 && data.client_ref ? 'Aucun match auto · taper pour rechercher' : (intent === 'recherche_dossier' ? 'Tap pour rechercher' : '(Aucun dossier)')}/>
           {candidates.length === 0 && data.client_ref && !selected && intent !== 'recherche_dossier' && (
-            <div style={{padding:'8px 11px', marginTop:6, borderRadius:8, background:'#FFE8E8', border:'1.5px solid #F0BEBE', fontSize:11.5, color:'#C04B20'}}>
+            <div style={{padding:'8px 11px', marginTop:6, borderRadius:8, background:'#FFE8E8', border:'1.5px solid #F0BEBE', fontSize:11.5, color:'var(--color-error)'}}>
               Aucun match auto pour "<b>{data.client_ref}</b>". {intent !== 'noter_interaction' && 'Sera créé sans dossier lié si laissé vide.'}
             </div>
           )}
@@ -12580,7 +12580,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
           <OcreLogoButton/>
         </div>
         <div style={{flex:1, padding:20, display:'flex', flexDirection:'column', gap:10}}>
-          <div style={{color:'#C04B20', fontSize:13}}>⚠ Reconnaissance vocale non supportée par ce navigateur. Utilise Safari iOS ou Chrome. Saisis manuellement ci-dessous :</div>
+          <div style={{color:'var(--color-error)', fontSize:13}}>⚠ Reconnaissance vocale non supportée par ce navigateur. Utilise Safari iOS ou Chrome. Saisis manuellement ci-dessous :</div>
           <textarea value={editable} onChange={e => setEditable(e.target.value)}
             placeholder="Ex: 'Martin Paul cherche villa Marrakech Ourika budget 500kEUR'"
             style={{width:'100%', minHeight:160, padding:12, borderRadius:10, border:'1.5px solid #E8DDD0', background:'#fff', fontFamily:'inherit', fontSize:14, outline:'none', color:'var(--color-text-primary)'}}/>
@@ -12638,7 +12638,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
                 <div style={{display:'flex', gap:10, justifyContent:'center', alignItems:'center'}}>
                   <button onClick={toggleListen}
                     style={{width:80, height:80, borderRadius:'50%', border:'none',
-                            background: listening ? '#D64545' : 'linear-gradient(135deg,var(--color-accent),#A06B45)',
+                            background: listening ? 'var(--color-error)' : 'linear-gradient(135deg,var(--color-accent),#A06B45)',
                             color:'#fff', fontSize:32, cursor:'pointer', boxShadow:'0 6px 20px rgba(139,94,60,0.35)',
                             animation: listening ? 'pulse 1s infinite' : 'none', fontFamily:'inherit'}}>🎤</button>
                 </div>
@@ -12664,7 +12664,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
                   )}
                   {recording && (
                     <>
-                      <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:36, color:'#D64545', fontWeight:700}}>
+                      <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:36, color:'var(--color-error)', fontWeight:700}}>
                         {String(Math.floor(recDurationSec/60)).padStart(2,'0')}:{String(recDurationSec%60).padStart(2,'0')}
                       </div>
                       <div style={{fontSize:12, color:'var(--color-text-muted)'}}>🔴 Enregistrement… (max 90s)</div>
@@ -12682,7 +12682,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
                   <div style={{display:'flex', justifyContent:'center'}}>
                     <button onClick={recording ? stopRecording : startRecording}
                       style={{width:80, height:80, borderRadius:'50%', border:'none',
-                              background: recording ? '#D64545' : 'linear-gradient(135deg,var(--color-accent),#A06B45)',
+                              background: recording ? 'var(--color-error)' : 'linear-gradient(135deg,var(--color-accent),#A06B45)',
                               color:'#fff', fontSize:32, cursor:'pointer', boxShadow:'0 6px 20px rgba(139,94,60,0.35)',
                               animation: recording ? 'pulse 1s infinite' : 'none', fontFamily:'inherit'}}>{recording ? '■' : '🎤'}</button>
                   </div>
@@ -13051,7 +13051,7 @@ function GoogleQuotaAdmin({showToast}) {
                 <div style={{fontSize:11, color:'var(--color-text-muted)'}}>{r.agent_email} · {new Date(r.requested_at).toLocaleString('fr-FR')}</div>
               </div>
               <span style={{padding:'2px 8px', borderRadius:10, fontSize:10, fontWeight:700, color:'#fff',
-                background: r.status === 'pending' ? '#C9A87A' : (r.status === 'approved' ? '#2E8B57' : '#C73E3E')}}>
+                background: r.status === 'pending' ? '#C9A87A' : (r.status === 'approved' ? '#2E8B57' : 'var(--color-error)')}}>
                 {r.status}
               </span>
             </div>
@@ -13062,7 +13062,7 @@ function GoogleQuotaAdmin({showToast}) {
                 <button onClick={() => { setRespondingFor({request:r, action:'approve'}); setResponseMsg(''); }}
                   style={{flex:1, padding:'7px 10px', background:'#2E8B57', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Approuver +10</button>
                 <button onClick={() => { setRespondingFor({request:r, action:'deny'}); setResponseMsg(''); }}
-                  style={{flex:1, padding:'7px 10px', background:'#C73E3E', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Refuser</button>
+                  style={{flex:1, padding:'7px 10px', background:'var(--color-error)', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Refuser</button>
               </div>
             )}
           </div>
@@ -13104,7 +13104,7 @@ function GoogleQuotaAdmin({showToast}) {
               <button onClick={() => setRespondingFor(null)}
                 style={{flex:1, padding:'9px 12px', borderRadius:8, border:'1.5px solid #C9B79A', background:'#fff', color:'#5A4E3D', fontFamily:'inherit', fontWeight:600, fontSize:13, cursor:'pointer'}}>Annuler</button>
               <button onClick={() => respond(respondingFor.action)}
-                style={{flex:1, padding:'9px 12px', borderRadius:8, border:'none', background: respondingFor.action === 'approve' ? '#2E8B57' : '#C73E3E', color:'#fff', fontFamily:'inherit', fontWeight:700, fontSize:13, cursor:'pointer'}}>
+                style={{flex:1, padding:'9px 12px', borderRadius:8, border:'none', background: respondingFor.action === 'approve' ? '#2E8B57' : 'var(--color-error)', color:'#fff', fontFamily:'inherit', fontWeight:700, fontSize:13, cursor:'pointer'}}>
                 Confirmer
               </button>
             </div>
@@ -13203,8 +13203,8 @@ function FeatureFlagsAdmin({showToast}) {
             {overrides.length === 0 && <div style={{color:'var(--color-text-muted)', fontSize:12.5, marginBottom:10}}>Aucun override</div>}
             {overrides.map(o => (
               <div key={o.id} style={{display:'flex', alignItems:'center', gap:8, padding:'6px 0', borderBottom:'1px solid #F4EFE6', fontSize:12.5}}>
-                <div style={{flex:1}}>uid={o.user_id || '—'} ws={o.workspace_id || '—'} : <b style={{color: o.enabled ? '#059669' : '#DC2626'}}>{o.enabled ? 'ON' : 'OFF'}</b></div>
-                <button onClick={() => deleteOverride(o.id)} style={{padding:'2px 8px', background:'#DC2626', color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer'}}>Supprimer</button>
+                <div style={{flex:1}}>uid={o.user_id || '—'} ws={o.workspace_id || '—'} : <b style={{color: o.enabled ? '#059669' : 'var(--color-error)'}}>{o.enabled ? 'ON' : 'OFF'}</b></div>
+                <button onClick={() => deleteOverride(o.id)} style={{padding:'2px 8px', background:'var(--color-error)', color:'#fff', border:'none', borderRadius:5, fontSize:11, cursor:'pointer'}}>Supprimer</button>
               </div>
             ))}
             <div style={{marginTop:12, padding:8, background:'#FAF7F0', borderRadius:6}}>
@@ -13432,7 +13432,7 @@ function SuperAdminDashboard({onBack, showToast, currentUser}) {
                     <div style={{fontSize:11.5, color:'var(--color-text-muted)'}}>{c.projet} · supprimé le {c.deleted_at}</div>
                   </div>
                   <button onClick={() => restoreClient(c.id)} style={{padding:'6px 10px', background:'#059669', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:11.5, cursor:'pointer'}}>Restaurer</button>
-                  <button onClick={() => purgeClient(c.id)} style={{padding:'6px 10px', background:'#DC2626', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:11.5, cursor:'pointer'}}>Purger</button>
+                  <button onClick={() => purgeClient(c.id)} style={{padding:'6px 10px', background:'var(--color-error)', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:11.5, cursor:'pointer'}}>Purger</button>
                 </div>
               ))}
             </div>
@@ -13584,7 +13584,7 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
             {users.map((u, i) => (
               <div key={u.id} style={{padding:'10px 12px', borderTop: i === 0 ? 'none' : '1px solid #F2EBE2', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap'}}>
                 <div style={{flex:'1 1 200px', minWidth:0}}>
-                  <div style={{fontSize:13, fontWeight:700, color:'var(--color-text-primary)'}}>{u.email}{u.is_admin && <span style={{marginLeft:6, fontSize:9, background:'var(--color-accent)', color:'#fff', padding:'1px 6px', borderRadius:4, verticalAlign:'middle'}}>ADMIN</span>}{u.is_suspended && <span style={{marginLeft:6, fontSize:9, background:'#C04B20', color:'#fff', padding:'1px 6px', borderRadius:4}}>SUSPENDU</span>}{u.is_locked && <span style={{marginLeft:6, fontSize:9, background:'#D97706', color:'#fff', padding:'1px 6px', borderRadius:4}}>🔒 VERROUILLÉ</span>}{u.must_change_password && <span style={{marginLeft:6, fontSize:9, background:'#F59E0B', color:'#fff', padding:'1px 6px', borderRadius:4}}>MDP À CHANGER</span>}</div>
+                  <div style={{fontSize:13, fontWeight:700, color:'var(--color-text-primary)'}}>{u.email}{u.is_admin && <span style={{marginLeft:6, fontSize:9, background:'var(--color-accent)', color:'#fff', padding:'1px 6px', borderRadius:4, verticalAlign:'middle'}}>ADMIN</span>}{u.is_suspended && <span style={{marginLeft:6, fontSize:9, background:'var(--color-error)', color:'#fff', padding:'1px 6px', borderRadius:4}}>SUSPENDU</span>}{u.is_locked && <span style={{marginLeft:6, fontSize:9, background:'#D97706', color:'#fff', padding:'1px 6px', borderRadius:4}}>🔒 VERROUILLÉ</span>}{u.must_change_password && <span style={{marginLeft:6, fontSize:9, background:'#F59E0B', color:'#fff', padding:'1px 6px', borderRadius:4}}>MDP À CHANGER</span>}</div>
                   <div style={{fontSize:11, color:'var(--color-text-muted)', marginTop:2}}>
                     {(u.prenom || '') + ' ' + (u.nom || '')} · {u.dossiers_count} dossier{u.dossiers_count > 1 ? 's' : ''}
                     {u.last_login && <span> · vu {String(u.last_login).replace('T',' ').slice(0,16)}</span>}
@@ -13628,7 +13628,7 @@ function AdminView({onBack, showToast, currentUser, startImpersonation}) {
         <div onClick={() => setResetResult(null)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
           <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:22, maxWidth:420, width:'100%'}}>
             <div style={{fontFamily:'Cormorant Garamond, serif', fontSize:18, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>⚠ Envoi email échoué — MDP à communiquer</div>
-            <div style={{fontSize:12, color:'#C04B20', marginBottom:8}}>Raison : {resetResult.emailError || 'inconnue'}</div>
+            <div style={{fontSize:12, color:'var(--color-error)', marginBottom:8}}>Raison : {resetResult.emailError || 'inconnue'}</div>
             <div style={{fontSize:13, color:'var(--color-text-primary)', marginBottom:10}}>Pour <b>{resetResult.email}</b> :</div>
             <div style={{background:'#FDFAF4', border:'1.5px solid #A67F5A', borderRadius:9, padding:'12px 14px', fontFamily:'monospace', fontSize:16, fontWeight:700, color:'var(--color-text-primary)', textAlign:'center', letterSpacing:1, marginBottom:10, userSelect:'all'}}>{resetResult.password}</div>
             <div style={{fontSize:11, color:'var(--color-text-muted)', marginBottom:14, fontStyle:'italic'}}>Communique-le par un canal sécurisé. L'utilisateur devra le changer au prochain login.</div>
@@ -13830,7 +13830,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
   const specs = Array.isArray(p.specialites) ? p.specialites : [];
   const missing = Array.isArray(p.missing_for_publish) ? p.missing_for_publish : [];
   const canPublish = missing.length === 0;
-  const statutColor = p.statut_public === 'actif' ? '#2E7D32' : p.statut_public === 'suspendu' ? '#C04B20' : 'var(--color-text-muted)';
+  const statutColor = p.statut_public === 'actif' ? '#2E7D32' : p.statut_public === 'suspendu' ? 'var(--color-error)' : 'var(--color-text-muted)';
   const statutLabel = p.statut_public === 'actif' ? 'Actif' : p.statut_public === 'suspendu' ? 'Suspendu' : 'Brouillon';
 
   return (
@@ -13857,7 +13857,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
               <button onClick={() => document.getElementById('agent-photo-input').click()} style={{width:'100%', padding:'9px 10px', background:'linear-gradient(135deg,var(--color-accent),#A06B45)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:12.5, cursor:'pointer', fontFamily:'inherit', marginBottom:6}}>
                 {p.photo_url ? 'Changer la photo' : 'Ajouter une photo'}
               </button>
-              {p.photo_url && <button onClick={doPhotoDelete} style={{width:'100%', padding:'7px 10px', background:'#fff', color:'#C04B20', border:'1px solid #D64545', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Supprimer</button>}
+              {p.photo_url && <button onClick={doPhotoDelete} style={{width:'100%', padding:'7px 10px', background:'#fff', color:'var(--color-error)', border:'1px solid var(--color-error)', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Supprimer</button>}
               <input id="agent-photo-input" type="file" accept="image/*" style={{display:'none'}}
                 onChange={e => { if (e.target.files && e.target.files[0]) doPhotoUpload(e.target.files[0]); }}/>
             </div>
@@ -13985,7 +13985,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
               </button>
             ) : (
               <button onClick={doUnpublish}
-                style={{flex:1, padding:'11px', background:'#fff', color:'#C04B20', border:'1.5px solid #D64545', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                style={{flex:1, padding:'11px', background:'#fff', color:'var(--color-error)', border:'1.5px solid var(--color-error)', borderRadius:8, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
                 Passer en brouillon
               </button>
             )}
@@ -14765,7 +14765,7 @@ function NotificationsView({onBack, openEditReview, showToast}) {
   }
 
   function iconFor(type) {
-    const stroke = {edit_pending:'#D97706', edit_approved:'#059669', edit_rejected:'#DC2626', edit_modified:'#2563EB'}[type] || 'var(--color-text-muted)';
+    const stroke = {edit_pending:'#D97706', edit_approved:'#059669', edit_rejected:'var(--color-error)', edit_modified:'#2563EB'}[type] || 'var(--color-text-muted)';
     if (type === 'edit_approved') return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>;
     if (type === 'edit_rejected') return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>;
     if (type === 'edit_modified') return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/></svg>;
@@ -14904,7 +14904,7 @@ function EditReviewView({editId, onBack, showToast}) {
   if (loading) return <div style={{padding:30, textAlign:'center', color:'var(--color-text-muted)'}}>Chargement…</div>;
   if (!edit) return (
     <div style={{padding:30, textAlign:'center'}}>
-      <div style={{color:'#DC2626', marginBottom:10}}>Edit introuvable</div>
+      <div style={{color:'var(--color-error)', marginBottom:10}}>Edit introuvable</div>
       <button onClick={onBack} style={{padding:'8px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontFamily:'inherit'}}>Retour</button>
     </div>
   );
@@ -14953,7 +14953,7 @@ function EditReviewView({editId, onBack, showToast}) {
         <div style={{padding:'10px 14px', borderTop:'1px solid #EDE6DC', background:'#fff', display:'flex', gap:6}}>
           <button disabled={posting} onClick={() => decide('approve')} style={{flex:1, padding:'12px', background:'#059669', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Valider</button>
           <button disabled={posting} onClick={startModify} style={{flex:1, padding:'12px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Modifier</button>
-          <button disabled={posting} onClick={() => setRejectModal(true)} style={{flex:1, padding:'12px', background:'#DC2626', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Refuser</button>
+          <button disabled={posting} onClick={() => setRejectModal(true)} style={{flex:1, padding:'12px', background:'var(--color-error)', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor: posting ? 'wait' : 'pointer'}}>Refuser</button>
         </div>
       )}
       {isPending && editMode && (
@@ -14971,7 +14971,7 @@ function EditReviewView({editId, onBack, showToast}) {
               style={{width:'100%', minHeight:80, padding:8, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:13, boxSizing:'border-box', resize:'vertical'}}/>
             <div style={{display:'flex', gap:8, marginTop:12}}>
               <button onClick={() => setRejectModal(false)} style={{flex:1, padding:'10px', background:'transparent', color:'var(--color-accent)', border:'1.5px solid #B89968', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer'}}>Annuler</button>
-              <button onClick={() => { setRejectModal(false); decide('reject', rejectComment); }} style={{flex:1, padding:'10px', background:'#DC2626', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor:'pointer'}}>Confirmer le refus</button>
+              <button onClick={() => { setRejectModal(false); decide('reject', rejectComment); }} style={{flex:1, padding:'10px', background:'var(--color-error)', color:'#fff', border:'none', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor:'pointer'}}>Confirmer le refus</button>
             </div>
           </div>
         </div>
@@ -15046,7 +15046,7 @@ function ExportPage({onBack, showToast}) {
             </div>
           )}
           {zipState.status === 'failed' && (
-            <div style={{fontSize:13, color:'#DC2626'}}>Échec : {zipState.error}</div>
+            <div style={{fontSize:13, color:'var(--color-error)'}}>Échec : {zipState.error}</div>
           )}
         </div>
       </div>
@@ -15292,7 +15292,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
     let openToolbarKey = null;
     editables.forEach(el => {
       el.style.transition = 'background .15s, outline-color .15s, opacity 180ms';
-      el.style.outline = '2px dashed #DC2626';
+      el.style.outline = '2px dashed var(--color-error)';
       el.style.outlineOffset = '4px';
       el.style.background = '#FEF2F2';
       el.style.borderRadius = '4px';
@@ -15316,7 +15316,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
         const dot = document.createElement('div');
         dot.className = 'ocre-pdf-dot';
         dot.setAttribute('data-pdf-dot', '1');
-        const bg = isVisible ? '#DC2626' : '#9CA3AF';
+        const bg = isVisible ? 'var(--color-error)' : '#9CA3AF';
         const sh = isVisible ? 'rgba(220,38,38,.35)' : 'rgba(156,163,175,.35)';
         dot.style.cssText = 'position:absolute;top:-11px;right:8px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:' + bg + ';color:#fff;border-radius:99px;box-shadow:0 2px 6px ' + sh + ';cursor:pointer;z-index:3;user-select:none;transition:background 120ms, box-shadow 120ms;';
         dot.contentEditable = 'false';
@@ -15355,7 +15355,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
           editableEl.style.opacity = '1';
           const lbl = editableEl.querySelector(':scope > .ocre-pdf-hidden-label');
           if (lbl) lbl.remove();
-          dotEl.style.background = '#DC2626';
+          dotEl.style.background = 'var(--color-error)';
           dotEl.style.boxShadow = '0 2px 6px rgba(220,38,38,.35)';
           dotEl.innerHTML = OCRE_PDF_EYE_SVG;
         }
@@ -15400,7 +15400,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
       if (!editableEl) return;
       if (e.relatedTarget && editableEl.contains(e.relatedTarget)) return;
       editableEl.style.background = '#FEF2F2';
-      editableEl.style.outlineColor = '#DC2626';
+      editableEl.style.outlineColor = 'var(--color-error)';
     }
     function hideAllToolbars() {
       root.querySelectorAll('.ocre-pdf-toolbar').forEach(b => b.remove());
@@ -15484,7 +15484,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
       {/* M/2026/05/05/61 — 3 toggles selection pages PDF P1/P2/P3 a cote du switch mode. */}
       <div style={{flexShrink:0, padding:'10px 16px', display:'flex', justifyContent:'center', alignItems:'center', gap:14, borderBottom:'1px solid #E8DDD0', background:'#fff', flexWrap:'wrap'}}>
         <div style={{display:'inline-flex', background:'#fff', border:'1px solid #E8DDD0', borderRadius:99, padding:4, boxShadow:'0 2px 6px rgba(60,40,20,.04)'}}>
-          {[{id:'edit', label:'Edition', activeBg:'#DC2626'}, {id:'preview', label:'Apercu', activeBg:'#5C4A3A'}].map(m => {
+          {[{id:'edit', label:'Edition', activeBg:'var(--color-error)'}, {id:'preview', label:'Apercu', activeBg:'#5C4A3A'}].map(m => {
             const active = editorMode === m.id;
             return (
               <button key={m.id} type="button" onClick={() => setEditorMode(m.id)}
@@ -15514,7 +15514,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
                   title={wouldDeactivateLast ? 'Au moins une page doit rester active' : (active ? 'Cliquer pour exclure' : 'Cliquer pour inclure')}
                   onClick={() => togglePage(opt.key)}
                   style={{display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:99, fontFamily:'inherit', fontSize:12, fontWeight:600, transition:'background 150ms, color 150ms', cursor: wouldDeactivateLast ? 'not-allowed' : 'pointer', border:'none',
-                    background: active ? '#1D4E89' : '#E5E7EB', color: active ? '#fff' : '#9A8B7C', opacity: wouldDeactivateLast ? 0.6 : 1}}>
+                    background: active ? 'var(--color-info)' : '#E5E7EB', color: active ? '#fff' : '#9A8B7C', opacity: wouldDeactivateLast ? 0.6 : 1}}>
                   <span style={{fontSize:11, fontWeight:700}}>{active ? '✓' : '⊘'}</span>
                   {opt.label}
                 </button>
@@ -15769,7 +15769,7 @@ function PdfShareModal({dossierId, currency = 'EUR', showPrice: initShowPrice = 
     return (
       <button type="button" onClick={onClick}
         style={{fontSize:11, fontWeight:700, letterSpacing:0.5, textTransform:'uppercase',
-                color: visible ? '#3D7A3D' : '#C73E3E', background:'transparent', border:'none',
+                color: visible ? '#3D7A3D' : 'var(--color-error)', background:'transparent', border:'none',
                 cursor:'pointer', padding:0, fontFamily:'inherit'}}>
         {visible ? 'Visible' : 'Masqué'}
       </button>
@@ -16118,7 +16118,7 @@ function AIQuotaSection({showToast}) {
     <div>
       <div style={{fontSize:13, color:'var(--color-text-primary)', marginBottom:6}}>Plan {quota.plan} : <b>{quota.used} / {quota.monthly}</b> générations ce mois</div>
       <div style={{height:8, background:'#F4EFE6', borderRadius:4, overflow:'hidden'}}>
-        <div style={{height:'100%', width: pct + '%', background: pct >= 90 ? '#DC2626' : (pct >= 70 ? '#D97706' : 'var(--color-accent)'), transition:'width .3s'}}/>
+        <div style={{height:'100%', width: pct + '%', background: pct >= 90 ? 'var(--color-error)' : (pct >= 70 ? '#D97706' : 'var(--color-accent)'), transition:'width .3s'}}/>
       </div>
       <div style={{fontSize:11, color:'var(--color-text-muted)', marginTop:4}}>{quota.remaining} restantes. Reset le 1er du mois.</div>
     </div>
@@ -16212,7 +16212,7 @@ function BillingSection({showToast}) {
       {limits.plan !== 'decouverte' && (
         <div style={{display:'flex', gap:6, marginTop:8, flexWrap:'wrap'}}>
           <button onClick={portal} disabled={busy} style={{padding:'8px 12px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Gérer (Stripe Portal)</button>
-          <button onClick={cancel} disabled={busy} style={{padding:'8px 12px', background:'transparent', color:'#DC2626', border:'1px solid #DC2626', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Annuler</button>
+          <button onClick={cancel} disabled={busy} style={{padding:'8px 12px', background:'transparent', color:'var(--color-error)', border:'1px solid var(--color-error)', borderRadius:6, fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Annuler</button>
         </div>
       )}
     </div>
@@ -16436,7 +16436,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
                 </div>
               </div>
               {tgLink.status === 'linked' ? (
-                <button onClick={disconnectTg} style={{padding:'6px 12px', background:'#FBEAEA', border:'1.5px solid #C73E3E', borderRadius:6, color:'#C73E3E', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer'}}>Délier</button>
+                <button onClick={disconnectTg} style={{padding:'6px 12px', background:'#FBEAEA', border:'1.5px solid var(--color-error)', borderRadius:6, color:'var(--color-error)', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer'}}>Délier</button>
               ) : tgLink.status === 'pending' ? (
                 <button onClick={() => setTgLink(prev => ({...prev, polling: false, status: 'unlinked', deep_link_https: null, token: null}))} style={{padding:'6px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'var(--color-accent)', fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Annuler</button>
               ) : (
@@ -16455,7 +16455,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
               <button onClick={testTgNotify} disabled={tgTesting} style={{padding:'6px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'var(--color-accent)', fontFamily:'inherit', fontSize:12, cursor: tgTesting ? 'wait' : 'pointer', marginTop:4}}>{tgTesting ? 'Envoi…' : 'Tester l\'envoi'}</button>
             )}
             {tgLink.stub_mode && (
-              <div style={{fontSize:10.5, color:'#B8801E', marginTop:6, fontStyle:'italic'}}>⚠ Bot en mode stub (token serveur absent). Voir l'admin pour activer.</div>
+              <div style={{fontSize:10.5, color:'var(--color-warning)', marginTop:6, fontStyle:'italic'}}>⚠ Bot en mode stub (token serveur absent). Voir l'admin pour activer.</div>
             )}
           </div>
           <Toggle checked={E.enabled} onChange={v => update('notif.email.enabled', v)} label="Email" sub={prefs._email || '—'}/>
@@ -16645,7 +16645,7 @@ function ScanWebModal({onClose, showToast, clientId}) {
             {Object.entries(results).map(([src, data]) => (
               <div key={src} style={{marginBottom:14}}>
                 <div style={{fontSize:11, textTransform:'uppercase', letterSpacing:.5, color:'var(--color-text-muted)', fontWeight:700, marginBottom:6}}>
-                  {src} {data.cached ? '(cache)' : ''} · {(data.results || []).length} résultats {data.error && <span style={{color:'#DC2626'}}>· {data.error}</span>}
+                  {src} {data.cached ? '(cache)' : ''} · {(data.results || []).length} résultats {data.error && <span style={{color:'var(--color-error)'}}>· {data.error}</span>}
                 </div>
                 {(data.results || []).slice(0, 10).map((l, i) => (
                   <div key={i} style={{padding:8, border:'1px solid #EDE6DC', borderRadius:6, marginBottom:6, background:'#FAF7F0'}}>
@@ -16802,7 +16802,7 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
               <span>{t.l}</span>
               {t.n > 0 && (
                 <span style={{minWidth:18, height:18, padding:'0 5px',
-                              background: t.badgeRed ? '#DC2626' : (active ? 'rgba(255,255,255,.25)' : '#F0E8D8'),
+                              background: t.badgeRed ? 'var(--color-error)' : (active ? 'rgba(255,255,255,.25)' : '#F0E8D8'),
                               color: t.badgeRed ? '#fff' : (active ? '#fff' : 'var(--color-accent)'),
                               borderRadius:9, fontSize:11, fontWeight:700, lineHeight:'18px', textAlign:'center'}}>{t.n}</span>
               )}
@@ -16850,7 +16850,7 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
               )}
               {inATraiter && isNonVu && (
                 <span aria-label="non vu"
-                  style={{position:'absolute', top:10, right:12, width:8, height:8, borderRadius:4, background:'#DC2626', boxShadow:'0 0 0 2px #fff', zIndex:2}}/>
+                  style={{position:'absolute', top:10, right:12, width:8, height:8, borderRadius:4, background:'var(--color-error)', boxShadow:'0 0 0 2px #fff', zIndex:2}}/>
               )}
               {/* Photo hero + score top-right */}
               <div style={{display:'flex', gap:12, alignItems:'flex-start', marginBottom:10}}>
@@ -17045,12 +17045,12 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
       const ratio = Math.min(a,b) / Math.max(a,b);
       if (ratio >= 0.95) return <span style={{color:'#059669'}}>✓</span>;
       if (ratio >= 0.75) return <span style={{color:'#D97706'}}>≈</span>;
-      return <span style={{color:'#DC2626'}}>✗</span>;
+      return <span style={{color:'var(--color-error)'}}>✗</span>;
     }
     const a = String(crit.fA).toLowerCase(), b = String(crit.fB).toLowerCase();
     if (a === b) return <span style={{color:'#059669'}}>✓</span>;
     if (a.includes(b) || b.includes(a)) return <span style={{color:'#D97706'}}>≈</span>;
-    return <span style={{color:'#DC2626'}}>✗</span>;
+    return <span style={{color:'var(--color-error)'}}>✗</span>;
   }
 
   function fmtVal(v, suf) {
@@ -18225,14 +18225,14 @@ function MatchModal({clientId, clients, findClientById, setEditingFromMatch, onC
         <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:20, fontWeight:700, color:'var(--color-accent)', marginBottom:4, textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:8}}><IconTarget size={18}/> Matchs potentiels</div>
         <div style={{fontSize:12, color:'var(--color-text-muted)', marginBottom:14, textAlign:'center'}}>Pour <b>{srcName}</b></div>
         {loading && <div style={{textAlign:'center', color:'var(--color-text-muted)', fontSize:13, padding:20}}>Chargement…</div>}
-        {error && <div style={{textAlign:'center', color:'#C04B20', fontSize:13, padding:20}}>{error}</div>}
+        {error && <div style={{textAlign:'center', color:'var(--color-error)', fontSize:13, padding:20}}>{error}</div>}
         {!loading && !error && matches.length === 0 && (
           <div style={{textAlign:'center', color:'var(--color-text-muted)', fontSize:13, padding:20}}>Aucun match pour le moment.</div>
         )}
         {matches.map(m => {
           const s = m.summary;
           const cname = s.societe_nom || ((s.prenom || '') + ' ' + (s.nom || '')).trim() || 'Sans nom';
-          const col = s.score > 80 ? '#D64545' : '#B26D3A';
+          const col = s.score > 80 ? 'var(--color-error)' : '#B26D3A';
           return (
             <div key={m.client_id} style={{background:'#FDFAF7', border:'1px solid #EDE6DC', borderRadius:10, padding:12, marginBottom:8}}>
               <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
@@ -18545,7 +18545,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
 
   // V41 — Swipe-to-archive : translation X révèle bouton archive derrière la row.
   // M/2026/04/30/33 — Variante A : SWIPE GAUCHE UNIQUEMENT, 3 boutons compacts 60px each = 180px total.
-  // SUPPR. (#DC2626) + ARCHIV. (#C9B698) + APERÇU (#8B6F4E). PARTAGER retire du swipe (accessible
+  // SUPPR. (var(--color-error)) + ARCHIV. (#C9B698) + APERÇU (#8B6F4E). PARTAGER retire du swipe (accessible
   // via APERCU -> fiche PDF -> bouton Partager interne PdfShareModal M/25). ShareDossierModal
   // M/30/30 supprime franchement (cf cleanup ci-dessous).
   const [swipeX, setSwipeX] = React.useState(0);
@@ -18651,14 +18651,14 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   return (
     <div ref={swipeRowRef} style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent', transition:'opacity 200ms ease-out, transform 200ms ease-out, max-height 220ms ease-out, margin-bottom 220ms ease-out', opacity: removing ? 0 : 1, transform: removing ? 'translateX(-30px)' : 'none', maxHeight: removing ? 0 : '600px', marginBottom: removing ? 0 : wrapperMargin, pointerEvents: removing ? 'none' : 'auto'}}>
       {/* M/2026/04/30/33 — Variante A : 3 boutons compacts 60px chacun = 180px total swipe gauche.
-          SUPPR. (right:120, #DC2626 trash) + ARCHIV. (right:60, #C9B698 archive) + APERÇU (right:0, #8B6F4E eye).
+          SUPPR. (right:120, var(--color-error) trash) + ARCHIV. (right:60, #C9B698 archive) + APERÇU (right:0, #8B6F4E eye).
           Reveles si swipeX <= -90 (threshold 50% de 180). PARTAGER retire du swipe (accessible via
           APERCU -> fiche PDF -> Partager interne PdfShareModal M/25). */}
       <button type="button"
         onClick={e => { e.stopPropagation(); if (swipeX <= -60) doDelete(e); }}
         disabled={swipeX > -60}
         title="Supprimer"
-        style={{position:'absolute', right:80, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#DC2626', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+        style={{position:'absolute', right:80, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'var(--color-error)', color:'#fff', fontSize:8, fontWeight:700, gap:3, border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:0, letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="3 6 5 6 21 6"/>
           <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
@@ -18871,7 +18871,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         <div className="client-row-sector" onClick={e => openSec(3, e)}>
           <div className="client-row-sector-label">
             <IconCalendar size={12}/> Suivi
-            {suivi3 && suivi3.urgent ? <span style={{marginLeft:3, display:'inline-block', width:6, height:6, borderRadius:'50%', background:'#D64545'}}/> : null}
+            {suivi3 && suivi3.urgent ? <span style={{marginLeft:3, display:'inline-block', width:6, height:6, borderRadius:'50%', background:'var(--color-error)'}}/> : null}
           </div>
           {suivi3 ? (
             <>
@@ -18919,7 +18919,7 @@ function ConfirmModal({title, message, danger, success, confirmLabel, cancelLabe
       style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
       <div onClick={e => e.stopPropagation()}
         style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:20, width:'100%', maxWidth:340, boxShadow:'0 20px 50px rgba(0,0,0,.25)'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color: danger ? '#C04B20' : 'var(--color-accent)', marginBottom:8}}>{title}</div>
+        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:18, fontWeight:700, color: danger ? 'var(--color-error)' : 'var(--color-accent)', marginBottom:8}}>{title}</div>
         {message && <div style={{fontSize:13, color:'var(--color-text-primary)', lineHeight:1.5, marginBottom:16}}>{message}</div>}
         <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
           <button onClick={onCancel}
@@ -18927,7 +18927,7 @@ function ConfirmModal({title, message, danger, success, confirmLabel, cancelLabe
             {cancelLabel || 'Annuler'}
           </button>
           <button onClick={onConfirm}
-            style={{padding:'10px 14px', background: success ? 'linear-gradient(135deg,#2D7A3E,#3E9651)' : (danger ? '#C04B20' : 'linear-gradient(135deg,var(--color-accent),#A06B45)'), color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+            style={{padding:'10px 14px', background: success ? 'linear-gradient(135deg,var(--color-success),#3E9651)' : (danger ? 'var(--color-error)' : 'linear-gradient(135deg,var(--color-accent),#A06B45)'), color:'#fff', border:'none', borderRadius:9, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
             {confirmLabel || (success ? 'Enregistrer' : (danger ? 'Supprimer' : 'Confirmer'))}
           </button>
         </div>
@@ -18974,9 +18974,9 @@ function Toast({t}) {
   const _type = type || 'success';
   const _variants = {
     success: { bg: 'rgba(45, 122, 79, 0.92)', border: '#2D7A4F' },
-    error:   { bg: 'rgba(199, 62, 62, 0.92)', border: '#C73E3E' },
-    warning: { bg: 'rgba(184, 128, 30, 0.92)', border: '#B8801E' },
-    info:    { bg: 'rgba(29, 78, 137, 0.92)', border: '#1D4E89' },
+    error:   { bg: 'rgba(199, 62, 62, 0.92)', border: 'var(--color-error)' },
+    warning: { bg: 'rgba(184, 128, 30, 0.92)', border: 'var(--color-warning)' },
+    info:    { bg: 'rgba(29, 78, 137, 0.92)', border: 'var(--color-info)' },
   };
   const v = _variants[_type] || _variants.success;
   return (
@@ -19290,7 +19290,7 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
                 {t.due_at && <div style={{fontSize:11, color:'var(--color-text-muted)'}}>📅 {relTimeFr(t.due_at)}</div>}
               </div>
               <button type="button" onClick={() => setTodoModal(t)} style={{background:'none', border:'none', color:'var(--color-accent)', fontSize:14, cursor:'pointer', padding:4}} title="Modifier">✎</button>
-              <button type="button" onClick={() => deleteTodo(t.id)} style={{background:'none', border:'none', color:'#C04B20', fontSize:16, cursor:'pointer', padding:4}} title="Supprimer">×</button>
+              <button type="button" onClick={() => deleteTodo(t.id)} style={{background:'none', border:'none', color:'var(--color-error)', fontSize:16, cursor:'pointer', padding:4}} title="Supprimer">×</button>
             </div>
           );
         })}
@@ -19340,7 +19340,7 @@ function SuiviPanel({clientId, defaultLocation, showToast}) {
           <div key={j.id} style={{padding:'8px 0', borderBottom:'1px solid #F4EEE6'}}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:6}}>
               <div style={{fontSize:11, color:'var(--color-accent)', fontWeight:700}}>{JOURNAL_KIND_ICON[j.kind] || '📝'} {JOURNAL_KIND_LABEL[j.kind] || j.kind} · {relTimeFr(j.ts)}</div>
-              <button type="button" onClick={() => deleteJournalEntry(j.id)} style={{background:'none', border:'none', color:'#C04B20', fontSize:13, cursor:'pointer', padding:0}} title="Supprimer">×</button>
+              <button type="button" onClick={() => deleteJournalEntry(j.id)} style={{background:'none', border:'none', color:'var(--color-error)', fontSize:13, cursor:'pointer', padding:0}} title="Supprimer">×</button>
             </div>
             <div style={{fontSize:13, color:'var(--color-text-primary)', marginTop:2, whiteSpace:'pre-wrap'}}>{j.content}</div>
           </div>
@@ -19667,12 +19667,12 @@ function SheetView({onBack, clients, openClient, showToast}) {
               const nextEvent = suivi.next_event;
               const nextTodo = suivi.next_todo;
               const score = (c.score || 0) || 70;
-              const scoreColor = score >= 80 ? '#3E8B5E' : (score >= 60 ? '#D4A437' : '#C04B20');
+              const scoreColor = score >= 80 ? '#3E8B5E' : (score >= 60 ? 'var(--color-warning)' : 'var(--color-error)');
               const stages = [
                 {k:'prospect', l:'Prospect', c:'var(--color-text-muted)'},
                 {k:'qualifie', l:'Qualifié', c:'#3B4D7A'},
                 {k:'visite', l:'Visite', c:'#6B4A8E'},
-                {k:'offre', l:'Offre', c:'#D4A437'},
+                {k:'offre', l:'Offre', c:'var(--color-warning)'},
                 {k:'compromis', l:'Compromis', c:'#B26D3A'},
                 {k:'acte', l:'Acte', c:'#3E8B5E'},
                 {k:'solde', l:'Soldé', c:'#2E6B3F'},
@@ -19682,7 +19682,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
               const todoCount = (Array.isArray(c.todos) ? c.todos.filter(t => !t.done).length : 0) || (nextTodo ? 1 : 0);
               const todoOverdue = nextTodo && nextTodo.due_at && new Date(nextTodo.due_at) < new Date();
               const todoBg = todoOverdue ? '#FEE4E2' : (todoCount > 1 ? '#FEF3C7' : '#E8F5EC');
-              const todoFg = todoOverdue ? '#C04B20' : (todoCount > 1 ? '#A06B45' : '#3E8B5E');
+              const todoFg = todoOverdue ? 'var(--color-error)' : (todoCount > 1 ? '#A06B45' : '#3E8B5E');
               const rowBg = idx % 2 === 0 ? '#FFFCF5' : '#FBF7EF';
               const profilLabels = {Vendeur:{bg:'#E8EEF8', fg:'#3B4D7A'}, Acheteur:{bg:'#FBF1E4', fg:'var(--color-accent)'}, Bailleur:{bg:'#E8F5EC', fg:'#3E8B5E'}, Locataire:{bg:'#FEF3C7', fg:'#A06B45'}, Investisseur:{bg:'#F0EAF8', fg:'#6B4A8E'}, Curieux:{bg:'#F4ECE3', fg:'var(--color-text-muted)'}};
               const pl = profilLabels[profil] || profilLabels.Acheteur;
@@ -20178,7 +20178,7 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
         {result && (
           <div style={{background:'#fff', borderRadius:12, padding:14, border:'1.5px solid #A67F5A', display:'flex', flexDirection:'column', gap:10, marginBottom:14, boxShadow:'0 1px 3px rgba(139,94,60,.06)'}}>
             <div style={{display:'flex', alignItems:'center', gap:6}}>
-              <span style={{padding:'3px 9px', borderRadius:999, background: result.extraction_mode === 'ai' ? '#E8F5EC' : '#FFF5E0', color: result.extraction_mode === 'ai' ? '#3E8B5E' : '#D4A437', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>
+              <span style={{padding:'3px 9px', borderRadius:999, background: result.extraction_mode === 'ai' ? '#E8F5EC' : '#FFF5E0', color: result.extraction_mode === 'ai' ? '#3E8B5E' : 'var(--color-warning)', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:.5}}>
                 {result.extraction_mode === 'ai' ? '🤖 IA' : '📐 Heuristique'}
               </span>
               <span style={{fontSize:11, color:'var(--color-text-muted)', fontWeight:600}}>· {previewCount} point{previewCount > 1 ? 's' : ''} détecté{previewCount > 1 ? 's' : ''}</span>
@@ -20209,7 +20209,7 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
                 que sourceType vide. */}
             <div style={{borderTop:'1px solid #F0E4D4', paddingTop:10, marginTop:6}}>
               <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8, display:'flex', alignItems:'center', gap:5}}>
-                🏷 Source de l'annonce <span style={{color:'#C04B20'}}>*</span>
+                🏷 Source de l'annonce <span style={{color:'var(--color-error)'}}>*</span>
               </div>
               <div style={{display:'flex', flexDirection:'column', gap:6, marginBottom:8}}>
                 {[
@@ -20454,7 +20454,7 @@ function ProfilSelectorBar({activeProfil, onChange}) {
   const profils = [
     {k:'Acheteur',  l:'Acheteur',  color:'var(--color-accent)'},
     {k:'Vendeur',   l:'Vendeur',   color:'#1E3A5F'},
-    {k:'Bailleur',  l:'Bailleur',  color:'#2D6B3F'},
+    {k:'Bailleur',  l:'Bailleur',  color:'var(--color-success)'},
     {k:'Locataire', l:'Locataire', color:'#8B6B1E'},
   ];
   // M/2026/05/01/20 — viewport tracking : mobile (<=480) / tablette (481-1024) / desktop (>1024).
@@ -21080,14 +21080,14 @@ function Section7({d, set}) {
       {/* 7a Notaire — placeholder migration */}
       <div style={{padding:'10px 12px', background:'#E8EFE9', border:'1px solid #5C8A6F', borderRadius:10, marginBottom:8}}>
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6, flexWrap:'wrap', gap:8}}>
-          <div style={{fontSize:11, fontWeight:700, color:'#2D6B3F', textTransform:'uppercase', letterSpacing:.5}}>07a · {_ref ? _ref.blockHeaders.notaire : 'Notaire(s)'}</div>
+          <div style={{fontSize:11, fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.5}}>07a · {_ref ? _ref.blockHeaders.notaire : 'Notaire(s)'}</div>
           {_pays === 'MA' && (
             <div style={{display:'inline-flex', gap:4}}>
               {[{k:'notaire', l:'Notaire moderne'}, {k:'adoul', l:'Adoul'}].map(o => {
                 const sel = _maNotaire === o.k;
                 return (
                   <button key={o.k} type="button" onClick={() => set('notaire_type_ma', o.k, {commit:true})}
-                    style={{padding:'3px 9px', background: sel ? '#2D6B3F' : '#fff', color: sel ? '#fff' : '#2D6B3F', border:'1px solid #5C8A6F', borderRadius:99, fontSize:10, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>
+                    style={{padding:'3px 9px', background: sel ? 'var(--color-success)' : '#fff', color: sel ? '#fff' : 'var(--color-success)', border:'1px solid #5C8A6F', borderRadius:99, fontSize:10, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>
                     {o.l}
                   </button>
                 );
@@ -21127,7 +21127,7 @@ function Section7({d, set}) {
               return (
                 <div key={item.id} style={{display:'flex', alignItems:'flex-start', gap:8, padding:'6px 8px', background:'#FBF7EF', borderRadius:7}}>
                   <button type="button" onClick={() => setChecklist(cat, item.id, {checked: !cur.checked})}
-                    style={{flexShrink:0, width:18, height:18, borderRadius:4, border:'2px solid '+(cur.checked ? '#2D6B3F' : '#C9B79A'), background: cur.checked ? '#2D6B3F' : '#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, marginTop:1}}>
+                    style={{flexShrink:0, width:18, height:18, borderRadius:4, border:'2px solid '+(cur.checked ? 'var(--color-success)' : '#C9B79A'), background: cur.checked ? 'var(--color-success)' : '#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:0, marginTop:1}}>
                     {cur.checked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 12 10 17 19 7"/></svg>}
                   </button>
                   <div style={{flex:1, minWidth:0}}>
@@ -22390,7 +22390,7 @@ function FormView(props) {
             {[
               {k:'Acheteur',       l:'Acheteur',           color:'var(--color-accent)'},
               {k:'Vendeur',        l:'Vendeur',            color:'#1E3A5F'},
-              {k:'Bailleur',       l:'Bailleur',           color:'#2D6B3F'},
+              {k:'Bailleur',       l:'Bailleur',           color:'var(--color-success)'},
               {k:'Locataire',      l:'Locataire',          color:'#8B6B1E'},
               {k:'Promoteur',      l:'Promoteur',          color:'#5A3F2A'},
               {k:'MarchandBiens',  l:'Marchand de biens',  color:'#4A5A6F'},
@@ -22429,7 +22429,7 @@ function FormView(props) {
                  const _profils1A = [
                    {k:'Acheteur',       l:'Acheteur',           color:'var(--color-accent)'},
                    {k:'Vendeur',        l:'Vendeur',            color:'#1E3A5F'},
-                   {k:'Bailleur',       l:'Bailleur',           color:'#2D6B3F'},
+                   {k:'Bailleur',       l:'Bailleur',           color:'var(--color-success)'},
                    {k:'Locataire',      l:'Locataire',          color:'#8B6B1E'},
                    {k:'Promoteur',      l:'Promoteur',          color:'#5A3F2A'},
                    {k:'MarchandBiens',  l:'Marchand de biens',  color:'#4A5A6F'},
@@ -22901,7 +22901,7 @@ function FormView(props) {
               📥 Ajouter à mes brouillons
             </button>
             <button onClick={() => deleteStaged && deleteStaged(editing.id)}
-              style={{width:'100%', padding:'10px', background:'#FDFAF7', color:'#C04B20', border:'1.5px solid #E8DDD0', borderRadius:10, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>
+              style={{width:'100%', padding:'10px', background:'#FDFAF7', color:'var(--color-error)', border:'1.5px solid #E8DDD0', borderRadius:10, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>
               🗑 Supprimer ce téléchargement
             </button>
           </div>
@@ -23018,7 +23018,7 @@ function FormView(props) {
                 if (d.avocat) { _checkPhone(d.avocat.telephone, 'avocat.telephone'); _checkEmail(d.avocat.email, 'avocat.email'); }
                 if (_invalidFields.length > 0) {
                   showToast && showToast('Corrigez les ' + _invalidFields.length + ' champ' + (_invalidFields.length > 1 ? 's' : '') + ' tel/email invalide' + (_invalidFields.length > 1 ? 's' : '') + ' avant d enregistrer');
-                  // Scroll vers le 1er input rouge (border #D64545) si DOM dispo.
+                  // Scroll vers le 1er input rouge (border var(--color-error)) si DOM dispo.
                   setTimeout(() => {
                     const firstRed = document.querySelector('input[type="tel"][style*="rgb(214, 69, 69)"], input[type="email"][style*="rgb(214, 69, 69)"]');
                     if (firstRed && firstRed.scrollIntoView) {
@@ -23302,8 +23302,8 @@ function FormView(props) {
                   title={_hasRealId ? "Supprimer ce dossier" : "Pas encore de dossier a supprimer"}
                   style={{flex:'1 1 0', minWidth:0, height:40, padding:0,
                     background: _hasRealId ? '#fff' : '#FDFAF7',
-                    color: _hasRealId ? '#D64545' : '#A89882',
-                    border:'1.5px solid '+(_hasRealId ? '#D64545' : '#E8DDD0'),
+                    color: _hasRealId ? 'var(--color-error)' : '#A89882',
+                    border:'1.5px solid '+(_hasRealId ? 'var(--color-error)' : '#E8DDD0'),
                     borderRadius:8,
                     cursor: _hasRealId ? 'pointer' : 'not-allowed',
                     fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14,
