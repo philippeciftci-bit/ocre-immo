@@ -17738,7 +17738,7 @@ function ListView(props) {
   function renderGroup(g) {
     if (g.dossiers.length === 1) {
       const c = g.dossiers[0];
-      return <ClientRow key={'s-'+c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)} openDossierPdf={props.openDossierPdf}/>;
+      return <ClientRow key={'s-'+c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)} openDossierPdf={props.openDossierPdf} onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}/>;
     }
     return (
       <div key={'g-'+g.ids.join('-')} className="dossier-group"
@@ -17753,7 +17753,8 @@ function ListView(props) {
               onOpenMatches={() => openMatchModal(c.id)}
               onOpenSection={openClientAtSection}
               onClick={() => openClient(c)}
-              openDossierPdf={props.openDossierPdf}/>
+              openDossierPdf={props.openDossierPdf}
+              onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}/>
           </div>
         ))}
       </div>
@@ -18115,6 +18116,10 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   const [telChooser, setTelChooser] = React.useState(false);
   // M/2026/04/29/46 — lightbox photos local au row.
   const [lightboxOpen, setLightboxOpen] = React.useState(false);
+  // M/2026/05/07/101 — fade-out optimistic suppression/archivage. Au lieu de window.location.reload()
+  // qui faisait un flash d ecran (recharge complete), on anime opacity+translateX 200ms puis on appelle
+  // props.onRemove(id) qui retire la card du state parent. Backend appele en parallele de l animation.
+  const [removing, setRemoving] = React.useState(false);
   const profil = c.projet || c.profil_detecte || 'Acheteur';
   const col = PROFILS[profil] || PROFILS.Acheteur;
   const tint = PROFILS_TINT[profil] || PROFILS_TINT.Acheteur;
@@ -18362,7 +18367,11 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         body: JSON.stringify({id: c.id, archived: 1}),
       });
       const j = await r.json();
-      if (j && j.ok) { window.location.reload(); }
+      if (j && j.ok) {
+        // M/2026/05/07/101 — optimistic fade-out + onRemove (au lieu de window.location.reload()).
+        setRemoving(true);
+        setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);
+      }
     } catch (e) { /* noop */ }
   }
   async function doDelete(e) {
@@ -18383,7 +18392,11 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         body: JSON.stringify({id: c.id}),
       });
       const j = await r.json();
-      if (j && j.ok) { window.location.reload(); }
+      if (j && j.ok) {
+        // M/2026/05/07/101 — optimistic fade-out + onRemove (au lieu de window.location.reload()).
+        setRemoving(true);
+        setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);
+      }
       else { setSwipeX(0); alert(j && j.error ? j.error : 'Suppression impossible'); }
     } catch (e) { setSwipeX(0); }
   }
@@ -18430,7 +18443,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
               : 0)));
   const wrapperMargin = isGrouped ? 0 : 10;
   return (
-    <div ref={swipeRowRef} style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent'}}>
+    <div ref={swipeRowRef} style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent', transition:'opacity 200ms ease-out, transform 200ms ease-out, max-height 220ms ease-out, margin-bottom 220ms ease-out', opacity: removing ? 0 : 1, transform: removing ? 'translateX(-30px)' : 'none', maxHeight: removing ? 0 : '600px', marginBottom: removing ? 0 : wrapperMargin, pointerEvents: removing ? 'none' : 'auto'}}>
       {/* M/2026/04/30/33 — Variante A : 3 boutons compacts 60px chacun = 180px total swipe gauche.
           SUPPR. (right:120, #DC2626 trash) + ARCHIV. (right:60, #C9B698 archive) + APERÇU (right:0, #8B6F4E eye).
           Reveles si swipeX <= -90 (threshold 50% de 180). PARTAGER retire du swipe (accessible via
