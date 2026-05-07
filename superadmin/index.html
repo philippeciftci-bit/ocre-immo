@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ocre Immo — Super-admin</title>
-<!-- M/2026/05/07/88 — Favicon Oi cross-vhosts (path /favicon/ + manifest admin) -->
 <link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
@@ -27,12 +26,30 @@
   table { width: 100%; background: #fff; border-radius: 10px; overflow: hidden; border-collapse: collapse; margin-top: 16px; border: 1px solid #E5DDC8; }
   th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #F0E8D8; }
   th { background: #F0E8D8; color: #6B4429; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
-  .login { max-width: 360px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; border: 1px solid #E5DDC8; }
+  .login { max-width: 380px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; border: 1px solid #E5DDC8; }
   .login input { width: 100%; padding: 10px 12px; border: 1px solid #B89968; border-radius: 6px; margin-bottom: 10px; font-family: inherit; }
   .login button { width: 100%; padding: 12px; background: #8B5E3C; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .pwd-wrap { position: relative; }
+  .pwd-eye { position: absolute; right: 10px; top: 8px; background: none; border: none; cursor: pointer; padding: 4px; color: #8B5E3C; width: auto; }
+  .pwd-eye svg { width: 18px; height: 18px; display: block; }
+  .forgot { display: block; text-align: center; margin-top: 10px; color: #8B5E3C; font-size: 12px; font-style: italic; cursor: pointer; text-decoration: none; }
+  .forgot:hover { text-decoration: underline; }
+  .reset-form { margin-top: 12px; padding: 12px; background: #FBF1E4; border-radius: 8px; }
+  .reset-form input { margin-bottom: 0; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
   .tab { padding: 8px 14px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; }
   .tab.active { background: #8B5E3C; color: #fff; border-color: #8B5E3C; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .filters select, .filters input { padding: 6px 10px; border: 1px solid #E5DDC8; border-radius: 6px; font-family: inherit; font-size: 12px; }
+  .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+  .pagination button { padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; }
+  .pagination button.active { background: #8B5E3C; color: #fff; border-color: #8B5E3C; }
+  .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .badge-brouillon { color: #B91C1C; background: #FEE2E2; border: 1px solid #FCA5A5; }
+  .badge-archive { color: #6B5E4A; background: #EDE6DC; border: 1px solid #D9C9A8; }
+  .badge-enregistre { color: #2D7A3E; background: #D1FAE5; border: 1px solid #6EE7B7; }
+  .logout { float: right; padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: #8B5E3C; }
 </style>
 </head>
 <body>
@@ -40,8 +57,20 @@
   <h1>Super-admin</h1>
   <p style="color:#6B5E4A;margin-bottom:14px;font-size:13px">Connexion réservée aux super-administrateurs.</p>
   <input id="email" type="email" placeholder="Email" autocomplete="username">
-  <input id="pwd" type="password" placeholder="Mot de passe" autocomplete="current-password">
+  <div class="pwd-wrap">
+    <input id="pwd" type="password" placeholder="Mot de passe" autocomplete="current-password">
+    <button class="pwd-eye" type="button" onclick="togglePwd()" aria-label="Afficher mot de passe">
+      <svg id="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      <svg id="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+    </button>
+  </div>
   <button onclick="doLogin()">Se connecter</button>
+  <a class="forgot" onclick="toggleResetForm()">Mot de passe oublié ?</a>
+  <div id="reset-form" class="reset-form" style="display:none">
+    <input id="reset-email" type="email" placeholder="Votre email super-admin">
+    <button onclick="doResetRequest()" style="margin-top:8px">Recevoir le lien de réinitialisation</button>
+    <p id="reset-msg" style="color:#2D7A3E;font-size:12px;margin-top:8px;display:none">Si cet email est super-admin, un lien de réinitialisation a été envoyé.</p>
+  </div>
   <p id="err" style="color:#8B0000;font-size:12px;margin-top:10px"></p>
 </div></div>
 
@@ -52,6 +81,23 @@ const api = (url, opts = {}) => {
   if (opts.body && typeof opts.body !== 'string') { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(opts.body); }
   return fetch(url, opts).then(r => r.json());
 };
+function togglePwd() {
+  const pwd = document.getElementById('pwd');
+  const eyeOn = document.getElementById('eye-on');
+  const eyeOff = document.getElementById('eye-off');
+  if (pwd.type === 'password') { pwd.type = 'text'; eyeOn.style.display = 'none'; eyeOff.style.display = 'block'; }
+  else { pwd.type = 'password'; eyeOn.style.display = 'block'; eyeOff.style.display = 'none'; }
+}
+function toggleResetForm() {
+  const f = document.getElementById('reset-form');
+  f.style.display = f.style.display === 'none' ? '' : 'none';
+}
+async function doResetRequest() {
+  const email = document.getElementById('reset-email').value.trim();
+  if (!email) return;
+  await fetch('/api/superadmin_password_reset.php', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email})});
+  document.getElementById('reset-msg').style.display = '';
+}
 async function doLogin() {
   const email = document.getElementById('email').value;
   const pwd = document.getElementById('pwd').value;
@@ -62,18 +108,28 @@ async function doLogin() {
     else { document.getElementById('err').textContent = 'Compte non super-admin.'; localStorage.removeItem(TOKEN_KEY); }
   } else { document.getElementById('err').textContent = r.error || 'Échec connexion'; }
 }
+function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  location.reload();
+}
+let currentTab = 'overview';
+let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '', q: ''};
 async function renderConsole() {
   const root = document.getElementById('root');
-  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule</div>'
+  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule <button class="logout" onclick="logout()">Se déconnecter</button></div>'
                  + '<h1>Console super-admin</h1>'
-                 + '<div class="tabs"><div class="tab active" data-t="overview">Vue d\'ensemble</div>'
+                 + '<div class="tabs">'
+                 + '<div class="tab active" data-t="overview">Vue d\'ensemble</div>'
                  + '<div class="tab" data-t="workspaces">Workspaces</div>'
-                 + '<div class="tab" data-t="audit">Audit récent</div></div>'
+                 + '<div class="tab" data-t="clients">Clients</div>'
+                 + '<div class="tab" data-t="audit">Audit récent</div>'
+                 + '</div>'
                  + '<div id="content"></div>';
   document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', e => {
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
     e.target.classList.add('active');
-    loadTab(e.target.dataset.t);
+    currentTab = e.target.dataset.t;
+    loadTab(currentTab);
   }));
   loadTab('overview');
 }
@@ -93,6 +149,8 @@ async function loadTab(t) {
       + (r.workspaces || []).map(w =>
         `<tr><td>${w.slug}</td><td>${w.type}</td><td>${w.display_name}</td><td>${w.country_code || ''}</td><td>${w.members_count}</td><td>${(w.created_at || '').slice(0, 10)}</td><td>${w.archived_at ? '✓' : ''}</td></tr>`
       ).join('') + '</tbody></table>';
+  } else if (t === 'clients') {
+    await renderClientsTab();
   } else if (t === 'audit') {
     const r = await api('/api/superadmin_v20.php?action=audit_recent');
     c.innerHTML = '<table><thead><tr><th>Date</th><th>Workspace</th><th>Acteur</th><th>Action</th><th>Cible</th></tr></thead><tbody>'
@@ -100,6 +158,47 @@ async function loadTab(t) {
         `<tr><td>${(e.created_at || '').replace('T', ' ').slice(0, 19)}</td><td>${e.workspace_slug || ''}</td><td>${e.email || ''}</td><td>${e.action}</td><td>${e.target_type || ''} ${e.target_id || ''}</td></tr>`
       ).join('') + '</tbody></table>';
   }
+}
+async function renderClientsTab() {
+  const c = document.getElementById('content');
+  const qs = new URLSearchParams({page: clientsState.page, per_page: clientsState.perPage,
+    workspace: clientsState.workspace, profil: clientsState.profil, statut: clientsState.statut, q: clientsState.q}).toString();
+  const r = await api('/api/superadmin_clients.php?action=list&' + qs);
+  if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
+  const wspOpts = '<option value="">Tous workspaces</option>' + (r.workspaces || []).map(w => `<option value="${w.slug}"${w.slug===clientsState.workspace?' selected':''}>${w.slug}</option>`).join('');
+  const profilOpts = '<option value="">Tous profils</option>' + ['Acheteur','Vendeur','Locataire','Bailleur','Investisseur','Promoteur','MarchandBiens','Curieux'].map(p => `<option value="${p}"${p===clientsState.profil?' selected':''}>${p}</option>`).join('');
+  const statutOpts = '<option value="">Tous statuts</option>' + [['brouillon','Brouillon'],['enregistre','Enregistré'],['archive','Archivé']].map(([k,l]) => `<option value="${k}"${k===clientsState.statut?' selected':''}>${l}</option>`).join('');
+  const filters = `<div class="filters">
+    <select id="f-wsp" onchange="filterClient('workspace', this.value)">${wspOpts}</select>
+    <select id="f-profil" onchange="filterClient('profil', this.value)">${profilOpts}</select>
+    <select id="f-statut" onchange="filterClient('statut', this.value)">${statutOpts}</select>
+    <input id="f-q" type="text" placeholder="Recherche nom client..." value="${clientsState.q}" oninput="searchDebounced(this.value)" style="flex:1;min-width:180px"/>
+  </div>`;
+  const tableHead = '<table><thead><tr><th>Workspace</th><th>Nom</th><th>Société</th><th>Profil</th><th>Statut</th><th>Modifié</th></tr></thead><tbody>';
+  const rows = (r.clients || []).map(cl => {
+    const sBadge = `<span class="badge badge-${cl.statut}">${cl.statut}</span>`;
+    const updated = (cl.updated_at || '').replace('T', ' ').slice(0, 16);
+    return `<tr><td><b>${cl.workspace_slug}</b></td><td>${cl.nom_complet || '<i>(sans nom)</i>'}</td><td>${cl.societe || ''}</td><td>${cl.profil || ''}</td><td>${sBadge}</td><td>${updated}</td></tr>`;
+  }).join('');
+  const tableEnd = '</tbody></table>';
+  let pagination = '';
+  if (r.pages > 1) {
+    pagination = '<div class="pagination">';
+    for (let p = 1; p <= r.pages; p++) {
+      pagination += `<button class="${p===r.page?'active':''}" onclick="gotoPage(${p})">${p}</button>`;
+    }
+    pagination += `<span style="font-size:11px;color:#8B7F6E;align-self:center;margin-left:8px">${r.total} clients</span></div>`;
+  } else {
+    pagination = `<p style="text-align:center;color:#8B7F6E;font-size:11px;margin-top:12px">${r.total} client${r.total>1?'s':''}</p>`;
+  }
+  c.innerHTML = filters + tableHead + rows + tableEnd + pagination;
+}
+function filterClient(key, value) { clientsState[key] = value; clientsState.page = 1; renderClientsTab(); }
+function gotoPage(p) { clientsState.page = p; renderClientsTab(); }
+let searchTimer = null;
+function searchDebounced(v) {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { clientsState.q = v; clientsState.page = 1; renderClientsTab(); }, 300);
 }
 if (localStorage.getItem(TOKEN_KEY)) {
   api('/api/auth_v20.php?action=me').then(r => { if (r.ok && (r.user || {}).role === 'super_admin') renderConsole(); });
