@@ -37,7 +37,10 @@
   --color-warning-600: #905F12;
 
   /* === SEMANTIC (rôles applicatifs) === */
-  --color-bg-page: var(--color-cream-100);
+  /* Fond Oi Agent — Nuance N°2 Albâtre choisie par Philippe le 7 mai 2026
+   * (via /opt/ocre-agent-landing/maquettes-fond/index.html). Primitive --color-cream-100
+   * preservee pour usages downstream (cards, accent-soft, sections sable I). */
+  --color-bg-page: #FCFAF6;
   --color-bg-card: #FFFFFF;
   --color-bg-elevated: #FFFFFF;
   --color-bg-overlay: rgba(42, 32, 24, 0.5);
