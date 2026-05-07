@@ -10978,7 +10978,9 @@ function App() {
     try { window.history.pushState({view: next, depth: viewStackRef.current.length}, '', '/'); } catch (_) {}
   }
   const [editing, setEditing] = useState(null);
-  const [toast, setToast] = useState('');
+  // M/2026/05/07/105 — toast est un OBJET {msg, type} pour passer la semantique aux sous-vues
+  // sans modifier signature de chaque component. Retrocompat truthy si toast.msg, falsy si null.
+  const [toast, setToast] = useState(null);
   const [formKey, setFormKey] = useState(0);
   const [activeProfil, setActiveProfil] = useState('Acheteur');
   const [isInvestisseur, setIsInvestisseur] = useState(false);
@@ -11200,16 +11202,25 @@ function App() {
   // M/2026/05/01/27 — M105 dedup strict.
   // M/2026/05/01/28 — M106 : si meme msg, RESET le timer au lieu de skip (toast prolonge sa
   // visibilite sans creer un 2e dom). Plus de doublons stackes possibles.
+  // M/2026/05/07/105 — semantique couleurs : detectToastType heuristique sur msg si type non
+  // fourni (success vert default, error rouge, warning ocre, info navy). Pattern Stripe/Linear/Notion.
   const _lastToastRef = useRef('');
   const _toastTimerRef = useRef(null);
-  function showToast(msg) {
+  function detectToastType(msg) {
+    const m = (msg || '').toLowerCase();
+    if (/(é|e)chec|erreur|invalide|impossible|corrige|refus|interdit|bloqu|introuvable|trop court|trop long|r(é|e)seau|(é|e)chou|denied|fail/.test(m)) return 'error';
+    if (/avertis|warning|attention|expir/.test(m)) return 'warning';
+    return 'success';
+  }
+  function showToast(msg, type) {
+    const finalType = type || detectToastType(msg);
     const isSameAsCurrent = msg && msg === _lastToastRef.current;
     if (!isSameAsCurrent) {
       _lastToastRef.current = msg;
-      setToast(msg);
+      setToast({msg: msg, type: finalType});
     }
     if (_toastTimerRef.current) clearTimeout(_toastTimerRef.current);
-    _toastTimerRef.current = setTimeout(() => { setToast(''); _lastToastRef.current = ''; }, 3000);
+    _toastTimerRef.current = setTimeout(() => { setToast(null); _lastToastRef.current = ''; }, 3000);
   }
 
   async function apiSaveClient(data) {
@@ -11937,7 +11948,7 @@ function ImportImageView({onBack, onCreated, showToast, toast, fileAlreadySelect
           </div>
         )}
       </div>
-      {toast && <Toast msg={toast}/>}
+      {toast && <Toast t={toast}/>}
     </div>
   );
 }
@@ -12685,7 +12696,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
             showToast={showToast}/>
         )}
       </div>
-      {toast && <Toast msg={toast}/>}
+      {toast && <Toast t={toast}/>}
     </div>
   );
 }
@@ -14245,7 +14256,7 @@ function CalendarView({onBack, showToast, toast}) {
           {renderBucket('passe', 'Passé', buckets.passe)}
         </>)}
       </div>
-      {toast && <Toast msg={toast}/>}
+      {toast && <Toast t={toast}/>}
     </div>
   );
 }
@@ -16790,7 +16801,7 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
           );
         })}
       </div>
-      {toast && <Toast msg={toast}/>}
+      {toast && <Toast t={toast}/>}
     </div>
   );
 }
@@ -17075,7 +17086,7 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
           </button>
         </div>
       )}
-      {toast && <Toast msg={toast}/>}
+      {toast && <Toast t={toast}/>}
     </div>
   );
 }
@@ -17250,7 +17261,7 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
           </div>
         )}
       </div>
-      {toast && <Toast msg={toast}/>}
+      {toast && <Toast t={toast}/>}
     </div>
   );
 }
@@ -18047,7 +18058,7 @@ function ListView(props) {
         );
       })()}
 
-      {toast && <Toast msg={toast}/>}
+      {toast && <Toast t={toast}/>}
       {matchFor && (
         <MatchModal clientId={matchFor} clients={clients}
           findClientById={findClientById}
@@ -18817,8 +18828,13 @@ async function askConfirm(opts) {
 // M/2026/05/01/27 — M105 Toast visuel rouge encadre. Lisibilite + cohesion palette.
 // M/2026/05/01/28 — M106 : rouge plus clair (220,110,110 / #C97070) + position centree
 // strict (left:50% transform:translateX(-50%)) + ombre douce pour profondeur.
-function Toast({msg}) {
-  // M/2026/05/04/3 — fix doublon Toast global. Cause root : <Toast msg={toast}/> rendu a 10
+// M/2026/05/07/105 — REFONTE semantique 4 variants (success vert / error rouge / warning ocre / info navy).
+function Toast({t}) {
+  // M/2026/05/07/105 — t = {msg, type} pour eviter de devoir passer toastType en prop a tous
+  // les sous-components. Default 'success' (vert sobre).
+  const msg = t && t.msg;
+  const type = t && t.type;
+  // M/2026/05/04/3 — fix doublon Toast global. Cause root : <Toast t={toast}/> rendu a 10
   // endroits dans le code (ListView, FormView, plusieurs vues). En transition entre vues ou
   // si 2 vues stackees, 2 instances Toast simultanees -> Philippe voit 2 toasts (1 a droite,
   // 1 au centre).
@@ -18833,16 +18849,25 @@ function Toast({msg}) {
     return () => { window.__ocreToastMounted = false; };
   }, []);
   if (!allowed) return null;
+  // M/2026/05/07/105 — mapping semantique : default success (vert sobre).
+  const _type = type || 'success';
+  const _variants = {
+    success: { bg: 'rgba(45, 122, 79, 0.92)', border: '#2D7A4F' },
+    error:   { bg: 'rgba(199, 62, 62, 0.92)', border: '#C73E3E' },
+    warning: { bg: 'rgba(184, 128, 30, 0.92)', border: '#B8801E' },
+    info:    { bg: 'rgba(29, 78, 137, 0.92)', border: '#1D4E89' },
+  };
+  const v = _variants[_type] || _variants.success;
   return (
     <div style={{position:'fixed', top:80, left:'50%', transform:'translateX(-50%)',
                  padding:'12px 18px', borderRadius:12,
-                 background:'rgba(220, 110, 110, 0.85)',
-                 border:'1.5px solid #C97070',
+                 background: v.bg,
+                 border:'1.5px solid ' + v.border,
                  color:'#fff', fontSize:14, fontWeight:600,
                  maxWidth:'min(90vw, 420px)',
                  textAlign:'center', whiteSpace:'normal',
                  animation:'toastFadeIn 180ms ease-out', zIndex:10000,
-                 boxShadow:'0 4px 12px rgba(0, 0, 0, 0.08)'}}>{msg}</div>
+                 boxShadow:'0 4px 12px rgba(0, 0, 0, 0.12)'}}>{msg}</div>
   );
 }
 
@@ -20128,7 +20153,7 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
       {/* M/2026/05/05/1 — M-Bottombar-Pill-V2 : OcreBottomBar fixed en bas SUPPRIMEE.
           Doublon avec le pill inline integre dans la zone import (ci-dessus). Suppression franche
           pour ne plus etre masque par le clavier iPad. */}
-      {toast && <Toast msg={toast}/>}
+      {toast && <Toast t={toast}/>}
     </div>
   );
 }
@@ -23182,7 +23207,7 @@ function FormView(props) {
         )}
       </div>
 
-      {toast && <Toast msg={toast}/>}
+      {toast && <Toast t={toast}/>}
       {/* M/2026/05/01/6 — rendu PdfShareModal supprime franchement de FormView (le partage passe
           par le bouton Partager bottom bar DossierPdfView preview). */}
       {addCasquetteOpen && (
