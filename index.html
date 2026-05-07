@@ -116,6 +116,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#8B5E3C">
 <title>Oi Agent</title>
+<!-- M/2026/05/07/DESIGN-TOKENS — design system centralise. Charge AVANT tous les autres styles
+     pour que les variables --color-* / --font-* / --space-* / --radius-* etc soient disponibles
+     globalement. tokens.json symetrique servi par /api/design_tokens.php pour future UI no-code. -->
+<link rel="stylesheet" href="/styles/tokens.css">
 <!-- M/2026/05/07/88 — Favicon Oi cross-vhosts (path /favicon/ + manifest tenant). V19 paths conserves comme alias retro-compat dans /opt/ocre-app/ direct. -->
 <link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">

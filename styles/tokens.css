@@ -1,0 +1,201 @@
+/* M/2026/05/07/DESIGN-TOKENS — Design system Oi Agent (un produit Ocre).
+ * Source de vérité unique pour tous les modules Oi (Agent, Scan, Book, Demande).
+ * Pattern Stripe / Vercel / Linear / Notion : 3 couches primitives -> semantic -> component.
+ *
+ * Modifier UN token = changement propage partout en 1 reload.
+ * Voir styles/README.md pour conventions et procedure d'ajout/modification.
+ */
+:root {
+  /* ============================================================
+   * AXE 1 — COULEURS
+   * ============================================================ */
+
+  /* === PRIMITIVES (palette brute Ocre Immo) === */
+  --color-cream-50: #FAF6EE;
+  --color-cream-100: #F5EFE6;
+  --color-cream-200: #EDE3D0;
+  --color-cream-300: #E0D2B7;
+  --color-ocre-300: #C9A687;
+  --color-ocre-400: #A0794F;
+  --color-ocre-500: #8B5E3C;       /* signature ocre */
+  --color-ocre-600: #6F4A2F;
+  --color-ocre-700: #5C3E27;
+  --color-brown-700: #4A2C1E;
+  --color-brown-800: #3A2418;
+  --color-brown-900: #2A2018;       /* texte principal */
+  --color-navy-400: #2A6BA8;
+  --color-navy-500: #1D4E89;
+  --color-navy-600: #163A66;
+  --color-success-50: #E8F2EC;
+  --color-success-500: #2D7A4F;
+  --color-success-600: #245F3D;
+  --color-error-50: #FBEAEA;
+  --color-error-500: #C73E3E;
+  --color-error-600: #A02828;
+  --color-warning-50: #FBF1DE;
+  --color-warning-500: #B8801E;
+  --color-warning-600: #905F12;
+
+  /* === SEMANTIC (rôles applicatifs) === */
+  --color-bg-page: var(--color-cream-100);
+  --color-bg-card: #FFFFFF;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-overlay: rgba(42, 32, 24, 0.5);
+  --color-bg-input: #FDFAF7;
+  --color-text-primary: var(--color-brown-900);
+  --color-text-secondary: rgba(42, 32, 24, 0.7);
+  --color-text-muted: rgba(42, 32, 24, 0.5);
+  --color-text-inverse: #FFFFFF;
+  --color-border-subtle: rgba(74, 44, 30, 0.08);
+  --color-border-default: rgba(74, 44, 30, 0.15);
+  --color-border-strong: rgba(74, 44, 30, 0.30);
+  --color-accent: var(--color-ocre-500);
+  --color-accent-hover: var(--color-ocre-700);
+  --color-accent-soft: var(--color-cream-200);
+  --color-link: var(--color-navy-500);
+  --color-success: var(--color-success-500);
+  --color-success-bg: var(--color-success-50);
+  --color-error: var(--color-error-500);
+  --color-error-bg: var(--color-error-50);
+  --color-warning: var(--color-warning-500);
+  --color-warning-bg: var(--color-warning-50);
+  --color-info: var(--color-navy-500);
+  --color-info-bg: #E5EBF2;
+
+  /* === SECTIONS FICHE DOSSIER (M108 palette douce) === */
+  --color-section-i-header: #E8DFD3;     /* I  ocre sable */
+  --color-section-i-body: #F5EFE6;
+  --color-section-i-border: #D4C5B0;
+  --color-section-ii-header: #DCE3D8;    /* II sauge */
+  --color-section-ii-body: #EEF1EB;
+  --color-section-ii-border: #C5D0BF;
+  --color-section-iii-header: #EDE0C4;   /* III champagne */
+  --color-section-iii-body: #F8F1DE;
+  --color-section-iii-border: #DBC892;
+  --color-section-iv-header: #DDD6E0;    /* IV lavande */
+  --color-section-iv-body: #EFEAEF;
+  --color-section-iv-border: #C5BBC9;
+  --color-section-v-header: #E5D4CB;     /* V terre rosée */
+  --color-section-v-body: #F4ECE6;
+  --color-section-v-border: #D2BBA9;
+  --color-section-vi-header: #DDC9B8;    /* VI ocre signature */
+  --color-section-vi-body: #EFE0CC;
+  --color-section-vi-border: #C9A687;
+  --color-section-vii-header: #D4D6D8;   /* VII gris perle */
+  --color-section-vii-body: #ECEDEE;
+  --color-section-vii-border: #B8BCBF;
+
+  /* === EXCEPTIONS METIER (couleurs profils, non-substituables) === */
+  --profil-acheteur: #8B5E3C;       /* ocre */
+  --profil-vendeur: #1D4E89;        /* navy */
+  --profil-bailleur: #6B7B5E;       /* sauge */
+  --profil-locataire: #B8801E;      /* jaune ocre */
+  --profil-investisseur: #7E5C9E;   /* lavande */
+  --profil-promoteur: #455B6B;      /* bleu ardoise */
+  --profil-marchand: #6E5340;       /* brun */
+  --profil-curieux: #8B7F6E;        /* gris taupe */
+
+  /* ============================================================
+   * AXE 2 — TYPOGRAPHIE
+   * ============================================================ */
+
+  --font-serif: 'Cormorant Garamond', 'Cormorant', Georgia, serif;
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, monospace;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  --font-size-4xl: 36px;
+  --font-size-5xl: 48px;
+
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-snug: 1.4;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.7;
+
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.02em;
+  --letter-spacing-wider: 0.05em;
+
+  /* ============================================================
+   * AXE 3 — ESPACEMENTS + BORDERS + RADIUS
+   * ============================================================ */
+
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --border-width-0: 0;
+  --border-width-1: 1px;
+  --border-width-2: 2px;
+  --border-width-thick: 3px;
+
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  /* === COMPONENT-LEVEL === */
+  --card-radius: var(--radius-lg);
+  --card-padding: var(--space-4);
+  --card-shadow: 0 1px 3px rgba(139, 94, 60, 0.06);
+  --input-radius: var(--radius-md);
+  --input-padding-x: var(--space-3);
+  --input-padding-y: 10px;
+  --input-border: 1.5px solid var(--color-border-default);
+  --button-radius: var(--radius-md);
+  --button-padding-x: var(--space-4);
+  --button-padding-y: 10px;
+  --button-font-weight: var(--font-weight-semibold);
+  --modal-radius: var(--radius-xl);
+  --modal-padding: var(--space-6);
+  --pill-radius: var(--radius-full);
+
+  /* ============================================================
+   * AXE 4 — OMBRES + TRANSITIONS + Z-INDEX (M104 integre)
+   * ============================================================ */
+
+  --shadow-none: none;
+  --shadow-sm: 0 1px 2px rgba(42, 32, 24, 0.05);
+  --shadow-md: 0 4px 8px rgba(42, 32, 24, 0.08);
+  --shadow-lg: 0 8px 16px rgba(42, 32, 24, 0.10);
+  --shadow-xl: 0 16px 32px rgba(42, 32, 24, 0.12);
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.25);
+
+  --transition-fast: 150ms ease-out;
+  --transition-default: 200ms ease-out;
+  --transition-slow: 300ms ease-out;
+  --transition-spring: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 500;
+  --z-leaflet-max: 800;
+  --z-header: 1000;
+  --z-modal-backdrop: 9998;
+  --z-modal: 9999;
+  --z-toast: 10000;
+}
