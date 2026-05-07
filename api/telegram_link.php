@@ -17,8 +17,47 @@ function jout(array $d, int $code = 200) {
     exit;
 }
 
-$user = current_user_or_401();
 $action = (string)($_GET['action'] ?? $_POST['action'] ?? '');
+
+// M/2026/05/07/114.1.1 — webhook public (Telegram POST direct, pas de session). Traite avant
+// current_user_or_401 sinon 401. Hardening secret_token : a configurer en M114.2 via setWebhook
+// avec param secret_token, validation header X-Telegram-Bot-Api-Secret-Token cote PHP.
+if ($action === 'webhook') {
+    $body = file_get_contents('php://input');
+    @file_put_contents('/var/log/ocre-telegram-webhook.log', date('c') . ' ' . substr($body, 0, 2000) . "\n", FILE_APPEND);
+    $upd = json_decode($body ?: '', true) ?: [];
+    $msg = $upd['message'] ?? null;
+    if ($msg && isset($msg['text']) && strpos($msg['text'], '/start') === 0) {
+        $parts = explode(' ', $msg['text'], 2);
+        $start_token = isset($parts[1]) ? trim($parts[1]) : '';
+        $chat_id = (string)($msg['chat']['id'] ?? '');
+        $username = (string)($msg['from']['username'] ?? '');
+        $first_name = (string)($msg['from']['first_name'] ?? 'agent');
+        if ($start_token && $chat_id) {
+            try {
+                $pdo = pdo_meta();
+                $st = $pdo->prepare("SELECT id, prenom, nom FROM users WHERE telegram_link_token = ? AND archived_at IS NULL LIMIT 1");
+                $st->execute([$start_token]);
+                $u = $st->fetch();
+                if ($u) {
+                    $pdo->prepare("UPDATE users SET telegram_chat_id = ?, telegram_username = ?, telegram_linked_at = NOW(), telegram_link_token = NULL WHERE id = ?")
+                        ->execute([$chat_id, $username, $u['id']]);
+                    $welcome = "✅ <b>Notifications activées</b>, " . htmlspecialchars($u['prenom'] ?: $first_name) . " !\n\nTu vas recevoir tes matches, ouvertures PDF et rappels en temps réel.";
+                    tg_send_message($chat_id, $welcome);
+                } else {
+                    tg_send_message($chat_id, "⚠️ Lien invalide ou expiré. Réessaye depuis l'app Ocre Immo.");
+                }
+            } catch (Throwable $e) {
+                @error_log('[tg-webhook] ' . $e->getMessage());
+            }
+        } elseif ($chat_id) {
+            tg_send_message($chat_id, "Bienvenue sur Ocre Immo. Active tes notifications depuis l'app : Réglages → Canaux de notification → Activer Telegram.");
+        }
+    }
+    jout(['ok' => true]);
+}
+
+$user = current_user_or_401();
 $pdo = pdo_meta();
 
 if ($action === 'status') {
@@ -68,13 +107,6 @@ if ($action === 'disconnect') {
     jout(['ok' => true, 'disconnected' => true]);
 }
 
-// POST ?action=webhook : reception update Telegram (a appeler via setWebhook BotFather).
-// Endpoint public protege par secret URL path. TODO M114.2 : routing FastAPI plutot que PHP direct.
-if ($action === 'webhook') {
-    // M114.1 stub : reception minimale pour debug. Implementation complete = M114.2.
-    $body = file_get_contents('php://input');
-    @file_put_contents('/var/log/ocre-telegram-webhook.log', date('c') . ' ' . $body . "\n", FILE_APPEND);
-    jout(['ok' => true, 'stub' => true]);
-}
+// (action=webhook deja traite en haut, avant current_user_or_401, car Telegram appelle sans session)
 
 jout(['ok' => false, 'error' => 'action_unknown', 'allowed' => ['status', 'generate_token', 'test_notify', 'disconnect']], 400);
