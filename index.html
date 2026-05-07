@@ -16299,6 +16299,64 @@ function PreferencesPage({onBack, showToast, currentUser}) {
     } catch (e) { showToast && showToast('Erreur réseau'); }
     setTgTesting(false);
   }
+  // M/2026/05/07/114.2 — UI onboarding bot @ocreimmo_bot : bouton Lier mon compte -> generate_token
+  // -> deep link t.me + polling status 3s -> bascule lié quand /start callback recu via webhook.
+  // Bouton Délier pour reset chat_id.
+  const [tgLink, setTgLink] = React.useState({status: null, deep_link_https: null, token: null, polling: false, linked_username: null, linked_at: null});
+  async function loadTgStatus() {
+    try {
+      const r = await fetch('/api/telegram_link.php?action=status', {headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (r && r.ok) {
+        setTgLink(prev => ({...prev, status: r.linked ? 'linked' : 'unlinked', linked_username: r.username, linked_at: r.linked_at, stub_mode: r.stub_mode, bot_username: r.bot_username}));
+      }
+    } catch (_) {}
+  }
+  React.useEffect(() => { loadTgStatus(); }, []);
+  async function generateTgLink() {
+    try {
+      const r = await fetch('/api/telegram_link.php?action=generate_token', {method:'POST', headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (!r || !r.ok) { showToast && showToast('Echec generation token'); return; }
+      setTgLink(prev => ({...prev, token: r.token, deep_link_https: r.deep_links.https, status: 'pending', polling: true}));
+      // Polling status toutes 3s pour bascule lie quand webhook recoit /start <token>.
+      const id = setInterval(async () => {
+        try {
+          const s = await fetch('/api/telegram_link.php?action=status', {headers:{'X-Session-Token': token()}}).then(r => r.json());
+          if (s && s.ok && s.linked) {
+            clearInterval(id);
+            setTgLink({status: 'linked', linked_username: s.username, linked_at: s.linked_at, polling: false, deep_link_https: null, token: null, stub_mode: s.stub_mode, bot_username: s.bot_username});
+            showToast && showToast('Compte Telegram lie ! ✓');
+          }
+        } catch (_) {}
+      }, 3000);
+      // Stop polling apres 5 min (token expire 7j cote serveur, mais UX timeout local).
+      setTimeout(() => { clearInterval(id); setTgLink(prev => prev.polling ? {...prev, polling: false} : prev); }, 300000);
+    } catch (_) { showToast && showToast('Erreur reseau'); }
+  }
+  async function disconnectTg() {
+    if (!(await askConfirm({title: 'Délier Telegram ?', message: 'Tu ne recevras plus de notifications Telegram. Tu pourras te relier plus tard.', danger: false, confirmLabel: 'Délier'}))) return;
+    try {
+      const r = await fetch('/api/telegram_link.php?action=disconnect', {method:'POST', headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (r && r.ok) {
+        setTgLink({status: 'unlinked', linked_username: null, linked_at: null, polling: false, deep_link_https: null, token: null});
+        showToast && showToast('Compte Telegram délié');
+      }
+    } catch (_) { showToast && showToast('Erreur reseau'); }
+  }
+  async function testTgNotify() {
+    setTgTesting(true);
+    try {
+      const r = await fetch('/api/telegram_link.php?action=test_notify', {method:'POST', headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (r && r.ok) showToast && showToast('Notif test envoyée');
+      else showToast && showToast('Echec test notif');
+    } catch (_) { showToast && showToast('Erreur reseau'); }
+    setTgTesting(false);
+  }
+  function copyTgLink() {
+    const txt = tgLink.deep_link_https || '';
+    if (!txt) return;
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => showToast && showToast('Lien copié')).catch(() => {});
+    else { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); showToast && showToast('Lien copié'); } catch (_) {} document.body.removeChild(ta); }
+  }
 
   if (loading || !prefs) return <div style={{padding:30, textAlign:'center', color:'#8B7F6E'}}>Chargement…</div>;
 
@@ -16355,16 +16413,45 @@ function PreferencesPage({onBack, showToast, currentUser}) {
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 30px'}}>
 
         <Section title="Notifications">
-          <Toggle checked={T.enabled} onChange={v => update('notif.telegram.enabled', v)} label="Telegram" sub="Inline buttons pour valider/refuser directement"/>
-          {T.enabled && (
-            <div style={{padding:'8px 0'}}>
-              <input value={T.chat_id || ''} onChange={e => update('notif.telegram.chat_id', e.target.value)}
-                placeholder="Mon chat_id Telegram (numérique)"
-                style={{width:'100%', padding:8, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:13, boxSizing:'border-box', marginBottom:6}}/>
-              <div style={{fontSize:11, color:'#8B7F6E', marginBottom:6}}>Envoyez <code>/start</code> au bot @atelierphilippe_bot pour récupérer votre chat_id.</div>
-              <button onClick={testTelegram} disabled={tgTesting} style={{padding:'6px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'#8B5E3C', fontFamily:'inherit', fontSize:12, cursor: tgTesting ? 'wait' : 'pointer'}}>{tgTesting ? 'Envoi…' : 'Tester'}</button>
+          {/* M/2026/05/07/114.2 — UI onboarding bot @ocreimmo_bot. Pattern : bouton Lier mon
+              compte -> generate_token + deep link t.me + polling status 3s -> bascule lié
+              automatiquement quand /start <token> recu cote webhook. Bouton Délier pour reset.
+              Remplace l ancien chat_id manuel @atelierphilippe_bot. */}
+          <div style={{padding:'4px 0 10px', borderBottom:'1px solid #F4EFE6', marginBottom:6}}>
+            <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13.5, color:'#2A2018', fontWeight:600}}>Telegram</div>
+                <div style={{fontSize:11, color:'#8B7F6E', marginTop:1}}>
+                  {tgLink.status === 'linked'
+                    ? <>✅ Lié{tgLink.linked_username ? ' (@' + tgLink.linked_username + ')' : ''}{tgLink.linked_at ? ' · ' + String(tgLink.linked_at).slice(0, 10) : ''}</>
+                    : tgLink.status === 'pending'
+                      ? <>⏳ En attente du /start sur Telegram…</>
+                      : <>Bot {tgLink.bot_username ? '@' + tgLink.bot_username : '@ocreimmo_bot'} · pas encore lié</>}
+                </div>
+              </div>
+              {tgLink.status === 'linked' ? (
+                <button onClick={disconnectTg} style={{padding:'6px 12px', background:'#FBEAEA', border:'1.5px solid #C73E3E', borderRadius:6, color:'#C73E3E', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer'}}>Délier</button>
+              ) : tgLink.status === 'pending' ? (
+                <button onClick={() => setTgLink(prev => ({...prev, polling: false, status: 'unlinked', deep_link_https: null, token: null}))} style={{padding:'6px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'#8B5E3C', fontFamily:'inherit', fontSize:12, cursor:'pointer'}}>Annuler</button>
+              ) : (
+                <button onClick={generateTgLink} style={{padding:'6px 14px', background:'#8B5E3C', border:'none', borderRadius:6, color:'#fff', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer'}}>Lier mon compte</button>
+              )}
             </div>
-          )}
+            {tgLink.status === 'pending' && tgLink.deep_link_https && (
+              <div style={{padding:'10px 12px', background:'#FAF6EE', border:'1px dashed #C9B79A', borderRadius:8, marginTop:4}}>
+                <div style={{fontSize:11.5, color:'#5A4E3D', marginBottom:8, lineHeight:1.4}}>1. Tap le lien ci-dessous (Telegram s'ouvrira) puis confirme avec <b>/start</b>.</div>
+                <a href={tgLink.deep_link_https} target="_blank" rel="noopener" style={{display:'inline-block', padding:'8px 14px', background:'#229ED9', color:'#fff', borderRadius:6, textDecoration:'none', fontWeight:600, fontSize:12.5, marginRight:6}}>Ouvrir Telegram</a>
+                <button onClick={copyTgLink} style={{padding:'8px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'#8B5E3C', fontFamily:'inherit', fontSize:12, fontWeight:600, cursor:'pointer'}}>Copier le lien</button>
+                <div style={{fontSize:10.5, color:'#8B7F6E', marginTop:6, fontStyle:'italic'}}>Le statut se mettra à jour automatiquement.</div>
+              </div>
+            )}
+            {tgLink.status === 'linked' && (
+              <button onClick={testTgNotify} disabled={tgTesting} style={{padding:'6px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'#8B5E3C', fontFamily:'inherit', fontSize:12, cursor: tgTesting ? 'wait' : 'pointer', marginTop:4}}>{tgTesting ? 'Envoi…' : 'Tester l\'envoi'}</button>
+            )}
+            {tgLink.stub_mode && (
+              <div style={{fontSize:10.5, color:'#B8801E', marginTop:6, fontStyle:'italic'}}>⚠ Bot en mode stub (token serveur absent). Voir l'admin pour activer.</div>
+            )}
+          </div>
           <Toggle checked={E.enabled} onChange={v => update('notif.email.enabled', v)} label="Email" sub={prefs._email || '—'}/>
           {E.enabled && (
             <div style={{padding:'4px 0 8px', fontSize:12.5, color:'#5A4E3D'}}>

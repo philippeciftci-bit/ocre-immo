@@ -72,3 +72,74 @@ function notify_agent(int $user_id, string $event_type, array $payload): array {
 
     return ['ok' => true, 'channels' => $channels];
 }
+
+// ============================================================
+// M/2026/05/07/114.3 — 3 templates pre-formates pour les notifs metier.
+// Wrappers autour de notify_agent() avec wording + boutons inline standardises.
+// Hooks integration moteur (matching, PDF generator, scheduler relance) reportes M114.4.
+// ============================================================
+
+/**
+ * Notif "match trouve" envoyee a un agent quand le moteur de matching detecte un nouveau match.
+ *
+ * @param int   $user_id      destinataire
+ * @param array $match  {match_id, pact_title, context, score?, deep_url}
+ * @return array notify_agent result
+ */
+function notify_match_found(int $user_id, array $match): array {
+    $title = '🚀 Nouveau match trouvé';
+    $pact = (string)($match['pact_title'] ?? 'Pact sans titre');
+    $ctx = (string)($match['context'] ?? '');
+    $score = isset($match['score']) ? ' · Score ' . (int)$match['score'] . '%' : '';
+    $url = (string)($match['deep_url'] ?? 'https://app.ocre.immo/');
+    $body = $pact . "\n" . $ctx . $score;
+    $html = "🚀 <b>Nouveau match trouvé</b>\n\n<b>" . htmlspecialchars($pact) . "</b>";
+    if ($ctx) $html .= "\n" . htmlspecialchars($ctx);
+    if ($score) $html .= "\n<i>" . trim($score, ' ·') . "</i>";
+    return notify_agent($user_id, 'match_found', [
+        'title' => $title, 'body' => $body, 'html' => $html,
+        'event_id' => 'match-' . ($match['match_id'] ?? bin2hex(random_bytes(4))) . '-' . $user_id,
+        'buttons' => [['text' => 'Voir le match', 'url' => $url]],
+    ]);
+}
+
+/**
+ * Notif "PDF pret" envoyee a un agent quand la presentation Belles Demeures est generee.
+ *
+ * @param int   $user_id      destinataire
+ * @param array $pdf  {pdf_id, dossier_title, deep_url}
+ * @return array notify_agent result
+ */
+function notify_pdf_ready(int $user_id, array $pdf): array {
+    $title = '✅ Présentation Belles Demeures prête';
+    $dossier = (string)($pdf['dossier_title'] ?? 'Dossier');
+    $url = (string)($pdf['deep_url'] ?? 'https://app.ocre.immo/');
+    $body = "Présentation prête : " . $dossier;
+    $html = "✅ <b>Présentation Belles Demeures prête</b>\n\n<b>" . htmlspecialchars($dossier) . "</b>";
+    return notify_agent($user_id, 'pdf_ready', [
+        'title' => $title, 'body' => $body, 'html' => $html,
+        'event_id' => 'pdf-' . ($pdf['pdf_id'] ?? bin2hex(random_bytes(4))) . '-' . $user_id,
+        'buttons' => [['text' => 'Télécharger PDF', 'url' => $url]],
+    ]);
+}
+
+/**
+ * Notif "relance attendue" : J+3 sans reponse de l'autre agent sur un pact.
+ *
+ * @param int   $user_id      destinataire (agent qui DOIT relancer)
+ * @param array $rel  {pact_id, pact_title, days_idle, deep_url}
+ * @return array notify_agent result
+ */
+function notify_reminder_relance(int $user_id, array $rel): array {
+    $title = '⚠️ Relance attendue';
+    $pact = (string)($rel['pact_title'] ?? 'Pact sans titre');
+    $days = (int)($rel['days_idle'] ?? 3);
+    $url = (string)($rel['deep_url'] ?? 'https://app.ocre.immo/');
+    $body = $pact . "\nL'autre agent attend ta réponse depuis " . $days . " jour" . ($days > 1 ? 's' : '');
+    $html = "⚠️ <b>Relance attendue</b>\n\n<b>" . htmlspecialchars($pact) . "</b>\nL'autre agent attend ta réponse depuis <b>" . $days . " jour" . ($days > 1 ? 's' : '') . "</b>.";
+    return notify_agent($user_id, 'reminder_relance', [
+        'title' => $title, 'body' => $body, 'html' => $html,
+        'event_id' => 'relance-' . ($rel['pact_id'] ?? bin2hex(random_bytes(4))) . '-' . $user_id . '-' . date('Ymd'),
+        'buttons' => [['text' => 'Répondre', 'url' => $url]],
+    ]);
+}
