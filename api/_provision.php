@@ -47,11 +47,10 @@ function provision_agent_workspace(string $slug, PDO $pdoMeta): array {
         // Backticks autour du nom (DB validee regex), pas de placeholder PDO sur DDL.
         $pdoMeta->exec("CREATE DATABASE `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
-        // GRANT ALL sur la nouvelle DB pour le user master ocre_app (convention OVH).
-        // Le user master execute deja avec ces privileges, mais GRANT explicite pour permettre
-        // les connexions PDO directes a la nouvelle DB sans privilege wildcard.
-        $pdoMeta->exec("GRANT ALL PRIVILEGES ON `{$dbName}`.* TO 'ocre_app'@'localhost'");
-        $pdoMeta->exec("FLUSH PRIVILEGES");
+        // M/2026/05/07/7 — Pas de GRANT explicite. Le user master ocre_app a deja un wildcard
+        // `GRANT ALL PRIVILEGES ON ocre\_%.* TO ocre_app@localhost` qui couvre toutes les DBs
+        // ocre_*. CREATE DATABASE est dans ce scope donc le user peut immediatement SELECT/INSERT
+        // sans GRANT additionnel. Tentative GRANT explicit echoue (ocre_app n a pas GRANT OPTION).
 
         // Connexion a la nouvelle DB pour executer le template.
         $pdoNew = new PDO(
