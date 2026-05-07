@@ -2630,6 +2630,24 @@ function formatLocal(digits, dial) {
   // Default : groupes de 2
   return digits.replace(/(\d{2})/g, '$1 ').trim();
 }
+// M/2026/05/07/103 — helpers validation tel + email factorises (origine M95 wizard signup).
+// Reutilises par PhoneField + EmailField + (optionnel) onPublishDossier check global.
+function validatePhone(p) {
+  const cleaned = (p || '').replace(/[\s\-\.\(\)]/g, '');
+  if (!cleaned) return false;
+  if (cleaned.length > 20) return false;
+  if (/^\+\d{8,15}$/.test(cleaned)) return true;
+  if (/^0[67]\d{8}$/.test(cleaned)) return true;
+  if (/^0[1-5]\d{8}$/.test(cleaned) || /^0[89]\d{8}$/.test(cleaned)) return true;
+  return false;
+}
+function validateEmail(e) {
+  const v = (e || '').trim();
+  if (!v) return false;
+  if (v.length > 254) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+}
+
 // M/2026/05/02/10 — M121 : refactor PhoneField pour utiliser PaysCompactButton mode=phone.
 // Avant : dropdown custom limité aux 2 entrées DIAL_CODES (override countries.php) + sans recherche.
 // Après : popover identique au CountryPicker (recherche + 5 favoris MA/FR/ES/IT/BE + 198 pays).
@@ -2678,8 +2696,6 @@ function PhoneField({label, value, onChange, onBlur, residenceCountry='', style=
   }, [value]);
 
   const dial = lookupDialByCountry(country) || '33';
-  const warn = localDigits.length > 0 && localDigits.length < 8;
-  const filled = localDigits.length >= 8;
   const [focused, setFocused] = React.useState(false);
 
   function pushE164(d, l) {
@@ -2699,10 +2715,22 @@ function PhoneField({label, value, onChange, onBlur, residenceCountry='', style=
   }
   const displayLocal = formatLocal(localDigits, dial);
 
-  let stateClass = 'is-empty';
-  if (filled) stateClass = 'is-filled';
-  else if (warn) stateClass = 'is-warn';
-  if (focused) stateClass += ' is-focus';
+  // M/2026/05/07/103 — validation E.164 / FR via helper validatePhone factorise.
+  // 4 etats : empty (neutre), valid (vert + ✓), invalid (rouge + ⚠), warn (court, jaune).
+  const empty = localDigits.length === 0;
+  const e164 = empty ? '' : '+' + dial + localDigits.replace(/^0+/, '');
+  const valid = !empty && validatePhone(e164);
+  const tooShort = !empty && localDigits.length < 8;
+  let borderColor = '#D9C9A8'; // empty neutre
+  let bgColor = '#FDFAF7';
+  let icon = '';
+  let iconColor = '#8B7F6E';
+  let helpText = '';
+  let helpColor = '';
+  if (empty) { /* neutre */ }
+  else if (valid) { borderColor = '#4BB77B'; bgColor = '#F6FCF8'; icon = '✓'; iconColor = '#4BB77B'; }
+  else if (tooShort) { borderColor = '#D4A437'; bgColor = '#FFFBEF'; icon = '…'; iconColor = '#D4A437'; helpText = 'Numéro trop court'; helpColor = '#D4A437'; }
+  else { borderColor = '#D64545'; bgColor = '#FEF6F6'; icon = '⚠'; iconColor = '#D64545'; helpText = 'Numéro invalide'; helpColor = '#D64545'; }
 
   return (
     <div style={{marginBottom:10, minWidth:0, ...style}}>
@@ -2711,14 +2739,17 @@ function PhoneField({label, value, onChange, onBlur, residenceCountry='', style=
         <div style={{minWidth:0, flexShrink:0}}>
           <PaysCompactButton value={country} onChange={handleCountryChange} mode="phone" label=""/>
         </div>
-        <input type="tel" inputMode="tel" autoComplete="tel" value={displayLocal} onChange={handleLocal}
-          onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); onBlur && onBlur(); }}
-          placeholder={dial === '33' ? '6 12 34 56 78' : (dial === '1' ? '(555) 123-4567' : '…')}
-          style={{flex:1, minWidth:0, height:40, padding:'0 10px', borderRadius:8,
-            border:'1.5px solid '+(filled ? '#BBA88B' : warn ? '#D4A437' : '#D9C9A8'),
-            background:'#FDFAF7', color:'#2A2018', fontSize:14, fontFamily:'inherit', outline:'none'}}/>
+        <div style={{flex:1, minWidth:0, position:'relative'}}>
+          <input type="tel" inputMode="tel" autoComplete="tel" value={displayLocal} onChange={handleLocal}
+            maxLength={20}
+            onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); onBlur && onBlur(); }}
+            placeholder={dial === '33' ? '6 12 34 56 78' : (dial === '1' ? '(555) 123-4567' : '…')}
+            style={{width:'100%', height:40, padding:'0 32px 0 10px', borderRadius:8, boxSizing:'border-box',
+              border:'1.5px solid ' + borderColor, background: bgColor, color:'#2A2018', fontSize:14, fontFamily:'inherit', outline:'none'}}/>
+          {icon && <span style={{position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', color:iconColor, fontWeight:700, fontSize:15, pointerEvents:'none'}}>{icon}</span>}
+        </div>
       </div>
-      {warn && !focused && <div style={{fontSize:11, color:'#D4A437', marginTop:2}}>Numéro trop court</div>}
+      {helpText && !focused && <div style={{fontSize:11, color: helpColor, marginTop:2}}>{helpText}</div>}
     </div>
   );
 }
@@ -2727,7 +2758,8 @@ function PhoneField({label, value, onChange, onBlur, residenceCountry='', style=
 function EmailField({label, value, onChange, onBlur, style={}}) {
   const [touched, setTouched] = React.useState(false);
   const v = (value || '').trim();
-  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  // M/2026/05/07/103 — utilise validateEmail factorise (regex RFC simplifie + maxLength 254).
+  const valid = validateEmail(v);
   const empty = v.length === 0;
   const showInvalid = !empty && !valid && touched;
 
@@ -2747,6 +2779,7 @@ function EmailField({label, value, onChange, onBlur, style={}}) {
         <input type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck="false"
           value={value || ''} onChange={e => onChange(e.target.value)}
           onBlur={() => { setTouched(true); onBlur && onBlur(); }}
+          maxLength={254}
           placeholder="nom@exemple.com"
           style={{...base, ...borderStyle}}/>
         {icon && <span style={{position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', color:iconColor, fontWeight:700, fontSize:16}}>{icon}</span>}
@@ -22795,6 +22828,30 @@ function FormView(props) {
               const onPublishDossier = async () => {
                 if (!_hasRealId) { showToast && showToast('Enregistre d abord le dossier'); return; }
                 if (!activeProfil) { showToast && showToast('Choisis un profil avant d enregistrer'); return; }
+                // M/2026/05/07/103 — check tel + email valides avant publish (validatePhone/validateEmail factorises).
+                // Collecte tous les tel/email non-vides du dossier (client + multi + sections optionnelles si presentes).
+                const _invalidFields = [];
+                const _checkPhone = (val, path) => { if (val && !validatePhone(val)) _invalidFields.push({path, val, type:'tel'}); };
+                const _checkEmail = (val, path) => { if (val && !validateEmail(val)) _invalidFields.push({path, val, type:'email'}); };
+                _checkPhone(d.tel, 'tel');
+                _checkPhone(d.whatsapp, 'whatsapp');
+                _checkEmail(d.email, 'email');
+                if (Array.isArray(d.telephones)) d.telephones.forEach((t, i) => _checkPhone(t && t.valeur, 'telephones[' + i + ']'));
+                if (Array.isArray(d.emails)) d.emails.forEach((e, i) => _checkEmail(e && e.valeur, 'emails[' + i + ']'));
+                if (d.notaire) { _checkPhone(d.notaire.telephone, 'notaire.telephone'); _checkEmail(d.notaire.email, 'notaire.email'); }
+                if (d.avocat) { _checkPhone(d.avocat.telephone, 'avocat.telephone'); _checkEmail(d.avocat.email, 'avocat.email'); }
+                if (_invalidFields.length > 0) {
+                  showToast && showToast('Corrigez les ' + _invalidFields.length + ' champ' + (_invalidFields.length > 1 ? 's' : '') + ' tel/email invalide' + (_invalidFields.length > 1 ? 's' : '') + ' avant d enregistrer');
+                  // Scroll vers le 1er input rouge (border #D64545) si DOM dispo.
+                  setTimeout(() => {
+                    const firstRed = document.querySelector('input[type="tel"][style*="rgb(214, 69, 69)"], input[type="email"][style*="rgb(214, 69, 69)"]');
+                    if (firstRed && firstRed.scrollIntoView) {
+                      firstRed.scrollIntoView({behavior:'smooth', block:'center'});
+                      try { firstRed.focus(); } catch(_) {}
+                    }
+                  }, 50);
+                  return;
+                }
                 try {
                   const tk = localStorage.getItem('ocre_token') || '';
                   const next = {...d, id: editing.id, projet: activeProfil, statut: 'enregistre', is_draft: 0};
