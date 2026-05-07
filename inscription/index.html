@@ -10,6 +10,11 @@
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon-180x180.png">
 <link rel="manifest" href="/favicon/site-signup.webmanifest">
+<!-- M/2026/05/08/1 — DESIGN-TOKENS.2.3 : link tokens.css AVANT tout autre style pour
+     que les variables --color-bg-page (Albatre #FCFAF6) + --color-accent + --color-text-*
+     soient disponibles dans le <style> inline ci-dessous. Le path /styles/tokens.css est
+     servi par le vhost ocre-app (signup.ocre.immo et app.ocre.immo/signup/ heritent). -->
+<link rel="stylesheet" href="/styles/tokens.css">
 <meta name="theme-color" content="#8B5E3C">
 <meta name="apple-mobile-web-app-title" content="Oi Agent — Inscription">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,12 +23,12 @@
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', system-ui, sans-serif; background: #FAF6EC; color: #2A2018; min-height: 100vh; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: var(--color-bg-page); color: var(--color-text-primary); min-height: 100vh; }
   .page { max-width: 480px; margin: 0 auto; padding: 18px 16px 40px; }
-  .brand { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; font-weight: 600; color: #8B5E3C; text-align: center; margin-bottom: 8px; }
+  .brand { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; font-weight: 600; color: var(--color-accent); text-align: center; margin-bottom: 8px; }
   .brand small { display: block; font-family: 'DM Sans', sans-serif; font-style: normal; font-size: 11px; letter-spacing: 3px; color: #B8895A; text-transform: uppercase; font-weight: 600; margin-top: 4px; }
   h1 { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 28px; font-weight: 500; color: #2A1F15; margin: 16px 0 4px; text-align: center; }
-  .subtitle { font-size: 13px; color: #8B7F6E; text-align: center; margin-bottom: 22px; font-style: italic; }
+  .subtitle { font-size: 13px; color: var(--color-text-muted); text-align: center; margin-bottom: 22px; font-style: italic; }
   .progress { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 24px; padding: 0 8px; }
   .progress .step { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%; background: #EDE6DC; color: #B8AB99; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 200ms; }
   .progress .step.done { background: #2D7A3E; color: #fff; }
@@ -32,47 +37,47 @@
   .progress .line.done { background: #2D7A3E; }
   .card { background: #fff; border-radius: 14px; padding: 22px 18px; box-shadow: 0 2px 10px rgba(60,40,20,0.06); margin-bottom: 16px; }
   .card h2 { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; font-weight: 500; color: #5C3B1E; margin: 0 0 14px; }
-  label { display: block; font-size: 11px; font-weight: 600; color: #8B7F6E; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
+  label { display: block; font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
   label .req { color: #C0392B; margin-left: 2px; }
   input[type=text], input[type=email], input[type=password], input[type=tel] {
     width: 100%; padding: 11px 13px; border: 1.5px solid #E8DDC9; border-radius: 9px; font-size: 14px;
-    font-family: 'DM Sans', sans-serif; background: #FDFAF7; color: #2A2018; outline: none; transition: border 150ms; }
-  input:focus { border-color: #8B5E3C; background: #fff; }
+    font-family: 'DM Sans', sans-serif; background: #FDFAF7; color: var(--color-text-primary); outline: none; transition: border 150ms; }
+  input:focus { border-color: var(--color-accent); background: #fff; }
   .field { margin-bottom: 14px; }
-  .help { font-size: 11px; color: #8B7F6E; font-style: italic; margin-top: 4px; }
+  .help { font-size: 11px; color: var(--color-text-muted); font-style: italic; margin-top: 4px; }
   .help.ok { color: #2D7A3E; font-style: normal; font-weight: 600; }
   .help.err { color: #C0392B; font-style: normal; font-weight: 600; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .btn { width: 100%; padding: 13px 20px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
     cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity 150ms, transform 150ms; }
-  .btn-primary { background: #8B5E3C; color: #fff; margin-top: 8px; }
+  .btn-primary { background: var(--color-accent); color: #fff; margin-top: 8px; }
   .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn-success { background: #2D7A3E; color: #fff; margin-top: 8px; }
   .btn-success:disabled { background: #B5D4BB; color: #F5FAF6; cursor: not-allowed; opacity: 1; }
-  .btn-back { width: auto; padding: 10px 16px; background: #fff; color: #8B5E3C; border: 1.5px solid #E8DDC9; font-weight: 600; }
+  .btn-back { width: auto; padding: 10px 16px; background: #fff; color: var(--color-accent); border: 1.5px solid #E8DDC9; font-weight: 600; }
   .nav-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
   .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .preset-card { padding: 10px 11px; border: 1.5px solid #E8DDC9; background: #FDFAF7; border-radius: 9px; cursor: pointer; text-align: left; transition: all 150ms; }
-  .preset-card.active { border-color: #8B5E3C; background: #FBF1E4; }
+  .preset-card.active { border-color: var(--color-accent); background: #FBF1E4; }
   .preset-card .pname { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 14px; font-weight: 600; color: #5C3B1E; }
-  .preset-card .pdesc { font-size: 10.5px; color: #8B7F6E; margin-top: 2px; line-height: 1.3; }
+  .preset-card .pdesc { font-size: 10.5px; color: var(--color-text-muted); margin-top: 2px; line-height: 1.3; }
   .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #FDFAF7; border: 1px solid #E8DDC9; border-radius: 9px; margin-bottom: 8px; }
-  .toggle-row .lbl { font-size: 13px; font-weight: 600; color: #2A2018; }
-  .toggle-row .desc { font-size: 11px; color: #8B7F6E; margin-top: 2px; }
+  .toggle-row .lbl { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+  .toggle-row .desc { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
   .toggle-switch { width: 42px; height: 24px; background: #D9C9A8; border-radius: 99px; position: relative; cursor: pointer; transition: background 150ms; }
   .toggle-switch.on { background: #2D7A3E; }
   .toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: left 150ms; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
   .toggle-switch.on::after { left: 20px; }
   .recap-line { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #EDE6DC; }
   .recap-line:last-child { border-bottom: none; }
-  .recap-line .lbl { font-size: 11px; font-weight: 600; color: #8B7F6E; text-transform: uppercase; letter-spacing: 0.3px; flex-shrink: 0; }
-  .recap-line .val { font-size: 13px; font-weight: 600; color: #2A2018; text-align: right; }
+  .recap-line .lbl { font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.3px; flex-shrink: 0; }
+  .recap-line .val { font-size: 13px; font-weight: 600; color: var(--color-text-primary); text-align: right; }
   .cgu-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; }
   .cgu-row input[type=checkbox] { flex-shrink: 0; margin-top: 2px; transform: scale(1.2); cursor: pointer; }
   .cgu-row label { text-transform: none; letter-spacing: 0; font-size: 12px; color: #5C3B1E; line-height: 1.5; margin: 0; font-weight: 400; }
-  .cgu-row a { color: #8B5E3C; text-decoration: underline; }
+  .cgu-row a { color: var(--color-accent); text-decoration: underline; }
   .recap-section { margin-bottom: 14px; }
-  .recap-section h3 { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15px; color: #8B5E3C; margin: 0 0 6px; font-weight: 600; }
+  .recap-section h3 { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15px; color: var(--color-accent); margin: 0 0 6px; font-weight: 600; }
 </style>
 </head>
 <body>
