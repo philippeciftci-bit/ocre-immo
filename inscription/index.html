@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Inscription agent — Ocre Immo</title>
+<title>Inscription agent — Oi Agent</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <!-- M/2026/05/07/88 — Favicon Oi cross-vhosts (path /favicon/ + manifest signup) -->
 <link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon-180x180.png">
 <link rel="manifest" href="/favicon/site-signup.webmanifest">
 <meta name="theme-color" content="#8B5E3C">
-<meta name="apple-mobile-web-app-title" content="Ocre Signup">
+<meta name="apple-mobile-web-app-title" content="Oi Agent — Inscription">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -77,7 +77,7 @@
 </head>
 <body>
 <div class="page">
-  <div class="brand">Ocre Immo<small>Inscription Agent</small></div>
+  <div class="brand">Oi Agent<small>Inscription</small></div>
   <h1>Bienvenue dans le réseau</h1>
   <p class="subtitle">Quelques minutes pour rejoindre les agents qui matchent ensemble.</p>
   <div id="root"></div>
@@ -282,7 +282,7 @@ function Wizard() {
             <div className="recap-line"><span className="lbl">Sensibilité</span><span className="val">{({strict:'Strict',equilibre:'Équilibré',large:'Large',tres_large:'Très large'})[data.sensibility_preset]}</span></div>
             <div className="recap-line"><span className="lbl">Canaux</span><span className="val">{[data.channels_email && 'Email', data.channels_whatsapp && 'WhatsApp'].filter(Boolean).join(' · ') || 'Aucun'}</span></div>
           </div>
-          <div className="cgu-row"><input type="checkbox" id="cgu" checked={data.cgu} onChange={e=>set('cgu',e.target.checked)}/><label htmlFor="cgu">J'accepte les <a href="https://ocre.immo/cgu.html" target="_blank" rel="noopener">Conditions Générales d'Utilisation</a> de Ocre Immo.</label></div>
+          <div className="cgu-row"><input type="checkbox" id="cgu" checked={data.cgu} onChange={e=>set('cgu',e.target.checked)}/><label htmlFor="cgu">J'accepte les <a href="https://ocre.immo/cgu.html" target="_blank" rel="noopener">Conditions Générales d'Utilisation</a> de Oi Agent.</label></div>
           <div className="cgu-row"><input type="checkbox" id="rgpd" checked={data.rgpd} onChange={e=>set('rgpd',e.target.checked)}/><label htmlFor="rgpd">J'accepte le traitement de mes données personnelles dans le cadre du RGPD, conformément à la <a href="https://ocre.immo/politique-confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>.</label></div>
           {serverError && <div className="help err" style={{marginBottom:8}}>⚠ {serverError}</div>}
           <div className="nav-row"><button className="btn btn-back" onClick={()=>setStep(3)}>‹ Retour</button><button className="btn btn-success" onClick={submit} disabled={!step4Valid || submitting} style={{flex:1}}>{submitting ? '…' : '✓ Créer mon compte'}</button></div>

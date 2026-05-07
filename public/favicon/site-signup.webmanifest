@@ -1,6 +1,7 @@
 {
-  "name": "Ocre Immo · Inscription agents",
-  "short_name": "Ocre Signup",
+  "name": "Oi Agent · Inscription",
+  "short_name": "Oi Agent",
+  "description": "Inscription agent immobilier sur Oi Agent (un produit Ocre).",
   "icons": [
     { "src": "/favicon/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/favicon/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }

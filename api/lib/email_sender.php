@@ -15,7 +15,7 @@ function ocre_send_email(string $to, string $subject, string $bodyHtml, ?string 
     $textBody = $bodyText ?: trim(strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</div>'], "\n", $bodyHtml)));
     $messageId = '<' . bin2hex(random_bytes(8)) . '.' . time() . '@ocre.immo>';
     $headers = [
-        'From: Ocre Immo <noreply@ocre.immo>',
+        'From: Oi Agent <noreply@ocre.immo>',
         'Reply-To: support@ocre.immo',
         'To: ' . $to,
         'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=',

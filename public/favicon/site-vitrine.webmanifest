@@ -1,6 +1,7 @@
 {
-  "name": "Ocre Immo · Pacte digital",
-  "short_name": "Ocre Immo",
+  "name": "Ocre · Plateforme CRM immobilier",
+  "short_name": "Ocre",
+  "description": "Ocre — plateforme française pour les pros de l'immobilier (Oi Agent disponible, Oi Scan / Oi Book / Oi Demande à venir).",
   "icons": [
     { "src": "/favicon/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/favicon/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
