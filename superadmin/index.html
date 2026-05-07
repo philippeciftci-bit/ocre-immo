@@ -29,9 +29,12 @@
   .login { max-width: 380px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; border: 1px solid #E5DDC8; }
   .login input { width: 100%; padding: 10px 12px; border: 1px solid #B89968; border-radius: 6px; margin-bottom: 10px; font-family: inherit; }
   .login button { width: 100%; padding: 12px; background: #8B5E3C; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600; }
-  .pwd-wrap { position: relative; }
-  .pwd-eye { position: absolute; right: 10px; top: 8px; background: none; border: none; cursor: pointer; padding: 4px; color: #8B5E3C; width: auto; }
-  .pwd-eye svg { width: 18px; height: 18px; display: block; }
+  /* M/2026/05/07/96.1bis — fix oeil debordait bouton Se connecter sur iPad. ROOT CAUSE : selecteur .login button (specificite 0,1,1) plus fort que .pwd-eye (0,1,0) -> .pwd-eye heritait width:100% + padding:12px + background:#8B5E3C du bouton login = bouton geant qui debordait sur le bouton suivant. FIX : selecteur .login button.pwd-eye (0,2,1) gagne en specificite. wrapper porte margin (pas input), padding-right reserve zone oeil, centrage top:50% translateY -50% independant hauteur input, z-index 2 modere. */
+  .pwd-wrap { position: relative; margin-bottom: 10px; }
+  .login .pwd-wrap input { margin-bottom: 0; padding-right: 44px; }
+  .login button.pwd-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; padding: 0; margin: 0; background: transparent; border: none; color: #8B5E3C; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; -webkit-appearance: none; appearance: none; box-shadow: none; font-weight: 400; }
+  .login button.pwd-eye:hover { color: #6B4429; background: transparent; }
+  .login button.pwd-eye svg { width: 18px; height: 18px; display: block; pointer-events: none; }
   .forgot { display: block; text-align: center; margin-top: 10px; color: #8B5E3C; font-size: 12px; font-style: italic; cursor: pointer; text-decoration: none; }
   .forgot:hover { text-decoration: underline; }
   .reset-form { margin-top: 12px; padding: 12px; background: #FBF1E4; border-radius: 8px; }
