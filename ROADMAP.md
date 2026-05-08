@@ -178,6 +178,7 @@ Hook auto-update CC : à chaque mission livrée, CC ajoute (a) les nouvelles det
 ## Bugs UI/UX (test utilisateur Philippe 2026-05-08)
 
 - [x] ~~**Bug suppression dossier UI ne rafraichit pas apres confirmation**~~ — **livrée M/2026/05/08/23** (root cause = race entre DELETE en flight et refetch focus/visibilitychange ligne 11171 qui re-injectait la fiche. Fix : `window.__ocreDeletedIds` Set marque l id avant navigation, refetch filtre les ids supprimés, handleDelete await DELETE puis re-filtre + toast résultat réel. Couvre form-view delete (handleDelete) + swipe-delete home (doDelete). SW v425 → v426.)
+- [x] ~~**Refonte signup étape 3 — phone country-code + suppression WhatsApp**~~ — **livrée M/2026/05/08/26** (composant `PhoneInput` country-code + indicatif + numéro local pour cohérence UX avec Section I app tenant — 20 pays FR+francophonie+Maghreb+Golfe. Suppression complète WhatsApp Pro field + toggle Canaux Notifications + state whatsapp/channels_whatsapp + recap + payload register. Mention informative "Notifications PWA actives automatiquement après installation" sous Email. Compteur 10/20 retiré. Backend agents_register.php tolère payload legacy silencieusement, pas de migration DB. Périmètre étape 3 strict.)
 
 ## Améliorations UX (test utilisateur Philippe 2026-05-08)
 

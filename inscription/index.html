@@ -118,9 +118,91 @@ function pwdCriteria(p) {
   };
 }
 
+// M/2026/05/08/26 — phone country-code component (cohérence UX avec Section I app tenant).
+// Cible : FR+francophonie+Maghreb+Golfe (marchés Ocre Immo).
+const PHONE_COUNTRIES = [
+  {code:'FR', dial:'+33',  flag:'🇫🇷', name:'France'},
+  {code:'BE', dial:'+32',  flag:'🇧🇪', name:'Belgique'},
+  {code:'CH', dial:'+41',  flag:'🇨🇭', name:'Suisse'},
+  {code:'LU', dial:'+352', flag:'🇱🇺', name:'Luxembourg'},
+  {code:'MC', dial:'+377', flag:'🇲🇨', name:'Monaco'},
+  {code:'MA', dial:'+212', flag:'🇲🇦', name:'Maroc'},
+  {code:'TN', dial:'+216', flag:'🇹🇳', name:'Tunisie'},
+  {code:'DZ', dial:'+213', flag:'🇩🇿', name:'Algérie'},
+  {code:'SN', dial:'+221', flag:'🇸🇳', name:'Sénégal'},
+  {code:'CI', dial:'+225', flag:'🇨🇮', name:"Côte d'Ivoire"},
+  {code:'CA', dial:'+1',   flag:'🇨🇦', name:'Canada'},
+  {code:'GB', dial:'+44',  flag:'🇬🇧', name:'Royaume-Uni'},
+  {code:'ES', dial:'+34',  flag:'🇪🇸', name:'Espagne'},
+  {code:'IT', dial:'+39',  flag:'🇮🇹', name:'Italie'},
+  {code:'DE', dial:'+49',  flag:'🇩🇪', name:'Allemagne'},
+  {code:'PT', dial:'+351', flag:'🇵🇹', name:'Portugal'},
+  {code:'AE', dial:'+971', flag:'🇦🇪', name:'Émirats AU'},
+  {code:'SA', dial:'+966', flag:'🇸🇦', name:'Arabie Saoudite'},
+  {code:'QA', dial:'+974', flag:'🇶🇦', name:'Qatar'},
+  {code:'US', dial:'+1',   flag:'🇺🇸', name:'États-Unis'},
+];
+
+// Decompose une valeur E.164 ('+33651325177') ou local FR ('06...') en {country, local}.
+function parsePhone(v) {
+  const s = (v || '').trim();
+  if (!s) return {country:'FR', local:''};
+  const sorted = [...PHONE_COUNTRIES].sort((a,b) => b.dial.length - a.dial.length);
+  for (const c of sorted) {
+    if (s.startsWith(c.dial)) return {country: c.code, local: s.slice(c.dial.length).replace(/[\s\-\.]/g,'')};
+  }
+  // Assume FR si format local 0X
+  if (/^0[1-9]/.test(s.replace(/[\s\-\.]/g,''))) return {country:'FR', local: s.replace(/[\s\-\.]/g,'')};
+  return {country:'FR', local: s.replace(/[\s\-\.]/g,'')};
+}
+
+// Compose en E.164 normalise ('+33651325177'). Strip leading 0 du local (convention FR).
+function composePhone(country, local) {
+  const c = PHONE_COUNTRIES.find(x => x.code === country) || PHONE_COUNTRIES[0];
+  let digits = (local || '').replace(/\D/g, '');
+  // Pour FR-like : strip 0 initial pour eviter "+330..."
+  if (digits.startsWith('0')) digits = digits.replace(/^0+/, '');
+  if (!digits) return '';
+  return `${c.dial}${digits}`;
+}
+
+function PhoneInput({value, onChange, autoFocus}) {
+  const parsed = parsePhone(value);
+  const [country, setCountry] = useState(parsed.country);
+  const [local, setLocal] = useState(parsed.local);
+  // Re-sync state si value externe change (chargement draft localStorage).
+  useEffect(() => { const p = parsePhone(value); setCountry(p.country); setLocal(p.local); }, [value]);
+  const cc = PHONE_COUNTRIES.find(c => c.code === country) || PHONE_COUNTRIES[0];
+  function onCountry(e) {
+    const newC = e.target.value;
+    setCountry(newC);
+    onChange(composePhone(newC, local));
+  }
+  function onLocal(e) {
+    const v = e.target.value;
+    setLocal(v);
+    onChange(composePhone(country, v));
+  }
+  return (
+    <div style={{display:'flex', gap:6}}>
+      <select value={country} onChange={onCountry}
+        aria-label="Indicatif pays"
+        style={{flex:'0 0 auto', padding:'11px 8px', border:'1.5px solid #E8DDC9', borderRadius:9, fontSize:14, fontFamily:'var(--font-sans)', background:'#FDFAF7', color:'var(--color-text-primary)', outline:'none'}}>
+        {PHONE_COUNTRIES.map(c => (
+          <option key={c.code} value={c.code}>{c.flag} {c.dial}</option>
+        ))}
+      </select>
+      <input type="tel" inputMode="tel" value={local} onChange={onLocal} autoFocus={autoFocus}
+        placeholder={cc.code === 'FR' ? '6 51 32 51 77' : '...'}
+        style={{flex:'1 1 auto', minWidth:0}}/>
+    </div>
+  );
+}
+
 function Wizard() {
   const [step, setStep] = useState(1);
-  const [data, setData] = useState({prenom:'',nom:'',email:'',password:'',password2:'',siret:'',agence:'',ville:'',cp:'',carte_pro:'',tel:'',whatsapp:'',sensibility_preset:'equilibre',channels_email:true,channels_whatsapp:false,cgu:false,rgpd:false});
+  // M/2026/05/08/26 — suppression whatsapp + channels_whatsapp (PWA Push remplace).
+  const [data, setData] = useState({prenom:'',nom:'',email:'',password:'',password2:'',siret:'',agence:'',ville:'',cp:'',carte_pro:'',tel:'',sensibility_preset:'equilibre',channels_email:true,cgu:false,rgpd:false});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
   const [emailStatus, setEmailStatus] = useState({state:'idle', msg:''});
@@ -148,21 +230,23 @@ function Wizard() {
   // M90.3 — SIRET optionnel : valide si vide OU Luhn-valide.
   const siretOk = data.siret.length === 0 || siretValid;
   const step2Valid = siretOk && data.ville.trim();
-  // M/2026/05/07/95 — validation tel + whatsapp : tel obligatoire valide, whatsapp optionnel (vide OK ou valide)
+  // M/2026/05/07/95 — validation tel obligatoire valide.
+  // M/2026/05/08/26 — whatsapp supprime du wizard (PWA Push remplace).
   const telValid = validatePhone(data.tel);
-  const whatsappOk = !data.whatsapp.trim() || validatePhone(data.whatsapp);
-  const step3Valid = telValid && whatsappOk;
+  const step3Valid = telValid;
   const step4Valid = data.cgu === true && data.rgpd === true;
   async function submit() {
     if (submitting) return;
     setSubmitting(true); setServerError('');
     try {
+      // M/2026/05/08/26 — payload nettoye : whatsapp + channels_whatsapp supprimes.
+      // Backend tolere le champ legacy s il arrive (decision Philippe : ignorer silencieusement).
       const r = await fetch('/api/agents_register.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
         prenom: data.prenom.trim(), nom: data.nom.trim(), email: data.email.trim().toLowerCase(),
         password: data.password, siret: data.siret.replace(/\D/g, ''), agence: data.agence.trim(),
         ville: data.ville.trim(), cp: data.cp.trim(), carte_pro: data.carte_pro.trim(),
-        tel: data.tel.trim(), whatsapp: data.whatsapp.trim(), sensibility_preset: data.sensibility_preset,
-        channels_enabled: {email: data.channels_email, whatsapp: data.channels_whatsapp},
+        tel: data.tel.trim(), sensibility_preset: data.sensibility_preset,
+        channels_enabled: {email: data.channels_email},
         cgu_accepted: data.cgu === true, rgpd_accepted: data.rgpd === true,
       })});
       const j = await r.json();
@@ -242,18 +326,9 @@ function Wizard() {
         <div className="card">
           <h2>3. Coordonnées + préférences</h2>
           <div className="field"><label>Téléphone<span className="req">*</span></label>
-            <input type="tel" value={data.tel} onChange={e=>set('tel',e.target.value.slice(0,20))} maxLength={20} placeholder="06 12 34 56 78 ou +33 6 12 34 56 78"
-              style={data.tel.length > 0 && !telValid ? {borderColor:'#C0392B'} : (telValid ? {borderColor:'#2D7A3E'} : {})}/>
-            {data.tel.length > 0 && !telValid && <div className="help err">⚠ Numéro invalide (format FR 06/07/01-09 ou international +33...)</div>}
+            <PhoneInput value={data.tel} onChange={v => set('tel', v)}/>
+            {data.tel.length > 0 && !telValid && <div className="help err">⚠ Numéro invalide</div>}
             {telValid && <div className="help ok">✓ Numéro valide</div>}
-            <div style={{fontSize:10,color:'#A89882',textAlign:'right',marginTop:2}}>{data.tel.length}/20</div>
-          </div>
-          <div className="field"><label>WhatsApp pro (optionnel)</label>
-            <input type="tel" value={data.whatsapp} onChange={e=>set('whatsapp',e.target.value.slice(0,20))} maxLength={20} placeholder="+33 6 51 32 51 77"
-              style={data.whatsapp.length > 0 && !validatePhone(data.whatsapp) ? {borderColor:'#C0392B'} : (data.whatsapp.length > 0 && validatePhone(data.whatsapp) ? {borderColor:'#2D7A3E'} : {})}/>
-            {data.whatsapp.length > 0 && !validatePhone(data.whatsapp) && <div className="help err">⚠ Numéro invalide</div>}
-            {data.whatsapp.length > 0 && validatePhone(data.whatsapp) && <div className="help ok">✓ Numéro valide</div>}
-            {data.whatsapp.length > 0 && <div style={{fontSize:10,color:'#A89882',textAlign:'right',marginTop:2}}>{data.whatsapp.length}/20</div>}
           </div>
           <label>Sensibilité matching</label>
           <div className="preset-grid" style={{marginBottom:16}}>
@@ -265,7 +340,7 @@ function Wizard() {
           </div>
           <label>Canaux notifications</label>
           <div className="toggle-row"><div><div className="lbl">Email</div><div className="desc">Recommandations + alertes</div></div><div className={"toggle-switch " + (data.channels_email ? "on" : "")} onClick={()=>set('channels_email',!data.channels_email)}/></div>
-          <div className="toggle-row" style={{opacity: data.whatsapp.trim() ? 1 : 0.5}}><div><div className="lbl">WhatsApp</div><div className="desc">{data.whatsapp.trim() ? 'Notifications instantanées' : 'Renseigne ton numéro WhatsApp pour activer'}</div></div><div className={"toggle-switch " + (data.channels_whatsapp && data.whatsapp.trim() ? "on" : "")} onClick={()=>data.whatsapp.trim() && set('channels_whatsapp',!data.channels_whatsapp)}/></div>
+          <div style={{fontSize:11, color:'var(--color-text-muted)', fontStyle:'italic', margin:'8px 2px 0', lineHeight:1.4}}>Notifications PWA actives automatiquement après installation sur écran d'accueil.</div>
           <div className="nav-row"><button className="btn btn-back" onClick={()=>setStep(2)}>‹ Retour</button><button className="btn btn-primary" onClick={()=>setStep(4)} disabled={!step3Valid} style={{flex:1}}>Récap →</button></div>
         </div>
       )}
@@ -283,9 +358,8 @@ function Wizard() {
           </div>
           <div className="recap-section"><h3>Préférences</h3>
             <div className="recap-line"><span className="lbl">Téléphone</span><span className="val">{data.tel}</span></div>
-            {data.whatsapp && <div className="recap-line"><span className="lbl">WhatsApp</span><span className="val">{data.whatsapp}</span></div>}
             <div className="recap-line"><span className="lbl">Sensibilité</span><span className="val">{({strict:'Strict',equilibre:'Équilibré',large:'Large',tres_large:'Très large'})[data.sensibility_preset]}</span></div>
-            <div className="recap-line"><span className="lbl">Canaux</span><span className="val">{[data.channels_email && 'Email', data.channels_whatsapp && 'WhatsApp'].filter(Boolean).join(' · ') || 'Aucun'}</span></div>
+            <div className="recap-line"><span className="lbl">Canaux</span><span className="val">{[data.channels_email && 'Email', 'PWA Push'].filter(Boolean).join(' · ')}</span></div>
           </div>
           <div className="cgu-row"><input type="checkbox" id="cgu" checked={data.cgu} onChange={e=>set('cgu',e.target.checked)}/><label htmlFor="cgu">J'accepte les <a href="https://ocre.immo/cgu.html" target="_blank" rel="noopener">Conditions Générales d'Utilisation</a> de Oi Agent.</label></div>
           <div className="cgu-row"><input type="checkbox" id="rgpd" checked={data.rgpd} onChange={e=>set('rgpd',e.target.checked)}/><label htmlFor="rgpd">J'accepte le traitement de mes données personnelles dans le cadre du RGPD, conformément à la <a href="https://ocre.immo/politique-confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>.</label></div>
