@@ -218,6 +218,15 @@ if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'
 if ($siretRaw !== '' && !_validate_siret($siretRaw)) $errors['siret'] = 'SIRET invalide (Luhn)';
 if ($ville === '') $errors['ville'] = 'Ville requise';
 if ($tel === '')   $errors['tel']   = 'Telephone requis';
+// M/2026/05/08/54 — validation E.164 stricte : + suivi de 7-15 chiffres (premier non-zéro).
+if ($tel !== '' && !preg_match('/^\+[1-9]\d{6,14}$/', $tel)) {
+    @file_put_contents('/var/log/ocre-signup-errors.log',
+        '[' . date('c') . '] WARN agents_register tel format invalide : ip=' . ($_SERVER['REMOTE_ADDR'] ?? '?')
+        . ' email=' . ($input['email'] ?? '?') . ' tel=' . substr($tel, 0, 30) . "\n", FILE_APPEND);
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'PHONE_INVALID', 'detail' => 'Numéro téléphone format E.164 attendu (+ suivi de 7 à 15 chiffres).']);
+    exit;
+}
 if (!in_array($sensibility, ['strict','equilibre','large','tres_large'], true)) $sensibility = 'equilibre';
 
 // M86 — validation backend stricte CGU + RGPD (cf audit M85.1, conformite RGPD art.7 + CNIL SAN-2019-001).
