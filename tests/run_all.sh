@@ -48,7 +48,9 @@ while IFS='=' read -r k v; do
 done <<< "$SETUP_OUT"
 export SMOKE_TENANT_SLUG SMOKE_ADMIN_TOKEN SMOKE_USER_ID
 export ADMIN_TOKEN="$SMOKE_ADMIN_TOKEN"
-export TENANT_BASE="https://app.ocre.immo"
+# M/2026/05/08/38 — DNS wildcard *.ocre.immo en place. nginx vhost route via subdomain
+# et OVERRIDE le header X-Tenant-Slug client. Solution : URL via subdomain dédié smoke-<ts>.
+export TENANT_BASE="https://${SMOKE_TENANT_SLUG}.ocre.immo"
 
 if [ -z "$SMOKE_TENANT_SLUG" ] || [ -z "$SMOKE_ADMIN_TOKEN" ]; then
     echo "=== ABORT : tenant slug ou token manquant après setup ===" | tee -a "$LOG"

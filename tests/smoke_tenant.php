@@ -55,7 +55,7 @@ if ($action === 'setup') {
                cgu_accepted, cgu_accepted_at, cgu_version, cgu_accepted_ip, cgu_accepted_user_agent,
                rgpd_accepted, rgpd_accepted_at, rgpd_version, rgpd_accepted_ip, rgpd_accepted_user_agent,
                telegram_notifs_enabled, email_notifs_enabled, created_at)
-             VALUES (?, ?, 'Smoke Test', 'Smoke', 'TEST', 'agent', 'trial', 'decouverte', 'active',
+             VALUES (?, ?, 'Smoke Test', 'Smoke', 'TEST', 'super_admin', 'trial', 'decouverte', 'active',
                      '+33000000000', 'Test', 'FR', ?, 'equilibre', '{\"channels_enabled\":{\"email\":false}}',
                      1, NOW(), '1.0', '127.0.0.1', 'smoke',
                      1, NOW(), '1.0', '127.0.0.1', 'smoke',
