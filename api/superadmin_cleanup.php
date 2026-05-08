@@ -120,6 +120,68 @@ if ($action === 'reset_workspaces') {
     jout(['ok' => true, 'deleted' => $okCount, 'total' => count($all)]);
 }
 
+if ($action === 'reset_users') {
+    // M/2026/05/08/47 — DELETE users role != super_admin AND id != current super_admin.
+    if (($input['confirmation'] ?? '') !== 'RESET') jout(['ok' => false, 'error' => 'confirmation RESET required'], 400);
+    $superAdminId = (int)$user['id'];
+    try {
+        $del = $meta->prepare("DELETE FROM users WHERE role != 'super_admin' AND id != ?");
+        $del->execute([$superAdminId]);
+        $n = $del->rowCount();
+        // Cleanup orphan workspace_members + sessions des users supprimés (cascade soft).
+        @$meta->exec("DELETE FROM workspace_members WHERE user_id NOT IN (SELECT id FROM users)");
+        @$meta->exec("DELETE FROM sessions WHERE user_id NOT IN (SELECT id FROM users)");
+        _audit_log($LOG, $superAdminId, 'reset_users', ['deleted' => $n]);
+        _audit_telegram('reset_users', ['deleted' => $n, 'by' => $user['email']]);
+        jout(['ok' => true, 'deleted' => $n]);
+    } catch (Throwable $e) {
+        jout(['ok' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+if ($action === 'reset_sessions') {
+    // M/2026/05/08/47 — DELETE TOUTES sessions sauf courante (token != current).
+    if (($input['confirmation'] ?? '') !== 'RESET') jout(['ok' => false, 'error' => 'confirmation RESET required'], 400);
+    try {
+        $currentToken = (string)($_SERVER['HTTP_X_SESSION_TOKEN'] ?? '');
+        $del = $meta->prepare("DELETE FROM sessions WHERE token != ?");
+        $del->execute([$currentToken]);
+        $n = $del->rowCount();
+        _audit_log($LOG, (int)$user['id'], 'reset_sessions', ['deleted' => $n]);
+        _audit_telegram('reset_sessions', ['deleted' => $n, 'by' => $user['email']]);
+        jout(['ok' => true, 'deleted' => $n]);
+    } catch (Throwable $e) {
+        jout(['ok' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+if ($action === 'reset_clients') {
+    // M/2026/05/08/47 — TRUNCATE clients dans CHAQUE DB tenant ocre_wsp_*. Préserve les workspaces eux-mêmes.
+    if (($input['confirmation'] ?? '') !== 'RESET') jout(['ok' => false, 'error' => 'confirmation RESET required'], 400);
+    $report = ['workspaces_processed' => 0, 'total_clients_deleted' => 0, 'errors' => []];
+    try {
+        $tenants = $meta->query("SHOW DATABASES LIKE 'ocre_wsp_%'")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($tenants as $dbName) {
+            if (!preg_match('/^ocre_wsp_[a-z0-9_-]+$/', $dbName)) continue;
+            try {
+                $tenantPdo = new PDO('mysql:host=' . DB_HOST . ';dbname=' . $dbName . ';charset=utf8mb4', DB_USER, DB_PASS,
+                    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                $cnt = (int)$tenantPdo->query("SELECT COUNT(*) FROM clients")->fetchColumn();
+                $tenantPdo->exec("TRUNCATE TABLE clients");
+                $report['total_clients_deleted'] += $cnt;
+                $report['workspaces_processed']++;
+            } catch (Throwable $e) {
+                $report['errors'][] = $dbName . ': ' . $e->getMessage();
+            }
+        }
+        _audit_log($LOG, (int)$user['id'], 'reset_clients', $report);
+        _audit_telegram('reset_clients', array_merge($report, ['by' => $user['email']]));
+        jout(['ok' => true, 'report' => $report]);
+    } catch (Throwable $e) {
+        jout(['ok' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
 if ($action === 'reset_audit') {
     if (($input['confirmation'] ?? '') !== 'RESET') jout(['ok' => false, 'error' => 'confirmation RESET required'], 400);
     try {

@@ -454,7 +454,8 @@ async function renderClientsTab() {
   } else {
     pagination = `<p style="text-align:center;color:var(--color-text-muted);font-size:11px;margin-top:12px">${r.total} client${r.total>1?'s':''}</p>`;
   }
-  c.innerHTML = filters + tableHead + rows + tableEnd + pagination;
+  c.innerHTML = filters + tableHead + rows + tableEnd + pagination
+    + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_clients\', \'TOUS les clients de TOUS les workspaces (TRUNCATE)\')">🔥 Reset Clients</button></div>';
 }
 function filterClient(key, value) { clientsState[key] = value; clientsState.page = 1; renderClientsTab(); }
 function gotoPage(p) { clientsState.page = p; renderClientsTab(); }
@@ -624,7 +625,8 @@ async function renderSessionsTab() {
   const colspan = showWorkspaceCol ? 7 : 6;
   c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> session(s) active(s).</p>'
     + '<div style="margin-bottom:12px"><button class="icon-btn danger" onclick="logoutAllSessions()" style="color:var(--color-error);width:auto;padding:6px 12px;font-size:12px;font-weight:600;border:1px solid var(--color-error);border-radius:6px">🚪 Déconnecter tous (sauf moi)</button></div>'
-    + head + (rows || `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:#6B5E4A">Aucune session active.</td></tr>`) + '</tbody></table>';
+    + head + (rows || `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:#6B5E4A">Aucune session active.</td></tr>`) + '</tbody></table>'
+    + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_sessions\', \'TOUTES les sessions sauf la courante\')">🔥 Reset Sessions</button></div>';
 }
 async function forceLogoutSession(sToken, email) {
   if (!requireWriteMode()) return;
@@ -672,7 +674,8 @@ async function renderUsersTab() {
       + `</tr>`;
   }).join('');
   c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> user(s) cross-workspace.</p>'
-    + head + (rows || '<tr><td colspan="10" style="text-align:center;padding:24px;color:#6B5E4A">Aucun user.</td></tr>') + '</tbody></table>';
+    + head + (rows || '<tr><td colspan="10" style="text-align:center;padding:24px;color:#6B5E4A">Aucun user.</td></tr>') + '</tbody></table>'
+    + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_users\', \'TOUS les users sauf super-admin\')">🔥 Reset Users</button></div>';
 }
 async function deleteUserXt(uid, email, role) {
   if (!requireWriteMode()) return;
