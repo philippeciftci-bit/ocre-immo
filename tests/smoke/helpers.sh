@@ -1,8 +1,11 @@
 #!/bin/bash
 # M/2026/04/29/4 — Helpers communs aux smoke tests.
+# M/2026/05/08/36 — tenant éphémère : TENANT_BASE pointe app.ocre.immo + header X-Tenant-Slug.
+#                   ADMIN_TOKEN injecté par run_all.sh après setup. Plus de zefk fixe.
 
-TENANT_BASE="${TENANT_BASE:-https://zefk.ocre.immo}"
-ADMIN_TOKEN="${ADMIN_TOKEN:-$(cat /root/.secrets/test_admin_token 2>/dev/null)}"
+TENANT_BASE="${TENANT_BASE:-https://app.ocre.immo}"
+ADMIN_TOKEN="${ADMIN_TOKEN:-${SMOKE_ADMIN_TOKEN:-$(cat /root/.secrets/test_admin_token 2>/dev/null)}}"
+SMOKE_TENANT_SLUG="${SMOKE_TENANT_SLUG:-}"
 PASS=0
 FAIL=0
 FAILED_LIST=""
@@ -38,9 +41,14 @@ assert_contains() {
 api() {
     local method="$1" url="$2"
     shift 2
+    local tenant_header=()
+    if [ -n "$SMOKE_TENANT_SLUG" ]; then
+        tenant_header=(-H "X-Tenant-Slug: $SMOKE_TENANT_SLUG")
+    fi
     curl -sk -o /tmp/api_body.txt -w "%{http_code}" -X "$method" \
         -H "X-Session-Token: $ADMIN_TOKEN" \
         -H "Content-Type: application/json" \
+        "${tenant_header[@]}" \
         "$TENANT_BASE$url" "$@"
 }
 
