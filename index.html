@@ -11168,8 +11168,12 @@ function App() {
   // la liste avec la DB apres une mutation faite ailleurs (autre onglet, navigation back,
   // app revenant en foreground). Pattern Linear/Notion/Stripe Dashboard. Throttle 5s pour
   // eviter spam si focus/blur rapides successifs.
+  // M/2026/05/08/23 — anti-race delete : exposer un Set des ids supprimes localement
+  // (via window.__ocreDeletedIds) que le refetch filtre avant setClients. Empeche le
+  // bug "dossier reste visible page accueil" si DELETE en flight + refetch focus.
   useEffect(() => {
     let lastFetch = Date.now();
+    if (!window.__ocreDeletedIds) window.__ocreDeletedIds = new Set();
     async function refetchClients() {
       if (document.visibilityState === 'hidden') return;
       const now = Date.now();
@@ -11180,9 +11184,10 @@ function App() {
       try {
         const cl = await fetch(API + '/clients.php?action=list', {headers:{'X-Session-Token': token}, cache:'no-store'}).then(r => r.json());
         if (cl && cl.ok) {
-          const migrated = (cl.clients || []).map(c =>
-            c.is_investisseur && c.projet !== 'Investisseur' ? {...c, projet: 'Investisseur'} : c
-          );
+          const deleted = window.__ocreDeletedIds || new Set();
+          const migrated = (cl.clients || [])
+            .filter(c => !deleted.has(c.id))
+            .map(c => c.is_investisseur && c.projet !== 'Investisseur' ? {...c, projet: 'Investisseur'} : c);
           setClients(migrated);
           if (cl.meta && typeof cl.meta.staged_count === 'number') setStagedCount(cl.meta.staged_count);
         }
@@ -11303,13 +11308,18 @@ function App() {
   const editingIdRef = useRef(null);
   const savePromiseRef = useRef(Promise.resolve(null));
   async function apiDeleteClient(id) {
+    // M/2026/05/08/23 — retourne ok=true si DELETE 200, false sinon. Permet a
+    // handleDelete de re-filtrer le state apres confirmation backend (anti-race
+    // avec le refetch focus/visibilitychange ligne 11171).
     const token = localStorage.getItem('ocre_token');
     try {
-      await fetch(API + '/clients.php?action=delete', {
+      const r = await fetch(API + '/clients.php?action=delete', {
         method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token':token},
         body: JSON.stringify({id}),
       });
-    } catch (e) {}
+      const j = await r.json().catch(() => null);
+      return !!(j && j.ok);
+    } catch (e) { return false; }
   }
 
   async function handleSaveLocal(data) {
@@ -11391,10 +11401,20 @@ function App() {
   async function handleDelete(id) {
     if (!id) { window.history.back(); setEditing(null); return; }
     if (!(await askConfirm({title:'Supprimer ce dossier ?', message:'Cette action est définitive. Le dossier sera retiré de la liste, des matches et du Sheet au prochain sync.', danger:true}))) return;
+    // M/2026/05/08/23 — anti-race delete : marque l id comme supprime AVANT toute
+    // navigation, pour que le refetch focus/visibilitychange (ligne 11171) le filtre.
+    try { (window.__ocreDeletedIds = window.__ocreDeletedIds || new Set()).add(id); } catch (_) {}
+    // Optimistic UI : retire la fiche immediatement.
     setClients(prev => prev.filter(c => c.id !== id));
     window.history.back(); setEditing(null);
-    await apiDeleteClient(id);
-    showToast('Supprimé');
+    // AWAIT le 200 puis re-filtre (idempotent) + toast selon resultat reel.
+    const ok = await apiDeleteClient(id);
+    if (ok) {
+      setClients(prev => prev.filter(c => c.id !== id));
+      showToast('Dossier supprimé');
+    } else {
+      showToast('Échec suppression — réessaie');
+    }
   }
   // V18.2 — initialExpandedSection : 0=Identité, 1=Bien, 2=Financier, 3=Suivi(Section IV).
   // V24 — initialFocus : optionnel, déclenche un scrollIntoView post-rendu sur un id précis
@@ -18608,6 +18628,9 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       if (j && j.ok) {
         // M/2026/05/07/101 — optimistic fade-out + onRemove (au lieu de window.location.reload()).
         // M/2026/05/07/102 — onRemoveStart pour compteur instantanement coherent.
+        // M/2026/05/08/23 — anti-race delete : marque id supprime pour que le
+        // refetch focus/visibilitychange ne re-injecte pas la fiche.
+        try { (window.__ocreDeletedIds = window.__ocreDeletedIds || new Set()).add(c.id); } catch (_) {}
         if (props.onRemoveStart) props.onRemoveStart(c.id);
         setRemoving(true);
         setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);

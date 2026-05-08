@@ -180,12 +180,7 @@ Hook auto-update CC : à chaque mission livrée, CC ajoute (a) les nouvelles det
 
 ## Bugs UI/UX (test utilisateur Philippe 2026-05-08)
 
-- [ ] **Bug suppression dossier UI ne rafraichit pas apres confirmation**
-  - priorité: high
-  - prereqs: aucun
-  - effort: 1 mission
-  - source: test utilisateur Philippe 2026-05-08
-  - description: 1) clic supprimer 2) confirmation s affiche 3) confirme 4) le dossier reste visible page accueil 5) 2e tentative 6) message dossier introuvable 7) disparait enfin. Diagnostic : DELETE backend 200 mais front ne met pas a jour state local, 2e clic retourne 404 gere par refresh. Fix : apres DELETE 200, retirer fiche du state local OU refetch + toast "Dossier supprime". Test E2E : creer fiche test, supprimer, verifier disparition immediate sans 2e clic.
+- [x] ~~**Bug suppression dossier UI ne rafraichit pas apres confirmation**~~ — **livrée M/2026/05/08/23** (root cause = race entre DELETE en flight et refetch focus/visibilitychange ligne 11171 qui re-injectait la fiche. Fix : `window.__ocreDeletedIds` Set marque l id avant navigation, refetch filtre les ids supprimés, handleDelete await DELETE puis re-filtre + toast résultat réel. Couvre form-view delete (handleDelete) + swipe-delete home (doDelete). SW v425 → v426.)
 
 ## Améliorations UX (test utilisateur Philippe 2026-05-08)
 
