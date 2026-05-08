@@ -302,7 +302,13 @@ try {
             ]);
 
             // Re-envoi via wrapper send_mail (OVH SMTP exclusif, M/2026/05/08/31).
-            $emailSent = _send_activation_email($email, $prenom, $activationToken);
+            // M/2026/05/08/39 — try/catch Throwable : non-bloquant. Si SMTP plante, user reste créé.
+            try {
+                $emailSent = _send_activation_email($email, $prenom, $activationToken);
+            } catch (Throwable $e) {
+                $emailSent = false;
+                @error_log('[agents_register] _send_activation_email exception (pending branch): ' . $e->getMessage());
+            }
             $emailError = null;
             // Tracer provider/statut utilise pour stats super-admin.
             $providerUsed = $emailSent ? 'ovh_smtp' : null;

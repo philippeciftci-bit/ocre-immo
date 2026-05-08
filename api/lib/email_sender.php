@@ -23,12 +23,20 @@ function send_mail(string $to, string $subject, string $bodyHtml, string $fromEm
     @mkdir(dirname($logFile), 0755, true);
 
     $configPath = __DIR__ . '/../_smtp_config.php';
-    if (!file_exists($configPath)) {
-        $err = 'SMTP config missing : ' . $configPath;
+    // M/2026/05/08/39 — is_readable au lieu de file_exists : détecte les perms incorrectes (600 root:www-data
+    // alors que PHP-FPM tourne en www-ocre user → require fatal error qui plantait agents_register.php).
+    if (!is_readable($configPath)) {
+        $err = 'SMTP config missing or unreadable : ' . $configPath . ' (PHP user=' . get_current_user() . ')';
         @file_put_contents($logFile, "[" . date('c') . "] FAIL_CONFIG to=$to err=$err\n", FILE_APPEND);
         return ['ok' => false, 'error' => $err, 'message_id' => null, 'provider' => 'ovh_smtp'];
     }
-    $cfg = require $configPath;
+    try {
+        $cfg = require $configPath;
+    } catch (Throwable $e) {
+        $err = 'SMTP config require failed : ' . $e->getMessage();
+        @file_put_contents($logFile, "[" . date('c') . "] FAIL_CONFIG to=$to err=$err\n", FILE_APPEND);
+        return ['ok' => false, 'error' => $err, 'message_id' => null, 'provider' => 'ovh_smtp'];
+    }
     if (!is_array($cfg) || empty($cfg['host']) || empty($cfg['username']) || empty($cfg['password'])) {
         $err = 'SMTP config incomplete (host/username/password required)';
         @file_put_contents($logFile, "[" . date('c') . "] FAIL_CONFIG to=$to err=$err\n", FILE_APPEND);
