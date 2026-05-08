@@ -135,6 +135,31 @@
   --font-size-4xl: 36px;
   --font-size-5xl: 48px;
 
+  /* M/2026/05/08/19 — DESIGN-TOKENS.2.8.1 : tokens font-size dedies pour preservation pixel-parfait
+     des valeurs hardcodees existantes (1339 substitutions sur index.html). Echelle numerique en
+     complement de l echelle semantique xs/sm/base/lg/xl/2xl/3xl/4xl/5xl. */
+  --font-size-8: 8px;
+  --font-size-9: 9px;
+  --font-size-10: 10px;
+  --font-size-10-5: 10.5px;
+  --font-size-11: 11px;
+  --font-size-12-5: 12.5px;
+  --font-size-8-5: 8.5px;
+  --font-size-9-5: 9.5px;
+  --font-size-11-5: 11.5px;
+  --font-size-13-5: 13.5px;
+  --font-size-13: 13px;
+  --font-size-15: 15px;
+  --font-size-17: 17px;
+  --font-size-19: 19px;
+  --font-size-21: 21px;
+  --font-size-22: 22px;
+  --font-size-26: 26px;
+  --font-size-32: 32px;
+  --font-size-38: 38px;
+  --font-size-40: 40px;
+  --font-size-42: 42px;
+
   --font-weight-light: 300;
   --font-weight-regular: 400;
   --font-weight-medium: 500;

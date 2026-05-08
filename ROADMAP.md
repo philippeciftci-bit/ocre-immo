@@ -18,11 +18,7 @@
 
 ## v18.x (en cours) — Finalisations chantier tokens + bugs prod
 
-- [ ] **DESIGN-TOKENS.2.8.1** — font-size tokenization (audit-first, sous-lot)
-  - priorité: high
-  - prereqs: 2.7.4 livrée (✓), M9/M10/M11 livrés (✓)
-  - effort: 2-3h
-  - source: M/2026/05/08/13 BLOCKED 3536 occ → découpage 4 sous-lots Philippe Niveau 2
+- [x] ~~**DESIGN-TOKENS.2.8.1** — font-size tokenization~~ — **livrée M/2026/05/08/19** (1316 substitutions, 21 nouveaux tokens font-size dans tokens.css)
 
 - [ ] **DESIGN-TOKENS.2.8.2** — spacing (padding/margin/gap) tokenization
   - priorité: high
