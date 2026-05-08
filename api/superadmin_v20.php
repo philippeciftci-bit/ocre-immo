@@ -42,14 +42,33 @@ case 'workspaces': {
 }
 
 case 'audit_recent': {
+    // M/2026/05/08/48 — alignement sur super_admin_events (même table que le compteur Vue d'ensemble).
+    // L'ancienne table audit_log était vide → tableau vide alors que compteur affichait 12+.
     $rows = $meta->query(
-        "SELECT a.*, u.email, w.slug AS workspace_slug FROM audit_log a
-         LEFT JOIN users u ON u.id = a.actor_user_id
-         LEFT JOIN workspaces w ON w.id = a.workspace_id
-         ORDER BY a.created_at DESC LIMIT 200"
+        "SELECT e.id, e.action, e.created_at, e.target_workspace_id, e.payload_json,
+                u.email, u.role,
+                w.slug AS workspace_slug
+           FROM super_admin_events e
+      LEFT JOIN users u ON u.id = e.super_admin_user_id
+      LEFT JOIN workspaces w ON w.id = e.target_workspace_id
+       ORDER BY e.created_at DESC LIMIT 200"
     )->fetchAll();
+    // Adapter le format pour cohérence avec le frontend renderAuditTab (target_type / target_id legacy).
+    $events = array_map(function($r) {
+        return [
+            'id' => (int)$r['id'],
+            'created_at' => (string)$r['created_at'],
+            'email' => (string)($r['email'] ?? '—'),
+            'role' => (string)($r['role'] ?? '—'),
+            'action' => (string)$r['action'],
+            'workspace_slug' => (string)($r['workspace_slug'] ?? ''),
+            'target_type' => $r['target_workspace_id'] ? 'workspace' : '',
+            'target_id' => $r['target_workspace_id'],
+            'payload' => $r['payload_json'] ? (string)$r['payload_json'] : '',
+        ];
+    }, $rows);
     $meta->prepare("INSERT INTO super_admin_events (super_admin_user_id, action, created_at) VALUES (?, 'audit_view', NOW())")->execute([$user['id']]);
-    jout(['ok' => true, 'events' => $rows]);
+    jout(['ok' => true, 'events' => $events]);
 }
 
 default:
