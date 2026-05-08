@@ -133,21 +133,105 @@ if ($action === 'reset_audit') {
 }
 
 if ($action === 'reset_total') {
+    // M/2026/05/08/34 — refonte FULL purge. Préserve uniquement super_admin Philippe.
     if (($input['confirmation'] ?? '') !== 'RESET TOTAL') jout(['ok' => false, 'error' => 'confirmation "RESET TOTAL" required'], 400);
-    $report = ['pending' => 0, 'workspaces' => 0, 'audit' => false];
-    // 1. pending
-    $del = $meta->prepare("DELETE FROM users WHERE status = 'pending_activation' AND archived_at IS NULL");
-    $del->execute();
-    $report['pending'] = $del->rowCount();
-    // 2. workspaces
-    $st = $meta->query("SELECT id, slug FROM workspaces WHERE archived_at IS NULL");
+    $superAdminId = (int)$user['id'];
+    $report = [
+        'workspaces_dropped' => 0,
+        'workspaces_meta_deleted' => 0,
+        'orphan_dbs_dropped' => 0,
+        'users_deleted' => 0,
+        'sessions_deleted' => 0,
+        'pending_deleted' => 0,
+        'audit_truncated' => false,
+        'auto_increment_reset' => 0,
+        'errors' => [],
+    ];
+
+    // 1. DROP DATABASE pour TOUS les workspaces meta (archived ou non)
+    $st = $meta->query("SELECT id, slug FROM workspaces");
     foreach ($st->fetchAll() as $w) {
         $r = _drop_workspace_db($meta, (int)$w['id']);
-        if (!empty($r['ok'])) $report['workspaces']++;
+        if (!empty($r['ok'])) {
+            $report['workspaces_dropped']++;
+            $report['workspaces_meta_deleted']++;
+        } else {
+            $report['errors'][] = 'workspace_id=' . $w['id'] . ' err=' . ($r['error'] ?? '?');
+        }
     }
-    // 3. audit
-    try { $meta->exec("TRUNCATE TABLE super_admin_events"); $report['audit'] = true; } catch (Throwable $e) { $report['audit'] = false; }
-    _audit_log($LOG, (int)$user['id'], 'reset_total', $report);
+
+    // 2. DROP DATABASE orphelines (DBs ocre_wsp_* sans entrée meta correspondante)
+    try {
+        $orphans = $meta->query("SHOW DATABASES LIKE 'ocre_wsp_%'")->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($orphans as $dbName) {
+            if (preg_match('/^ocre_wsp_[a-z0-9_-]+$/', $dbName)) {
+                try {
+                    $meta->exec("DROP DATABASE IF EXISTS `$dbName`");
+                    $report['orphan_dbs_dropped']++;
+                } catch (Throwable $e) {
+                    $report['errors'][] = 'orphan_db=' . $dbName . ' err=' . $e->getMessage();
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        $report['errors'][] = 'show_databases err=' . $e->getMessage();
+    }
+
+    // 3. Cleanup workspaces meta table (idempotent même si déjà fait par _drop_workspace_db)
+    try {
+        $meta->exec("DELETE FROM workspaces");
+        $meta->exec("DELETE FROM workspace_members");
+        $meta->exec("DELETE FROM pact_signatures");
+    } catch (Throwable $e) {
+        $report['errors'][] = 'workspaces_meta err=' . $e->getMessage();
+    }
+
+    // 4. DELETE pending users (avant la délétion globale, pour compter)
+    try {
+        $del = $meta->prepare("DELETE FROM users WHERE status = 'pending_activation' AND id != ?");
+        $del->execute([$superAdminId]);
+        $report['pending_deleted'] = $del->rowCount();
+    } catch (Throwable $e) {
+        $report['errors'][] = 'pending err=' . $e->getMessage();
+    }
+
+    // 5. DELETE TOUS les users sauf super_admin Philippe
+    try {
+        $del = $meta->prepare("DELETE FROM users WHERE role != 'super_admin' AND id != ?");
+        $del->execute([$superAdminId]);
+        $report['users_deleted'] = $del->rowCount();
+    } catch (Throwable $e) {
+        $report['errors'][] = 'users err=' . $e->getMessage();
+    }
+
+    // 6. DELETE TOUTES les sessions sauf celle du super_admin courant (pour ne pas le déconnecter)
+    try {
+        $del = $meta->prepare("DELETE FROM sessions WHERE user_id != ?");
+        $del->execute([$superAdminId]);
+        $report['sessions_deleted'] = $del->rowCount();
+    } catch (Throwable $e) {
+        $report['errors'][] = 'sessions err=' . $e->getMessage();
+    }
+
+    // 7. TRUNCATE audit
+    try {
+        $meta->exec("TRUNCATE TABLE super_admin_events");
+        $report['audit_truncated'] = true;
+    } catch (Throwable $e) {
+        $report['errors'][] = 'audit err=' . $e->getMessage();
+    }
+
+    // 8. ALTER TABLE AUTO_INCREMENT=1 sur les tables vidées
+    foreach (['workspaces', 'workspace_members', 'pact_signatures', 'sessions', 'super_admin_events'] as $tbl) {
+        try {
+            $meta->exec("ALTER TABLE `$tbl` AUTO_INCREMENT = 1");
+            $report['auto_increment_reset']++;
+        } catch (Throwable $e) {
+            $report['errors'][] = "auto_increment $tbl err=" . $e->getMessage();
+        }
+    }
+
+    _audit_log($LOG, $superAdminId, 'reset_total', $report);
     _audit_telegram('RESET TOTAL', array_merge($report, ['by' => $user['email']]));
     jout(['ok' => true, 'report' => $report]);
 }

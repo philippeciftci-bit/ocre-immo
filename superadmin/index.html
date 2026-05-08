@@ -383,13 +383,28 @@ async function tabReset(action, label) {
 
 async function resetTotal() {
   if (!requireWriteMode()) return;
-  if (!confirm('🚨 RESET TOTAL\n\nVa supprimer :\n- Toutes les inscriptions en attente\n- TOUS les workspaces (DROP DATABASE)\n- Toute l\'audit récent\n\nCette action est TOTALEMENT IRRÉVERSIBLE.\n\nÊtes-vous sûr ?')) return;
+  if (!confirm('🚨 RESET TOTAL\n\nVa supprimer :\n- TOUS les workspaces (DROP DATABASE)\n- TOUS les users (sauf super-admin)\n- TOUTES les sessions (sauf la tienne)\n- Toutes les inscriptions en attente\n- Toute l\'audit récent\n- Auto-increment reset à 1\n\nCette action est TOTALEMENT IRRÉVERSIBLE.\n\nÊtes-vous sûr ?')) return;
   const conf = prompt('Tapez exactement : RESET TOTAL\npour confirmer définitivement :');
   if (conf !== 'RESET TOTAL') { if (conf !== null) alert('Confirmation incorrecte.'); return; }
   const r = await api('/api/superadmin_cleanup.php', {method:'POST', body:{action: 'reset_total', confirmation: 'RESET TOTAL'}});
   if (r.ok) {
-    alert('✅ RESET TOTAL exécuté.\n\n' + JSON.stringify(r.report, null, 2));
-    loadTab('overview');
+    // M/2026/05/08/34 — modale détaillée + reload après fermeture pour rafraîchir compteurs.
+    const rp = r.report || {};
+    const errLine = (rp.errors && rp.errors.length) ? `\n\n⚠️ ${rp.errors.length} erreur(s) :\n  - ` + rp.errors.slice(0, 5).join('\n  - ') : '';
+    alert(
+      `✅ RESET TOTAL exécuté\n\n`
+      + `Supprimés :\n`
+      + `  • ${rp.workspaces_dropped || 0} workspaces (DBs DROPped)\n`
+      + `  • ${rp.orphan_dbs_dropped || 0} DBs orphelines\n`
+      + `  • ${rp.users_deleted || 0} users (super-admin préservé)\n`
+      + `  • ${rp.sessions_deleted || 0} sessions invalidées\n`
+      + `  • ${rp.pending_deleted || 0} inscriptions en attente\n`
+      + `  • Audit ${rp.audit_truncated ? 'vidé ✓' : 'KO'}\n`
+      + `  • Auto-increment reset sur ${rp.auto_increment_reset || 0} tables`
+      + errLine
+      + `\n\nLa page va se rafraîchir.`
+    );
+    window.location.reload();
   } else {
     alert('⚠️ ' + (r.error || 'Erreur'));
   }
