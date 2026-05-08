@@ -40,20 +40,19 @@ function _validate_siret($siret) {
     return $sum % 10 === 0;
 }
 function _send_activation_email(string $email, string $prenom, string $token): bool {
-    // M/2026/05/08/28 — bouton "bulletproof" HTML email (table-based) compatible Gmail
-    // iOS qui neutralise les <a style=...> custom. Pattern : <table><tr><td bgcolor=...>
-    // <a style=color:#fff>texte</a></td></tr></table>. Couleur succes #10B981.
+    // M/2026/05/08/50 — wording aligné Philippe : "Validez votre inscription" + précise étape suivante.
     $url = 'https://app.ocre.immo/api/agents_activate.php?token=' . $token;
-    $subject = 'Bienvenue sur Oi Agent — Activez votre compte';
+    $subject = 'Bienvenue sur Oi Agent — Validez votre inscription';
     $safePrenom = htmlspecialchars($prenom, ENT_QUOTES, 'UTF-8');
     $html = '<html><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#3a2e22;background:#FAF6EC;margin:0;padding:0;">'
         . '<div style="max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(60,40,20,0.08);">'
         . '<h1 style="font-family:\'Cormorant Garamond\',Georgia,serif;font-style:italic;color:#8B5E3C;font-weight:500;margin:0 0 12px;font-size:28px;">Bienvenue sur Oi Agent</h1>'
         . '<p style="font-size:15px;line-height:1.5;">Bonjour <b>' . $safePrenom . '</b>,</p>'
-        . '<p style="font-size:15px;line-height:1.5;">Votre dossier d\'inscription a bien été reçu. Cliquez sur le bouton ci-dessous pour activer votre compte (lien valide 48 heures) :</p>'
+        . '<p style="font-size:15px;line-height:1.5;">Pour finaliser votre inscription, cliquez sur le bouton ci-dessous. Vous serez ensuite invité à définir votre mot de passe pour accéder à la plateforme.</p>'
+        . '<p style="font-size:13px;color:#6B5E4A;line-height:1.5;font-style:italic;">Lien valide 48 heures.</p>'
         . '<table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" style="margin:28px auto;">'
-        . '<tr><td bgcolor="#10B981" style="border-radius:10px;background-color:#10B981;mso-padding-alt:14px 32px;">'
-        . '<a href="' . $url . '" target="_blank" style="display:inline-block;padding:14px 32px;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;border:1px solid #10B981;line-height:1.2;">Activer mon compte</a>'
+        . '<tr><td bgcolor="#10B981" style="border-radius:10px;background-color:#10B981;mso-padding-alt:14px 24px;">'
+        . '<a href="' . $url . '" target="_blank" style="display:inline-block;padding:14px 24px;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;border:1px solid #10B981;line-height:1.2;">Valider mon inscription et définir mon mot de passe</a>'
         . '</td></tr></table>'
         . '<p style="font-size:12px;color:#999;line-height:1.5;">Si le bouton ne fonctionne pas, copiez-collez ce lien :<br><span style="word-break:break-all;">' . $url . '</span></p>'
         . '<p style="font-size:11px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">Oi Agent — un produit Ocre · contact@ocre.immo</p>'
@@ -180,7 +179,8 @@ function _meta_pdo() {
 $prenom = _trim_str($input['prenom'] ?? '', 100);
 $nom    = _trim_str($input['nom'] ?? '', 100);
 $email  = strtolower(_trim_str($input['email'] ?? '', 190));
-$pwd    = (string)($input['password'] ?? '');
+// M/2026/05/08/50 — password retiré du wizard signup. Stocké en PLACEHOLDER puis hashé sur /set-password.html.
+$pwd    = '';
 $siretRaw = preg_replace('/\D/', '', (string)($input['siret'] ?? ''));
 $agence = _trim_str($input['agence'] ?? '', 150);
 $ville  = _trim_str($input['ville'] ?? '', 100);
@@ -194,9 +194,7 @@ $channels = is_array($input['channels_enabled'] ?? null) ? $input['channels_enab
 if ($prenom === '') $errors['prenom'] = 'Prenom requis';
 if ($nom === '')    $errors['nom']    = 'Nom requis';
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'] = 'Email invalide';
-if (strlen($pwd) < 10) $errors['password'] = 'Mot de passe trop court (min 10)';
-elseif (!preg_match('/[A-Z]/', $pwd)) $errors['password'] = 'Mot de passe doit contenir 1 majuscule';
-elseif (!preg_match('/[0-9]/', $pwd)) $errors['password'] = 'Mot de passe doit contenir 1 chiffre';
+// M/2026/05/08/50 — validation password retirée (champ retiré du wizard, défini sur set-password).
 // M90.3 — SIRET optionnel : valide si vide OU 14 chiffres Luhn-valides.
 if ($siretRaw !== '' && !_validate_siret($siretRaw)) $errors['siret'] = 'SIRET invalide (Luhn)';
 if ($ville === '') $errors['ville'] = 'Ville requise';
@@ -218,7 +216,8 @@ if (!empty($errors)) {
 // M90.3 — SIRET optionnel : si vide, siret + siren = NULL.
 $siretSql = $siretRaw !== '' ? $siretRaw : null;
 $siren = $siretRaw !== '' ? substr($siretRaw, 0, 9) : null;
-$pwdHash = password_hash($pwd, PASSWORD_BCRYPT, ['cost' => 12]);
+// M/2026/05/08/50 — placeholder, le hash réel est défini sur /api/agents_set_password.php après activation.
+$pwdHash = 'PLACEHOLDER';
 $nomUpper = mb_strtoupper($nom, 'UTF-8');
 $displayName = trim($prenom . ' ' . $nomUpper);
 $prefsJson = json_encode([

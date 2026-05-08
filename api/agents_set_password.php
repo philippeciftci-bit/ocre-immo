@@ -73,7 +73,8 @@ if ($expiresAt && strtotime($expiresAt) < time()) {
 $hash = password_hash($pwd, PASSWORD_BCRYPT, ['cost' => 12]);
 
 try {
-    $upd = $pdo->prepare("UPDATE users SET password_hash = ?, status = 'active', activation_token = NULL, activation_token_expires_at = NULL, last_login = NOW() WHERE id = ?");
+    // M/2026/05/08/50 — set activated_at en plus pour traçabilité.
+    $upd = $pdo->prepare("UPDATE users SET password_hash = ?, status = 'active', activation_token = NULL, activation_token_expires_at = NULL, last_login = NOW(), activated_at = NOW() WHERE id = ?");
     $upd->execute([$hash, (int)$user['id']]);
 } catch (Throwable $e) {
     http_response_code(500);

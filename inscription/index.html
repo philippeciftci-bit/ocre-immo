@@ -202,15 +202,16 @@ function PhoneInput({value, onChange, autoFocus}) {
 function Wizard() {
   const [step, setStep] = useState(1);
   // M/2026/05/08/26 — suppression whatsapp + channels_whatsapp (PWA Push remplace).
-  const [data, setData] = useState({prenom:'',nom:'',email:'',password:'',password2:'',siret:'',agence:'',ville:'',cp:'',carte_pro:'',tel:'',sensibility_preset:'equilibre',channels_email:true,cgu:false,rgpd:false});
+  // M/2026/05/08/50 — password retire du wizard. Defini uniquement sur /set-password.html post-activation mail.
+  const [data, setData] = useState({prenom:'',nom:'',email:'',siret:'',agence:'',ville:'',cp:'',carte_pro:'',tel:'',sensibility_preset:'equilibre',channels_email:true,cgu:false,rgpd:false});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
   const [emailStatus, setEmailStatus] = useState({state:'idle', msg:''});
   useEffect(() => {
-    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const saved = JSON.parse(raw); if (saved && typeof saved === 'object') setData(d => ({...d, ...saved, password:'', password2:'', cgu:false, rgpd:false})); } } catch(_) {}
+    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const saved = JSON.parse(raw); if (saved && typeof saved === 'object') setData(d => ({...d, ...saved, cgu:false, rgpd:false})); } } catch(_) {}
   }, []);
   useEffect(() => {
-    try { const {password, password2, cgu, rgpd, ...p} = data; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(_) {}
+    try { const {cgu, rgpd, ...p} = data; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(_) {}
   }, [data]);
   const set = (k, v) => setData(d => ({...d, [k]: v}));
   async function checkEmail() {
@@ -225,7 +226,8 @@ function Wizard() {
       else setEmailStatus({state:'idle', msg:''});
     } catch(_) { setEmailStatus({state:'idle', msg:''}); }
   }
-  const step1Valid = data.prenom.trim() && data.nom.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) && pwdScore(data.password) >= 3 && data.password === data.password2 && emailStatus.state !== 'taken';
+  // M/2026/05/08/50 — step1 ne valide plus mot de passe (defini sur set-password.html).
+  const step1Valid = data.prenom.trim() && data.nom.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) && emailStatus.state !== 'taken';
   const siretValid = validateSiret(data.siret);
   // M90.3 — SIRET optionnel : valide si vide OU Luhn-valide.
   const siretOk = data.siret.length === 0 || siretValid;
@@ -241,9 +243,10 @@ function Wizard() {
     try {
       // M/2026/05/08/26 — payload nettoye : whatsapp + channels_whatsapp supprimes.
       // Backend tolere le champ legacy s il arrive (decision Philippe : ignorer silencieusement).
+      // M/2026/05/08/50 — payload sans password (mdp défini sur set-password.html post-activation).
       const r = await fetch('/api/agents_register.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
         prenom: data.prenom.trim(), nom: data.nom.trim(), email: data.email.trim().toLowerCase(),
-        password: data.password, siret: data.siret.replace(/\D/g, ''), agence: data.agence.trim(),
+        siret: data.siret.replace(/\D/g, ''), agence: data.agence.trim(),
         ville: data.ville.trim(), cp: data.cp.trim(), carte_pro: data.carte_pro.trim(),
         tel: data.tel.trim(), sensibility_preset: data.sensibility_preset,
         channels_enabled: {email: data.channels_email},
@@ -279,36 +282,10 @@ function Wizard() {
             <div className="field"><label>Nom<span className="req">*</span></label><input type="text" value={data.nom} onChange={e=>set('nom',e.target.value)} onBlur={e=>set('nom',e.target.value.toUpperCase())}/></div>
           </div>
           <div className="field"><label>Email professionnel<span className="req">*</span></label><input type="email" value={data.email} onChange={e=>{set('email',e.target.value); setEmailStatus({state:'idle', msg:''});}} onBlur={checkEmail} autoComplete="email"/>{emailStatus.state === 'checking' && <div className="help">Vérification…</div>}{emailStatus.state === 'ok' && <div className="help ok">✓ Disponible</div>}{emailStatus.state === 'taken' && <div className="help err">⚠ {emailStatus.msg}</div>}</div>
-          <div className="field"><label>Mot de passe<span className="req">*</span></label><input type="password" value={data.password} onChange={e=>set('password',e.target.value)} placeholder="Min 10 chars, 1 maj, 1 chiffre"/>
-            {(() => {
-              const c = pwdCriteria(data.password);
-              const score = (c.len?1:0) + (c.maj?1:0) + (c.num?1:0) + (c.spe?1:0);
-              const barColor = score <= 1 ? '#C0392B' : (score === 2 ? '#D68910' : '#2D7A3E');
-              const barLabel = score <= 1 ? 'Faible' : (score === 2 ? 'Moyen' : (score === 3 ? 'Fort' : 'Excellent'));
-              const barWidth = data.password.length === 0 ? 0 : Math.max(8, score * 25);
-              const Item = ({ok, label}) => (
-                <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,color:ok?'#2D7A3E':'#8B7F6E',fontWeight:ok?600:400}}>
-                  <span style={{display:'inline-block',width:14,height:14,borderRadius:'50%',background:ok?'#2D7A3E':'#E8DDC9',color:'#fff',fontSize:10,lineHeight:'14px',textAlign:'center'}}>{ok?'✓':''}</span>
-                  {label}
-                </span>
-              );
-              return (
-                <div style={{marginTop:8}}>
-                  <div style={{height:4,background:'#EDE6DC',borderRadius:2,overflow:'hidden'}}>
-                    <div style={{height:'100%',width:barWidth+'%',background:barColor,transition:'width 200ms,background 200ms'}}/>
-                  </div>
-                  <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:6}}>
-                    <Item ok={c.len} label="10+ caractères"/>
-                    <Item ok={c.maj} label="Majuscule"/>
-                    <Item ok={c.num} label="Chiffre"/>
-                    <Item ok={c.spe} label="Caractère spécial"/>
-                  </div>
-                  {data.password.length > 0 && <div style={{fontSize:10.5,color:barColor,marginTop:4,fontWeight:600}}>{barLabel}</div>}
-                </div>
-              );
-            })()}
+          {/* M/2026/05/08/50 — mot de passe défini après activation sur /set-password.html, plus dans le wizard. */}
+          <div style={{fontSize:12, color:'var(--color-text-muted)', fontStyle:'italic', margin:'12px 2px 4px', lineHeight:1.5, padding:'10px 12px', background:'var(--color-bg-tint-soft)', borderRadius:8, border:'1px solid var(--color-border-subtle)'}}>
+            Vous choisirez votre mot de passe après avoir cliqué sur le lien d'activation envoyé par email.
           </div>
-          <div className="field"><label>Confirmation<span className="req">*</span></label><input type="password" value={data.password2} onChange={e=>set('password2',e.target.value)}/>{data.password2 && (data.password === data.password2 ? <div className="help ok">✓ Identiques</div> : <div className="help err">⚠ Différents</div>)}</div>
           <button className="btn btn-primary" onClick={()=>setStep(2)} disabled={!step1Valid}>Continuer →</button>
         </div>
       )}
