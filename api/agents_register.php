@@ -62,6 +62,39 @@ function _send_activation_email(string $email, string $prenom, string $token): b
     return false;
 }
 
+// M/2026/05/08/27 — Alerting super-admin si echec email confirmation signup.
+// Canaux : log persistant + Telegram (notify --phase error) + email Philippe best-effort.
+// PWA push super-admin : TODO M+1 (pas encore implemente).
+function _alert_email_failure(int $userId, string $email, string $prenom, string $errorMsg): void {
+    $ts = date('c');
+    $logLine = "[$ts] user_id=$userId email=$email prenom=$prenom error=" . preg_replace('/\s+/', ' ', $errorMsg) . "\n";
+    @error_log($logLine, 3, '/var/log/ocre-signup-errors.log');
+
+    $title = 'Email confirmation signup ECHEC';
+    $body = "Agent $prenom ($email) inscrit (user_id=$userId) mais email d'activation NON ENVOYE. Erreur: $errorMsg. Action requise : envoi manuel ou diagnostic SMTP.";
+    @shell_exec(
+        '/root/bin/notify --project ocre --priority high --phase error '
+        . '--mission-id ' . escapeshellarg('SIGNUP-ERROR/' . time())
+        . ' --title ' . escapeshellarg($title)
+        . ' --body ' . escapeshellarg($body)
+        . ' >/dev/null 2>&1 &'
+    );
+
+    // Email super-admin best-effort (si SMTP cassé global, ce mail échouera aussi — Telegram passe).
+    $adminEmail = 'philippe.ciftci@gmail.com';
+    $adminSubject = '[Oi Agent] ECHEC email confirmation signup';
+    $adminBody = "<p>Inscription enregistree mais email d'activation NON ENVOYE.</p>"
+        . '<ul><li>user_id: ' . $userId . '</li>'
+        . '<li>email: ' . htmlspecialchars($email, ENT_QUOTES, 'UTF-8') . '</li>'
+        . '<li>prenom: ' . htmlspecialchars($prenom, ENT_QUOTES, 'UTF-8') . '</li>'
+        . '<li>error: ' . htmlspecialchars($errorMsg, ENT_QUOTES, 'UTF-8') . '</li></ul>'
+        . "<p>Action : renvoyer manuellement l'email d'activation ou diagnostiquer SMTP.</p>";
+    if (function_exists('ocre_send_email')) {
+        @ocre_send_email($adminEmail, $adminSubject, $adminBody);
+    }
+    // TODO M+1 : PWA push super-admin si la PWA admin est connectee (best-effort, pas bloquant).
+}
+
 function _meta_pdo() {
     $dsn = 'mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4';
     return new PDO($dsn, DB_USER, DB_PASS, [
@@ -179,14 +212,21 @@ try {
             @shell_exec('/root/bin/notify --project ocre --priority normal --title ' . escapeshellarg('Inscription token regenere') . ' --body ' . escapeshellarg($body) . ' >/dev/null 2>&1 &');
 
             $emailSent = _send_activation_email($email, $prenom, $activationToken);
+            $emailError = null;
+            if (!$emailSent) {
+                $emailError = 'Echec envoi email activation (mail() ou ocre_send_email a retourne false)';
+                _alert_email_failure($userId, $email, $prenom, $emailError);
+            }
 
             http_response_code(200);
             echo json_encode([
                 'ok' => true,
+                'inscription_ok' => true,
                 'user_id' => $userId,
                 'resent' => true,
                 'email_sent' => $emailSent,
-                'redirect' => '/inscription/confirmee/?prenom=' . rawurlencode($prenom) . '&email=' . rawurlencode($email),
+                'email_error' => $emailError,
+                'redirect' => '/inscription/confirmee/?prenom=' . rawurlencode($prenom) . '&email=' . rawurlencode($email) . '&email_sent=' . ($emailSent ? '1' : '0'),
             ]);
             exit;
         }
@@ -242,11 +282,18 @@ $body = $prenom . ' ' . $nomUpper . ' . ' . $email . ' . ' . $ville . ' . SIRET 
 @shell_exec('/root/bin/notify --project ocre --priority normal --title ' . escapeshellarg('Nouvelle inscription agent') . ' --body ' . escapeshellarg($body) . ' >/dev/null 2>&1 &');
 
 $emailSent = _send_activation_email($email, $prenom, $activationToken);
+$emailError = null;
+if (!$emailSent) {
+    $emailError = 'Echec envoi email activation (mail() ou ocre_send_email a retourne false)';
+    _alert_email_failure($userId, $email, $prenom, $emailError);
+}
 
 http_response_code(201);
 echo json_encode([
     'ok' => true,
+    'inscription_ok' => true,
     'user_id' => $userId,
     'email_sent' => $emailSent,
-    'redirect' => '/inscription/confirmee/?prenom=' . rawurlencode($prenom) . '&email=' . rawurlencode($email),
+    'email_error' => $emailError,
+    'redirect' => '/inscription/confirmee/?prenom=' . rawurlencode($prenom) . '&email=' . rawurlencode($email) . '&email_sent=' . ($emailSent ? '1' : '0'),
 ]);
