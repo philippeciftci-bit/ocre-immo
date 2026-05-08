@@ -309,7 +309,7 @@ function Wizard() {
         <div style={{position:'relative'}}>
           {/* M/2026/05/08/63 — name="password" (pas "new-password") + passwordrules pour iOS Keychain. */}
           <input type={(showPwd && pwdFocused) ? 'text' : 'password'} value={data.password} onChange={e=>set('password',e.target.value)} onFocus={()=>setPwdFocused(true)} onBlur={()=>setPwdFocused(false)} autoComplete="new-password" name="password" id="signup-password" placeholder="Min 10 chars, 1 maj, 1 chiffre" passwordrules="minlength: 10; required: upper; required: digit; required: special;" style={{paddingRight:48}}/>
-          <button type="button" onClick={()=>setShowPwd(s=>!s)} aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)',background:'transparent',border:0,color:'#8B7F6E',cursor:'pointer',padding:0,width:44,height:44,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
+          <button type="button" onMouseDown={e=>e.preventDefault()} onTouchStart={e=>e.preventDefault()} onClick={()=>setShowPwd(s=>!s)} aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)',background:'transparent',border:0,color:'#8B7F6E',cursor:'pointer',padding:0,width:44,height:44,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
             {showPwd ? (
               /* eye-off (mdp visible : clic pour masquer) */
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -358,7 +358,7 @@ function Wizard() {
       <div className="field"><label>Confirmation<span className="req">*</span></label>
         <div style={{position:'relative'}}>
           <input type={(showPwdConfirm && pwdConfirmFocused) ? 'text' : 'password'} value={data.password2} onChange={e=>set('password2',e.target.value)} onFocus={()=>setPwdConfirmFocused(true)} onBlur={()=>{setPwdConfirmFocused(false); setConfirmTouched(true);}} autoComplete="new-password" name="password-confirm" id="signup-password-confirm" style={{paddingRight:48}}/>
-          <button type="button" onClick={()=>setShowPwdConfirm(s=>!s)} aria-label={showPwdConfirm ? 'Masquer la confirmation' : 'Afficher la confirmation'} style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)',background:'transparent',border:0,color:'#8B7F6E',cursor:'pointer',padding:0,width:44,height:44,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
+          <button type="button" onMouseDown={e=>e.preventDefault()} onTouchStart={e=>e.preventDefault()} onClick={()=>setShowPwdConfirm(s=>!s)} aria-label={showPwdConfirm ? 'Masquer la confirmation' : 'Afficher la confirmation'} style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)',background:'transparent',border:0,color:'#8B7F6E',cursor:'pointer',padding:0,width:44,height:44,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
             {showPwdConfirm ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
