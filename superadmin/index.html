@@ -156,14 +156,17 @@
   .sa-link:hover { background: var(--color-bg-tint-warm); border-color: var(--color-border-medium); }
   .sa-link kbd { font-family: ui-monospace, monospace; font-size: 10px; padding: 1px 5px; background: #F5EDDF; border: 1px solid #D9C9A8; border-radius: 3px; color: #6B4429; }
   /* Tabs nav unifiée. */
-  /* M/2026/05/08/46 — Bug 2 : flex-wrap supprimé pour éviter que le tab actif passe en 2e ligne hors viewport.
-     Sur écrans étroits (iPad portrait/iPhone), scroll horizontal natif avec snap. */
-  .sa-tabs { display: flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--color-border-subtle); border-radius: 12px; margin-bottom: 28px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; max-width: 100%; }
+  /* M/2026/05/08/46 → 49 — flex-wrap nowrap + scroll horizontal. Multi-defense rendering :
+     - font-weight identique entre actif/inactif (pas de width shift qui ré-aligne le scroll)
+     - background ocre + color blanc + box-shadow inset redondance
+     - bordure bottom 3px en plus comme indicateur visuel anti-bug Safari iPad
+     - scrollIntoView retiré (cause potentielle de mauvais positionnement Safari iPad). */
+  .sa-tabs { display: flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--color-border-subtle); border-radius: 12px; margin-bottom: 28px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; max-width: 100%; min-width: 0; }
   .sa-tabs::-webkit-scrollbar { height: 4px; }
   .sa-tabs::-webkit-scrollbar-thumb { background: var(--color-border-subtle); border-radius: 2px; }
-  .sa-tab { padding: 9px 16px; border: none; background: transparent; color: var(--color-text-muted); font-family: inherit; font-size: 13.5px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: background 150ms ease, color 150ms ease; flex-shrink: 0; white-space: nowrap; }
+  .sa-tab { display: inline-flex; align-items: center; padding: 9px 16px; border: none; background: transparent; color: var(--color-text-muted); font-family: inherit; font-size: 13.5px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: background 150ms ease, color 150ms ease; flex-shrink: 0; white-space: nowrap; min-width: max-content; border-bottom: 3px solid transparent; box-sizing: border-box; }
   .sa-tab:hover { background: var(--color-bg-tint-warm); color: var(--color-text-primary); }
-  .sa-tab.active { background: var(--color-accent); color: #fff; font-weight: 600; }
+  .sa-tab.active { background: var(--color-accent) !important; color: #fff !important; font-weight: 500; box-shadow: inset 0 0 0 1px var(--color-accent); border-bottom-color: var(--color-ocre-700, #5C3E27); }
   /* Sections groupées Vue d'ensemble. */
   .sa-section { margin-bottom: 32px; }
   .sa-section-title { font-family: var(--font-sans); font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 0; border-top: 1px solid var(--color-border-subtle); margin-bottom: 16px; }
@@ -304,10 +307,14 @@ window.addEventListener('hashchange', () => {
     const lbl = document.getElementById('sa-tab-label'); if (lbl) lbl.textContent = TAB_LABELS[newTab];
     const sub = document.getElementById('sa-subtitle'); if (sub) sub.textContent = TAB_SUBTITLES[newTab];
     loadTab(newTab);
-    // M/2026/05/08/46 — auto-scroll tab actif dans la viewport (Bug 2 : tab masqué sur iPad).
+    // M/2026/05/08/49 — scrollIntoView RETIRÉ (cause potentielle bug Safari iPad qui scrollait
+    // le parent jusqu'à masquer le tab actif). Préférence : scroll horizontal manuel via overflow-x auto.
+    // Auto-scroll plus subtil : aligner le tab dans la barre, mais SANS toucher au scroll de la PAGE.
+    const tabsBar = document.querySelector('.sa-tabs');
     const activeTab = document.querySelector('.sa-tab.active');
-    if (activeTab && activeTab.scrollIntoView) {
-      activeTab.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
+    if (tabsBar && activeTab) {
+      const left = activeTab.offsetLeft - (tabsBar.clientWidth - activeTab.offsetWidth) / 2;
+      try { tabsBar.scrollTo({left: Math.max(0, left), behavior: 'smooth'}); } catch (_) {}
     }
   }
 });
