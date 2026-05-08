@@ -426,21 +426,28 @@ async function renderClientsTab() {
 function filterClient(key, value) { clientsState[key] = value; clientsState.page = 1; renderClientsTab(); }
 function gotoPage(p) { clientsState.page = p; renderClientsTab(); }
 
-// M/2026/05/08/33 — Outils nettoyage super-admin (phase test)
-function isWriteMode() { return localStorage.getItem('ocre_sa_write_mode') === '1'; }
+// M/2026/05/08/33 → 42 — Outils nettoyage super-admin.
+// Opt-out (M42) : par défaut écriture ACTIVÉE (Philippe seul super-admin, mode test).
+// Le toggle reste affiché pour transparence + permet désactivation temporaire si besoin.
+// Garde-fous réels : confirmation textuelle "RESET" / "RESET TOTAL" + audit Telegram.
+function isWriteMode() {
+  const v = localStorage.getItem('ocre_sa_write_mode');
+  if (v === null) { localStorage.setItem('ocre_sa_write_mode', '1'); return true; }
+  return v !== '0';
+}
 function toggleWriteMode() {
   const cur = isWriteMode();
   if (cur) {
-    localStorage.removeItem('ocre_sa_write_mode');
+    if (!confirm('Désactiver le mode ÉCRITURE ?\n\nLes actions destructives seront bloquées tant que ce mode est OFF.')) return;
+    localStorage.setItem('ocre_sa_write_mode', '0');
   } else {
-    if (!confirm('Activer le mode ÉCRITURE ?\n\nCe mode autorise les suppressions et resets. À désactiver après usage.')) return;
     localStorage.setItem('ocre_sa_write_mode', '1');
   }
   renderConsole();
 }
 function requireWriteMode() {
   if (!isWriteMode()) {
-    alert('⚠️ Mode écriture désactivé.\n\nActiver le toggle "🔒 Activer écriture" en haut à droite avant toute action destructive.');
+    alert('⚠️ Mode écriture désactivé.\n\nClique sur "🔒 Activer écriture" en haut à droite avant toute action destructive.');
     return false;
   }
   return true;
