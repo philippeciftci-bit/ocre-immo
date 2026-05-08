@@ -32,10 +32,13 @@ if ($method === 'GET') {
                 WHERE s.expires_at > NOW()
                 ORDER BY s.last_activity DESC LIMIT 500";
         $rows = $meta->query($sql)->fetchAll();
+        // M/2026/05/08/46 — distinguer "même user (is_self)" et "session courante (is_current_session)".
+        // is_current_session = précisément la session de la requête, jamais déconnectable.
+        // is_self = même user_id (ex: Philippe a 4 sessions, 3 sont "self" mais pas la "courante").
+        $currentToken = (string)($_SERVER['HTTP_X_SESSION_TOKEN'] ?? '');
         $list = [];
         foreach ($rows as $r) {
             $list[] = [
-                // token affiché en abrégé côté JSON (les 12 premiers chars suffisent comme identifiant lisible).
                 'token_prefix' => substr((string)$r['token'], 0, 12),
                 'token' => (string)$r['token'], // référence complète pour force_logout
                 'user_id' => (int)$r['user_id'],
@@ -49,6 +52,7 @@ if ($method === 'GET') {
                 'last_activity' => (string)($r['last_activity'] ?? $r['created_at']),
                 'expires_at' => (string)$r['expires_at'],
                 'is_self' => ((int)$r['user_id'] === (int)$user['id']),
+                'is_current_session' => ($currentToken !== '' && (string)$r['token'] === $currentToken),
             ];
         }
         jout(['ok' => true, 'count' => count($list), 'sessions' => $list]);
@@ -70,7 +74,11 @@ if ($action === 'force_logout') {
     $st->execute([$sToken]);
     $row = $st->fetch();
     if (!$row) jout(['ok' => false, 'error' => 'session not found'], 404);
-    if ((int)$row['user_id'] === (int)$user['id']) jout(['ok' => false, 'error' => 'cannot logout self'], 409);
+    // M/2026/05/08/46 — autorise force_logout des autres sessions de l'utilisateur courant
+    // (Philippe peut faire le ménage parmi ses propres sessions). Garde-fou : refuse uniquement
+    // la session de la requête (pour ne pas se déconnecter lui-même au clic).
+    $currentToken = (string)($_SERVER['HTTP_X_SESSION_TOKEN'] ?? '');
+    if ($sToken === $currentToken) jout(['ok' => false, 'error' => 'cannot logout current session'], 409);
     $del = $meta->prepare("DELETE FROM sessions WHERE token = ?");
     $del->execute([$sToken]);
     @file_put_contents($LOG, "[" . date('c') . "] sa#" . $user['id'] . " force_logout token=" . substr($sToken,0,12) . "... user_id=" . $row['user_id'] . "\n", FILE_APPEND);

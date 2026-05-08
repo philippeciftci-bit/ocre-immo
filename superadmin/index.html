@@ -54,6 +54,21 @@
     table { display: block; overflow-x: auto; }
     tbody tr { height: 52px; }
   }
+  /* M/2026/05/08/46 — Modale custom (Reset TOTAL) compatible iPad Safari (qui peut bloquer confirm/prompt en cascade). */
+  .sa-modal-overlay { position: fixed; inset: 0; background: rgba(60,40,20,0.55); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .sa-modal { background: #fff; border-radius: 12px; max-width: 520px; width: 100%; padding: 24px 26px; box-shadow: 0 20px 60px rgba(60,40,20,0.30); font-family: var(--font-sans); }
+  .sa-modal h2 { font-family: var(--font-serif); font-style: italic; font-size: 22px; color: #C73E3E; margin: 0 0 12px; }
+  .sa-modal p { font-size: 14px; line-height: 1.5; color: var(--color-text-primary); margin-bottom: 12px; }
+  .sa-modal .danger-list { font-size: 12.5px; color: #6B5E4A; background: #FEF3C7; border-left: 3px solid #B8801E; padding: 10px 12px; margin: 12px 0; line-height: 1.6; }
+  .sa-modal input[type=text] { width: 100%; padding: 11px 13px; border: 1.5px solid #E8DDC9; border-radius: 8px; font-size: 14px; font-family: inherit; background: #FDFAF7; color: var(--color-text-primary); margin: 8px 0 4px; outline: none; }
+  .sa-modal input[type=text]:focus { border-color: var(--color-accent); background: #fff; }
+  .sa-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+  .sa-modal-btn { padding: 10px 18px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; border: 1px solid; }
+  .sa-modal-btn.cancel { background: #fff; color: var(--color-text-muted); border-color: #E5DDC8; }
+  .sa-modal-btn.danger { background: #C73E3E; color: #fff; border-color: #C73E3E; }
+  .sa-modal-btn.danger:hover { background: #8B0000; }
+  .sa-modal-btn.danger:disabled { opacity: 0.4; cursor: not-allowed; }
+  .sa-modal-result { font-family: ui-monospace, monospace; background: #FBF1E4; padding: 10px 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin: 12px 0; }
   /* M/2026/05/08/44 — table responsive iPad : table-layout fixed + col widths % évite scroll horizontal sur 1024px. */
   table.sa-table-fixed { table-layout: fixed; width: 100%; }
   table.sa-table-fixed td, table.sa-table-fixed th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -141,8 +156,12 @@
   .sa-link:hover { background: var(--color-bg-tint-warm); border-color: var(--color-border-medium); }
   .sa-link kbd { font-family: ui-monospace, monospace; font-size: 10px; padding: 1px 5px; background: #F5EDDF; border: 1px solid #D9C9A8; border-radius: 3px; color: #6B4429; }
   /* Tabs nav unifiée. */
-  .sa-tabs { display: inline-flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--color-border-subtle); border-radius: 12px; margin-bottom: 28px; flex-wrap: wrap; }
-  .sa-tab { padding: 9px 16px; border: none; background: transparent; color: var(--color-text-muted); font-family: inherit; font-size: 13.5px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: background 150ms ease, color 150ms ease; }
+  /* M/2026/05/08/46 — Bug 2 : flex-wrap supprimé pour éviter que le tab actif passe en 2e ligne hors viewport.
+     Sur écrans étroits (iPad portrait/iPhone), scroll horizontal natif avec snap. */
+  .sa-tabs { display: flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--color-border-subtle); border-radius: 12px; margin-bottom: 28px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; max-width: 100%; }
+  .sa-tabs::-webkit-scrollbar { height: 4px; }
+  .sa-tabs::-webkit-scrollbar-thumb { background: var(--color-border-subtle); border-radius: 2px; }
+  .sa-tab { padding: 9px 16px; border: none; background: transparent; color: var(--color-text-muted); font-family: inherit; font-size: 13.5px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: background 150ms ease, color 150ms ease; flex-shrink: 0; white-space: nowrap; }
   .sa-tab:hover { background: var(--color-bg-tint-warm); color: var(--color-text-primary); }
   .sa-tab.active { background: var(--color-accent); color: #fff; font-weight: 600; }
   /* Sections groupées Vue d'ensemble. */
@@ -285,6 +304,11 @@ window.addEventListener('hashchange', () => {
     const lbl = document.getElementById('sa-tab-label'); if (lbl) lbl.textContent = TAB_LABELS[newTab];
     const sub = document.getElementById('sa-subtitle'); if (sub) sub.textContent = TAB_SUBTITLES[newTab];
     loadTab(newTab);
+    // M/2026/05/08/46 — auto-scroll tab actif dans la viewport (Bug 2 : tab masqué sur iPad).
+    const activeTab = document.querySelector('.sa-tab.active');
+    if (activeTab && activeTab.scrollIntoView) {
+      activeTab.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
+    }
   }
 });
 
@@ -574,9 +598,13 @@ async function renderSessionsTab() {
     // Highlight visuel si inactif >3j (approche du TTL 7j) : couleur warning sur la ligne "Dernière activité".
     const laColor = inactiveDays >= 5 ? '#C73E3E' : (inactiveDays >= 3 ? '#B8801E' : 'var(--color-text-primary)');
     const inactiveLabel = inactiveDays === 0 ? 'aujourd\'hui' : (inactiveDays === 1 ? 'hier' : inactiveDays + 'j inactif');
-    const selfBadge = s.is_self ? ' <span class="badge badge-enregistre">moi</span>' : '';
-    const action = s.is_self
-      ? '<span style="color:var(--color-text-muted);font-size:11px;font-style:italic">moi</span>'
+    // M/2026/05/08/46 — Bug 3 : bouton 🚪 par session, sauf la session COURANTE (token match), pas just is_self.
+    // Permet à Philippe de déconnecter toutes ses autres sessions accumulées sauf celle de la requête.
+    let selfBadge = '';
+    if (s.is_current_session) selfBadge = ' <span class="badge badge-enregistre" title="Session de la requête courante">courante</span>';
+    else if (s.is_self) selfBadge = ' <span class="badge badge-archive" title="Autre session du même utilisateur">moi</span>';
+    const action = s.is_current_session
+      ? '<span style="color:var(--color-text-muted);font-size:11px;font-style:italic" title="Session courante - non déconnectable">courante</span>'
       : `<button class="icon-btn danger" onclick="forceLogoutSession('${escHtml(s.token)}', '${escHtml(s.email)}')" title="Forcer déconnexion" style="color:var(--color-error)">🚪</button>`;
     const uaTrunc = _truncMid(s.user_agent, 30);
     const dateCell = `<div class="sa-date-cell">`
@@ -655,33 +683,91 @@ async function deleteUserXt(uid, email, role) {
   else alert('⚠️ ' + (r.error || 'Erreur'));
 }
 
+// M/2026/05/08/46 — Modale custom HTML (compat iPad Safari qui bloque confirm()/prompt() en cascade).
+function _saModal(html) {
+  const ov = document.createElement('div');
+  ov.className = 'sa-modal-overlay';
+  ov.innerHTML = '<div class="sa-modal">' + html + '</div>';
+  document.body.appendChild(ov);
+  return ov;
+}
+function _closeSaModal(ov) { if (ov && ov.parentNode) ov.parentNode.removeChild(ov); }
+
 async function resetTotal() {
   if (!requireWriteMode()) return;
-  if (!confirm('🚨 RESET TOTAL\n\nVa supprimer :\n- TOUS les workspaces (DROP DATABASE)\n- TOUS les users (sauf super-admin)\n- TOUTES les sessions (sauf la tienne)\n- Toutes les inscriptions en attente\n- Toute l\'audit récent\n- Auto-increment reset à 1\n\nCette action est TOTALEMENT IRRÉVERSIBLE.\n\nÊtes-vous sûr ?')) return;
-  const conf = prompt('Tapez exactement : RESET TOTAL\npour confirmer définitivement :');
-  if (conf !== 'RESET TOTAL') { if (conf !== null) alert('Confirmation incorrecte.'); return; }
-  const r = await api('/api/superadmin_cleanup.php', {method:'POST', body:{action: 'reset_total', confirmation: 'RESET TOTAL'}});
-  if (r.ok) {
-    // M/2026/05/08/34 — modale détaillée + reload après fermeture pour rafraîchir compteurs.
-    const rp = r.report || {};
-    const errLine = (rp.errors && rp.errors.length) ? `\n\n⚠️ ${rp.errors.length} erreur(s) :\n  - ` + rp.errors.slice(0, 5).join('\n  - ') : '';
-    alert(
-      `✅ RESET TOTAL exécuté\n\n`
-      + `Supprimés :\n`
-      + `  • ${rp.workspaces_dropped || 0} workspaces (DBs DROPped)\n`
-      + `  • ${rp.orphan_dbs_dropped || 0} DBs orphelines\n`
-      + `  • ${rp.users_deleted || 0} users (super-admin préservé)\n`
-      + `  • ${rp.sessions_deleted || 0} sessions invalidées\n`
-      + `  • ${rp.pending_deleted || 0} inscriptions en attente\n`
-      + `  • Audit ${rp.audit_truncated ? 'vidé ✓' : 'KO'}\n`
-      + `  • Auto-increment reset sur ${rp.auto_increment_reset || 0} tables`
-      + errLine
-      + `\n\nLa page va se rafraîchir.`
+  // Étape 1 : modale confirmation initiale
+  const step1 = _saModal(
+    '<h2>🚨 Reset TOTAL provisoire</h2>'
+    + '<p>Cette action est <b>TOTALEMENT IRRÉVERSIBLE</b>. Va supprimer :</p>'
+    + '<div class="danger-list">'
+    + '• TOUS les workspaces (DROP DATABASE)<br>'
+    + '• TOUS les users (sauf super-admin Philippe)<br>'
+    + '• TOUTES les sessions (sauf la tienne)<br>'
+    + '• Toutes les inscriptions en attente<br>'
+    + '• Toute l\'audit récent<br>'
+    + '• Auto-increment reset à 1'
+    + '</div>'
+    + '<p>Êtes-vous absolument sûr de vouloir continuer ?</p>'
+    + '<div class="sa-modal-actions">'
+    + '<button class="sa-modal-btn cancel" id="sa-rt-cancel1">Annuler</button>'
+    + '<button class="sa-modal-btn danger" id="sa-rt-continue">Continuer</button>'
+    + '</div>'
+  );
+  step1.querySelector('#sa-rt-cancel1').onclick = () => _closeSaModal(step1);
+  step1.querySelector('#sa-rt-continue').onclick = () => {
+    _closeSaModal(step1);
+    // Étape 2 : modale saisie texte
+    const step2 = _saModal(
+      '<h2>🚨 Confirmation finale</h2>'
+      + '<p>Tapez exactement <b>RESET TOTAL</b> ci-dessous pour confirmer définitivement :</p>'
+      + '<input type="text" id="sa-rt-input" placeholder="RESET TOTAL" autocomplete="off" autocapitalize="characters" autocorrect="off"/>'
+      + '<div class="sa-modal-actions">'
+      + '<button class="sa-modal-btn cancel" id="sa-rt-cancel2">Annuler</button>'
+      + '<button class="sa-modal-btn danger" id="sa-rt-execute" disabled>Exécuter le reset</button>'
+      + '</div>'
     );
-    window.location.reload();
-  } else {
-    alert('⚠️ ' + (r.error || 'Erreur'));
-  }
+    const input = step2.querySelector('#sa-rt-input');
+    const execBtn = step2.querySelector('#sa-rt-execute');
+    input.focus();
+    input.oninput = () => { execBtn.disabled = (input.value !== 'RESET TOTAL'); };
+    step2.querySelector('#sa-rt-cancel2').onclick = () => _closeSaModal(step2);
+    execBtn.onclick = async () => {
+      execBtn.disabled = true;
+      execBtn.textContent = '⏳ En cours…';
+      const r = await api('/api/superadmin_cleanup.php', {method:'POST', body:{action:'reset_total', confirmation:'RESET TOTAL'}});
+      _closeSaModal(step2);
+      // Étape 3 : modale résultat
+      let body = '';
+      if (r.ok) {
+        const rp = r.report || {};
+        const errLine = (rp.errors && rp.errors.length) ? '\n⚠️ Erreurs (' + rp.errors.length + ') :\n  - ' + rp.errors.slice(0,5).join('\n  - ') : '';
+        body = '<h2 style="color:#2D7A4F">✅ Reset TOTAL exécuté</h2>'
+          + '<div class="sa-modal-result">'
+          + 'Supprimés :\n'
+          + '  • ' + (rp.workspaces_dropped||0) + ' workspaces (DBs DROPped)\n'
+          + '  • ' + (rp.orphan_dbs_dropped||0) + ' DBs orphelines\n'
+          + '  • ' + (rp.users_deleted||0) + ' users (super-admin préservé)\n'
+          + '  • ' + (rp.sessions_deleted||0) + ' sessions invalidées\n'
+          + '  • ' + (rp.pending_deleted||0) + ' inscriptions en attente\n'
+          + '  • Audit : ' + (rp.audit_truncated ? 'vidé ✓' : 'KO') + '\n'
+          + '  • Auto-increment reset sur ' + (rp.auto_increment_reset||0) + ' tables'
+          + errLine
+          + '</div>'
+          + '<p>La page va se rafraîchir au clic sur Fermer.</p>';
+      } else {
+        body = '<h2>⚠️ Échec</h2><p>' + escHtml(r.error || 'Erreur inconnue') + '</p>';
+      }
+      const step3 = _saModal(body
+        + '<div class="sa-modal-actions">'
+        + '<button class="sa-modal-btn danger" id="sa-rt-close">Fermer</button>'
+        + '</div>'
+      );
+      step3.querySelector('#sa-rt-close').onclick = () => {
+        _closeSaModal(step3);
+        if (r.ok) window.location.reload();
+      };
+    };
+  };
 }
 
 // M/2026/05/08/30 → 32 — Section Inscriptions en attente, refonte compacte.
