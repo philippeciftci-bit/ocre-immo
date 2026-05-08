@@ -42,13 +42,29 @@ function get_session_user(): ?array {
     $token = $_SERVER['HTTP_X_SESSION_TOKEN'] ?? '';
     if (!$token) return null;
     $stmt = pdo_meta()->prepare(
-        "SELECT u.* FROM sessions s
+        "SELECT u.*, s.last_activity AS _sa_last_activity, s.created_at AS _sa_session_created
+         FROM sessions s
          JOIN users u ON u.id = s.user_id
          WHERE s.token = ? AND s.expires_at > NOW() AND u.archived_at IS NULL
          LIMIT 1"
     );
     $stmt->execute([$token]);
-    return $stmt->fetch() ?: null;
+    $row = $stmt->fetch();
+    if (!$row) return null;
+    // M/2026/05/08/45 — TTL 7j inactivité OU 30j absolu (le plus court). Soft expire côté backend.
+    $now = time();
+    $la = strtotime((string)$row['_sa_last_activity']);
+    $sc = strtotime((string)$row['_sa_session_created']);
+    if (($la && ($now - $la) > 7 * 86400) || ($sc && ($now - $sc) > 30 * 86400)) {
+        try { pdo_meta()->prepare("DELETE FROM sessions WHERE token = ?")->execute([$token]); } catch (Throwable $_) {}
+        return null;
+    }
+    // Touch last_activity, throttle 60s pour éviter UPDATE par chaque sub-request (perf).
+    if (!$la || ($now - $la) > 60) {
+        try { pdo_meta()->prepare("UPDATE sessions SET last_activity = NOW() WHERE token = ?")->execute([$token]); } catch (Throwable $_) {}
+    }
+    unset($row['_sa_last_activity'], $row['_sa_session_created']);
+    return $row;
 }
 
 function current_user_or_401(): array {

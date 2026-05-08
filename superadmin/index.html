@@ -550,34 +550,46 @@ async function renderSessionsTab() {
   if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
   const sessions = r.sessions || [];
   const showWorkspaceCol = sessions.some(s => s.workspace_slug && s.workspace_slug !== '—');
-  // Col widths % pour table-layout: fixed (somme = 100).
+  // M/2026/05/08/45 — col DATE affiche Dernière activité (primaire) + Créée + Expire (3 lignes).
+  // Widths % somme=100. Dernière activité = info clé pour TTL 7j inactivité.
   const widths = showWorkspaceCol
-    ? {email:'25%', role:'8%',  ws:'10%', ip:'12%', ua:'17%', date:'18%', act:'10%'}
-    : {email:'30%', role:'9%',                 ip:'14%', ua:'20%', date:'18%', act:'9%'};
+    ? {email:'24%', role:'7%',  ws:'10%', ip:'11%', ua:'15%', date:'23%', act:'10%'}
+    : {email:'28%', role:'8%',             ip:'13%', ua:'17%', date:'25%', act:'9%'};
   const head = '<table class="sa-table-fixed"><thead><tr>'
     + `<th style="width:${widths.email}">Email</th>`
     + `<th style="width:${widths.role}">Rôle</th>`
     + (showWorkspaceCol ? `<th style="width:${widths.ws}">Workspace</th>` : '')
     + `<th style="width:${widths.ip}">IP</th>`
     + `<th style="width:${widths.ua}">User-agent</th>`
-    + `<th style="width:${widths.date}">Date</th>`
+    + `<th style="width:${widths.date}">Activité / Dates</th>`
     + `<th style="width:${widths.act};text-align:right">Actions</th>`
     + '</tr></thead><tbody>';
+  const now = Date.now();
   const rows = sessions.map(s => {
     const created = fmtDateCompact(s.created_at);
     const expires = fmtDateCompact(s.expires_at);
+    const lastAct = fmtDateCompact(s.last_activity);
+    const laMs = Date.parse(String(s.last_activity || s.created_at).replace(' ', 'T') + 'Z');
+    const inactiveDays = isFinite(laMs) ? Math.floor((now - laMs) / 86400000) : 0;
+    // Highlight visuel si inactif >3j (approche du TTL 7j) : couleur warning sur la ligne "Dernière activité".
+    const laColor = inactiveDays >= 5 ? '#C73E3E' : (inactiveDays >= 3 ? '#B8801E' : 'var(--color-text-primary)');
+    const inactiveLabel = inactiveDays === 0 ? 'aujourd\'hui' : (inactiveDays === 1 ? 'hier' : inactiveDays + 'j inactif');
     const selfBadge = s.is_self ? ' <span class="badge badge-enregistre">moi</span>' : '';
     const action = s.is_self
       ? '<span style="color:var(--color-text-muted);font-size:11px;font-style:italic">moi</span>'
       : `<button class="icon-btn danger" onclick="forceLogoutSession('${escHtml(s.token)}', '${escHtml(s.email)}')" title="Forcer déconnexion" style="color:var(--color-error)">🚪</button>`;
     const uaTrunc = _truncMid(s.user_agent, 30);
-    const dateCell = `<div class="sa-date-cell"><div>Créée: ${created}</div><div style="color:#A89882">Expire: ${expires}</div></div>`;
+    const dateCell = `<div class="sa-date-cell">`
+      + `<div style="color:${laColor};font-weight:500">${lastAct} <span style="color:#A89882;font-size:10.5px;font-weight:400">(${inactiveLabel})</span></div>`
+      + `<div style="color:#A89882">Créée: ${created}</div>`
+      + `<div style="color:#A89882">Expire: ${expires}</div>`
+      + `</div>`;
     return `<tr><td class="col-email" title="${escHtml(s.email)}">${escHtml(s.email)}${selfBadge}</td>`
       + `<td><span style="font-size:11px;color:#6B5E4A;text-transform:uppercase">${s.role}</span></td>`
       + (showWorkspaceCol ? `<td><b>${escHtml(s.workspace_slug)}</b></td>` : '')
       + `<td class="mono-tel">${escHtml(s.ip || '—')}</td>`
       + `<td class="col-provider" title="${escHtml(s.user_agent)}">${escHtml(uaTrunc)}</td>`
-      + `<td class="col-date" title="Créée: ${escHtml(s.created_at)} | Expire: ${escHtml(s.expires_at)}">${dateCell}</td>`
+      + `<td class="col-date" title="Dernière activité: ${escHtml(s.last_activity)} | Créée: ${escHtml(s.created_at)} | Expire: ${escHtml(s.expires_at)}">${dateCell}</td>`
       + `<td class="actions">${action}</td>`
       + `</tr>`;
   }).join('');

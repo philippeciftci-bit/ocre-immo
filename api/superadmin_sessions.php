@@ -24,12 +24,13 @@ if ($method === 'GET') {
     $action = $_GET['action'] ?? 'list';
     if ($action === 'list') {
         // M/2026/05/08/40 — table sessions n'a pas de colonne id, PK=token. On utilise token comme identifiant.
+        // M/2026/05/08/45 — ajout last_activity (col créée par M45 ALTER TABLE).
         $sql = "SELECT s.token, s.user_id, s.expires_at, s.ip, s.user_agent,
-                       s.created_at, u.email, u.role, u.slug AS user_slug, u.display_name
+                       s.created_at, s.last_activity, u.email, u.role, u.slug AS user_slug, u.display_name
                 FROM sessions s
                 LEFT JOIN users u ON u.id = s.user_id
                 WHERE s.expires_at > NOW()
-                ORDER BY s.created_at DESC LIMIT 500";
+                ORDER BY s.last_activity DESC LIMIT 500";
         $rows = $meta->query($sql)->fetchAll();
         $list = [];
         foreach ($rows as $r) {
@@ -45,6 +46,7 @@ if ($method === 'GET') {
                 'ip' => (string)$r['ip'],
                 'user_agent' => substr((string)$r['user_agent'], 0, 80),
                 'created_at' => (string)$r['created_at'],
+                'last_activity' => (string)($r['last_activity'] ?? $r['created_at']),
                 'expires_at' => (string)$r['expires_at'],
                 'is_self' => ((int)$r['user_id'] === (int)$user['id']),
             ];
