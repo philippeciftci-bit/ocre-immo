@@ -183,3 +183,24 @@
 Append-only. Modifications majeures = tag `roadmap-vN`. Items résolus déplacés en bas dans la section "Items résolus par missions livrées" pour conserver l'historique sans encombrer la roadmap active.
 
 Hook auto-update CC : à chaque mission livrée, CC ajoute (a) les nouvelles dettes/TODOs détectés, (b) les checks `[x]` sur les items couverts, dans le commit de la mission elle-même.
+
+## Bugs UI/UX (test utilisateur Philippe 2026-05-08)
+
+- [ ] **Bug suppression dossier — UI ne se rafraîchit pas après confirmation** (priorité haute, source: test utilisateur Philippe 2026-05-08, prereqs: aucun, effort: 1 mission)
+  Reproduction : 1) clic supprimer 2) confirmation s'affiche 3) confirme 4) le dossier reste visible sur la page d'accueil 5) 2e tentative 6) message "dossier introuvable ou supprimé" 7) le dossier disparaît enfin.
+  Diagnostic présumé : DELETE backend réussit au 1er clic mais le front ne met pas à jour le state local. Le 2e clic retourne 404, géré côté front par refresh → fiche disparaît à ce moment-là.
+  Fix attendu : après DELETE 200, retirer immédiatement la fiche du state local OU refetch la liste. Toast "Dossier supprimé" en confirmation visuelle.
+  Test E2E reproductible : créer fiche test, supprimer, vérifier disparition immédiate sans 2e clic.
+
+## Améliorations UX (test utilisateur Philippe 2026-05-08)
+
+- [ ] **Uniformiser système photos Pièce d'identité (Section I) avec Section V Photos** (priorité moyenne, source: test utilisateur Philippe 2026-05-08, prereqs: aucun, effort: 1 mission)
+  Demande : remplacer le système actuel "+ Ajouter un fichier" + vignette unique de Section I par le système de Section V Photos (grid de vignettes, bouton "+", compteur, bouton "Selectionner"). Limite max **3 photos** au lieu de 30. Compteur "PIÈCE D'IDENTITÉ · X/3". Si 3 photos atteintes, le "+" disparaît. Upload même backend que Section V. Préserver les fichiers actuels.
+  Test E2E : ouvrir fiche test, Section I, upload 3 photos pièce d'identité, vérifier compteur 3/3 + "+" disparu, supprimer 1 via Selectionner, vérifier 2/3 + "+" réapparu.
+
+- [ ] **Refonte DualCurrencyPair — Variante B drapeau filigrane** (priorité moyenne, source: test utilisateur Philippe 2026-05-08, prereqs: aucun, effort: 1 mission)
+  Variante validée Philippe (maquette /mnt/user-data/outputs/devise-maquettes.html). Layout 3 colonnes grid 1fr 0.7fr 1fr, gap 8px (6px mobile <600px). Drapeau emoji background filigrane opacity 0.18 size 56px desktop / 44px mobile, position extrémité externe (gauche col gauche, droite col droite). Padding-left/right 56px (42px mobile) pour éviter chevauchement. Code devise EUR/MAD font-weight 600 var(--color-text-muted) letter-spacing 0.04em. Champ saisie font 16px (15px mobile) var(--color-text-primary) font-weight 500. Colonne milieu var(--color-bg-tint-warm) avec label "1 EUR =" + champ taux éditable var(--color-accent) + label "MAD".
+  Décisions tranchées : (1) Override taux GLOBAL pour la fiche (modif → propagation à tous les DualCurrencyPair de la même fiche). (2) Feedback visuel point ocre 6px à droite du champ taux quand ≠ 10.84. (3) Persistance via colonne `custom_exchange_rate` table `clients` workspace (ALTER idempotent, NULL si défaut). (4) Pas de padlock figer (v2).
+  Périmètre composants : tous les DualCurrencyPair tenant (Section III Budget min/max/Liquide, Section VI Frais agence, autres champs duo). Préserver champs uniques.
+  Test E2E : Section III Budget min, saisir 100000 EUR → vérif 1084000 MAD + taux 10.84 + drapeaux filigrane gauche/droite. Modifier taux 11.00 → propagation tous DualCurrencyPair fiche + point ocre marker. Recharger → taux conservé. Responsive iPhone 375/390/414/428.
+
