@@ -218,19 +218,18 @@ function isPhoneValidForData(tel) {
 }
 
 function Wizard() {
-  // M/2026/05/08/57 — refonte : formulaire compact 1 fenêtre (suppression wizard 4 étapes).
-  // 9 champs : prénom, nom, pays+tel, société (optionnel), email, password, confirm, CGU, RGPD, submit.
-  // Password à l'inscription (suppression set-password post-email).
-  const [data, setData] = useState({prenom:'',nom:'',email:'',agence:'',tel:'',password:'',password2:'',cgu:false,rgpd:false});
+  // M/2026/05/08/57 — formulaire compact 1 fenêtre.
+  // M/2026/05/08/58 — suppression champ confirm password (un seul input password).
+  const [data, setData] = useState({prenom:'',nom:'',email:'',agence:'',tel:'',password:'',cgu:false,rgpd:false});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
   const [emailStatus, setEmailStatus] = useState({state:'idle', msg:''});
   const [showPwd, setShowPwd] = useState(false);
   useEffect(() => {
-    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const saved = JSON.parse(raw); if (saved && typeof saved === 'object') setData(d => ({...d, ...saved, password:'', password2:'', cgu:false, rgpd:false})); } } catch(_) {}
+    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const saved = JSON.parse(raw); if (saved && typeof saved === 'object') setData(d => ({...d, ...saved, password:'', cgu:false, rgpd:false})); } } catch(_) {}
   }, []);
   useEffect(() => {
-    try { const {password, password2, cgu, rgpd, ...p} = data; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(_) {}
+    try { const {password, cgu, rgpd, ...p} = data; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(_) {}
   }, [data]);
   const set = (k, v) => setData(d => ({...d, [k]: v}));
   async function checkEmail() {
@@ -249,9 +248,8 @@ function Wizard() {
   const telValid = isPhoneValidForData(data.tel);
   const emailFormatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email);
   const pwdValid = data.password.length >= 8 && /[A-Z]/.test(data.password) && /[0-9]/.test(data.password);
-  const pwdMatch = data.password.length > 0 && data.password === data.password2;
   const formValid = data.prenom.trim() && data.nom.trim() && emailFormatValid && emailStatus.state !== 'taken'
-    && telValid && pwdValid && pwdMatch && data.cgu === true && data.rgpd === true;
+    && telValid && pwdValid && data.cgu === true && data.rgpd === true;
   async function submit() {
     if (submitting) return;
     setSubmitting(true); setServerError('');
@@ -299,11 +297,6 @@ function Wizard() {
         </div>
         {data.password.length > 0 && !pwdValid && <div className="help err">⚠ 8 caractères minimum, 1 majuscule, 1 chiffre</div>}
         {pwdValid && <div className="help ok">✓ Mot de passe valide</div>}
-      </div>
-      <div className="field"><label>Confirmer le mot de passe<span className="req">*</span></label>
-        <input type={showPwd ? 'text' : 'password'} value={data.password2} onChange={e=>set('password2',e.target.value)} autoComplete="new-password"/>
-        {data.password2.length > 0 && !pwdMatch && <div className="help err">⚠ Les mots de passe ne correspondent pas</div>}
-        {pwdMatch && pwdValid && <div className="help ok">✓ Mots de passe identiques</div>}
       </div>
       <div className="cgu-row"><input type="checkbox" id="cgu" checked={data.cgu} onChange={e=>set('cgu',e.target.checked)}/><label htmlFor="cgu">J'accepte les <a href="https://ocre.immo/cgu.html" target="_blank" rel="noopener">Conditions Générales d'Utilisation</a> de Oi Agent.</label></div>
       <div className="cgu-row"><input type="checkbox" id="rgpd" checked={data.rgpd} onChange={e=>set('rgpd',e.target.checked)}/><label htmlFor="rgpd">J'accepte le traitement de mes données personnelles dans le cadre du RGPD, conformément à la <a href="https://ocre.immo/politique-confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>.</label></div>

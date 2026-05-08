@@ -18,6 +18,7 @@
 //   500 {ok:false, error: SERVER_ERROR, detail:...}
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/_provision.php';
 setCorsHeaders();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
@@ -72,8 +73,18 @@ try {
         $upd = $pdo->prepare("UPDATE users SET status = 'active', activation_token = NULL, activation_token_expires_at = NULL, activated_at = NOW(), last_login = NOW() WHERE id = ?");
         $upd->execute([$userId]);
     }
-    // Filet idempotent : workspaces meta + workspace_members (équivalent agents_activate.php M52).
+    // M/2026/05/08/58 — provisionner DB tenant ocre_wsp_<slug> AVANT de créer la session.
+    // Sans ça, le SPA charge sur le subdomain → fetch /api/clients.php → 503 → loader infini.
+    // provision_agent_workspace() est idempotent (retourne database_already_exists si déjà créé).
     if ($slug !== '') {
+        $prov = provision_agent_workspace($slug, $pdo);
+        if (!$prov['ok'] && ($prov['error'] ?? '') !== 'database_already_exists') {
+            @error_log('[agents_activate_v2] provision_failed user_id=' . $userId . ' slug=' . $slug . ' detail=' . ($prov['detail'] ?? json_encode($prov)));
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'error' => 'PROVISION_FAILED', 'detail' => $prov['error'] ?? 'unknown']);
+            exit;
+        }
+        // Filet idempotent : workspaces meta + workspace_members (cas où provision a déjà eu lieu mais meta absent).
         $dispName = 'Workspace ' . $slug;
         $pdo->prepare("INSERT IGNORE INTO workspaces (slug, type, display_name, country_code, created_at) VALUES (?, 'wsp', ?, 'FR', NOW())")
             ->execute([$slug, $dispName]);
@@ -84,6 +95,7 @@ try {
         }
     }
 } catch (Throwable $e) {
+    @error_log('[agents_activate_v2] activate exception user_id=' . $userId . ' err=' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'SERVER_ERROR', 'detail' => 'activate user']);
     exit;

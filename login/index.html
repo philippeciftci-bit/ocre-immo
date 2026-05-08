@@ -64,11 +64,10 @@ body{font-family:var(--font-sans);background:var(--color-bg-page);min-height:100
       <div class="field-err" id="err-email">Email invalide</div>
     </div>
     <div class="field">
-      <label for="f-code">Code</label>
+      <label for="f-code">Mot de passe</label>
       <input class="input" type="password" id="f-code" autocomplete="current-password" required>
-      <button class="eye-toggle" type="button" id="eye-toggle" aria-label="Afficher le code">👁</button>
-      <div class="help">Reçu par email lors de la création de ton compte</div>
-      <div class="field-err" id="err-code">Code requis</div>
+      <button class="eye-toggle" type="button" id="eye-toggle" aria-label="Afficher le mot de passe">👁</button>
+      <div class="field-err" id="err-code">Mot de passe requis</div>
     </div>
 
     <div class="cgu-row" id="cgu-row">
@@ -76,14 +75,13 @@ body{font-family:var(--font-sans);background:var(--color-bg-page);min-height:100
       <label for="cgu-cb">J'accepte les <a href="#" id="cgu-link">conditions générales d'utilisation</a></label>
     </div>
 
-    <button class="btn" type="submit" id="btn-submit" disabled>Valider</button>
+    <button class="btn" type="submit" id="btn-submit" disabled>Se connecter</button>
   </form>
 
   <div class="secondary">
     <a id="link-forgot">Mot de passe oublié ?</a>
-    <a id="link-resend">Renvoyer le code</a>
     <hr style="border:none;border-top:1px solid #E5DDC8;margin:8px 0">
-    <div style="font-size:13px;color:#7A7167">Pas encore de compte ? <a href="/inscription/">Créer un compte agent</a></div>
+    <div style="font-size:13px;color:#7A7167">Pas encore de compte ? <a href="https://signup.ocre.immo/inscription/">Créer un compte agent</a></div>
   </div>
 </div>
 
@@ -199,21 +197,12 @@ $('form-login').addEventListener('submit', async ev => {
   }
 });
 
-async function resend(reason) {
-  const email = ($('f-email').value || prompt('Ton email :') || '').trim();
-  if (!emailValid(email)) { toast('Email invalide', 'error'); return; }
-  try {
-    const r = await fetch(API + '/auth.php?action=resend_code', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, reason })
-    });
-    const d = await r.json();
-    if (d.ok) toast('Nouveau code envoyé par email', 'success');
-    else toast(d.error || 'Erreur envoi', 'error');
-  } catch (e) { toast('Erreur réseau', 'error'); }
-}
-$('link-forgot').addEventListener('click', e => { e.preventDefault(); resend('forgot'); });
-$('link-resend').addEventListener('click', e => { e.preventDefault(); resend('resend'); });
+// M/2026/05/08/58 — "Mot de passe oublié" : reset password par email (TODO endpoint dédié M+1).
+// Pour l'instant : toast informatif demandant de contacter le support.
+$('link-forgot').addEventListener('click', e => {
+  e.preventDefault();
+  toast('Pour réinitialiser votre mot de passe, contactez contact@ocre.immo', 'info');
+});
 
 // M/2026/05/01/15 — auto-redirect au load avec timeout 5s. Si timeout, on laisse le
 // formulaire de login visible (l utilisateur pourra retenter manuellement) au lieu de
