@@ -218,21 +218,16 @@ function isPhoneValidForData(tel) {
 }
 
 function Wizard() {
-  // M/2026/05/08/57 — formulaire compact 1 fenêtre.
-  // M/2026/05/08/59 — restaure champ confirmation + 4 pastilles validation visuelles (10+/maj/chiffre/special).
-  const [data, setData] = useState({prenom:'',nom:'',email:'',agence:'',tel:'',password:'',password2:'',cgu:false,rgpd:false});
+  // M/2026/05/08/69 — bascule magic-link-only : suppression totale zone password.
+  const [data, setData] = useState({prenom:'',nom:'',email:'',agence:'',tel:'',cgu:false,rgpd:false});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
   const [emailStatus, setEmailStatus] = useState({state:'idle', msg:''});
-  // M/2026/05/08/68 — RESET TOTAL : pattern industriel simple. Type lie a showPwd / showPwd2 seul.
-  // Pas de focus, pas de preventDefault, pas de touched. Click oeil = toggle binaire instantane.
-  const [showPwd, setShowPwd] = useState(false);
-  const [showPwd2, setShowPwd2] = useState(false);
   useEffect(() => {
-    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const saved = JSON.parse(raw); if (saved && typeof saved === 'object') setData(d => ({...d, ...saved, password:'', password2:'', cgu:false, rgpd:false})); } } catch(_) {}
+    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const saved = JSON.parse(raw); if (saved && typeof saved === 'object') setData(d => ({...d, ...saved, cgu:false, rgpd:false})); } } catch(_) {}
   }, []);
   useEffect(() => {
-    try { const {password, password2, cgu, rgpd, ...p} = data; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(_) {}
+    try { const {cgu, rgpd, ...p} = data; localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch(_) {}
   }, [data]);
   const set = (k, v) => setData(d => ({...d, [k]: v}));
   async function checkEmail() {
@@ -247,27 +242,18 @@ function Wizard() {
       else setEmailStatus({state:'idle', msg:''});
     } catch(_) { setEmailStatus({state:'idle', msg:''}); }
   }
-  // M/2026/05/08/59 — validation password durcie : 10+ chars, 1 maj, 1 chiffre, 1 special + confirmation match.
+  // M/2026/05/08/69 — validation magic-link-only (plus de password).
   const telValid = isPhoneValidForData(data.tel);
   const emailFormatValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email);
-  const pwdRules = {
-    len: data.password.length >= 10,
-    upper: /[A-Z]/.test(data.password),
-    digit: /[0-9]/.test(data.password),
-    special: /[^A-Za-z0-9]/.test(data.password),
-  };
-  const pwdValid = pwdRules.len && pwdRules.upper && pwdRules.digit && pwdRules.special;
-  const pwdMatch = data.password.length > 0 && data.password === data.password2;
   const formValid = data.prenom.trim() && data.nom.trim() && emailFormatValid && emailStatus.state !== 'taken'
-    && telValid && pwdValid && pwdMatch && data.cgu === true && data.rgpd === true;
+    && telValid && data.cgu === true && data.rgpd === true;
   async function submit() {
     if (submitting) return;
     setSubmitting(true); setServerError('');
     try {
-      // M/2026/05/08/57 — payload compact 1-page : password à l'inscription, plus de set-password post-email.
+      // M/2026/05/08/69 — payload magic-link-only (plus de password).
       const r = await fetch('/api/agents_register.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
         prenom: data.prenom.trim(), nom: data.nom.trim(), email: data.email.trim().toLowerCase(),
-        password: data.password,
         agence: data.agence.trim(),
         tel: data.tel.trim(),
         cgu_accepted: data.cgu === true, rgpd_accepted: data.rgpd === true,
@@ -301,78 +287,6 @@ function Wizard() {
       </div>
       <div className="field"><label>Société (optionnel)</label><input type="text" value={data.agence} onChange={e=>set('agence',e.target.value)} autoComplete="organization" placeholder="Nom de votre agence"/></div>
       <div className="field"><label>Email professionnel<span className="req">*</span></label><input type="email" value={data.email} onChange={e=>{set('email',e.target.value); setEmailStatus({state:'idle', msg:''});}} onBlur={checkEmail} autoComplete="email"/>{emailStatus.state === 'checking' && <div className="help">Vérification…</div>}{emailStatus.state === 'ok' && <div className="help ok">✓ Disponible</div>}{emailStatus.state === 'taken' && <div className="help err">⚠ {emailStatus.msg}</div>}</div>
-      {/* M/2026/05/08/60 — restauration STYLE HISTORIQUE pastilles depuis commit f2a10c0 (M26 pre-M50) :
-          barre progression couleur + 4 Items inline-flex avec cercle rempli ✓ + label Faible/Moyen/Fort/Excellent. */}
-      <div className="field"><label>Mot de passe<span className="req">*</span></label>
-        <div style={{position:'relative'}}>
-          {/* M/2026/05/08/68 — pattern simple : type lie a showPwd seul, pas de focus/preventDefault. */}
-          <input type={showPwd ? 'text' : 'password'} value={data.password} onChange={e=>set('password',e.target.value)} autoComplete="new-password" name="new-password" id="signup-password" placeholder="Min 10 chars, 1 maj, 1 chiffre" className="pwd-input" style={{paddingRight:48}}/>
-          <button type="button" className="pwd-toggle" onClick={()=>setShowPwd(s=>!s)} aria-label={showPwd ? 'Masquer' : 'Afficher'} style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)',background:'transparent',border:0,color:'#8B7F6E',cursor:'pointer',padding:0,width:44,height:44,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
-            {showPwd ? (
-              /* eye-off (mdp visible : clic pour masquer) */
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
-                <line x1="2" y1="2" x2="22" y2="22"/>
-              </svg>
-            ) : (
-              /* eye (mdp masqué : clic pour afficher) */
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            )}
-          </button>
-        </div>
-        {(() => {
-          const c = {len: pwdRules.len, maj: pwdRules.upper, num: pwdRules.digit, spe: pwdRules.special};
-          const score = (c.len?1:0) + (c.maj?1:0) + (c.num?1:0) + (c.spe?1:0);
-          const barColor = score <= 1 ? '#C0392B' : (score === 2 ? '#D68910' : '#2D7A3E');
-          const barLabel = score <= 1 ? 'Faible' : (score === 2 ? 'Moyen' : (score === 3 ? 'Fort' : 'Excellent'));
-          const barWidth = data.password.length === 0 ? 0 : Math.max(8, score * 25);
-          const Item = ({ok, label}) => (
-            <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,color:ok?'#2D7A3E':'#8B7F6E',fontWeight:ok?600:400}}>
-              <span style={{display:'inline-block',width:14,height:14,borderRadius:'50%',background:ok?'#2D7A3E':'#E8DDC9',color:'#fff',fontSize:10,lineHeight:'14px',textAlign:'center'}}>{ok?'✓':''}</span>
-              {label}
-            </span>
-          );
-          return (
-            <div style={{marginTop:8}}>
-              <div style={{height:4,background:'#EDE6DC',borderRadius:2,overflow:'hidden'}}>
-                <div style={{height:'100%',width:barWidth+'%',background:barColor,transition:'width 200ms,background 200ms'}}/>
-              </div>
-              <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:6}}>
-                <Item ok={c.len} label="10+ caractères"/>
-                <Item ok={c.maj} label="Majuscule"/>
-                <Item ok={c.num} label="Chiffre"/>
-                <Item ok={c.spe} label="Caractère spécial"/>
-              </div>
-              {data.password.length > 0 && <div style={{fontSize:10.5,color:barColor,marginTop:4,fontWeight:600}}>{barLabel}</div>}
-            </div>
-          );
-        })()}
-      </div>
-      <div className="field"><label>Confirmation<span className="req">*</span></label>
-        <div style={{position:'relative'}}>
-          <input type={showPwd2 ? 'text' : 'password'} value={data.password2} onChange={e=>set('password2',e.target.value)} autoComplete="new-password" name="new-password" id="signup-password-confirm" className="pwd-input" style={{paddingRight:48}}/>
-          <button type="button" className="pwd-toggle" onClick={()=>setShowPwd2(s=>!s)} aria-label={showPwd2 ? 'Masquer' : 'Afficher'} style={{position:'absolute',right:0,top:'50%',transform:'translateY(-50%)',background:'transparent',border:0,color:'#8B7F6E',cursor:'pointer',padding:0,width:44,height:44,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
-            {showPwd2 ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
-                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
-                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
-                <line x1="2" y1="2" x2="22" y2="22"/>
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            )}
-          </button>
-        </div>
-      </div>
       <div className="cgu-row"><input type="checkbox" id="cgu" checked={data.cgu} onChange={e=>set('cgu',e.target.checked)}/><label htmlFor="cgu">J'accepte les <a href="https://ocre.immo/cgu.html" target="_blank" rel="noopener">Conditions Générales d'Utilisation</a> de Oi Agent.</label></div>
       <div className="cgu-row"><input type="checkbox" id="rgpd" checked={data.rgpd} onChange={e=>set('rgpd',e.target.checked)}/><label htmlFor="rgpd">J'accepte le traitement de mes données personnelles dans le cadre du RGPD, conformément à la <a href="https://ocre.immo/politique-confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>.</label></div>
       {serverError && <div className="help err" style={{marginBottom:8}}>⚠ {serverError}</div>}

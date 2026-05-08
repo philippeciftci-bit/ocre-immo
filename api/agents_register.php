@@ -203,8 +203,7 @@ function _meta_pdo() {
 $prenom = _trim_str($input['prenom'] ?? '', 100);
 $nom    = _trim_str($input['nom'] ?? '', 100);
 $email  = strtolower(_trim_str($input['email'] ?? '', 190));
-// M/2026/05/08/57 — password obligatoire à l'inscription (refonte magic link, suppression set-password).
-$pwd    = (string)($input['password'] ?? '');
+// M/2026/05/08/69 — bascule magic-link-only : pas de password à l'inscription.
 $siretRaw = preg_replace('/\D/', '', (string)($input['siret'] ?? ''));
 $agence = _trim_str($input['agence'] ?? '', 150);
 $ville  = _trim_str($input['ville'] ?? '', 100);
@@ -218,10 +217,7 @@ $channels = is_array($input['channels_enabled'] ?? null) ? $input['channels_enab
 if ($prenom === '') $errors['prenom'] = 'Prenom requis';
 if ($nom === '')    $errors['nom']    = 'Nom requis';
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'] = 'Email invalide';
-// M/2026/05/08/57 — validation password : 8+ chars, 1 majuscule, 1 chiffre.
-if (strlen($pwd) < 8 || !preg_match('/[A-Z]/', $pwd) || !preg_match('/[0-9]/', $pwd)) {
-    $errors['password'] = 'Mot de passe : 8 caractères minimum, 1 majuscule, 1 chiffre';
-}
+// M/2026/05/08/69 — validation password retiree (magic-link-only).
 // M90.3 — SIRET optionnel : valide si vide OU 14 chiffres Luhn-valides.
 if ($siretRaw !== '' && !_validate_siret($siretRaw)) $errors['siret'] = 'SIRET invalide (Luhn)';
 // M/2026/05/08/57 — ville optionnelle (refonte form compact 9 champs essentiels).
@@ -252,8 +248,8 @@ if (!empty($errors)) {
 // M90.3 — SIRET optionnel : si vide, siret + siren = NULL.
 $siretSql = $siretRaw !== '' ? $siretRaw : null;
 $siren = $siretRaw !== '' ? substr($siretRaw, 0, 9) : null;
-// M/2026/05/08/57 — hash bcrypt cost 12 directement à l'inscription (suppression PLACEHOLDER M50).
-$pwdHash = password_hash($pwd, PASSWORD_BCRYPT, ['cost' => 12]);
+// M/2026/05/08/69 — magic-link-only : pas de password, password_hash NULL.
+$pwdHash = null;
 $nomUpper = mb_strtoupper($nom, 'UTF-8');
 $displayName = trim($prenom . ' ' . $nomUpper);
 $prefsJson = json_encode([

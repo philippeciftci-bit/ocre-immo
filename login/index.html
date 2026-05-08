@@ -56,18 +56,13 @@ body{font-family:var(--font-sans);background:var(--color-bg-page);min-height:100
 <div class="card">
   <div class="logo-title"><span class="ocre">OCRE</span><span class="immo">immo</span></div>
   <div class="logo-tagline">Connexion</div>
+  <p style="text-align:center;font-size:13px;color:#6B5E4A;margin:0 0 18px;line-height:1.5;">Entrez votre email, recevez un lien magique pour accéder à votre espace.</p>
 
-  <form id="form-login" autocomplete="off">
+  <form id="form-login" autocomplete="on">
     <div class="field">
       <label for="f-email">Email</label>
-      <input class="input" type="email" id="f-email" autocomplete="username" required>
+      <input class="input" type="email" id="f-email" autocomplete="email" required>
       <div class="field-err" id="err-email">Email invalide</div>
-    </div>
-    <div class="field">
-      <label for="f-code">Mot de passe</label>
-      <input class="input" type="password" id="f-code" autocomplete="current-password" required>
-      <button class="eye-toggle" type="button" id="eye-toggle" aria-label="Afficher le mot de passe">👁</button>
-      <div class="field-err" id="err-code">Mot de passe requis</div>
     </div>
 
     <div class="cgu-row" id="cgu-row">
@@ -75,11 +70,10 @@ body{font-family:var(--font-sans);background:var(--color-bg-page);min-height:100
       <label for="cgu-cb">J'accepte les <a href="#" id="cgu-link">conditions générales d'utilisation</a></label>
     </div>
 
-    <button class="btn" type="submit" id="btn-submit" disabled>Se connecter</button>
+    <button class="btn" type="submit" id="btn-submit" disabled>Recevoir mon lien</button>
   </form>
 
   <div class="secondary">
-    <a id="link-forgot">Mot de passe oublié ?</a>
     <hr style="border:none;border-top:1px solid #E5DDC8;margin:8px 0">
     <div style="font-size:13px;color:#7A7167">Pas encore de compte ? <a href="https://signup.ocre.immo/inscription/">Créer un compte agent</a></div>
   </div>
@@ -109,25 +103,17 @@ function emailValid(v) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v); }
 
 function updateBtn() {
   const e = $('f-email').value.trim();
-  const c = $('f-code').value;
   const cguOk = cguSeen || $('cgu-cb').checked;
-  $('btn-submit').disabled = !(e && c && cguOk && emailValid(e));
+  $('btn-submit').disabled = !(e && cguOk && emailValid(e));
 }
 
-['f-email', 'f-code'].forEach(id => $(id).addEventListener('input', updateBtn));
+$('f-email').addEventListener('input', updateBtn);
 $('cgu-cb').addEventListener('change', updateBtn);
 
 $('f-email').addEventListener('blur', e => {
   const v = e.target.value.trim();
   if (v && !emailValid(v)) { $('f-email').classList.add('invalid'); $('err-email').classList.add('show'); }
   else { $('f-email').classList.remove('invalid'); $('err-email').classList.remove('show'); }
-});
-
-$('eye-toggle').addEventListener('click', () => {
-  const inp = $('f-code');
-  const on = inp.type === 'text';
-  inp.type = on ? 'password' : 'text';
-  $('eye-toggle').textContent = on ? '👁' : '🙈';
 });
 
 $('cgu-link').addEventListener('click', e => { e.preventDefault(); $('cgu-modal').style.display = 'flex'; });
@@ -155,38 +141,36 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
   }
 }
 
+// M/2026/05/08/69 — bascule magic-link-only : POST /api/send_magic_link.php avec email.
 $('form-login').addEventListener('submit', async ev => {
   ev.preventDefault();
   const email = $('f-email').value.trim();
-  const code = $('f-code').value;
   const accept_cgu = cguSeen ? true : $('cgu-cb').checked;
-  if (!email || !code || !accept_cgu) return;
+  if (!email || !accept_cgu) return;
   const btn = $('btn-submit');
   btn.disabled = true;
   const oldLabel = btn.textContent;
   btn.innerHTML = '<span class="spinner"></span>';
-  ['f-email', 'f-code', 'cgu-cb'].forEach(id => $(id).disabled = true);
+  ['f-email', 'cgu-cb'].forEach(id => $(id).disabled = true);
   function resetBtn() {
-    ['f-email', 'f-code', 'cgu-cb'].forEach(id => $(id).disabled = false);
+    ['f-email', 'cgu-cb'].forEach(id => $(id).disabled = false);
     btn.disabled = false; btn.textContent = oldLabel;
   }
   try {
-    const r = await fetchWithTimeout(API + '/auth.php?action=login', {
+    const r = await fetchWithTimeout(API + '/send_magic_link.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: code, accept_cgu })
+      body: JSON.stringify({ email })
     }, 8000);
     const d = await r.json();
-    if (!d.ok) {
-      toast(d.error || 'Connexion refusée', 'error');
-      $('f-email').classList.add('invalid'); $('f-code').classList.add('invalid');
-      resetBtn();
-      return;
-    }
-    localStorage.setItem('ocre_token', d.token);
-    localStorage.setItem('ocre_user', JSON.stringify(d.user));
     document.cookie = 'cgu_seen=1;path=/;max-age=' + (86400 * 365);
-    setTimeout(() => { window.location = '/'; }, 200);
+    // Reponse uniforme anti-leak : on confirme toujours l'envoi visuellement (qu'il ait abouti ou pas).
+    document.querySelector('.card').innerHTML =
+      '<div class="logo-title"><span class="ocre">OCRE</span><span class="immo">immo</span></div>' +
+      '<div class="logo-tagline">Lien envoyé</div>' +
+      '<p style="text-align:center;font-size:14px;color:#3a2e22;margin:18px 0;line-height:1.5;">Si un compte existe avec cet email, un lien de connexion vient d\'être envoyé à <b>' + email + '</b>.</p>' +
+      '<p style="text-align:center;font-size:13px;color:#6B5E4A;margin:0 0 18px;line-height:1.5;font-style:italic;">Vérifiez votre boîte mail (et vos spams). Lien valide 48 heures.</p>' +
+      '<div style="text-align:center;font-size:13px;color:#7A7167;">Pas reçu après 1 minute ? <a href="/login/" style="color:#8B5E3C;text-decoration:underline;cursor:pointer;">Réessayer</a></div>';
   } catch (e) {
     if (e && e.name === 'AbortError') {
       toast('Délai dépassé. Réessaie.', 'error');
@@ -195,13 +179,6 @@ $('form-login').addEventListener('submit', async ev => {
     }
     resetBtn();
   }
-});
-
-// M/2026/05/08/58 — "Mot de passe oublié" : reset password par email (TODO endpoint dédié M+1).
-// Pour l'instant : toast informatif demandant de contacter le support.
-$('link-forgot').addEventListener('click', e => {
-  e.preventDefault();
-  toast('Pour réinitialiser votre mot de passe, contactez contact@ocre.immo', 'info');
 });
 
 // M/2026/05/01/15 — auto-redirect au load avec timeout 5s. Si timeout, on laisse le
