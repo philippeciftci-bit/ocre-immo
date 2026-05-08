@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <title>Inscription agent — Oi Agent</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<!-- M/2026/05/08/51 — cache-bust : forcer Safari iPad à recharger (Philippe a vu une vieille version cachée du wizard avec champs password retirés en M50). -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <!-- M/2026/05/07/88 — Favicon Oi cross-vhosts (path /favicon/ + manifest signup) -->
 <link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
@@ -95,7 +99,6 @@ const { useState, useEffect } = React;
 const STORAGE_KEY = 'ocre_inscription_draft';
 function validateSiret(s) { const c = (s || '').replace(/\D/g, ''); if (c.length !== 14) return false; let sum = 0; for (let i = 0; i < 14; i++) { let d = parseInt(c[i], 10); if (i % 2 === 0) { d *= 2; if (d > 9) d -= 9; } sum += d; } return sum % 10 === 0; }
 function fmtSiret(s) { const c = (s || '').replace(/\D/g, '').slice(0, 14); if (c.length <= 3) return c; if (c.length <= 6) return c.slice(0, 3) + ' ' + c.slice(3); if (c.length <= 9) return c.slice(0, 3) + ' ' + c.slice(3, 6) + ' ' + c.slice(6); return c.slice(0, 3) + ' ' + c.slice(3, 6) + ' ' + c.slice(6, 9) + ' ' + c.slice(9); }
-function pwdScore(p) { let s = 0; if (!p) return 0; if (p.length >= 10) s++; if (/[A-Z]/.test(p)) s++; if (/[0-9]/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; return s; }
 // M/2026/05/07/95 — validation telephone : maxLength 20 + format E.164 international (+33...) OU francais (06/07 mobile, 01-09 fixe).
 function validatePhone(p) {
   const cleaned = (p || '').replace(/[\s\-\.\(\)]/g, '');
@@ -109,14 +112,7 @@ function validatePhone(p) {
   if (/^0[1-5]\d{8}$/.test(cleaned) || /^0[89]\d{8}$/.test(cleaned)) return true;
   return false;
 }
-function pwdCriteria(p) {
-  return {
-    len: !!p && p.length >= 10,
-    maj: !!p && /[A-Z]/.test(p),
-    num: !!p && /[0-9]/.test(p),
-    spe: !!p && /[^A-Za-z0-9]/.test(p),
-  };
-}
+// M/2026/05/08/51 — pwdScore + pwdCriteria retires (code mort post-M50). Credentials definis post-activation.
 
 // M/2026/05/08/26 — phone country-code component (cohérence UX avec Section I app tenant).
 // Cible : FR+francophonie+Maghreb+Golfe (marchés Ocre Immo).
