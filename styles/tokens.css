@@ -249,6 +249,14 @@
   --shadow-xl: 0 16px 32px rgba(42, 32, 24, 0.12);
   --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.25);
 
+  /* DESIGN-TOKENS.2.8.3 (M/2026/05/08/22) — variantes warm-ocre / brown-warm
+     présentes dans HTML/CSS app (404, maintenance, login, signup, superadmin,
+     activation, inscription, export-template). Coexistent avec --shadow-* canoniques. */
+  --shadow-warm-sm: 0 1px 3px rgba(139, 94, 60, 0.08);
+  --shadow-warm-md: 0 2px 8px rgba(139, 94, 60, 0.12);
+  --shadow-warm-card: 0 2px 12px rgba(60, 40, 20, 0.08);
+  --shadow-warm-card-soft: 0 2px 10px rgba(60, 40, 20, 0.06);
+
   --transition-fast: 150ms ease-out;
   --transition-default: 200ms ease-out;
   --transition-slow: 300ms ease-out;

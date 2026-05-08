@@ -22,10 +22,7 @@
 
 - [x] ~~**DESIGN-TOKENS.2.8.2** — spacing tokenization~~ — **livrée M/2026/05/08/20** (1502 substitutions PHASE 1 literals simples, 13 nouveaux tokens spacing)
 
-- [ ] **DESIGN-TOKENS.2.8.3** — box-shadow tokenization
-  - priorité: medium
-  - prereqs: 2.8.2 livrée
-  - effort: 1-2h
+- [x] ~~**DESIGN-TOKENS.2.8.3** — box-shadow tokenization~~ — **livrée M/2026/05/08/22** (4 nouveaux tokens warm-ocre/brown : --shadow-warm-sm/md/card/card-soft, 2 substitutions PHASE 1 dans superadmin/reset-password + inscription/index. Périmètre strict : seuls les fichiers chargeant tokens.css ont été tokenizés ; 404/maintenance/viewer.css/activation/inscription-confirmee préservés inline car standalone)
 
 - [ ] **DESIGN-TOKENS.2.8.4** — font-family tokenization (Cormorant + DM Sans)
   - priorité: medium
