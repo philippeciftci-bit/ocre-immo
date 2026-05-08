@@ -54,6 +54,15 @@
     table { display: block; overflow-x: auto; }
     tbody tr { height: 52px; }
   }
+  /* M/2026/05/08/44 — table responsive iPad : table-layout fixed + col widths % évite scroll horizontal sur 1024px. */
+  table.sa-table-fixed { table-layout: fixed; width: 100%; }
+  table.sa-table-fixed td, table.sa-table-fixed th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  table.sa-table-fixed .sa-date-cell { white-space: normal; line-height: 1.25; font-size: 11.5px; }
+  table.sa-table-fixed .sa-date-cell div { font-variant-numeric: tabular-nums; }
+  /* En mobile, on libère table-layout pour permettre le scroll horizontal natif. */
+  @media (max-width: 760px) {
+    table.sa-table-fixed { table-layout: auto; min-width: 720px; }
+  }
   /* M/2026/05/08/33 — Outils nettoyage. */
   .write-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; font-family: inherit; font-size: 11px; color: var(--color-text-muted); cursor: pointer; margin-right: 8px; }
   .write-toggle.on { background: #FEE2E2; color: #C73E3E; border-color: #FCA5A5; font-weight: 600; }
@@ -526,36 +535,56 @@ async function tabReset(action, label) {
   }
 }
 
-// M/2026/05/08/37 — Vue Sessions actives (cross-workspace).
+// M/2026/05/08/37 → 44 — Vue Sessions actives, refonte responsive iPad.
+// table-layout fixed + col widths % pour éviter le scroll horizontal sur iPad 1024px.
+// Workspace col masquée si toutes les rows sont '—'. Créée+Expire fusionnées en DATE 2 lignes.
+// User-Agent tronqué 30 chars + tooltip natif.
+function _truncMid(s, n) {
+  s = String(s == null ? '' : s);
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
 async function renderSessionsTab() {
   const c = document.getElementById('content');
   c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
   const r = await api('/api/superadmin_sessions.php?action=list');
   if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
-  const head = '<table><thead><tr>'
-    + '<th>Email</th><th>Rôle</th><th>Workspace</th><th>IP</th><th>User-agent</th>'
-    + '<th>Créée</th><th>Expire</th><th style="text-align:right">Actions</th>'
+  const sessions = r.sessions || [];
+  const showWorkspaceCol = sessions.some(s => s.workspace_slug && s.workspace_slug !== '—');
+  // Col widths % pour table-layout: fixed (somme = 100).
+  const widths = showWorkspaceCol
+    ? {email:'25%', role:'8%',  ws:'10%', ip:'12%', ua:'17%', date:'18%', act:'10%'}
+    : {email:'30%', role:'9%',                 ip:'14%', ua:'20%', date:'18%', act:'9%'};
+  const head = '<table class="sa-table-fixed"><thead><tr>'
+    + `<th style="width:${widths.email}">Email</th>`
+    + `<th style="width:${widths.role}">Rôle</th>`
+    + (showWorkspaceCol ? `<th style="width:${widths.ws}">Workspace</th>` : '')
+    + `<th style="width:${widths.ip}">IP</th>`
+    + `<th style="width:${widths.ua}">User-agent</th>`
+    + `<th style="width:${widths.date}">Date</th>`
+    + `<th style="width:${widths.act};text-align:right">Actions</th>`
     + '</tr></thead><tbody>';
-  const rows = (r.sessions || []).map(s => {
+  const rows = sessions.map(s => {
     const created = fmtDateCompact(s.created_at);
     const expires = fmtDateCompact(s.expires_at);
     const selfBadge = s.is_self ? ' <span class="badge badge-enregistre">moi</span>' : '';
     const action = s.is_self
-      ? '<span style="color:var(--color-text-muted);font-size:11px;font-style:italic">session active</span>'
+      ? '<span style="color:var(--color-text-muted);font-size:11px;font-style:italic">moi</span>'
       : `<button class="icon-btn danger" onclick="forceLogoutSession('${escHtml(s.token)}', '${escHtml(s.email)}')" title="Forcer déconnexion" style="color:var(--color-error)">🚪</button>`;
-    return `<tr><td class="col-email">${escHtml(s.email)}${selfBadge}</td>`
-      + `<td>${s.role}</td>`
-      + `<td><b>${escHtml(s.workspace_slug)}</b></td>`
-      + `<td class="mono-tel">${escHtml(s.ip)}</td>`
-      + `<td class="col-provider" title="${escHtml(s.user_agent)}">${escHtml(s.user_agent)}</td>`
-      + `<td class="col-date" title="${escHtml(s.created_at)}">${created}</td>`
-      + `<td class="col-date" title="${escHtml(s.expires_at)}">${expires}</td>`
+    const uaTrunc = _truncMid(s.user_agent, 30);
+    const dateCell = `<div class="sa-date-cell"><div>Créée: ${created}</div><div style="color:#A89882">Expire: ${expires}</div></div>`;
+    return `<tr><td class="col-email" title="${escHtml(s.email)}">${escHtml(s.email)}${selfBadge}</td>`
+      + `<td><span style="font-size:11px;color:#6B5E4A;text-transform:uppercase">${s.role}</span></td>`
+      + (showWorkspaceCol ? `<td><b>${escHtml(s.workspace_slug)}</b></td>` : '')
+      + `<td class="mono-tel">${escHtml(s.ip || '—')}</td>`
+      + `<td class="col-provider" title="${escHtml(s.user_agent)}">${escHtml(uaTrunc)}</td>`
+      + `<td class="col-date" title="Créée: ${escHtml(s.created_at)} | Expire: ${escHtml(s.expires_at)}">${dateCell}</td>`
       + `<td class="actions">${action}</td>`
       + `</tr>`;
   }).join('');
+  const colspan = showWorkspaceCol ? 7 : 6;
   c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> session(s) active(s).</p>'
     + '<div style="margin-bottom:12px"><button class="icon-btn danger" onclick="logoutAllSessions()" style="color:var(--color-error);width:auto;padding:6px 12px;font-size:12px;font-weight:600;border:1px solid var(--color-error);border-radius:6px">🚪 Déconnecter tous (sauf moi)</button></div>'
-    + head + (rows || '<tr><td colspan="8" style="text-align:center;padding:24px;color:#6B5E4A">Aucune session active.</td></tr>') + '</tbody></table>';
+    + head + (rows || `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:#6B5E4A">Aucune session active.</td></tr>`) + '</tbody></table>';
 }
 async function forceLogoutSession(sToken, email) {
   if (!requireWriteMode()) return;

@@ -204,10 +204,26 @@ if ($action === 'reset_total') {
         $report['errors'][] = 'users err=' . $e->getMessage();
     }
 
-    // 6. DELETE TOUTES les sessions sauf celle du super_admin courant (pour ne pas le déconnecter)
+    // 6. DELETE sessions :
+    // M/2026/05/08/44 — étendu : purge AUSSI les sessions VPS internes même si user_id=super_admin
+    //   (sessions curl/scripts CC qui s'accumulent, capture Philippe 12:19 montrait 4x curl/7.81.0).
+    //   Garde-fou : préserve la session courante via token != $currentToken.
     try {
-        $del = $meta->prepare("DELETE FROM sessions WHERE user_id != ?");
-        $del->execute([$superAdminId]);
+        $currentToken = (string)($_SERVER['HTTP_X_SESSION_TOKEN'] ?? '');
+        $del = $meta->prepare(
+            "DELETE FROM sessions
+              WHERE token != ?
+                AND (
+                      user_id != ?
+                   OR ip = '46.225.215.148'
+                   OR user_agent LIKE 'curl%'
+                   OR user_agent LIKE 'PHP-Curl%'
+                   OR user_agent LIKE 'smoke-tests%'
+                   OR user_agent = ''
+                   OR user_agent IS NULL
+                )"
+        );
+        $del->execute([$currentToken, $superAdminId]);
         $report['sessions_deleted'] = $del->rowCount();
     } catch (Throwable $e) {
         $report['errors'][] = 'sessions err=' . $e->getMessage();
