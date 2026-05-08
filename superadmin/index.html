@@ -139,6 +139,7 @@ async function renderConsole() {
                  + '<div class="tab active" data-t="overview">Vue d\'ensemble</div>'
                  + '<div class="tab" data-t="workspaces">Workspaces</div>'
                  + '<div class="tab" data-t="clients">Clients</div>'
+                 + '<div class="tab" data-t="pending">Inscriptions en attente</div>'
                  + '<div class="tab" data-t="audit">Audit récent</div>'
                  + '</div>'
                  + '<div id="content"></div>';
@@ -168,6 +169,8 @@ async function loadTab(t) {
       ).join('') + '</tbody></table>';
   } else if (t === 'clients') {
     await renderClientsTab();
+  } else if (t === 'pending') {
+    await renderPendingTab();
   } else if (t === 'audit') {
     const r = await api('/api/superadmin_v20.php?action=audit_recent');
     c.innerHTML = '<table><thead><tr><th>Date</th><th>Workspace</th><th>Acteur</th><th>Action</th><th>Cible</th></tr></thead><tbody>'
@@ -212,6 +215,60 @@ async function renderClientsTab() {
 }
 function filterClient(key, value) { clientsState[key] = value; clientsState.page = 1; renderClientsTab(); }
 function gotoPage(p) { clientsState.page = p; renderClientsTab(); }
+
+// M/2026/05/08/30 — Section Inscriptions en attente d'activation (super-admin centric).
+async function renderPendingTab() {
+  const c = document.getElementById('content');
+  c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
+  const r = await api('/api/superadmin_pending_activations.php?action=list');
+  if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
+  const colorBg = {green:'#D1FAE5', orange:'#FEF3C7', red:'#FEE2E2'};
+  const colorBorder = {green:'#6EE7B7', orange:'#FBBF24', red:'#FCA5A5'};
+  const head = '<table><thead><tr><th>État</th><th>Email</th><th>Agent</th><th>Agence</th><th>Téléphone</th><th>Inscrit</th><th>Tentatives</th><th>Dernière</th><th>Provider/Statut</th><th>Actions</th></tr></thead><tbody>';
+  const rows = (r.pending || []).map(u => {
+    const bg = colorBg[u.color] || '#fff';
+    const bd = colorBorder[u.color] || '#E5DDC8';
+    const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${bd};border:1.5px solid ${bd === '#6EE7B7' ? '#2D7A4F' : bd === '#FBBF24' ? '#B8801E' : '#C73E3E'}"></span>`;
+    const created = (u.created_at || '').replace('T',' ').slice(0,16);
+    const last = (u.last_attempt_at || '').replace('T',' ').slice(0,16) || '—';
+    const provStatus = (u.last_provider || '—') + ' / ' + (u.last_status || '—');
+    return `<tr style="background:${bg}"><td>${dot}</td><td>${u.email}</td><td>${u.prenom} ${u.nom}</td><td>${u.agence_nom||'—'}</td><td>${u.telephone||'—'}</td><td>${created} (${u.age_hours}h)</td><td><b>${u.attempts}</b></td><td>${last}</td><td style="font-size:11px;color:#6B5E4A">${provStatus}</td><td><button onclick="paResend(${u.id})" style="padding:4px 8px;font-size:11px;background:#fff;border:1px solid #B89968;border-radius:4px;cursor:pointer">🔄 Renvoyer</button> <button onclick="paActivateManual(${u.id},'${u.telephone||''}')" style="padding:4px 8px;font-size:11px;background:#10B981;color:#fff;border:none;border-radius:4px;cursor:pointer">✅ Activer manuel</button> <button onclick="paAddNote(${u.id})" style="padding:4px 8px;font-size:11px;background:#fff;border:1px solid #B89968;border-radius:4px;cursor:pointer">📞 Note</button> <button onclick="paHistory(${u.id})" style="padding:4px 8px;font-size:11px;background:#fff;border:1px solid #B89968;border-radius:4px;cursor:pointer">📋 Hist.</button> <button onclick="paDelete(${u.id})" style="padding:4px 8px;font-size:11px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:4px;cursor:pointer">🗑️</button></td></tr>`;
+  }).join('');
+  c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> inscription(s) en attente d\'activation. Couleurs : 🟢 <1h · 🟠 1-24h · 🔴 >24h ou >3 tentatives.</p>'
+    + head + (rows || '<tr><td colspan="10" style="text-align:center;padding:24px;color:#6B5E4A">Aucune inscription en attente.</td></tr>') + '</tbody></table>';
+}
+async function paResend(uid) {
+  if (!confirm('Renvoyer un nouveau lien d\'activation à cet agent ?')) return;
+  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'resend', user_id:uid}});
+  alert((r.ok ? '✅ Mail renvoyé' : '⚠️ Échec') + '\nProvider: ' + (r.provider || '—') + '\nStatut: ' + (r.status || r.error || ''));
+  renderPendingTab();
+}
+async function paActivateManual(uid, tel) {
+  if (!confirm('Activer manuellement cet agent ? Un mot de passe temporaire sera généré.')) return;
+  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'activate_manual', user_id:uid, telephone:tel}});
+  if (r.ok) {
+    prompt('✅ Agent activé. Mot de passe temporaire (à transmettre verbalement ou SMS) :', r.temp_password);
+  } else { alert('⚠️ Échec : ' + (r.error || '')); }
+  renderPendingTab();
+}
+async function paAddNote(uid) {
+  const note = prompt('Note super-admin (sera horodatée) :');
+  if (!note) return;
+  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'add_note', user_id:uid, note:note}});
+  alert(r.ok ? '✅ Note ajoutée' : '⚠️ ' + (r.error||''));
+}
+async function paHistory(uid) {
+  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'history', user_id:uid}});
+  if (!r.ok) { alert('⚠️ ' + (r.error||'')); return; }
+  const txt = (r.log_entries || []).join('\n') || '(aucune entrée de log)';
+  alert('📋 Historique ' + r.email + '\n\n' + txt.slice(0, 4000));
+}
+async function paDelete(uid) {
+  if (!confirm('SUPPRIMER ce compte ? Action irréversible.')) return;
+  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'delete', user_id:uid}});
+  alert(r.ok ? '✅ Supprimé' : '⚠️ ' + (r.error||''));
+  renderPendingTab();
+}
 let searchTimer = null;
 function searchDebounced(v) {
   clearTimeout(searchTimer);

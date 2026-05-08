@@ -64,6 +64,77 @@ function _send_activation_email(string $email, string $prenom, string $token): b
     return false;
 }
 
+// M/2026/05/08/30 — Validation préventive délivrabilité email.
+// Retourne ['mx' => bool, 'disposable' => bool, 'typo_suggestion' => ?string].
+function _email_predelivery_checks(string $email): array {
+    $domain = strtolower(substr(strrchr($email, '@'), 1));
+    // 1. DNS MX
+    $hasMx = false;
+    if ($domain) {
+        @$hasMx = checkdnsrr($domain, 'MX');
+    }
+    // 2. Pattern temp-mail
+    static $disposable = [
+        'mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com',
+        'sharklasers.com', 'trashmail.com', 'yopmail.com', 'temp-mail.org',
+        'throwaway.email', 'maildrop.cc', 'fakeinbox.com', 'getnada.com',
+    ];
+    $isDisposable = in_array($domain, $disposable, true);
+    // 3. Typo classique
+    static $typos = [
+        'gmial.com' => 'gmail.com', 'gmal.com' => 'gmail.com', 'gnail.com' => 'gmail.com',
+        'gmaill.com' => 'gmail.com', 'gmail.co' => 'gmail.com', 'gmail.fr' => 'gmail.com',
+        'yaho.fr' => 'yahoo.fr', 'yaho.com' => 'yahoo.com', 'yahooo.com' => 'yahoo.com',
+        'hotmial.com' => 'hotmail.com', 'hotnail.com' => 'hotmail.com', 'hotmal.com' => 'hotmail.com',
+        'oultook.com' => 'outlook.com', 'outloo.com' => 'outlook.com',
+        'orage.fr' => 'orange.fr',
+    ];
+    $typoSuggestion = null;
+    if (isset($typos[$domain])) {
+        $local = substr($email, 0, strrpos($email, '@'));
+        $typoSuggestion = $local . '@' . $typos[$domain];
+    }
+    return [
+        'mx' => (bool)$hasMx,
+        'disposable' => $isDisposable,
+        'typo_suggestion' => $typoSuggestion,
+    ];
+}
+
+// M/2026/05/08/30 — Alerte super-admin enrichie : architecture résiliente
+// (réinscription pending, attempts > seuil, etc.). Niveau orange (1-3 attempts) ou
+// rouge (>3 attempts ou >24h sans confirmation). Format Telegram standardise.
+function _alert_signup_resilience(string $level, array $payload): void {
+    // $level = 'orange' | 'red'
+    $logFile = '/var/log/ocre-activation-attempts.log';
+    @file_put_contents($logFile, "[" . date('c') . "] " . $level . " " . json_encode($payload) . "\n", FILE_APPEND);
+
+    $emoji = ($level === 'red') ? '🚨' : '⚠️';
+    $priority = ($level === 'red') ? 'high' : 'warning';
+    $titleSuffix = ($level === 'red') ? 'Agent BLOQUÉ activation' : 'Réinscription pending détectée';
+    $title = '[OCRE] ' . $titleSuffix;
+
+    $lines = [];
+    $lines[] = $emoji . ' ' . $titleSuffix;
+    $lines[] = 'Agent: ' . ($payload['prenom'] ?? '?') . ' ' . ($payload['nom'] ?? '?') . ' (' . ($payload['email'] ?? '?') . ')';
+    if (!empty($payload['agence'])) $lines[] = 'Agence: ' . $payload['agence'];
+    $lines[] = 'Tentatives: ' . ((int)($payload['attempts'] ?? 0));
+    if (!empty($payload['first_attempt'])) $lines[] = '1ère: ' . $payload['first_attempt'];
+    if (!empty($payload['last_attempt']))  $lines[] = 'Dernière: ' . $payload['last_attempt'];
+    if (!empty($payload['provider']))       $lines[] = 'Provider précédent: ' . $payload['provider'] . ' | Statut: ' . ($payload['status'] ?? 'inconnu');
+    if (!empty($payload['diagnostic']))     $lines[] = 'Diagnostic: ' . $payload['diagnostic'];
+    $lines[] = 'Action: https://app.ocre.immo/superadmin/#pending-activations';
+
+    $body = implode("\n", $lines);
+    @shell_exec(
+        '/root/bin/notify --project ocre --priority ' . escapeshellarg($priority) . ' --phase error '
+        . '--mission-id ' . escapeshellarg('SIGNUP-RESILIENCE/' . time())
+        . ' --title ' . escapeshellarg($title)
+        . ' --body ' . escapeshellarg($body)
+        . ' >/dev/null 2>&1 &'
+    );
+}
+
 // M/2026/05/08/27 — Alerting super-admin si echec email confirmation signup.
 // Canaux : log persistant + Telegram (notify --phase error) + email Philippe best-effort.
 // PWA push super-admin : TODO M+1 (pas encore implemente).
@@ -184,6 +255,9 @@ try {
 
     if ($existing) {
         if ($existing['status'] === 'pending_activation') {
+            // M/2026/05/08/30 — re-inscription pending detectee. UX agent transparent,
+            // backend incremente attempts + alerte super-admin enrichie + tente
+            // re-envoi (rotation provider geree par send_mail wrapper).
             $upd = $meta->prepare(
                 "UPDATE users
                     SET prenom = ?, nom = ?, display_name = ?,
@@ -194,7 +268,9 @@ try {
                         activation_token = ?, activation_token_expires_at = DATE_ADD(NOW(), INTERVAL 48 HOUR),
                         cgu_accepted = 1, cgu_accepted_at = NOW(), cgu_version = ?, cgu_version_accepted = ?,
                         cgu_accepted_ip = ?, cgu_accepted_user_agent = ?,
-                        rgpd_accepted = 1, rgpd_accepted_at = NOW(), rgpd_version = ?, rgpd_accepted_ip = ?, rgpd_accepted_user_agent = ?
+                        rgpd_accepted = 1, rgpd_accepted_at = NOW(), rgpd_version = ?, rgpd_accepted_ip = ?, rgpd_accepted_user_agent = ?,
+                        activation_attempts_count = activation_attempts_count + 1,
+                        last_activation_attempt_at = NOW()
                   WHERE id = ?"
             );
             $upd->execute([
@@ -210,13 +286,31 @@ try {
             ]);
             $userId = (int)$existing['id'];
 
-            $body = $prenom . ' ' . $nomUpper . ' . ' . $email . ' . token regenere (pending)';
-            @shell_exec('/root/bin/notify --project ocre --priority normal --title ' . escapeshellarg('Inscription token regenere') . ' --body ' . escapeshellarg($body) . ' >/dev/null 2>&1 &');
+            // Lecture etat post-update pour decider niveau alerte.
+            $info = $meta->prepare("SELECT activation_attempts_count, last_activation_provider, last_activation_status, created_at FROM users WHERE id = ?");
+            $info->execute([$userId]);
+            $userInfo = $info->fetch();
+            $attempts = (int)($userInfo['activation_attempts_count'] ?? 1);
+            $level = ($attempts > 3) ? 'red' : 'orange';
+            _alert_signup_resilience($level, [
+                'prenom' => $prenom, 'nom' => $nomUpper, 'email' => $email, 'agence' => $agence,
+                'attempts' => $attempts,
+                'first_attempt' => (string)($userInfo['created_at'] ?? ''),
+                'last_attempt' => date('c'),
+                'provider' => (string)($userInfo['last_activation_provider'] ?? ''),
+                'status' => (string)($userInfo['last_activation_status'] ?? ''),
+            ]);
 
+            // Re-envoi avec rotation provider (send_mail Resend prioritaire, fallback sendmail).
             $emailSent = _send_activation_email($email, $prenom, $activationToken);
             $emailError = null;
+            // Tracer provider/statut utilise pour stats super-admin.
+            $providerUsed = $emailSent ? 'resend_or_sendmail' : null;
+            $statusUsed = $emailSent ? 'SENT_OK' : 'SEND_FAILED';
+            @($meta->prepare("UPDATE users SET last_activation_provider = ?, last_activation_status = ? WHERE id = ?")
+                ->execute([$providerUsed, $statusUsed, $userId]));
             if (!$emailSent) {
-                $emailError = 'Echec envoi email activation (mail() ou ocre_send_email a retourne false)';
+                $emailError = 'Echec envoi email activation (re-tentative pending #' . $attempts . ')';
                 _alert_email_failure($userId, $email, $prenom, $emailError);
             }
 
@@ -226,6 +320,7 @@ try {
                 'inscription_ok' => true,
                 'user_id' => $userId,
                 'resent' => true,
+                'attempts' => $attempts,
                 'email_sent' => $emailSent,
                 'email_error' => $emailError,
                 'redirect' => '/inscription/confirmee/?prenom=' . rawurlencode($prenom) . '&email=' . rawurlencode($email) . '&email_sent=' . ($emailSent ? '1' : '0'),
@@ -283,10 +378,28 @@ try {
 $body = $prenom . ' ' . $nomUpper . ' . ' . $email . ' . ' . $ville . ' . SIRET ' . $siretRaw;
 @shell_exec('/root/bin/notify --project ocre --priority normal --title ' . escapeshellarg('Nouvelle inscription agent') . ' --body ' . escapeshellarg($body) . ' >/dev/null 2>&1 &');
 
+// M/2026/05/08/30 — Validation préventive délivrabilité email (DNS MX + temp-mail + typo).
+$preDelivery = _email_predelivery_checks($email);
+if (!$preDelivery['mx'] || $preDelivery['disposable'] || $preDelivery['typo_suggestion']) {
+    @file_put_contents('/var/log/ocre-activation-attempts.log', sprintf("[%s] PREDELIVERY_FLAG email=%s mx=%d disposable=%d typo=%s\n",
+        date('c'), $email, $preDelivery['mx'] ? 1 : 0, $preDelivery['disposable'] ? 1 : 0, $preDelivery['typo_suggestion'] ?? '-'
+    ), FILE_APPEND);
+    _alert_signup_resilience('orange', [
+        'prenom' => $prenom, 'nom' => $nomUpper, 'email' => $email, 'agence' => $agence,
+        'attempts' => 1,
+        'diagnostic' => 'Email suspect (' . (!$preDelivery['mx'] ? 'no MX' : '') . (!$preDelivery['mx'] && $preDelivery['disposable'] ? '+' : '') . ($preDelivery['disposable'] ? 'disposable' : '') . ($preDelivery['typo_suggestion'] ? ' typo? -> ' . $preDelivery['typo_suggestion'] : '') . ')',
+    ]);
+    // On envoie quand meme (best effort, mais super-admin alerte).
+}
+
 $emailSent = _send_activation_email($email, $prenom, $activationToken);
 $emailError = null;
+$providerUsed = $emailSent ? 'resend_or_sendmail' : null;
+$statusUsed = $emailSent ? 'SENT_OK' : 'SEND_FAILED';
+@($meta->prepare("UPDATE users SET activation_attempts_count = 1, last_activation_attempt_at = NOW(), last_activation_provider = ?, last_activation_status = ? WHERE id = ?")
+    ->execute([$providerUsed, $statusUsed, $userId]));
 if (!$emailSent) {
-    $emailError = 'Echec envoi email activation (mail() ou ocre_send_email a retourne false)';
+    $emailError = 'Echec envoi email activation';
     _alert_email_failure($userId, $email, $prenom, $emailError);
 }
 
@@ -295,7 +408,9 @@ echo json_encode([
     'ok' => true,
     'inscription_ok' => true,
     'user_id' => $userId,
+    'attempts' => 1,
     'email_sent' => $emailSent,
     'email_error' => $emailError,
+    'predelivery' => $preDelivery,
     'redirect' => '/inscription/confirmee/?prenom=' . rawurlencode($prenom) . '&email=' . rawurlencode($email) . '&email_sent=' . ($emailSent ? '1' : '0'),
 ]);
