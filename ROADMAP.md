@@ -20,10 +20,7 @@
 
 - [x] ~~**DESIGN-TOKENS.2.8.1** — font-size tokenization~~ — **livrée M/2026/05/08/19** (1316 substitutions, 21 nouveaux tokens font-size dans tokens.css)
 
-- [ ] **DESIGN-TOKENS.2.8.2** — spacing (padding/margin/gap) tokenization
-  - priorité: high
-  - prereqs: 2.8.1 livrée
-  - effort: 2-3h
+- [x] ~~**DESIGN-TOKENS.2.8.2** — spacing tokenization~~ — **livrée M/2026/05/08/20** (1502 substitutions PHASE 1 literals simples, 13 nouveaux tokens spacing)
 
 - [ ] **DESIGN-TOKENS.2.8.3** — box-shadow tokenization
   - priorité: medium

@@ -192,6 +192,23 @@
   --space-12: 48px;
   --space-16: 64px;
 
+  /* M/2026/05/08/20 — DESIGN-TOKENS.2.8.2 : tokens spacing dedies pour preservation pixel-parfait
+     des valeurs hardcodees existantes (1450+ substitutions sur index.html). Echelle numerique en
+     complement de l echelle Tailwind-like 0/4/8/12/16/20/24/32/40/48/64. */
+  --space-1px: 1px;
+  --space-2px: 2px;
+  --space-3px: 3px;
+  --space-5px: 5px;
+  --space-6px: 6px;
+  --space-7px: 7px;
+  --space-9px: 9px;
+  --space-10px: 10px;
+  --space-13px: 13px;
+  --space-14px: 14px;
+  --space-18px: 18px;
+  --space-22px: 22px;
+  --space-30px: 30px;
+
   --border-width-0: 0;
   --border-width-1: 1px;
   --border-width-2: 2px;
