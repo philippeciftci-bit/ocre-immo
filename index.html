@@ -10967,6 +10967,36 @@ function App() {
     } catch (_) {}
     window.__ocreSessionHandoffDone = true;
   }
+  // M/2026/05/08/57 — handler magic link activation : ?activate=<token>
+  // POST /api/agents_activate_v2.php → si OK : localStorage token + clean URL + reload.
+  // Si KO : redirect vers /login/?activate_error=<reason>. Suppression set-password.html.
+  if (typeof window !== 'undefined' && !window.__ocreActivateHandoffDone) {
+    window.__ocreActivateHandoffDone = true;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const activateToken = params.get('activate');
+      if (activateToken && /^[a-f0-9]{32,128}$/i.test(activateToken)) {
+        fetch('/api/agents_activate_v2.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({token: activateToken}),
+        }).then(r => r.json().then(j => ({status: r.status, j}))).then(({status, j}) => {
+          if (status === 200 && j && j.ok && j.session_token) {
+            localStorage.setItem('ocre_token', j.session_token);
+            params.delete('activate');
+            const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+            window.history.replaceState({}, '', cleanUrl);
+            window.location.reload();
+          } else {
+            const reason = (j && j.error) || 'UNKNOWN';
+            window.location = '/login/?activate_error=' + encodeURIComponent(reason);
+          }
+        }).catch(() => {
+          window.location = '/login/?activate_error=NETWORK';
+        });
+      }
+    } catch (_) {}
+  }
   const [apiLoading, setApiLoading] = useState(true);
   // V18.30 — PWAInstallOverlay iOS + beforeinstallprompt Android conservés pour un bouton
   // futur (roadmap v19+). V18.35 — bandeau auto sous header retiré sur demande Philippe.

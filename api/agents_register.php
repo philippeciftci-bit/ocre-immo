@@ -58,20 +58,25 @@ function _validate_siret($siret) {
     }
     return $sum % 10 === 0;
 }
-function _send_activation_email(string $email, string $prenom, string $token): bool {
-    // M/2026/05/08/50 — wording aligné Philippe : "Validez votre inscription" + précise étape suivante.
-    $url = 'https://app.ocre.immo/api/agents_activate.php?token=' . $token;
-    $subject = 'Bienvenue sur Oi Agent — Validez votre inscription';
+function _send_activation_email(string $email, string $prenom, string $token, string $slug = ''): bool {
+    // M/2026/05/08/57 — magic link direct vers <slug>.ocre.immo/?activate=<token>.
+    // Suppression /set-password : le password est défini à l'inscription, le lien active + auto-login.
+    if ($slug !== '' && preg_match('/^[a-z0-9-]+$/', $slug)) {
+        $url = 'https://' . $slug . '.ocre.immo/?activate=' . $token;
+    } else {
+        $url = 'https://app.ocre.immo/?activate=' . $token;
+    }
+    $subject = 'Bienvenue sur Oi Agent — accédez à votre espace';
     $safePrenom = htmlspecialchars($prenom, ENT_QUOTES, 'UTF-8');
     $html = '<html><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#3a2e22;background:#FAF6EC;margin:0;padding:0;">'
         . '<div style="max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(60,40,20,0.08);">'
         . '<h1 style="font-family:\'Cormorant Garamond\',Georgia,serif;font-style:italic;color:#8B5E3C;font-weight:500;margin:0 0 12px;font-size:28px;">Bienvenue sur Oi Agent</h1>'
         . '<p style="font-size:15px;line-height:1.5;">Bonjour <b>' . $safePrenom . '</b>,</p>'
-        . '<p style="font-size:15px;line-height:1.5;">Pour finaliser votre inscription, cliquez sur le bouton ci-dessous. Vous serez ensuite invité à définir votre mot de passe pour accéder à la plateforme.</p>'
+        . '<p style="font-size:15px;line-height:1.5;">Votre compte est créé. Cliquez sur le bouton ci-dessous pour accéder directement à votre espace de travail.</p>'
         . '<p style="font-size:13px;color:#6B5E4A;line-height:1.5;font-style:italic;">Lien valide 48 heures.</p>'
         . '<table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" style="margin:28px auto;">'
         . '<tr><td bgcolor="#10B981" style="border-radius:10px;background-color:#10B981;mso-padding-alt:14px 24px;">'
-        . '<a href="' . $url . '" target="_blank" style="display:inline-block;padding:14px 24px;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;border:1px solid #10B981;line-height:1.2;">Valider mon inscription et définir mon mot de passe</a>'
+        . '<a href="' . $url . '" target="_blank" style="display:inline-block;padding:14px 24px;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;border:1px solid #10B981;line-height:1.2;">Accéder à mon espace</a>'
         . '</td></tr></table>'
         . '<p style="font-size:12px;color:#999;line-height:1.5;">Si le bouton ne fonctionne pas, copiez-collez ce lien :<br><span style="word-break:break-all;">' . $url . '</span></p>'
         . '<p style="font-size:11px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">Oi Agent — un produit Ocre · contact@ocre.immo</p>'
@@ -198,8 +203,8 @@ function _meta_pdo() {
 $prenom = _trim_str($input['prenom'] ?? '', 100);
 $nom    = _trim_str($input['nom'] ?? '', 100);
 $email  = strtolower(_trim_str($input['email'] ?? '', 190));
-// M/2026/05/08/50 — password retiré du wizard signup. Stocké en PLACEHOLDER puis hashé sur /set-password.html.
-$pwd    = '';
+// M/2026/05/08/57 — password obligatoire à l'inscription (refonte magic link, suppression set-password).
+$pwd    = (string)($input['password'] ?? '');
 $siretRaw = preg_replace('/\D/', '', (string)($input['siret'] ?? ''));
 $agence = _trim_str($input['agence'] ?? '', 150);
 $ville  = _trim_str($input['ville'] ?? '', 100);
@@ -213,10 +218,13 @@ $channels = is_array($input['channels_enabled'] ?? null) ? $input['channels_enab
 if ($prenom === '') $errors['prenom'] = 'Prenom requis';
 if ($nom === '')    $errors['nom']    = 'Nom requis';
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'] = 'Email invalide';
-// M/2026/05/08/50 — validation password retirée (champ retiré du wizard, défini sur set-password).
+// M/2026/05/08/57 — validation password : 8+ chars, 1 majuscule, 1 chiffre.
+if (strlen($pwd) < 8 || !preg_match('/[A-Z]/', $pwd) || !preg_match('/[0-9]/', $pwd)) {
+    $errors['password'] = 'Mot de passe : 8 caractères minimum, 1 majuscule, 1 chiffre';
+}
 // M90.3 — SIRET optionnel : valide si vide OU 14 chiffres Luhn-valides.
 if ($siretRaw !== '' && !_validate_siret($siretRaw)) $errors['siret'] = 'SIRET invalide (Luhn)';
-if ($ville === '') $errors['ville'] = 'Ville requise';
+// M/2026/05/08/57 — ville optionnelle (refonte form compact 9 champs essentiels).
 if ($tel === '')   $errors['tel']   = 'Telephone requis';
 // M/2026/05/08/54 — validation E.164 stricte : + suivi de 7-15 chiffres (premier non-zéro).
 if ($tel !== '' && !preg_match('/^\+[1-9]\d{6,14}$/', $tel)) {
@@ -244,8 +252,8 @@ if (!empty($errors)) {
 // M90.3 — SIRET optionnel : si vide, siret + siren = NULL.
 $siretSql = $siretRaw !== '' ? $siretRaw : null;
 $siren = $siretRaw !== '' ? substr($siretRaw, 0, 9) : null;
-// M/2026/05/08/50 — placeholder, le hash réel est défini sur /api/agents_set_password.php après activation.
-$pwdHash = 'PLACEHOLDER';
+// M/2026/05/08/57 — hash bcrypt cost 12 directement à l'inscription (suppression PLACEHOLDER M50).
+$pwdHash = password_hash($pwd, PASSWORD_BCRYPT, ['cost' => 12]);
 $nomUpper = mb_strtoupper($nom, 'UTF-8');
 $displayName = trim($prenom . ' ' . $nomUpper);
 $prefsJson = json_encode([
@@ -330,8 +338,10 @@ try {
 
             // Re-envoi via wrapper send_mail (OVH SMTP exclusif, M/2026/05/08/31).
             // M/2026/05/08/39 — try/catch Throwable : non-bloquant. Si SMTP plante, user reste créé.
+            // M/2026/05/08/57 — passe slug pour magic link direct subdomain.
+            $existingSlug = (string)($meta->query("SELECT slug FROM users WHERE id = " . $userId)->fetchColumn() ?: '');
             try {
-                $emailSent = _send_activation_email($email, $prenom, $activationToken);
+                $emailSent = _send_activation_email($email, $prenom, $activationToken, $existingSlug);
             } catch (Throwable $e) {
                 $emailSent = false;
                 @error_log('[agents_register] _send_activation_email exception (pending branch): ' . $e->getMessage());
@@ -425,7 +435,8 @@ if (!$preDelivery['mx'] || $preDelivery['disposable'] || $preDelivery['typo_sugg
     // On envoie quand meme (best effort, mais super-admin alerte).
 }
 
-$emailSent = _send_activation_email($email, $prenom, $activationToken);
+// M/2026/05/08/57 — magic link direct vers <slug>.ocre.immo/?activate=<token>.
+$emailSent = _send_activation_email($email, $prenom, $activationToken, $autoSlug);
 $emailError = null;
 $providerUsed = $emailSent ? 'ovh_smtp' : null;
 $statusUsed = $emailSent ? 'SENT_OK' : 'SEND_FAILED';
