@@ -54,6 +54,31 @@
     table { display: block; overflow-x: auto; }
     tbody tr { height: 52px; }
   }
+  /* M/2026/05/08/33 — Outils nettoyage. */
+  .write-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; font-family: inherit; font-size: 11px; color: var(--color-text-muted); cursor: pointer; margin-right: 8px; }
+  .write-toggle.on { background: #FEE2E2; color: #C73E3E; border-color: #FCA5A5; font-weight: 600; }
+  .write-toggle.on::before { content: '🔓'; }
+  .write-toggle:not(.on)::before { content: '🔒'; }
+  td.col-checkbox, th.col-checkbox { width: 30px; text-align: center; padding: 6px 4px; }
+  td.col-checkbox input, th.col-checkbox input { cursor: pointer; }
+  .action-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 2px solid var(--color-accent); padding: 12px 24px; box-shadow: 0 -4px 16px rgba(60,40,20,0.08); display: none; align-items: center; gap: 12px; z-index: 200; }
+  .action-bar.visible { display: flex; }
+  .action-bar .count { font-weight: 600; color: var(--color-text-primary); }
+  .action-bar button { padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; border: 1px solid; }
+  .action-bar .btn-danger { background: #C73E3E; color: #fff; border-color: #C73E3E; }
+  .action-bar .btn-danger:hover { background: #A02828; }
+  .action-bar .btn-cancel { background: #fff; color: var(--color-text-muted); border-color: #E5DDC8; }
+  .reset-zone { margin-top: 24px; padding: 16px; border: 2px dashed #FCA5A5; border-radius: 8px; background: #FFF5F5; }
+  .reset-zone .reset-label { font-size: 12px; color: #6B5E4A; font-style: italic; margin-bottom: 8px; }
+  .reset-btn { padding: 10px 16px; background: #fff; color: #C73E3E; border: 1.5px solid #C73E3E; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; }
+  .reset-btn:hover { background: #C73E3E; color: #fff; }
+  .reset-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .reset-total-zone { margin-top: 32px; padding: 24px; border: 3px solid #C73E3E; border-radius: 12px; background: #FEE2E2; }
+  .reset-total-zone h3 { color: #C73E3E; font-family: var(--font-serif); font-style: italic; margin-bottom: 8px; }
+  .reset-total-zone p { font-size: 12px; color: #6B5E4A; margin-bottom: 12px; }
+  .reset-total-btn { padding: 14px 24px; background: #C73E3E; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; }
+  .reset-total-btn:hover { background: #8B0000; }
+  .reset-total-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .login { max-width: 380px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; border: 1px solid #E5DDC8; }
   .login input { width: 100%; padding: 10px 12px; border: 1px solid #B89968; border-radius: 6px; margin-bottom: 10px; font-family: inherit; }
   .login button { width: 100%; padding: 12px; background: var(--color-accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600; }
@@ -159,7 +184,14 @@ let currentTab = 'overview';
 let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '', q: ''};
 async function renderConsole() {
   const root = document.getElementById('root');
-  root.innerHTML = '<div class="banner">Vue super-administrateur · Lecture seule <button class="logout" onclick="logout()">Se déconnecter</button><button class="search-btn" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button><a class="search-btn" href="/atelier-live.html" style="text-decoration:none;color:var(--color-accent)">⚡ Atelier (live) <kbd>MVP</kbd></a></div>'
+  // M/2026/05/08/33 — toggle mode écriture (par défaut OFF, requis pour actions destructives)
+  const writeOn = localStorage.getItem('ocre_sa_write_mode') === '1';
+  root.innerHTML = '<div class="banner"><span id="banner-mode">Vue super-administrateur · ' + (writeOn ? '<b style="color:#C73E3E">Lecture/Écriture</b>' : 'Lecture seule') + '</span> '
+    + '<button class="write-toggle ' + (writeOn ? 'on' : '') + '" id="write-toggle" onclick="toggleWriteMode()" title="Active les actions destructives (suppression, reset)">' + (writeOn ? 'Écriture activée' : 'Activer écriture') + '</button>'
+    + '<button class="logout" onclick="logout()">Se déconnecter</button>'
+    + '<button class="search-btn" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button>'
+    + '<a class="search-btn" href="/superadmin/atelier-live.html" style="text-decoration:none;color:var(--color-accent)">⚡ Atelier (live) <kbd>MVP</kbd></a>'
+    + '</div>'
                  + '<h1>Console super-admin</h1>'
                  + '<div class="tabs">'
                  + '<div class="tab active" data-t="overview">Vue d\'ensemble</div>'
@@ -186,13 +218,21 @@ async function loadTab(t) {
     const s = r.stats;
     c.innerHTML = '<div class="stats">' + Object.entries(s).map(([k, v]) =>
       `<div class="stat"><div class="stat-v">${v}</div><div class="stat-l">${k.replace(/_/g, ' ')}</div></div>`
-    ).join('') + '</div>';
+    ).join('') + '</div>'
+    + '<div class="reset-total-zone"><h3>🚨 Reset TOTAL provisoire (mode test)</h3>'
+    + '<p>⚠️ Supprime <b>TOUTES</b> les inscriptions en attente, <b>TOUS</b> les workspaces (DROP DATABASE), et toute l\'audit récente. Action <b>irréversible</b>. Désactiver cette zone après lancement officiel.</p>'
+    + '<button class="reset-total-btn" onclick="resetTotal()">🔥 Reset TOTAL provisoire</button></div>';
   } else if (t === 'workspaces') {
     const r = await api('/api/superadmin_v20.php?action=workspaces');
-    c.innerHTML = '<table><thead><tr><th>Slug</th><th>Type</th><th>Nom</th><th>Pays</th><th style="text-align:center">Membres</th><th>Créé</th><th style="text-align:center">Archivé</th></tr></thead><tbody>'
+    selection.workspaces.clear();
+    c.innerHTML = '<table><thead><tr>'
+      + '<th class="col-checkbox"><input type="checkbox" id="cb-all-workspaces" onchange="toggleAllSelection(\'workspaces\', this.checked)"></th>'
+      + '<th>Slug</th><th>Type</th><th>Nom</th><th>Pays</th><th style="text-align:center">Membres</th><th>Créé</th><th style="text-align:center">Archivé</th></tr></thead><tbody>'
       + (r.workspaces || []).map(w =>
-        `<tr><td><b>${w.slug}</b></td><td><span style="font-size:11px;color:#6B5E4A;text-transform:uppercase">${w.type}</span></td><td class="col-name" title="${(w.display_name||'').replace(/"/g,'&quot;')}">${w.display_name}</td><td class="col-date">${w.country_code || '—'}</td><td class="col-attempts">${w.members_count}</td><td class="col-date" title="${w.created_at||''}">${(w.created_at || '').slice(0, 10).replace(/(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1')}</td><td style="text-align:center">${w.archived_at ? '✓' : '—'}</td></tr>`
-      ).join('') + '</tbody></table>';
+        `<tr data-workspaces-id="${w.id}"><td class="col-checkbox"><input type="checkbox" onchange="toggleRowSelection('workspaces', ${w.id}, this.checked)"></td><td><b>${w.slug}</b></td><td><span style="font-size:11px;color:#6B5E4A;text-transform:uppercase">${w.type}</span></td><td class="col-name" title="${(w.display_name||'').replace(/"/g,'&quot;')}">${w.display_name}</td><td class="col-date">${w.country_code || '—'}</td><td class="col-attempts">${w.members_count}</td><td class="col-date" title="${w.created_at||''}">${(w.created_at || '').slice(0, 10).replace(/(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1')}</td><td style="text-align:center">${w.archived_at ? '✓' : '—'}</td></tr>`
+      ).join('') + '</tbody></table>'
+      + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_workspaces\', \'TOUS les workspaces (DROP DB tenant)\')">🔥 Reset Workspaces</button></div>';
+    updateActionBar('workspaces');
   } else if (t === 'clients') {
     await renderClientsTab();
   } else if (t === 'pending') {
@@ -205,7 +245,8 @@ async function loadTab(t) {
         const m = dt.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
         const dtCompact = m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : dt.slice(0, 16);
         return `<tr><td class="col-date" title="${e.created_at||''}">${dtCompact}</td><td><b>${e.workspace_slug || '—'}</b></td><td class="col-email">${e.email || '—'}</td><td>${e.action}</td><td class="col-provider">${e.target_type || ''} ${e.target_id || ''}</td></tr>`;
-      }).join('') + '</tbody></table>';
+      }).join('') + '</tbody></table>'
+      + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_audit\', \'audit récent (TRUNCATE super_admin_events)\')">🔥 Reset Audit récent</button></div>';
   }
 }
 async function renderClientsTab() {
@@ -247,6 +288,113 @@ async function renderClientsTab() {
 function filterClient(key, value) { clientsState[key] = value; clientsState.page = 1; renderClientsTab(); }
 function gotoPage(p) { clientsState.page = p; renderClientsTab(); }
 
+// M/2026/05/08/33 — Outils nettoyage super-admin (phase test)
+function isWriteMode() { return localStorage.getItem('ocre_sa_write_mode') === '1'; }
+function toggleWriteMode() {
+  const cur = isWriteMode();
+  if (cur) {
+    localStorage.removeItem('ocre_sa_write_mode');
+  } else {
+    if (!confirm('Activer le mode ÉCRITURE ?\n\nCe mode autorise les suppressions et resets. À désactiver après usage.')) return;
+    localStorage.setItem('ocre_sa_write_mode', '1');
+  }
+  renderConsole();
+}
+function requireWriteMode() {
+  if (!isWriteMode()) {
+    alert('⚠️ Mode écriture désactivé.\n\nActiver le toggle "🔒 Activer écriture" en haut à droite avant toute action destructive.');
+    return false;
+  }
+  return true;
+}
+
+// Sélection multi (état partagé entre re-renders)
+const selection = { pending: new Set(), workspaces: new Set() };
+function toggleRowSelection(scope, id, checked) {
+  if (checked) selection[scope].add(id); else selection[scope].delete(id);
+  updateActionBar(scope);
+}
+function toggleAllSelection(scope, checked) {
+  document.querySelectorAll(`tbody tr[data-${scope}-id]`).forEach(tr => {
+    const id = parseInt(tr.dataset[scope + 'Id'], 10);
+    const cb = tr.querySelector('input[type=checkbox]');
+    if (cb) cb.checked = checked;
+    if (checked) selection[scope].add(id); else selection[scope].delete(id);
+  });
+  updateActionBar(scope);
+}
+function updateActionBar(scope) {
+  let bar = document.getElementById('action-bar-' + scope);
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'action-bar';
+    bar.id = 'action-bar-' + scope;
+    document.body.appendChild(bar);
+  }
+  const n = selection[scope].size;
+  if (n > 0) {
+    bar.innerHTML = `<span class="count">${n} élément${n>1?'s':''} sélectionné${n>1?'s':''}</span>`
+      + `<button class="btn-danger" onclick="batchDelete('${scope}')">🗑️ Supprimer la sélection</button>`
+      + `<button class="btn-cancel" onclick="clearSelection('${scope}')">✕ Désélectionner</button>`;
+    bar.classList.add('visible');
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+function clearSelection(scope) {
+  selection[scope].clear();
+  document.querySelectorAll(`tbody tr[data-${scope}-id] input[type=checkbox]`).forEach(cb => { cb.checked = false; });
+  const headerCb = document.getElementById('cb-all-' + scope);
+  if (headerCb) headerCb.checked = false;
+  updateActionBar(scope);
+}
+async function batchDelete(scope) {
+  if (!requireWriteMode()) return;
+  const ids = Array.from(selection[scope]);
+  if (ids.length === 0) return;
+  const labels = { pending: 'inscription(s) en attente', workspaces: 'workspace(s)' };
+  if (!confirm(`Supprimer définitivement ${ids.length} ${labels[scope]} ?\n\nCette action est irréversible.\nIDs : ${ids.join(', ')}`)) return;
+  let endpoint, action;
+  if (scope === 'pending') { endpoint = '/api/superadmin_cleanup.php'; action = 'delete_users_batch'; }
+  else if (scope === 'workspaces') { endpoint = '/api/superadmin_cleanup.php'; action = 'delete_workspaces'; }
+  else return;
+  const r = await api(endpoint, {method:'POST', body:{action, ids}});
+  if (r.ok) {
+    alert(`✅ ${r.deleted} supprimé(s).`);
+    clearSelection(scope);
+    if (scope === 'pending') renderPendingTab(); else if (scope === 'workspaces') loadTab('workspaces');
+  } else {
+    alert('⚠️ ' + (r.error || 'Erreur'));
+  }
+}
+
+async function tabReset(action, label) {
+  if (!requireWriteMode()) return;
+  const conf = prompt(`⚠️ Reset ${label}\n\nCette action est IRRÉVERSIBLE.\nTapez RESET pour confirmer :`);
+  if (conf !== 'RESET') { if (conf !== null) alert('Confirmation incorrecte.'); return; }
+  const r = await api('/api/superadmin_cleanup.php', {method:'POST', body:{action, confirmation: 'RESET'}});
+  if (r.ok) {
+    alert(`✅ Reset ${label} OK\n${JSON.stringify(r, null, 2)}`);
+    loadTab(currentTab);
+  } else {
+    alert('⚠️ ' + (r.error || 'Erreur'));
+  }
+}
+
+async function resetTotal() {
+  if (!requireWriteMode()) return;
+  if (!confirm('🚨 RESET TOTAL\n\nVa supprimer :\n- Toutes les inscriptions en attente\n- TOUS les workspaces (DROP DATABASE)\n- Toute l\'audit récent\n\nCette action est TOTALEMENT IRRÉVERSIBLE.\n\nÊtes-vous sûr ?')) return;
+  const conf = prompt('Tapez exactement : RESET TOTAL\npour confirmer définitivement :');
+  if (conf !== 'RESET TOTAL') { if (conf !== null) alert('Confirmation incorrecte.'); return; }
+  const r = await api('/api/superadmin_cleanup.php', {method:'POST', body:{action: 'reset_total', confirmation: 'RESET TOTAL'}});
+  if (r.ok) {
+    alert('✅ RESET TOTAL exécuté.\n\n' + JSON.stringify(r.report, null, 2));
+    loadTab('overview');
+  } else {
+    alert('⚠️ ' + (r.error || 'Erreur'));
+  }
+}
+
 // M/2026/05/08/30 → 32 — Section Inscriptions en attente, refonte compacte.
 // Format date "DD/MM HH:MM" avec tooltip ISO. Téléphone en E.164. Bordure gauche colorée.
 function fmtDateCompact(iso) {
@@ -272,8 +420,10 @@ async function renderPendingTab() {
   c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
   const r = await api('/api/superadmin_pending_activations.php?action=list');
   if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
+  selection.pending.clear();
   const head = '<table><thead><tr>'
     + '<th class="state-cell" style="width:4px;padding:0"></th>'
+    + '<th class="col-checkbox"><input type="checkbox" id="cb-all-pending" onchange="toggleAllSelection(\'pending\', this.checked)"></th>'
     + '<th>Agent</th>'
     + '<th>Email</th>'
     + '<th>Téléphone</th>'
@@ -293,8 +443,9 @@ async function renderPendingTab() {
       ? escHtml((u.last_provider || '—') + ' / ' + (u.last_status || '—'))
       : '<span style="color:#A89882">—</span>';
     const escEmail = escHtml(u.email);
-    return `<tr class="${stateCls}" data-uid="${u.id}">`
+    return `<tr class="${stateCls}" data-uid="${u.id}" data-pending-id="${u.id}">`
       + `<td class="state-cell"></td>`
+      + `<td class="col-checkbox"><input type="checkbox" onchange="toggleRowSelection('pending', ${u.id}, this.checked)"></td>`
       + `<td class="col-name" title="${escHtml(name)}">${name}</td>`
       + `<td class="col-email" title="${escEmail}">${escEmail}</td>`
       + `<td class="mono-tel">${tel}</td>`
@@ -312,7 +463,9 @@ async function renderPendingTab() {
     + `</tr>`;
   }).join('');
   c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> inscription(s) en attente d\'activation · 🟢 <1h · 🟠 1-24h · 🔴 >24h ou >3 tentatives.</p>'
-    + head + (rows || '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B5E4A">Aucune inscription en attente.</td></tr>') + '</tbody></table>';
+    + head + (rows || '<tr><td colspan="10" style="text-align:center;padding:24px;color:#6B5E4A">Aucune inscription en attente.</td></tr>') + '</tbody></table>'
+    + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_pending\', \'inscriptions en attente\')">🔥 Reset Inscriptions en attente</button></div>';
+  updateActionBar('pending');
 }
 async function paResend(uid) {
   if (!confirm('Renvoyer un nouveau lien d\'activation à cet agent ?')) return;
