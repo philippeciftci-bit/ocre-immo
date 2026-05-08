@@ -2640,22 +2640,48 @@ function formatLocal(digits, dial) {
   // Default : groupes de 2
   return digits.replace(/(\d{2})/g, '$1 ').trim();
 }
-// M/2026/05/07/103 — helpers validation tel + email factorises (origine M95 wizard signup).
-// Reutilises par PhoneField + EmailField + (optionnel) onPublishDossier check global.
+// M/2026/05/07/103 + M/2026/05/09/70 — helpers validation tel + email pays-aware (factorises M95 wizard signup).
+// validatePhone : E.164 strict avec longueur exacte par pays (table dial -> national length).
+// validateEmail : regex RFC + whitelist TLD large mais explicite (refus 'gghjkk@fggr.ui').
+const PHONE_LENGTH_RULES = {
+  '33':9, '32':9, '41':9, '352':9, '377':8, '212':9, '216':8, '213':9, '221':9, '225':10,
+  '1':10, '44':10, '34':9, '39':10, '49':10, '351':9, '31':9, '971':9, '966':9, '974':8,
+};
 function validatePhone(p) {
   const cleaned = (p || '').replace(/[\s\-\.\(\)]/g, '');
   if (!cleaned) return false;
   if (cleaned.length > 20) return false;
-  if (/^\+\d{8,15}$/.test(cleaned)) return true;
+  // Format national FR (sans + initial) : on accepte les patterns historiques.
   if (/^0[67]\d{8}$/.test(cleaned)) return true;
   if (/^0[1-5]\d{8}$/.test(cleaned) || /^0[89]\d{8}$/.test(cleaned)) return true;
-  return false;
+  // Format E.164 : + suivi de dial + national. Validation longueur par pays.
+  const m = /^\+(\d{1,4})(\d+)$/.exec(cleaned);
+  if (!m) return false;
+  const dialStr = m[1] + m[2];
+  // Cherche le dial le plus long qui matche.
+  const sortedDials = Object.keys(PHONE_LENGTH_RULES).sort((a,b) => b.length - a.length);
+  for (const d of sortedDials) {
+    if (dialStr.startsWith(d)) {
+      const nat = dialStr.slice(d.length);
+      return nat.length === PHONE_LENGTH_RULES[d];
+    }
+  }
+  // Pays inconnu : fallback 8-15 digits total (lax mais borne).
+  return /^\+\d{8,15}$/.test(cleaned);
 }
+const VALID_TLDS = new Set([
+  'com','fr','net','org','io','co','eu','ma','dz','tn','be','ch','ca','us','uk','de','es','it','pt','nl','lu','mc','sn','ci','ae','sa','qa',
+  'app','dev','tech','info','biz','xyz','online','site','store','blog','me','tv','re','ai','design','studio','academy','agency','company','consulting','digital','email','events','expert','foundation','group','solutions','works','world','zone','global','international','services','support','systems','tools','network','press','news','health','finance',
+  'immo','immobilier','realty','realestate','rent','rentals','homes','house','land','properties','property',
+  'cn','jp','kr','in','ru','br','mx','ar','au','nz','ie','at','dk','se','no','fi','pl','cz','hu','ro','bg','gr','tr','il','eg','ng','za','ke','sg','my','th','vn','id','ph',
+]);
 function validateEmail(e) {
-  const v = (e || '').trim();
+  const v = (e || '').trim().toLowerCase();
   if (!v) return false;
   if (v.length > 254) return false;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(v)) return false;
+  const tld = v.split('.').pop();
+  return VALID_TLDS.has(tld);
 }
 
 // M/2026/05/02/10 — M121 : refactor PhoneField pour utiliser PaysCompactButton mode=phone.
@@ -3679,20 +3705,21 @@ function TelephoneMulti({value, onChange, residenceCountry, showToast}) {
     setEditingMap(prev => ({...prev, [newIdx]: true}));
   }
   function isEditing(i, entry) {
-    // V37 : seules les entrées explicitement en édition (nouvelles, via +Ajouter)
-    // OU sans valeur actuelle rendent en input. Jamais de retour en édition depuis
-    // un chip verrouillé — l'utilisateur doit supprimer et recréer.
+    // V37 : entrées explicitement en édition OU sans valeur actuelle.
+    // M/2026/05/09/70 : entrées AVEC valeur INVALIDE forcees en edition pour afficher ✗ rouge.
     if (editingMap[i]) return true;
-    return !entry.valeur || !String(entry.valeur).trim();
+    const v = entry.valeur && String(entry.valeur).trim();
+    if (!v) return true;
+    if (!validatePhone(v)) return true;
+    return false;
   }
   function handleBlur(i, val) {
     const clean = String(val || '').replace(/[^+0-9]/g, '');
     if (!clean) { removeSilently(i); return; }
-    // Valide : au moins 8 chiffres (après strip) pour éviter les numéros tronqués.
-    const digits = clean.replace(/^\+/, '');
-    if (digits.length < 8) {
-      showToast && showToast('Numéro trop court');
-      return; // reste en édition
+    // M/2026/05/09/70 — validation pays-aware via validatePhone (longueur exacte par dial).
+    if (!validatePhone(clean)) {
+      showToast && showToast('Numéro invalide');
+      return; // reste en édition pour correction
     }
     setEditingMap(prev => { const n = {...prev}; delete n[i]; return n; });
   }
@@ -3759,17 +3786,23 @@ function EmailMulti({value, onChange, showToast}) {
     setEditingMap(prev => ({...prev, [newIdx]: true}));
   }
   function isEditing(i, entry) {
+    // M/2026/05/09/70 : entrees invalides forcees en edition pour afficher ✗ rouge.
     if (editingMap[i]) return true;
-    return !entry.valeur || !String(entry.valeur).trim();
+    const v = entry.valeur && String(entry.valeur).trim();
+    if (!v) return true;
+    if (!validateEmail(v)) return true;
+    return false;
   }
   function handleBlur(i, val) {
-    const v = (val || '').trim();
+    const v = (val || '').trim().toLowerCase();
     if (!v) { removeSilently(i); return; }
-    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-    if (!valid) {
+    // M/2026/05/09/70 — validation stricte via validateEmail (regex + whitelist TLD).
+    if (!validateEmail(v)) {
       showToast && showToast('Email invalide');
       return;
     }
+    // Lowercase auto au blur.
+    if (v !== val) update(i, {valeur: v});
     setEditingMap(prev => { const n = {...prev}; delete n[i]; return n; });
   }
   return (
