@@ -535,7 +535,7 @@ async function renderSessionsTab() {
     const selfBadge = s.is_self ? ' <span class="badge badge-enregistre">moi</span>' : '';
     const action = s.is_self
       ? '<span style="color:var(--color-text-muted);font-size:11px;font-style:italic">session active</span>'
-      : `<button class="icon-btn danger" onclick="forceLogoutSession(${s.id}, '${escHtml(s.email)}')" title="Forcer déconnexion" style="color:var(--color-error)">🚪</button>`;
+      : `<button class="icon-btn danger" onclick="forceLogoutSession('${escHtml(s.token)}', '${escHtml(s.email)}')" title="Forcer déconnexion" style="color:var(--color-error)">🚪</button>`;
     return `<tr><td class="col-email">${escHtml(s.email)}${selfBadge}</td>`
       + `<td>${s.role}</td>`
       + `<td><b>${escHtml(s.workspace_slug)}</b></td>`
@@ -550,10 +550,10 @@ async function renderSessionsTab() {
     + '<div style="margin-bottom:12px"><button class="icon-btn danger" onclick="logoutAllSessions()" style="color:var(--color-error);width:auto;padding:6px 12px;font-size:12px;font-weight:600;border:1px solid var(--color-error);border-radius:6px">🚪 Déconnecter tous (sauf moi)</button></div>'
     + head + (rows || '<tr><td colspan="8" style="text-align:center;padding:24px;color:#6B5E4A">Aucune session active.</td></tr>') + '</tbody></table>';
 }
-async function forceLogoutSession(sid, email) {
+async function forceLogoutSession(sToken, email) {
   if (!requireWriteMode()) return;
   if (!confirm(`Déconnecter la session de ${email} ?`)) return;
-  const r = await api('/api/superadmin_sessions.php', {method:'POST', body:{action:'force_logout', session_id:sid}});
+  const r = await api('/api/superadmin_sessions.php', {method:'POST', body:{action:'force_logout', session_token:sToken}});
   if (r.ok) { renderSessionsTab(); }
   else alert('⚠️ ' + (r.error || 'Erreur'));
 }
