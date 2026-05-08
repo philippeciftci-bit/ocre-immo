@@ -123,6 +123,16 @@ try {
     exit;
 }
 
+// M/2026/05/08/56 — redirect vers subdomain tenant <slug>.ocre.immo (DNS wildcard *.ocre.immo).
+// Sur app.ocre.immo nginx route fallback "ozkan" → DB ocre_wsp_ozkan inexistante → 503 boucle SPA.
+// Le subdomain résout le slug correctement → nginx route vers ocre_wsp_<slug> → DB tenant trouvée.
+// Token session passé en query string ?session=... pour handoff cross-subdomain
+// (localStorage de app.ocre.immo n'est pas partagé avec <slug>.ocre.immo). SPA boot lit ?session
+// + setItem localStorage + clean URL (cf code App() handler M56).
+$userSlugForRedirect = (string)$user['slug'];
+$redirectUrl = ($userSlugForRedirect !== '' && preg_match('/^[a-z0-9-]+$/', $userSlugForRedirect))
+    ? 'https://' . $userSlugForRedirect . '.ocre.immo/?session=' . $sessionToken
+    : '/?session=' . $sessionToken;
 http_response_code(200);
 echo json_encode([
     'ok' => true,
@@ -133,5 +143,5 @@ echo json_encode([
         'prenom' => $user['prenom'],
         'slug' => $user['slug'],
     ],
-    'redirect' => '/',
+    'redirect' => $redirectUrl,
 ]);

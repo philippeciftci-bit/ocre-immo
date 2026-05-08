@@ -10950,6 +10950,23 @@ function OnlineIndicator() {
 }
 
 function App() {
+  // M/2026/05/08/56 — handoff cross-subdomain post set-password : ?session=<token> dans URL
+  // (set-password.html sur app.ocre.immo redirect vers <slug>.ocre.immo/?session=...).
+  // Récupère le token, stocke en localStorage, clean l'URL via history.replaceState.
+  // Doit s'exécuter AVANT toute fetch d'auth (sync, pas dans useEffect, pour ne pas race).
+  if (typeof window !== 'undefined' && !window.__ocreSessionHandoffDone) {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const handoffToken = params.get('session');
+      if (handoffToken && /^[a-f0-9]{32,128}$/i.test(handoffToken)) {
+        localStorage.setItem('ocre_token', handoffToken);
+        params.delete('session');
+        const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+    } catch (_) {}
+    window.__ocreSessionHandoffDone = true;
+  }
   const [apiLoading, setApiLoading] = useState(true);
   // V18.30 — PWAInstallOverlay iOS + beforeinstallprompt Android conservés pour un bouton
   // futur (roadmap v19+). V18.35 — bandeau auto sous header retiré sur demande Philippe.
