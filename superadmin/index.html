@@ -118,6 +118,53 @@
   .cmdk-row .lbl { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
   .cmdk-row .sub { font-size: 11px; color: var(--color-text-muted); }
   .cmdk-empty { padding: 30px; text-align: center; color: var(--color-text-muted); font-size: 13px; font-style: italic; }
+  /* M/2026/05/08/35 — Refonte présentation Console super-admin (hiérarchie + sections + élégance Ocre). */
+  body { padding: 32px 24px; }
+  .sa-shell { max-width: 1280px; margin: 0 auto; }
+  .sa-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .sa-titles h1 { font-family: var(--font-serif); font-style: italic; font-weight: 500; font-size: 32px; color: var(--color-text-primary); margin: 0 0 4px; line-height: 1.2; }
+  .sa-titles .sa-subtitle { font-family: var(--font-sans); font-size: 14px; color: var(--color-text-muted); font-style: italic; line-height: 1.4; }
+  .sa-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sa-mode-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sa-mode-badge.read { background: #EDE6DC; color: #6B5E4A; }
+  .sa-mode-badge.write { background: #FEE2E2; color: #C73E3E; }
+  .sa-link { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; font-size: 12px; color: var(--color-accent); text-decoration: none; cursor: pointer; transition: background 150ms, border-color 150ms; }
+  .sa-link:hover { background: var(--color-bg-tint-warm); border-color: var(--color-border-medium); }
+  .sa-link kbd { font-family: ui-monospace, monospace; font-size: 10px; padding: 1px 5px; background: #F5EDDF; border: 1px solid #D9C9A8; border-radius: 3px; color: #6B4429; }
+  /* Tabs nav unifiée. */
+  .sa-tabs { display: inline-flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--color-border-subtle); border-radius: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .sa-tab { padding: 9px 16px; border: none; background: transparent; color: var(--color-text-muted); font-family: inherit; font-size: 13.5px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: background 150ms ease, color 150ms ease; }
+  .sa-tab:hover { background: var(--color-bg-tint-warm); color: var(--color-text-primary); }
+  .sa-tab.active { background: var(--color-accent); color: #fff; font-weight: 600; }
+  /* Sections groupées Vue d'ensemble. */
+  .sa-section { margin-bottom: 32px; }
+  .sa-section-title { font-family: var(--font-sans); font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 0; border-top: 1px solid var(--color-border-subtle); margin-bottom: 16px; }
+  .sa-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+  .sa-card { background: #fff; border: 1px solid var(--color-border-subtle); border-top: 3px solid var(--color-text-muted); border-radius: 10px; padding: 20px 22px; transition: box-shadow 150ms; }
+  .sa-card:hover { box-shadow: 0 2px 12px rgba(60,40,20,0.06); }
+  .sa-card.accent-ocre { border-top-color: var(--color-accent); }
+  .sa-card.accent-success { border-top-color: var(--color-success); }
+  .sa-card.accent-warning { border-top-color: var(--color-warning); }
+  .sa-card.accent-muted { border-top-color: var(--color-border-medium); }
+  .sa-card-value { font-family: var(--font-serif); font-size: 36px; font-weight: 500; color: var(--color-text-primary); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .sa-card-label { font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
+  .sa-card-desc { font-size: 12px; color: var(--color-text-muted); font-style: italic; margin-top: 4px; line-height: 1.4; }
+  /* Zone technique Reset (intégrée discrètement). */
+  .sa-tech-zone { margin-top: 40px; padding: 24px; background: var(--color-bg-tint-soft); border: 1px solid var(--color-border-subtle); border-radius: 10px; }
+  .sa-tech-zone .sa-tech-label { font-family: var(--font-sans); font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .sa-tech-zone .sa-tech-warn { font-size: 13px; color: var(--color-text-brown); font-style: italic; margin-bottom: 14px; line-height: 1.5; }
+  .sa-tech-zone .reset-total-btn { padding: 11px 20px; background: #B91C1C; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: background 150ms; }
+  .sa-tech-zone .reset-total-btn:hover { background: #8B0000; }
+  /* Mobile responsive. */
+  @media (max-width: 760px) {
+    body { padding: 16px 12px; }
+    .sa-titles h1 { font-size: 24px; }
+    .sa-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .sa-card { padding: 14px 16px; }
+    .sa-card-value { font-size: 28px; }
+    .sa-tabs { width: 100%; }
+    .sa-tab { flex: 1 1 auto; padding: 8px 10px; font-size: 12px; }
+  }
 </style>
 </head>
 <body>
@@ -182,32 +229,57 @@ function logout() {
 }
 let currentTab = 'overview';
 let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '', q: ''};
+
+// M/2026/05/08/35 — Sous-titres dynamiques contextuels par onglet.
+const TAB_SUBTITLES = {
+  overview: 'État global du système Ocre Immo',
+  workspaces: 'Espaces actifs · gestion des comptes agents',
+  clients: 'Clients inscrits · vue cross-workspaces',
+  pending: 'Agents en attente d\'activation · action requise',
+  audit: 'Historique des actions super-admin · 24h',
+};
+const TAB_LABELS = {
+  overview: 'Vue d\'ensemble',
+  workspaces: 'Workspaces',
+  clients: 'Clients',
+  pending: 'Inscriptions en attente',
+  audit: 'Audit récent',
+};
+
 async function renderConsole() {
   const root = document.getElementById('root');
-  // M/2026/05/08/33 — toggle mode écriture (par défaut OFF, requis pour actions destructives)
   const writeOn = localStorage.getItem('ocre_sa_write_mode') === '1';
-  root.innerHTML = '<div class="banner"><span id="banner-mode">Vue super-administrateur · ' + (writeOn ? '<b style="color:#C73E3E">Lecture/Écriture</b>' : 'Lecture seule') + '</span> '
-    + '<button class="write-toggle ' + (writeOn ? 'on' : '') + '" id="write-toggle" onclick="toggleWriteMode()" title="Active les actions destructives (suppression, reset)">' + (writeOn ? 'Écriture activée' : 'Activer écriture') + '</button>'
-    + '<button class="logout" onclick="logout()">Se déconnecter</button>'
-    + '<button class="search-btn" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button>'
-    + '<a class="search-btn" href="/superadmin/atelier-live.html" style="text-decoration:none;color:var(--color-accent)">⚡ Atelier (live) <kbd>MVP</kbd></a>'
+  const tabsHtml = ['overview','workspaces','clients','pending','audit'].map(t =>
+    `<button class="sa-tab${t === currentTab ? ' active' : ''}" data-t="${t}">${TAB_LABELS[t]}</button>`
+  ).join('');
+  root.innerHTML =
+    '<div class="sa-shell">'
+    + '<div class="sa-header">'
+      + '<div class="sa-titles">'
+        + '<h1>Console super-admin</h1>'
+        + '<div class="sa-subtitle"><span id="sa-tab-label">' + TAB_LABELS[currentTab] + '</span> · <span id="sa-subtitle">' + TAB_SUBTITLES[currentTab] + '</span></div>'
+      + '</div>'
+      + '<div class="sa-actions">'
+        + '<span class="sa-mode-badge ' + (writeOn ? 'write' : 'read') + '" id="mode-badge">' + (writeOn ? '🔓 Lecture/Écriture' : '🔒 Lecture seule') + '</span>'
+        + '<button class="write-toggle ' + (writeOn ? 'on' : '') + '" onclick="toggleWriteMode()" title="Active les actions destructives">' + (writeOn ? 'Écriture activée' : 'Activer écriture') + '</button>'
+        + '<button class="sa-link" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button>'
+        + '<a class="sa-link" href="/superadmin/atelier-live.html">⚡ Atelier (live) <kbd>MVP</kbd></a>'
+        + '<button class="sa-link" onclick="logout()" style="color:var(--color-text-muted)">Se déconnecter</button>'
+      + '</div>'
     + '</div>'
-                 + '<h1>Console super-admin</h1>'
-                 + '<div class="tabs">'
-                 + '<div class="tab active" data-t="overview">Vue d\'ensemble</div>'
-                 + '<div class="tab" data-t="workspaces">Workspaces</div>'
-                 + '<div class="tab" data-t="clients">Clients</div>'
-                 + '<div class="tab" data-t="pending">Inscriptions en attente</div>'
-                 + '<div class="tab" data-t="audit">Audit récent</div>'
-                 + '</div>'
-                 + '<div id="content"></div>';
-  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', e => {
-    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    + '<div class="sa-tabs">' + tabsHtml + '</div>'
+    + '<div id="content"></div>'
+    + '</div>';
+  document.querySelectorAll('.sa-tab').forEach(t => t.addEventListener('click', e => {
+    document.querySelectorAll('.sa-tab').forEach(x => x.classList.remove('active'));
     e.target.classList.add('active');
     currentTab = e.target.dataset.t;
+    // Mise à jour sous-titre dynamique
+    const lbl = document.getElementById('sa-tab-label'); if (lbl) lbl.textContent = TAB_LABELS[currentTab];
+    const sub = document.getElementById('sa-subtitle'); if (sub) sub.textContent = TAB_SUBTITLES[currentTab];
     loadTab(currentTab);
   }));
-  loadTab('overview');
+  loadTab(currentTab);
 }
 async function loadTab(t) {
   const c = document.getElementById('content');
@@ -215,13 +287,36 @@ async function loadTab(t) {
   if (t === 'overview') {
     const r = await api('/api/superadmin_v20.php?action=overview');
     if (!r.ok) { c.textContent = r.error; return; }
-    const s = r.stats;
-    c.innerHTML = '<div class="stats">' + Object.entries(s).map(([k, v]) =>
-      `<div class="stat"><div class="stat-v">${v}</div><div class="stat-l">${k.replace(/_/g, ' ')}</div></div>`
-    ).join('') + '</div>'
-    + '<div class="reset-total-zone"><h3>🚨 Reset TOTAL provisoire (mode test)</h3>'
-    + '<p>⚠️ Supprime <b>TOUTES</b> les inscriptions en attente, <b>TOUS</b> les workspaces (DROP DATABASE), et toute l\'audit récente. Action <b>irréversible</b>. Désactiver cette zone après lancement officiel.</p>'
-    + '<button class="reset-total-btn" onclick="resetTotal()">🔥 Reset TOTAL provisoire</button></div>';
+    const s = r.stats || {};
+    // M/2026/05/08/35 — Cards regroupées en sections thématiques + zone technique discrète.
+    const card = (key, label, desc, accent) => {
+      const v = s[key] !== undefined ? s[key] : 0;
+      return `<div class="sa-card accent-${accent}"><div class="sa-card-value">${v}</div><div class="sa-card-label">${label}</div>${desc ? `<div class="sa-card-desc">${desc}</div>` : ''}</div>`;
+    };
+    const pendingAccent = (s.pending_ruptures || 0) > 0 ? 'warning' : 'muted';
+    c.innerHTML =
+      '<section class="sa-section">'
+        + '<div class="sa-section-title">Espaces & Utilisateurs</div>'
+        + '<div class="sa-cards">'
+          + card('workspaces', 'Workspaces', 'total créés', 'ocre')
+          + card('wsp_active', 'WSP actifs', 'profils agents', 'ocre')
+          + card('wsc_active', 'WSC actifs', 'profils clients', 'success')
+          + card('users', 'Users', 'comptes inscrits', 'muted')
+        + '</div>'
+      + '</section>'
+      + '<section class="sa-section">'
+        + '<div class="sa-section-title">Activité temps réel</div>'
+        + '<div class="sa-cards">'
+          + card('sessions_active', 'Sessions actives', 'connexions courantes', 'success')
+          + card('pending_ruptures', 'Pending ruptures', 'demandes à exécuter', pendingAccent)
+          + card('super_admin_actions_24h', 'Actions super-admin', 'dernières 24h', 'ocre')
+        + '</div>'
+      + '</section>'
+      + '<section class="sa-tech-zone">'
+        + '<div class="sa-tech-label">Zone technique (mode test)</div>'
+        + '<div class="sa-tech-warn">⚠️ Outils destructifs réservés à la phase de test. Désactiver après lancement officiel.</div>'
+        + '<button class="reset-total-btn" onclick="resetTotal()">🔥 Reset TOTAL provisoire</button>'
+      + '</section>';
   } else if (t === 'workspaces') {
     const r = await api('/api/superadmin_v20.php?action=workspaces');
     selection.workspaces.clear();
