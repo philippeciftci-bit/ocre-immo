@@ -1,7 +1,7 @@
 <?php
 // V20 M/2026/04/27/8 — endpoint dev codes : récupère le dernier code email généré.
 // Auth simple : header X-Dev-Key === valeur stockée dans /root/.secrets/ocre_dev_key.
-// Workaround temporaire pendant que DNS Resend ocre.immo se propage.
+// Workaround historique. OVH SMTP exclusif depuis M/2026/05/08/31.
 require_once __DIR__ . '/lib/router.php';
 header('Content-Type: application/json; charset=utf-8');
 

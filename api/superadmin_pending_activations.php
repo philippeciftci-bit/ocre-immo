@@ -3,7 +3,7 @@
 // Architecture résiliente — Philippe ne laisse jamais un agent bloqué silencieusement.
 //
 // GET ?action=list                  → liste users status=pending_activation avec age + attempts
-// POST {action:resend, user_id}      → regen token + send_mail (Resend prio)
+// POST {action:resend, user_id}      → regen token + send_mail (OVH SMTP)
 // POST {action:activate_manual, user_id, telephone?} → genere mdp temporaire + status=active
 // POST {action:add_note, user_id, note} → append a superadmin_notes
 // POST {action:delete, user_id}      → DELETE user (cas tests/doublons)

@@ -9,7 +9,7 @@ const OCRE_BTN_HOVER = '#6B4429';
 
 function ocre_send_mail(string $to, string $subject, string $html_body, ?string $pdf_attachment = null): bool {
     // M/2026/04/27/15 — Priorité mailer-shared self-hosted (Postfix DKIM).
-    // _email.php (Resend) DÉSACTIVÉ car require db.php qui crash si DB tenant absente.
+    // M/2026/05/08/31 — pour les nouveaux flows : preferer api/lib/email_sender.php (OVH SMTP exclusif).
     if ($pdf_attachment === null) {
         $sharedLib = '/opt/atelier/lib/mailer-shared.php';
         if (file_exists($sharedLib)) {

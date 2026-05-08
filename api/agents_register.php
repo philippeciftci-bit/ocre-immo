@@ -301,11 +301,11 @@ try {
                 'status' => (string)($userInfo['last_activation_status'] ?? ''),
             ]);
 
-            // Re-envoi avec rotation provider (send_mail Resend prioritaire, fallback sendmail).
+            // Re-envoi via wrapper send_mail (OVH SMTP exclusif, M/2026/05/08/31).
             $emailSent = _send_activation_email($email, $prenom, $activationToken);
             $emailError = null;
             // Tracer provider/statut utilise pour stats super-admin.
-            $providerUsed = $emailSent ? 'resend_or_sendmail' : null;
+            $providerUsed = $emailSent ? 'ovh_smtp' : null;
             $statusUsed = $emailSent ? 'SENT_OK' : 'SEND_FAILED';
             @($meta->prepare("UPDATE users SET last_activation_provider = ?, last_activation_status = ? WHERE id = ?")
                 ->execute([$providerUsed, $statusUsed, $userId]));
@@ -394,7 +394,7 @@ if (!$preDelivery['mx'] || $preDelivery['disposable'] || $preDelivery['typo_sugg
 
 $emailSent = _send_activation_email($email, $prenom, $activationToken);
 $emailError = null;
-$providerUsed = $emailSent ? 'resend_or_sendmail' : null;
+$providerUsed = $emailSent ? 'ovh_smtp' : null;
 $statusUsed = $emailSent ? 'SENT_OK' : 'SEND_FAILED';
 @($meta->prepare("UPDATE users SET activation_attempts_count = 1, last_activation_attempt_at = NOW(), last_activation_provider = ?, last_activation_status = ? WHERE id = ?")
     ->execute([$providerUsed, $statusUsed, $userId]));
