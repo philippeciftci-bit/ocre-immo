@@ -51,20 +51,6 @@
   .help { font-size: 11px; color: var(--color-text-muted); font-style: italic; margin-top: 4px; }
   .help.ok { color: #2D7A3E; font-style: normal; font-weight: 600; }
   .help.err { color: #C0392B; font-style: normal; font-weight: 600; }
-  /* M/2026/05/08/59 — pastilles validation password (4 règles, responsive 4col -> 2x2 < 480px). */
-  .pwd-rules { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 10px;
-    padding-top: 10px; border-top: 1px solid #EFE5D5; }
-  @media (max-width: 480px) {
-    .pwd-rules { grid-template-columns: 1fr 1fr; gap: 8px; }
-  }
-  .pwd-pastille { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
-    border-radius: 999px; font-family: var(--font-sans); font-size: 11px; font-weight: 600;
-    background: #F5F0E8; color: #A8957A;
-    transition: background-color 200ms ease, color 200ms ease; white-space: nowrap; }
-  .pwd-pastille .dot { width: 8px; height: 8px; border-radius: 50%; background: #C8B79A; flex-shrink: 0;
-    transition: background-color 200ms ease; }
-  .pwd-pastille.on { background: #D1FAE5; color: #059669; }
-  .pwd-pastille.on .dot { background: #10B981; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .btn { width: 100%; padding: 13px 20px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
     cursor: pointer; font-family: var(--font-sans); transition: opacity 150ms, transform 150ms; }
@@ -312,25 +298,42 @@ function Wizard() {
       </div>
       <div className="field"><label>Société (optionnel)</label><input type="text" value={data.agence} onChange={e=>set('agence',e.target.value)} autoComplete="organization" placeholder="Nom de votre agence"/></div>
       <div className="field"><label>Email professionnel<span className="req">*</span></label><input type="email" value={data.email} onChange={e=>{set('email',e.target.value); setEmailStatus({state:'idle', msg:''});}} onBlur={checkEmail} autoComplete="email"/>{emailStatus.state === 'checking' && <div className="help">Vérification…</div>}{emailStatus.state === 'ok' && <div className="help ok">✓ Disponible</div>}{emailStatus.state === 'taken' && <div className="help err">⚠ {emailStatus.msg}</div>}</div>
-      <div className="field"><label style={{textTransform:'uppercase',letterSpacing:'0.5px'}}>Mot de passe<span className="req">*</span></label>
+      {/* M/2026/05/08/60 — restauration STYLE HISTORIQUE pastilles depuis commit f2a10c0 (M26 pre-M50) :
+          barre progression couleur + 4 Items inline-flex avec cercle rempli ✓ + label Faible/Moyen/Fort/Excellent. */}
+      <div className="field"><label>Mot de passe<span className="req">*</span></label>
         <div style={{position:'relative'}}>
           <input type={showPwd ? 'text' : 'password'} value={data.password} onChange={e=>set('password',e.target.value)} autoComplete="new-password" placeholder="Min 10 chars, 1 maj, 1 chiffre" style={{paddingRight:60}}/>
           <button type="button" onClick={()=>setShowPwd(s=>!s)} style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'transparent',border:0,color:'var(--color-text-muted)',fontSize:12,cursor:'pointer',padding:'4px 8px'}}>{showPwd ? 'Masquer' : 'Voir'}</button>
         </div>
-        <div className="pwd-rules">
-          {[
-            {k:'len', label:'10+ caractères'},
-            {k:'upper', label:'Majuscule'},
-            {k:'digit', label:'Chiffre'},
-            {k:'special', label:'Caractère spécial'},
-          ].map(r => (
-            <span key={r.k} className={"pwd-pastille " + (pwdRules[r.k] ? 'on' : 'off')}>
-              <span className="dot"/>{r.label}
+        {(() => {
+          const c = {len: pwdRules.len, maj: pwdRules.upper, num: pwdRules.digit, spe: pwdRules.special};
+          const score = (c.len?1:0) + (c.maj?1:0) + (c.num?1:0) + (c.spe?1:0);
+          const barColor = score <= 1 ? '#C0392B' : (score === 2 ? '#D68910' : '#2D7A3E');
+          const barLabel = score <= 1 ? 'Faible' : (score === 2 ? 'Moyen' : (score === 3 ? 'Fort' : 'Excellent'));
+          const barWidth = data.password.length === 0 ? 0 : Math.max(8, score * 25);
+          const Item = ({ok, label}) => (
+            <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,color:ok?'#2D7A3E':'#8B7F6E',fontWeight:ok?600:400}}>
+              <span style={{display:'inline-block',width:14,height:14,borderRadius:'50%',background:ok?'#2D7A3E':'#E8DDC9',color:'#fff',fontSize:10,lineHeight:'14px',textAlign:'center'}}>{ok?'✓':''}</span>
+              {label}
             </span>
-          ))}
-        </div>
+          );
+          return (
+            <div style={{marginTop:8}}>
+              <div style={{height:4,background:'#EDE6DC',borderRadius:2,overflow:'hidden'}}>
+                <div style={{height:'100%',width:barWidth+'%',background:barColor,transition:'width 200ms,background 200ms'}}/>
+              </div>
+              <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:6}}>
+                <Item ok={c.len} label="10+ caractères"/>
+                <Item ok={c.maj} label="Majuscule"/>
+                <Item ok={c.num} label="Chiffre"/>
+                <Item ok={c.spe} label="Caractère spécial"/>
+              </div>
+              {data.password.length > 0 && <div style={{fontSize:10.5,color:barColor,marginTop:4,fontWeight:600}}>{barLabel}</div>}
+            </div>
+          );
+        })()}
       </div>
-      <div className="field"><label style={{textTransform:'uppercase',letterSpacing:'0.5px'}}>Confirmation<span className="req">*</span></label>
+      <div className="field"><label>Confirmation<span className="req">*</span></label>
         <input type="password" value={data.password2} onChange={e=>set('password2',e.target.value)} onBlur={()=>setConfirmTouched(true)} autoComplete="new-password"/>
         {confirmTouched && data.password2.length > 0 && !pwdMatch && <div className="help err">⚠ Les mots de passe ne correspondent pas.</div>}
       </div>
