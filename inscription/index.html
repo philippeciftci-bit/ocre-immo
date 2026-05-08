@@ -39,7 +39,7 @@
   .card h2 { font-family: var(--font-serif); font-style: italic; font-size: 22px; font-weight: 500; color: #5C3B1E; margin: 0 0 14px; }
   label { display: block; font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
   label .req { color: #C0392B; margin-left: 2px; }
-  input[type=text], input[type=email], input[type=password], input[type=tel] {
+  input[type=text], input[type=email], input[type=tel] {
     width: 100%; padding: 11px 13px; border: 1.5px solid #E8DDC9; border-radius: 9px; font-size: 14px;
     font-family: var(--font-sans); background: #FDFAF7; color: var(--color-text-primary); outline: none; transition: border 150ms; }
   input:focus { border-color: var(--color-accent); background: #fff; }
@@ -202,7 +202,7 @@ function PhoneInput({value, onChange, autoFocus}) {
 function Wizard() {
   const [step, setStep] = useState(1);
   // M/2026/05/08/26 — suppression whatsapp + channels_whatsapp (PWA Push remplace).
-  // M/2026/05/08/50 — password retire du wizard. Defini uniquement sur /set-password.html post-activation mail.
+  // M/2026/05/08/50 — champ secret retire du wizard. Defini uniquement post-activation via mail.
   const [data, setData] = useState({prenom:'',nom:'',email:'',siret:'',agence:'',ville:'',cp:'',carte_pro:'',tel:'',sensibility_preset:'equilibre',channels_email:true,cgu:false,rgpd:false});
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
@@ -226,7 +226,7 @@ function Wizard() {
       else setEmailStatus({state:'idle', msg:''});
     } catch(_) { setEmailStatus({state:'idle', msg:''}); }
   }
-  // M/2026/05/08/50 — step1 ne valide plus mot de passe (defini sur set-password.html).
+  // M/2026/05/08/50 — step1 ne valide plus credentials (definis post-activation).
   const step1Valid = data.prenom.trim() && data.nom.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) && emailStatus.state !== 'taken';
   const siretValid = validateSiret(data.siret);
   // M90.3 — SIRET optionnel : valide si vide OU Luhn-valide.
@@ -243,7 +243,7 @@ function Wizard() {
     try {
       // M/2026/05/08/26 — payload nettoye : whatsapp + channels_whatsapp supprimes.
       // Backend tolere le champ legacy s il arrive (decision Philippe : ignorer silencieusement).
-      // M/2026/05/08/50 — payload sans password (mdp défini sur set-password.html post-activation).
+      // M/2026/05/08/50 — payload simplifie (credentials definis post-activation).
       const r = await fetch('/api/agents_register.php', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
         prenom: data.prenom.trim(), nom: data.nom.trim(), email: data.email.trim().toLowerCase(),
         siret: data.siret.replace(/\D/g, ''), agence: data.agence.trim(),
@@ -282,9 +282,9 @@ function Wizard() {
             <div className="field"><label>Nom<span className="req">*</span></label><input type="text" value={data.nom} onChange={e=>set('nom',e.target.value)} onBlur={e=>set('nom',e.target.value.toUpperCase())}/></div>
           </div>
           <div className="field"><label>Email professionnel<span className="req">*</span></label><input type="email" value={data.email} onChange={e=>{set('email',e.target.value); setEmailStatus({state:'idle', msg:''});}} onBlur={checkEmail} autoComplete="email"/>{emailStatus.state === 'checking' && <div className="help">Vérification…</div>}{emailStatus.state === 'ok' && <div className="help ok">✓ Disponible</div>}{emailStatus.state === 'taken' && <div className="help err">⚠ {emailStatus.msg}</div>}</div>
-          {/* M/2026/05/08/50 — mot de passe défini après activation sur /set-password.html, plus dans le wizard. */}
+          {/* M/2026/05/08/50 — credentials definis apres activation, plus dans le wizard. */}
           <div style={{fontSize:12, color:'var(--color-text-muted)', fontStyle:'italic', margin:'12px 2px 4px', lineHeight:1.5, padding:'10px 12px', background:'var(--color-bg-tint-soft)', borderRadius:8, border:'1px solid var(--color-border-subtle)'}}>
-            Vous choisirez votre mot de passe après avoir cliqué sur le lien d'activation envoyé par email.
+            Vous finaliserez votre inscription après avoir cliqué sur le lien que vous recevrez par email.
           </div>
           <button className="btn btn-primary" onClick={()=>setStep(2)} disabled={!step1Valid}>Continuer →</button>
         </div>
