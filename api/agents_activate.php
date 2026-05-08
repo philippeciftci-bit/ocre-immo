@@ -73,6 +73,26 @@ if (!$prov['ok'] && !$tolerableExisting) {
 // ait choisi (ou re-confirme) son mot de passe via la page /set-password.html.
 // Token reste valide jusqu'a ce moment (TTL 48h initial).
 
+// M/2026/05/08/52 — FIX dashboard spinner infini : INSERT meta workspaces + workspace_members
+// (auth.php?action=me retournait workspaces:[] car _provision.php ne faisait que CREATE DATABASE
+// sans ligne meta). Idempotent via INSERT IGNORE.
+try {
+    $displayName = trim((string)($user['display_name'] ?? '')) ?: ('Workspace ' . $slug);
+    $pdoMeta->prepare(
+        "INSERT IGNORE INTO workspaces (slug, type, display_name, country_code, created_at)
+         VALUES (?, 'wsp', ?, 'FR', NOW())"
+    )->execute([$slug, $displayName]);
+    $wsId = (int)$pdoMeta->query("SELECT id FROM workspaces WHERE slug = " . $pdoMeta->quote($slug) . " LIMIT 1")->fetchColumn();
+    if ($wsId > 0) {
+        $pdoMeta->prepare(
+            "INSERT IGNORE INTO workspace_members (workspace_id, user_id, role, joined_at)
+             VALUES (?, ?, 'owner', NOW())"
+        )->execute([$wsId, (int)$user['id']]);
+    }
+} catch (Throwable $e) {
+    @error_log('[agents_activate] workspace_meta_insert_failed user_id=' . $user['id'] . ' slug=' . $slug . ' err=' . $e->getMessage());
+}
+
 // Log activation locale dans le workspace nouvellement provisionne.
 try {
     $pdoWsp = new PDO(

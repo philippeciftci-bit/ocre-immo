@@ -76,6 +76,21 @@ try {
     // M/2026/05/08/50 — set activated_at en plus pour traçabilité.
     $upd = $pdo->prepare("UPDATE users SET password_hash = ?, status = 'active', activation_token = NULL, activation_token_expires_at = NULL, last_login = NOW(), activated_at = NOW() WHERE id = ?");
     $upd->execute([$hash, (int)$user['id']]);
+    // M/2026/05/08/52 — filet : INSERT meta workspaces + workspace_members idempotent
+    // au cas où agents_activate.php n aurait pas encore créé la ligne meta. Évite spinner infini.
+    $userSlug = (string)$user['slug'];
+    if ($userSlug !== '') {
+        try {
+            $dispName = 'Workspace ' . $userSlug;
+            $pdo->prepare("INSERT IGNORE INTO workspaces (slug, type, display_name, country_code, created_at) VALUES (?, 'wsp', ?, 'FR', NOW())")
+                ->execute([$userSlug, $dispName]);
+            $wsId = (int)$pdo->query("SELECT id FROM workspaces WHERE slug = " . $pdo->quote($userSlug) . " LIMIT 1")->fetchColumn();
+            if ($wsId > 0) {
+                $pdo->prepare("INSERT IGNORE INTO workspace_members (workspace_id, user_id, role, joined_at) VALUES (?, ?, 'owner', NOW())")
+                    ->execute([$wsId, (int)$user['id']]);
+            }
+        } catch (Throwable $_) { /* silencieux, agents_activate l aurait déjà fait normalement */ }
+    }
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'SERVER_ERROR', 'detail' => 'update user']);
