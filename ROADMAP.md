@@ -24,10 +24,7 @@
 
 - [x] ~~**DESIGN-TOKENS.2.8.3** — box-shadow tokenization~~ — **livrée M/2026/05/08/22** (4 nouveaux tokens warm-ocre/brown : --shadow-warm-sm/md/card/card-soft, 2 substitutions PHASE 1 dans superadmin/reset-password + inscription/index. Périmètre strict : seuls les fichiers chargeant tokens.css ont été tokenizés ; 404/maintenance/viewer.css/activation/inscription-confirmee préservés inline car standalone)
 
-- [ ] **DESIGN-TOKENS.2.8.4** — font-family tokenization (Cormorant + DM Sans)
-  - priorité: medium
-  - prereqs: 2.8.3 livrée
-  - effort: 1h (volume faible)
+- [x] ~~**DESIGN-TOKENS.2.8.4** — font-family tokenization (Cormorant + DM Sans)~~ — **livrée M/2026/05/08/24** (token --font-script ajouté pour Caveat ; ~127 substitutions PHASE 1 dans 6 fichiers token-loaded → var(--font-serif)/sans/script. Snowflakes laissés inline (DM Sans+Helvetica Neue, fontFamily JSX avec quotes singles externes, Cormorant Garamond+Georgia,serif déjà couvert par --font-serif). SW v426 → v427.)
 
 - [ ] **DESIGN-TOKENS.2.4** — Vitrine WordPress ocre.immo (reportée)
   - priorité: low

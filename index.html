@@ -260,7 +260,7 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;overflow-x:hidden;overscroll-behavior:none}
 @keyframes ocreSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-body{font-family:'DM Sans',sans-serif;background:var(--color-bg-page);color:var(--color-text-primary);overflow:hidden;height:100vh;height:100dvh;font-size: var(--font-size-13)}
+body{font-family:var(--font-sans);background:var(--color-bg-page);color:var(--color-text-primary);overflow:hidden;height:100vh;height:100dvh;font-size: var(--font-size-13)}
 #root{height:100dvh;min-height:100dvh}
 ::-webkit-scrollbar{display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -369,7 +369,7 @@ input, select, textarea, button { font-size: var(--font-size-13) }
 .bsheet{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:560px;height:75vh;display:flex;flex-direction:column;animation:slideUp .25s ease-out;padding-bottom:env(safe-area-inset-bottom,0)}
 .bsheet-handle{width:40px;height:4px;background:#E2D8CC;border-radius:2px;margin: var(--space-2) auto 0;flex-shrink:0}
 .bsheet-head{padding: var(--space-10px) 14px 12px;display:flex;align-items:center;gap: var(--space-10px);flex-shrink:0;border-bottom:1px solid var(--color-border-cream)}
-.bsheet-title{flex:1;font-family:'Cormorant Garamond',serif;font-size: var(--font-size-lg);font-weight:700;color:var(--color-accent);text-align:center}
+.bsheet-title{flex:1;font-family:var(--font-serif);font-size: var(--font-size-lg);font-weight:700;color:var(--color-accent);text-align:center}
 .bsheet-close{width:32px;height:32px;border-radius:16px;border:none;background:var(--color-bg-tint-cream);color:var(--color-text-muted);font-size: var(--font-size-base);cursor:pointer;font-family:inherit;padding:0;display:flex;align-items:center;justify-content:center}
 .bsheet-search{padding: var(--space-10px) 14px;border-bottom:1px solid var(--color-bg-tint-cream);flex-shrink:0;background:var(--color-bg-input)}
 .bsheet-search input{width:100%;padding: var(--space-10px) 14px;border:1.5px solid #EDE1CC;border-radius:10px;font-size: var(--font-size-sm);outline:none;font-family:inherit;background:#fff}
@@ -1026,7 +1026,7 @@ function CadastreButton({pays, getMap}) {
   const baseStyle = {
     display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--space-2)',
     padding:'8px 14px', borderRadius:8, fontSize:'var(--font-size-13)',
-    fontFamily:"'DM Sans', -apple-system, sans-serif",
+    fontFamily:"var(--font-sans)",
     border:'1px solid var(--color-border-light)',
   };
   const Icon = (
@@ -1095,7 +1095,7 @@ function CadastreButton({pays, getMap}) {
         const trimmed = (html || '').trim();
         const safeHtml = trimmed && trimmed.length > 30 ? trimmed : '<i>Aucune parcelle à cet emplacement.</i>';
         L.popup({maxWidth: 320}).setLatLng(e.latlng).setContent(
-          '<div style="font-family:DM Sans,sans-serif;font-size: var(--font-size-xs);max-height:240px;overflow:auto">' + safeHtml +
+          '<div style="font-family:var(--font-sans);font-size: var(--font-size-xs);max-height:240px;overflow:auto">' + safeHtml +
           '<div style="margin-top:6px;text-align:right"><a href="' + provider.fallbackUrl + '" target="_blank" rel="noopener" style="color:var(--color-accent)">Détails officiels →</a></div></div>'
         ).openOn(map);
       } catch (err) {
@@ -1144,7 +1144,7 @@ function PhotosExifButton({dossierId, bien, onApply, showToast}) {
   const baseStyle = {
     display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--space-2)',
     padding:'8px 14px', borderRadius:8, fontSize:'var(--font-size-13)',
-    fontFamily:"'DM Sans', -apple-system, sans-serif",
+    fontFamily:"var(--font-sans)",
     border:'1px solid var(--color-border-light)',
   };
   // M/2026/04/30/21 — scroll vers Bloc Photos + tentative ouverture file picker iOS.
@@ -1458,7 +1458,7 @@ function DraftSaveIndicator() {
   }
   return (
     <div aria-live="polite"
-      style={{fontSize:'var(--font-size-11)', color, opacity:0.7, fontFamily:"'DM Sans', -apple-system, sans-serif",
+      style={{fontSize:'var(--font-size-11)', color, opacity:0.7, fontFamily:"var(--font-sans)",
               fontStyle: italic ? 'italic' : 'normal', padding:'4px 14px', textAlign:'right',
               display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'var(--space-6px)'}}>
       {status === 'saving' && (
@@ -3210,7 +3210,7 @@ function ConversionDisplay({amount, devise, pays}) {
   }).filter(Boolean);
   if (!lines.length) return null;
   return (
-    <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', opacity:.85, fontFamily:"'DM Sans', -apple-system, sans-serif", marginTop:'var(--space-2px)', animation:'fadeIn 200ms ease-out'}}>
+    <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', opacity:.85, fontFamily:"var(--font-sans)", marginTop:'var(--space-2px)', animation:'fadeIn 200ms ease-out'}}>
       {lines.join(' · ')}
       {date && <div style={{fontSize:'var(--font-size-9)', color:'#A07842', marginTop:'var(--space-1px)'}}>Taux du {date}</div>}
     </div>
@@ -3520,7 +3520,7 @@ function QuotaExceededModal({quota, onClose}) {
         style={{background:'#fff', borderRadius:14, padding:'var(--space-18px)', maxWidth:420, width:'100%', boxShadow:'0 12px 40px rgba(0,0,0,.25)', position:'relative'}}>
         <button type="button" onClick={onClose} aria-label="Fermer"
           style={{position:'absolute', top:8, right:10, width:30, height:30, borderRadius:15, border:'none', background:'#F4ECE0', color:'var(--color-text-taupe)', fontSize:'var(--font-size-lg)', cursor:'pointer', fontFamily:'inherit'}}>×</button>
-        <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-2)'}}>Limite Google Maps atteinte</div>
+        <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-2)'}}>Limite Google Maps atteinte</div>
         <div style={{fontSize:'var(--font-size-13)', color:'var(--color-text-taupe)', marginBottom:'var(--space-3)', lineHeight:1.4}}>
           Tu as utilise tes {quota ? quota.limit : 10} consultations Google Maps aujourd'hui.
           Tu peux continuer avec OpenStreetMap (gratuit illimite) ou demander une extension de 10 consultations supplementaires au super-administrateur.
@@ -3820,7 +3820,7 @@ function ContactChooser({entries, scheme, title, onClose}) {
   return (
     <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.45)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:460, borderRadius:'16px 16px 0 0', padding:'var(--space-14px)', paddingBottom:'var(--space-5)'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)', textAlign:'center'}}>{title}</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)', textAlign:'center'}}>{title}</div>
         {entries.map((e, i) => (
           <a key={i} href={scheme + e.valeur} onClick={() => setTimeout(onClose, 200)}
             style={{display:'flex', alignItems:'center', gap:'var(--space-2)', padding:'12px', borderRadius:10, border:'1px solid var(--color-border-cream)', marginBottom:'var(--space-6px)', textDecoration:'none', color:'var(--color-text-primary)', background:'var(--color-bg-input)'}}>
@@ -4859,7 +4859,7 @@ function ShareMenu({dossierId, dossierName, onClose, showToast}) {
   return (
     <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.45)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:460, borderRadius:'16px 16px 0 0', padding:'var(--space-5)', paddingBottom:'var(--space-30px)'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-3)'}}>Partager le dossier</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-3)'}}>Partager le dossier</div>
         <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)', marginBottom:'var(--space-14px)'}}>Lien public en <b>lecture seule</b>, expire après {expiresDays} jour{expiresDays > 1 ? 's' : ''}, révocable à tout moment.</div>
         {!link ? (
           <>
@@ -5360,7 +5360,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
   const sectionTitle = (n, label) => (
     <div style={{marginTop: n === 1 ? 0 : 28, marginBottom: 16}}>
       <div style={{
-        fontFamily:"'Cormorant Garamond', Georgia, serif",
+        fontFamily:"var(--font-serif)",
         fontSize:'var(--font-size-22)', fontWeight:600, color:'var(--color-text-brown)', lineHeight:1.1,
         display:'inline-block', paddingBottom:'var(--space-6px)',
         borderBottom:'2px solid #A07842',
@@ -5821,7 +5821,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
             const _len = (bien.remarques_bien || '').length;
             const _over = _len > 2000;
             return (
-              <div style={{textAlign:'right', fontSize:'var(--font-size-11)', fontStyle:'italic', color: _over ? '#C68A3F' : 'var(--color-text-muted)', marginTop:'var(--space-1)', fontFamily:"'DM Sans', system-ui, sans-serif"}}>
+              <div style={{textAlign:'right', fontSize:'var(--font-size-11)', fontStyle:'italic', color: _over ? '#C68A3F' : 'var(--color-text-muted)', marginTop:'var(--space-1)', fontFamily:"var(--font-sans)"}}>
                 {_len} / 2000
               </div>
             );
@@ -7430,7 +7430,7 @@ function V55Bloc({title, children, theme, collapsible, expanded, onToggle}) {
   // Default original (call sites sans theme conservent le visuel legacy).
   return (
     <div style={{background:'#fff', borderRadius:10, padding:'14px 14px 4px', marginBottom:'var(--space-3)', boxShadow:'0 0 0 1px rgba(139,94,60,.08), 0 1px 2px rgba(26,18,8,.04)'}}>
-      <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-base)', fontWeight:600, color:'var(--color-accent)', marginBottom:'var(--space-10px)', paddingBottom:'var(--space-6px)', borderBottom:'1px solid #F0E9DC'}}>{title}</div>
+      <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-base)', fontWeight:600, color:'var(--color-accent)', marginBottom:'var(--space-10px)', paddingBottom:'var(--space-6px)', borderBottom:'1px solid #F0E9DC'}}>{title}</div>
       {children}
     </div>
   );
@@ -7808,7 +7808,7 @@ function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, r
       {editorOpen && (
         <div onClick={() => setEditorOpen(false)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.45)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-5)'}}>
           <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', width:'100%', maxWidth:340, boxShadow:'0 8px 32px rgba(0,0,0,.18)'}}>
-            <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:'var(--font-size-lg)', fontWeight:700, color:'#2D2018', marginBottom:'var(--space-2)'}}>Taux {_lc} → {_rc}</div>
+            <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-lg)', fontWeight:700, color:'#2D2018', marginBottom:'var(--space-2)'}}>Taux {_lc} → {_rc}</div>
             <input type="number" inputMode="decimal" step="0.0001" value={editorVal} onChange={e => setEditorVal(e.target.value)}
               placeholder="Ex : 10.8400"
               style={{width:'100%', padding:'10px 12px', border:'1.5px solid #D6C7AC', borderRadius:8, fontSize:'var(--font-size-sm)', fontFamily:'inherit', boxSizing:'border-box', marginBottom:'var(--space-10px)'}}/>
@@ -7907,7 +7907,7 @@ function RatePopup2Col({onClose, forceUpdate}) {
   return (
     <div onClick={onClose} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,18,8,0.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-4)'}}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:14, padding:'var(--space-18px)', maxWidth:420, width:'100%', boxShadow:'0 8px 24px rgba(0,0,0,0.2)', boxSizing:'border-box'}}>
-        <h3 style={{margin:'0 0 12px', fontSize:'var(--font-size-15)', fontWeight:700, color:'var(--color-text-primary)', fontFamily:'Cormorant Garamond,serif'}}>Taux 1 {cur.left} → {cur.right}</h3>
+        <h3 style={{margin:'0 0 12px', fontSize:'var(--font-size-15)', fontWeight:700, color:'var(--color-text-primary)', fontFamily:'var(--font-serif)'}}>Taux 1 {cur.left} → {cur.right}</h3>
         <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:'var(--space-10px)', marginBottom:'var(--space-14px)'}}>
           <div onClick={() => apply(officialRate)} style={{padding:'10px 8px', borderRadius:10, background:'var(--color-bg-tint-warm)', border:'1.5px solid var(--color-border-medium)', cursor:'pointer', textAlign:'center'}}>
             <div style={{fontSize:'var(--font-size-10)', fontWeight:700, color:'var(--color-accent)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-1)'}}>Officiel</div>
@@ -8016,7 +8016,7 @@ function FraisAgenceForfaitPopup({value, onApply}) {
       {open && (
         <div onClick={() => setOpen(false)} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,18,8,0.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-4)'}}>
           <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:14, padding:'var(--space-18px)', maxWidth:380, width:'100%', boxShadow:'0 8px 24px rgba(0,0,0,0.2)', boxSizing:'border-box'}}>
-            <h3 style={{margin:'0 0 12px', fontSize:'var(--font-size-sm)', fontWeight:700, color:'var(--color-text-primary)', fontFamily:'Cormorant Garamond,serif'}}>Forfait</h3>
+            <h3 style={{margin:'0 0 12px', fontSize:'var(--font-size-sm)', fontWeight:700, color:'var(--color-text-primary)', fontFamily:'var(--font-serif)'}}>Forfait</h3>
             <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:'var(--space-2)', marginBottom:'var(--space-14px)'}}>
               <div>
                 <label style={{fontSize:'var(--font-size-10)', fontWeight:700, color:'var(--color-accent)', textTransform:'uppercase', letterSpacing:.4, display:'block', marginBottom:'var(--space-1)'}}>Montant ({cur.left})</label>
@@ -9203,7 +9203,7 @@ function Stage({title, expanded, onToggle, children, status, summary, highlighte
         <div style={{flex:1, minWidth:0}}>
           <div style={{display:'flex', alignItems:'center', gap:'var(--space-2)'}}>
             {customHeader ? customHeader : (
-              <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{title}</span>
+              <span style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{title}</span>
             )}
             <span title={status === 'complete' ? 'Section complète' : status === 'partial' ? 'Section partielle' : 'Section vide'}
               style={{display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:9, background: badge.bg, color: badge.color, fontSize:'var(--font-size-11)', fontWeight:800, flexShrink:0}}>{badge.char}</span>
@@ -9528,7 +9528,7 @@ function PageHeader({onBack, title, rightAction}) {
     <div style={{position:'sticky', top:0, zIndex:10, height:56, background:'#fff', borderBottom:'1px solid rgba(74,44,30,.08)', display:'flex', alignItems:'center', padding:'0 14px', flexShrink:0}}>
       <div style={{position:'relative', flex:1, height:'100%', display:'flex', alignItems:'center'}}>
         {onBack && <BackButton onClick={onBack}/>}
-        <div style={{position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)', fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-text-brown)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'62%', textAlign:'center', pointerEvents:'none'}}>{title}</div>
+        <div style={{position:'absolute', left:'50%', top:'50%', transform:'translate(-50%, -50%)', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-text-brown)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'62%', textAlign:'center', pointerEvents:'none'}}>{title}</div>
         <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:'var(--space-2)'}}>{rightAction}</div>
       </div>
     </div>
@@ -10703,7 +10703,7 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
   return (
     <div style={{position:'fixed', inset:0, background: 'var(--color-bg-page)', zIndex:9999, overflowY:'auto', display:'flex', flexDirection:'column', borderTop:'3px solid var(--color-accent)'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #E0CDAE', padding:'12px 14px', display:'flex', alignItems:'center', gap:'var(--space-10px)', position:'sticky', top:0, zIndex:10}}>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-19)', fontWeight:700, color:'var(--color-accent)'}}>{alreadyPublished ? 'Gérer la publication' : 'Aperçu publication'}</div>
+        <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-19)', fontWeight:700, color:'var(--color-accent)'}}>{alreadyPublished ? 'Gérer la publication' : 'Aperçu publication'}</div>
         <button onClick={onClose} aria-label="Fermer" style={{background:'none', border:'none', fontSize:'var(--font-size-2xl)', color:'var(--color-accent)', cursor:'pointer', fontFamily:'inherit', padding:'0 6px'}}>×</button>
       </div>
       <div style={{flex:1, padding:'14px 16px 120px', maxWidth:640, margin:'0 auto', width:'100%', boxSizing:'border-box'}}>
@@ -10726,10 +10726,10 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
         )}
 
         {/* Titre auto preview */}
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-2xl)', fontWeight:700, color:'var(--color-accent)', lineHeight:1.2, marginBottom:'var(--space-2)'}}>{title || '(titre)'}</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-2xl)', fontWeight:700, color:'var(--color-accent)', lineHeight:1.2, marginBottom:'var(--space-2)'}}>{title || '(titre)'}</div>
 
         {/* Prix */}
-        {prix && <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-22)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-14px)'}}>{prix} {devise}{preview.projet === 'bailleur' ? ' / mois' : ''}</div>}
+        {prix && <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-22)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-14px)'}}>{prix} {devise}{preview.projet === 'bailleur' ? ' / mois' : ''}</div>}
 
         {/* Caractéristiques grid */}
         <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:'var(--space-2)', marginBottom:'var(--space-14px)', fontSize:'var(--font-size-12-5)'}}>
@@ -10772,7 +10772,7 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
             <div style={{background:'#FBF7EE', border:'1px solid #E0CDAE', borderRadius:10, padding:'12px 14px', marginTop:'var(--space-14px)'}}>
               <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-2)'}}>Votre agent</div>
               <div style={{display:'flex', gap:'var(--space-3)', alignItems:'center'}}>
-                <div style={{width:60, height:60, borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: agentProfile.photo_url ? 'url(' + agentProfile.photo_url + ')' : 'none', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-22)', fontWeight:700}}>
+                <div style={{width:60, height:60, borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: agentProfile.photo_url ? 'url(' + agentProfile.photo_url + ')' : 'none', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-22)', fontWeight:700}}>
                   {!agentProfile.photo_url && ((agentProfile.prenom || '?')[0] + (agentProfile.nom || '')[0]).toUpperCase()}
                 </div>
                 <div style={{flex:1, minWidth:0}}>
@@ -10839,7 +10839,7 @@ function PublishSuccessModal({result, onClose}) {
     <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-5)'}}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:'var(--space-6)', maxWidth:420, width:'100%', textAlign:'center'}}>
         <div style={{width:56, height:56, borderRadius:'50%', background:'#E8F5E8', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px', fontSize:'var(--font-size-3xl)', color:'#2E7D32'}}>✓</div>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)'}}>Annonce enregistrée</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)'}}>Annonce enregistrée</div>
         <div style={{fontSize:'var(--font-size-13-5)', color:'var(--color-text-primary)', lineHeight:1.55, marginBottom:'var(--space-18px)'}}>
           Le site vitrine <b>ocre.immo</b> est en cours de création, il sera bientôt accessible. Tu peux modifier ou masquer ta publication à tout moment depuis ce dossier.
         </div>
@@ -11534,7 +11534,7 @@ function App() {
   if (apiLoading) {
     return (
       <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', background: 'var(--color-bg-page)'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-32)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-4)'}}>Oi Agent</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-32)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-4)'}}>Oi Agent</div>
         <div style={{width:40, height:40, border:'3px solid var(--color-border-subtle)', borderTopColor:'var(--color-accent)', borderRadius:'50%', animation:'spin 0.7s linear infinite'}}/>
       </div>
     );
@@ -12258,7 +12258,7 @@ function IntentPreview({preview, clients, onCancel, onConfirmed, onEditText, sho
 
   return (
     <div style={{background:'#fff', borderRadius:12, padding:'var(--space-4)', border:'1.5px solid var(--color-ocre-flamboyant)', display:'flex', flexDirection:'column', gap:'var(--space-10px)', maxHeight:'72vh', overflowY:'auto'}}>
-      <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', color:'var(--color-accent)', fontWeight:700}}>{intentLabel}</div>
+      <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', color:'var(--color-accent)', fontWeight:700}}>{intentLabel}</div>
       <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.5, fontWeight:700, display:'flex', alignItems:'center', gap:'var(--space-5px)'}}><IconClipboard size={12}/> Récapitulatif · {count} point{count > 1 ? 's' : ''} relevé{count > 1 ? 's' : ''}</div>
       {preview.mode === 'heuristic' && <div style={{fontSize:'var(--font-size-11)', color:'var(--color-error)', fontStyle:'italic'}}>(Extraction heuristique — vérifie les champs)</div>}
 
@@ -12660,8 +12660,8 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
 
             {captureMode === 'realtime' ? (
               <>
-                <div style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', minHeight:200, border:'1px solid var(--color-border-cream)', fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', lineHeight:1.5, color:'var(--color-text-primary)', whiteSpace:'pre-wrap'}}>
-                  {liveText || <span style={{color:'#C4B5A0', fontStyle:'italic', fontFamily:'DM Sans,sans-serif', fontSize:'var(--font-size-13)'}}>Tape sur le micro puis parle. Ex : "Marie Dupont cherche villa Marrakech Palmeraie, budget 1,8 million de dirhams."</span>}
+                <div style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', minHeight:200, border:'1px solid var(--color-border-cream)', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', lineHeight:1.5, color:'var(--color-text-primary)', whiteSpace:'pre-wrap'}}>
+                  {liveText || <span style={{color:'#C4B5A0', fontStyle:'italic', fontFamily:'var(--font-sans)', fontSize:'var(--font-size-13)'}}>Tape sur le micro puis parle. Ex : "Marie Dupont cherche villa Marrakech Palmeraie, budget 1,8 million de dirhams."</span>}
                   {interim && <span style={{color:'var(--color-ocre-flamboyant)', opacity:.7}}> {interim}</span>}
                 </div>
                 <div style={{display:'flex', gap:'var(--space-10px)', justifyContent:'center', alignItems:'center'}}>
@@ -12693,7 +12693,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
                   )}
                   {recording && (
                     <>
-                      <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-4xl)', color:'var(--color-error)', fontWeight:700}}>
+                      <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-4xl)', color:'var(--color-error)', fontWeight:700}}>
                         {String(Math.floor(recDurationSec/60)).padStart(2,'0')}:{String(recDurationSec%60).padStart(2,'0')}
                       </div>
                       <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)'}}>🔴 Enregistrement… (max 90s)</div>
@@ -12734,7 +12734,7 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
           <>
             <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)'}}>Relis et corrige si besoin :</div>
             <textarea value={editable} onChange={e => setEditable(e.target.value)}
-              style={{width:'100%', minHeight:200, padding:'var(--space-3)', borderRadius:10, border:'1.5px solid var(--color-border-strong)', background:'#fff', fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-base)', lineHeight:1.5, outline:'none', color:'var(--color-text-primary)', resize:'vertical'}}/>
+              style={{width:'100%', minHeight:200, padding:'var(--space-3)', borderRadius:10, border:'1.5px solid var(--color-border-strong)', background:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-base)', lineHeight:1.5, outline:'none', color:'var(--color-text-primary)', resize:'vertical'}}/>
             <div style={{display:'flex', gap:'var(--space-2)'}}>
               <button onClick={() => { finalBufferRef.current = ''; setFinalText(''); setInterim(''); setPhase('record'); }}
                 style={{flex:'0 0 auto', padding:'11px 14px', background:'var(--color-bg-input)', color:'var(--color-accent)', border:'1.5px solid var(--color-border-subtle)', borderRadius:10, fontWeight:700, fontSize:'var(--font-size-13)', cursor:'pointer', fontFamily:'inherit'}}>← Re-dicter</button>
@@ -12935,7 +12935,7 @@ function AuditLogView({showToast}) {
         <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-10px)'}}>
           <div style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', maxWidth:520, width:'100%', maxHeight:'80vh', overflow:'auto'}}>
             <div style={{display:'flex', alignItems:'center', marginBottom:'var(--space-10px)'}}>
-              <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)'}}>{drawer.action}</div>
+              <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)'}}>{drawer.action}</div>
               <button onClick={() => setDrawer(null)} style={{background:'none', border:'none', fontSize:'var(--font-size-lg)', cursor:'pointer'}}>×</button>
             </div>
             <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-taupe)'}}>
@@ -13119,7 +13119,7 @@ function GoogleQuotaAdmin({showToast}) {
           style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-4)'}}>
           <div onClick={e => e.stopPropagation()}
             style={{background:'#fff', borderRadius:14, padding:'var(--space-18px)', maxWidth:420, width:'100%', boxShadow:'0 12px 40px rgba(0,0,0,.25)'}}>
-            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-6px)'}}>
+            <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-6px)'}}>
               {respondingFor.action === 'approve' ? 'Approuver' : 'Refuser'} la demande #{respondingFor.request.id}
             </div>
             <div style={{fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)', marginBottom:'var(--space-2)'}}>
@@ -13199,7 +13199,7 @@ function FeatureFlagsAdmin({showToast}) {
 
   return (
     <div style={{background:'#fff', borderRadius:10, border:'1px solid var(--color-border-cream)', padding:'var(--space-14px)'}}>
-      <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)'}}>Feature flags</div>
+      <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)'}}>Feature flags</div>
       {loading && <div style={{color:'var(--color-text-muted)'}}>Chargement…</div>}
       {flags.map(f => (
         <div key={f.flag_key} style={{padding:'10px 0', borderBottom:'1px solid #F4EFE6'}}>
@@ -13226,7 +13226,7 @@ function FeatureFlagsAdmin({showToast}) {
         <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-10px)'}}>
           <div style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', maxWidth:500, width:'100%', maxHeight:'90vh', overflow:'auto'}}>
             <div style={{display:'flex', alignItems:'center', marginBottom:'var(--space-10px)'}}>
-              <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)'}}>Overrides {overridesFor}</div>
+              <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)'}}>Overrides {overridesFor}</div>
               <button onClick={() => setOverridesFor(null)} style={{background:'none', border:'none', fontSize:'var(--font-size-lg)', cursor:'pointer'}}>×</button>
             </div>
             {overrides.length === 0 && <div style={{color:'var(--color-text-muted)', fontSize:'var(--font-size-12-5)', marginBottom:'var(--space-10px)'}}>Aucun override</div>}
@@ -13346,7 +13346,7 @@ function SuperAdminDashboard({onBack, showToast, currentUser}) {
     return (
       <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:'var(--space-3)', minWidth:140, flex:'1 1 140px'}}>
         <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-1)'}}>{label}</div>
-        <div style={{fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)', fontFamily:'Cormorant Garamond,serif'}}>{value}</div>
+        <div style={{fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)', fontFamily:'var(--font-serif)'}}>{value}</div>
         {sub && <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', marginTop:'var(--space-2px)'}}>{sub}</div>}
       </div>
     );
@@ -13358,7 +13358,7 @@ function SuperAdminDashboard({onBack, showToast, currentUser}) {
     <div style={{height:'100%', display:'flex', flexDirection:'column', background: 'var(--color-bg-page)'}}>
       <div style={{background:'#fff', borderBottom:'1px solid var(--color-border-cream)', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:'var(--space-10px)'}}>
         <BackButton onClick={onBack}/>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)'}}>Super-admin</div>
+        <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)'}}>Super-admin</div>
         <span style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)'}}>{currentUser && currentUser.email}</span>
       </div>
       <div style={{padding:'4px 14px 8px', display:'flex', gap:'var(--space-6px)', overflowX:'auto', background:'#fff', borderBottom:'1px solid var(--color-border-cream)'}}>
@@ -13876,9 +13876,9 @@ function AgentProfileView({currentUser, onBack, showToast}) {
 
         {/* Section 1 — Identité visuelle */}
         <div className="ocre-card" style={{marginBottom:'var(--space-14px)'}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Identité visuelle</div>
+          <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Identité visuelle</div>
           <div style={{display:'flex', gap:'var(--space-14px)', alignItems:'center', marginBottom:'var(--space-3)'}}>
-            <div style={{width:120, height:120, borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-40)', fontWeight:700, cursor:'pointer', overflow:'hidden', flexShrink:0}}
+            <div style={{width:120, height:120, borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-40)', fontWeight:700, cursor:'pointer', overflow:'hidden', flexShrink:0}}
               onClick={() => document.getElementById('agent-photo-input').click()}>
               {!p.photo_url && ((p.prenom || '?')[0] + (p.nom || '')[0]).toUpperCase()}
             </div>
@@ -13902,7 +13902,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
 
         {/* Section 2 — Biographie */}
         <div className="ocre-card" style={{marginBottom:'var(--space-14px)'}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Biographie</div>
+          <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Biographie</div>
           <label className="ocre-lbl">Tagline (1 ligne, max 255 chars)</label>
           <input defaultValue={p.tagline || ''} placeholder="Agent immobilier spécialiste Marrakech & Ourika"
             maxLength={255}
@@ -13917,7 +13917,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
 
         {/* Section 3 — Contact pro */}
         <div className="ocre-card" style={{marginBottom:'var(--space-14px)'}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Contact professionnel</div>
+          <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Contact professionnel</div>
           <label className="ocre-lbl">Téléphone pro</label>
           <input type="tel" defaultValue={p.telephone_pro || ''} placeholder="+212 6 00 00 00 00"
             onBlur={e => save({telephone_pro: e.target.value})}
@@ -13934,7 +13934,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
 
         {/* Section 4 — Zones */}
         <div className="ocre-card" style={{marginBottom:'var(--space-14px)'}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Zones d'intervention</div>
+          <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Zones d'intervention</div>
           <div style={{display:'flex', flexWrap:'wrap', gap:'var(--space-6px)', marginBottom:'var(--space-10px)'}}>
             {zones.map((z, i) => (
               <span key={z + i} style={{display:'inline-flex', alignItems:'center', gap:'var(--space-5px)', background:'var(--color-bg-tint-warm)', color:'var(--color-accent)', border:'1px solid #E0CDAE', borderRadius:14, padding:'4px 8px 4px 10px', fontSize:'var(--font-size-xs)', fontWeight:600}}>
@@ -13954,7 +13954,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
 
         {/* Section 5 — Spécialités */}
         <div className="ocre-card" style={{marginBottom:'var(--space-14px)'}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Spécialités</div>
+          <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Spécialités</div>
           <div style={{display:'flex', flexWrap:'wrap', gap:'var(--space-6px)'}}>
             {AGENT_SPECIALITES.map(s => {
               const on = specs.includes(s);
@@ -13970,7 +13970,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
 
         {/* Section 6 — Mentions légales */}
         <div className="ocre-card" style={{marginBottom:'var(--space-14px)'}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-6px)'}}>Mentions légales</div>
+          <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-6px)'}}>Mentions légales</div>
           <div style={{fontSize:'var(--font-size-11-5)', color:'var(--color-text-taupe)', marginBottom:'var(--space-10px)', lineHeight:1.4}}>Ces informations apparaîtront obligatoirement sur chacune de tes annonces, en conformité avec la <b>Loi Hoguet</b> (France) et la réglementation immobilière marocaine.</div>
           <label className="ocre-lbl">Numéro de carte professionnelle</label>
           <input defaultValue={p.carte_pro_numero || ''} onBlur={e => save({carte_pro_numero: e.target.value})}
@@ -13995,7 +13995,7 @@ function AgentProfileView({currentUser, onBack, showToast}) {
 
         {/* Section 7 — Statut */}
         <div className="ocre-card" style={{marginBottom:'var(--space-14px)'}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-6px)'}}>Statut de publication</div>
+          <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-6px)'}}>Statut de publication</div>
           <div style={{fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)', marginBottom:'var(--space-3)', lineHeight:1.5}}>
             {p.statut_public === 'brouillon' && "Ton profil n'est pas visible publiquement. Complète les champs obligatoires pour passer en actif."}
             {p.statut_public === 'actif' && 'Ton profil et tes annonces publiées sont visibles sur ocre.immo.'}
@@ -14036,16 +14036,16 @@ function AgentPreviewModal({profile: p, onClose}) {
   return (
     <div style={{position:'fixed', inset:0, background: 'var(--color-bg-page)', zIndex:9999, overflowY:'auto'}}>
       <div style={{background:'#fff', borderBottom:'1px solid #E0CDAE', padding:'12px 14px', display:'flex', alignItems:'center', gap:'var(--space-10px)', position:'sticky', top:0, zIndex:10}}>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-19)', fontWeight:700, color:'var(--color-accent)'}}>Aperçu vitrine</div>
+        <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-19)', fontWeight:700, color:'var(--color-accent)'}}>Aperçu vitrine</div>
         <button onClick={onClose} style={{background:'none', border:'none', fontSize:'var(--font-size-2xl)', color:'var(--color-accent)', cursor:'pointer', fontFamily:'inherit', padding:'0 6px'}}>×</button>
       </div>
       <div style={{maxWidth:600, margin:'0 auto', padding:'var(--space-5)'}}>
         <div style={{display:'flex', alignItems:'center', gap:'var(--space-14px)', marginBottom:'var(--space-14px)'}}>
-          <div style={{width:110, height:110, borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', flexShrink:0, border:'3px solid var(--color-accent)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-38)', fontWeight:700}}>
+          <div style={{width:110, height:110, borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', flexShrink:0, border:'3px solid var(--color-accent)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-38)', fontWeight:700}}>
             {!p.photo_url && ((p.prenom || '?')[0] + (p.nom || '')[0]).toUpperCase()}
           </div>
           <div style={{flex:1, minWidth:0}}>
-            <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-2xl)', fontWeight:700, color:'var(--color-accent)'}}>{p.prenom} {p.nom}</div>
+            <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-2xl)', fontWeight:700, color:'var(--color-accent)'}}>{p.prenom} {p.nom}</div>
             {p.tagline && <div style={{fontSize:'var(--font-size-13)', color:'var(--color-text-taupe)', marginTop:'var(--space-1)'}}>{p.tagline}</div>}
           </div>
         </div>
@@ -14131,7 +14131,7 @@ function WeekGridView({events, showToast, onChanged}) {
     <div style={{padding:'10px 14px'}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--space-10px)', marginBottom:'var(--space-10px)'}}>
         <button onClick={() => setWeekOffset(weekOffset - 1)} style={{padding:'4px 10px', background:'transparent', border:'1px solid var(--color-border-medium)', borderRadius:6, fontSize:'var(--font-size-13)', cursor:'pointer', color:'var(--color-text-taupe)'}}>←</button>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-base)', fontWeight:700, color:'var(--color-accent)'}}>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-base)', fontWeight:700, color:'var(--color-accent)'}}>
           {monday.toLocaleDateString('fr-FR', {day:'numeric', month:'short'})} → {days[6].toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'})}
         </div>
         <button onClick={() => setWeekOffset(weekOffset + 1)} style={{padding:'4px 10px', background:'transparent', border:'1px solid var(--color-border-medium)', borderRadius:6, fontSize:'var(--font-size-13)', cursor:'pointer', color:'var(--color-text-taupe)'}}>→</button>
@@ -14144,7 +14144,7 @@ function WeekGridView({events, showToast, onChanged}) {
           return (
             <div key={i} style={{padding:'6px 4px', borderRight: i < 6 ? '1px solid var(--color-border-cream)' : 'none', textAlign:'center', background: isToday ? '#FAF3E0' : '#fff', fontWeight: isToday ? 700 : 500, color:'var(--color-text-taupe)'}}>
               <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', textTransform:'uppercase'}}>{labels[i]}</div>
-              <div style={{fontSize:'var(--font-size-sm)', fontFamily:'Cormorant Garamond,serif', color: isToday ? 'var(--color-accent)' : 'var(--color-text-primary)'}}>{d.getDate()}</div>
+              <div style={{fontSize:'var(--font-size-sm)', fontFamily:'var(--font-serif)', color: isToday ? 'var(--color-accent)' : 'var(--color-text-primary)'}}>{d.getDate()}</div>
             </div>
           );
         })}
@@ -14278,7 +14278,7 @@ function CalendarView({onBack, showToast, toast}) {
             <div key={e.id} style={{display:'flex', alignItems:'center', gap:'var(--space-10px)', padding:'10px 14px', background:'#fff', borderBottom:'1px solid #F0E8D8'}}>
               <span style={{color:'var(--color-accent)', flexShrink:0}}>{TYPE_ICONS[e.type] || TYPE_ICONS.note}</span>
               <div style={{flex:1, minWidth:0}}>
-                <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)'}}>{e.title}</div>
+                <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)'}}>{e.title}</div>
                 <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', marginTop:'var(--space-1px)'}}>
                   {fmtTime(e.scheduled_at)} · {clientName(e)} {e.projet && '· ' + e.projet}
                 </div>
@@ -14573,7 +14573,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
           <div style={{fontSize:'var(--font-size-10)', fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-2px)'}}>Prochaine action</div>
           {nextAction ? (
             <>
-              <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+              <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
                 {TYPE_LABELS[nextAction.type] || nextAction.type} — {nextAction.title}
               </div>
               <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-accent)', fontWeight:500}}>{fmtDateRel(nextAction.scheduled_at)}</div>
@@ -14622,7 +14622,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
           <div key={e.id} style={{display:'flex', alignItems:'center', gap:'var(--space-2)', padding:'8px 10px', borderBottom:'1px solid #F0E8D8', opacity: e.status === 'annule' ? 0.6 : 1, textDecoration: e.status === 'annule' ? 'line-through' : 'none'}}>
             <span style={{color:'var(--color-accent)', flexShrink:0}}>{ICONS[e.type] || ICONS.note}</span>
             <div style={{flex:1, minWidth:0}}>
-              <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{e.title}</div>
+              <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{e.title}</div>
               {e.scheduled_at && <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)'}}>{fmtDateRel(e.scheduled_at)}</div>}
             </div>
             <span style={{flexShrink:0, padding:'2px 7px', borderRadius:9, fontSize:'var(--font-size-10)', fontWeight:700, letterSpacing:.3, background:badge.bg, color:badge.color}}>{badge.label}</span>
@@ -14638,7 +14638,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
 
       {/* M/2026/04/30/50 — Compteur total interactions. */}
       {!loading && counts.all > 0 && (
-        <div style={{textAlign:'center', fontSize:'var(--font-size-11)', fontStyle:'italic', color:'var(--color-text-muted)', marginTop:'var(--space-2)', fontFamily:"'DM Sans', system-ui, sans-serif"}}>
+        <div style={{textAlign:'center', fontSize:'var(--font-size-11)', fontStyle:'italic', color:'var(--color-text-muted)', marginTop:'var(--space-2)', fontFamily:"var(--font-sans)"}}>
           {counts.all} interaction{counts.all > 1 ? 's' : ''} au total · {counts.prevu} prévue{counts.prevu > 1 ? 's' : ''} · {counts.fait} faite{counts.fait > 1 ? 's' : ''}{counts.annule > 0 ? ' · ' + counts.annule + ' annulée' + (counts.annule > 1 ? 's' : '') : ''}
         </div>
       )}
@@ -14681,7 +14681,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
           style={{position:'fixed', inset:0, zIndex:9999, background:'rgba(42,32,24,.42)', display:'flex', alignItems:'flex-end', justifyContent:'center', animation:'fadeIn 200ms ease'}}>
           <div onClick={e => e.stopPropagation()}
             style={{width:'100%', maxWidth:460, maxHeight:'90vh', overflowY:'auto', background:'var(--color-bg-input)', borderRadius:'14px 14px 0 0', boxShadow:'0 -10px 40px rgba(42,32,24,.25)', padding:'18px 18px calc(18px + env(safe-area-inset-bottom, 0px))'}}>
-            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:'var(--font-size-22)', fontWeight:600, color:'var(--color-text-brown)', marginBottom:'var(--space-14px)', paddingBottom:'var(--space-2)', borderBottom:'2px solid #A07842', display:'inline-block'}}>
+            <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-22)', fontWeight:600, color:'var(--color-text-brown)', marginBottom:'var(--space-14px)', paddingBottom:'var(--space-2)', borderBottom:'2px solid #A07842', display:'inline-block'}}>
               {modal.type === 'appel' ? 'Nouvel appel' : modal.type === 'rdv' ? 'Nouveau RDV' : modal.type === 'document' ? 'Nouveau document' : 'Nouvelle note'}
             </div>
             <label style={{display:'block', fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', marginTop:'var(--space-2)', marginBottom:'var(--space-1)', textTransform:'uppercase', letterSpacing:.4}}>Titre</label>
@@ -14733,7 +14733,7 @@ function ActiviteDocuments({clientId, defaultRecipient, showToast}) {
           style={{position:'fixed', inset:0, zIndex:9999, background:'rgba(42,32,24,.42)', display:'flex', alignItems:'flex-end', justifyContent:'center', animation:'fadeIn 200ms ease'}}>
           <div onClick={e => e.stopPropagation()}
             style={{width:'100%', maxWidth:460, maxHeight:'90vh', overflowY:'auto', background:'var(--color-bg-input)', borderRadius:'14px 14px 0 0', boxShadow:'0 -10px 40px rgba(42,32,24,.25)', padding:'18px 18px calc(18px + env(safe-area-inset-bottom, 0px))'}}>
-            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:'var(--font-size-22)', fontWeight:600, color:'var(--color-text-brown)', marginBottom:'var(--space-14px)', paddingBottom:'var(--space-2)', borderBottom:'2px solid #A07842', display:'inline-block'}}>
+            <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-22)', fontWeight:600, color:'var(--color-text-brown)', marginBottom:'var(--space-14px)', paddingBottom:'var(--space-2)', borderBottom:'2px solid #A07842', display:'inline-block'}}>
               Catégorie du document
             </div>
             <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)', marginBottom:'var(--space-10px)'}}>{modal.file && modal.file.name}</div>
@@ -14946,7 +14946,7 @@ function EditReviewView({editId, onBack, showToast}) {
       <div style={{background:'#fff', borderBottom:'1px solid var(--color-border-cream)', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:'var(--space-10px)'}}>
         <BackButton onClick={onBack}/>
         <div style={{flex:1}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Modifications proposées</div>
+          <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Modifications proposées</div>
           <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)'}}>Edit #{edit.id} · statut : <b>{edit.status}</b></div>
         </div>
       </div>
@@ -14994,7 +14994,7 @@ function EditReviewView({editId, onBack, showToast}) {
       {rejectModal && (
         <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-5)'}}>
           <div style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', maxWidth:400, width:'100%'}}>
-            <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)'}}>Refuser les modifications</div>
+            <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)'}}>Refuser les modifications</div>
             <textarea value={rejectComment} onChange={(e) => setRejectComment(e.target.value)}
               placeholder="Commentaire (optionnel)…"
               style={{width:'100%', minHeight:80, padding:'var(--space-2)', border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit', fontSize:'var(--font-size-13)', boxSizing:'border-box', resize:'vertical'}}/>
@@ -15036,7 +15036,7 @@ function ExportPage({onBack, showToast}) {
   function Card({title, sub, btnLabel, onClick, busy}) {
     return (
       <div style={{background:'#fff', borderRadius:10, border:'1px solid var(--color-border-cream)', padding:'var(--space-14px)', marginBottom:'var(--space-14px)'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-1)'}}>{title}</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-1)'}}>{title}</div>
         <div style={{fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)', marginBottom:'var(--space-10px)'}}>{sub}</div>
         <button onClick={onClick} disabled={busy} style={{padding:'8px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:'var(--font-size-13)', fontWeight:600, cursor: busy ? 'wait' : 'pointer'}}>{busy ? '…' : btnLabel}</button>
       </div>
@@ -15056,7 +15056,7 @@ function ExportPage({onBack, showToast}) {
           btnLabel="Télécharger XLSX" onClick={() => dl('xlsx')}/>
 
         <div style={{background:'#fff', borderRadius:10, border:'1px solid var(--color-border-cream)', padding:'var(--space-14px)'}}>
-          <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-1)'}}>ZIP complet</div>
+          <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-1)'}}>ZIP complet</div>
           <div style={{fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)', marginBottom:'var(--space-10px)'}}>3 CSVs + dossier <code>photos/&lt;id&gt;/</code> + dossier <code>documents/&lt;id&gt;/</code> + README. Lien valide 1h.</div>
           {zipState.status === 'idle' && (
             <button onClick={requestZip} style={{padding:'8px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:'var(--font-size-13)', fontWeight:600, cursor:'pointer'}}>Générer le ZIP</button>
@@ -15562,7 +15562,7 @@ function DossierPdfView({dossierId, onBack, showToast, dossierProfil}) {
           style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:9100, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-5)'}}>
           <div onClick={e => e.stopPropagation()}
             style={{background:'#fff', borderRadius:12, padding:'18px 18px', width:'100%', maxWidth:340, boxShadow:'0 8px 32px rgba(0,0,0,.18)'}}>
-            <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:'var(--font-size-lg)', fontWeight:700, color:'#2D2018', marginBottom:'var(--space-3)'}}>Prix &amp; devise</div>
+            <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-lg)', fontWeight:700, color:'#2D2018', marginBottom:'var(--space-3)'}}>Prix &amp; devise</div>
             <div style={{display:'flex', gap:'var(--space-6px)', marginBottom:'var(--space-14px)', flexWrap:'wrap'}}>
               {['EUR','MAD','USD','GBP'].map(c => (
                 <button key={c} type="button" onClick={() => {
@@ -15638,7 +15638,7 @@ function CurrencyPickerSheet({current, onSelect, onClose}) {
       <div onClick={e => e.stopPropagation()} style={{width:'100%', maxWidth:420, marginLeft:'auto', marginRight:'auto', background:'#fff', borderTopLeftRadius:16, borderTopRightRadius:16,
             padding:'18px 16px calc(env(safe-area-inset-bottom, 0px) + 18px)', boxShadow:'0 -4px 18px rgba(0,0,0,.12)',
             animation:'pdfShareScaleIn 200ms ease-out'}}>
-        <div style={{textAlign:'center', fontFamily:"'Cormorant Garamond', serif", fontSize:'var(--font-size-xl)', fontWeight:700, color:'#2D2018', marginBottom:'var(--space-10px)'}}>Devise</div>
+        <div style={{textAlign:'center', fontFamily:"var(--font-serif)", fontSize:'var(--font-size-xl)', fontWeight:700, color:'#2D2018', marginBottom:'var(--space-10px)'}}>Devise</div>
         {list.map(c => (
           <div key={c} onClick={() => onSelect(c)}
             style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 12px',
@@ -15722,7 +15722,7 @@ function PhotosSheet({dossier, hiddenPhotos, onChange, onCancel, onConfirm, onCl
         {/* Header sticky */}
         <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'var(--space-2)', padding:'18px 20px 10px', borderBottom:'1px solid #F0E8D8', background:'#fff', flexShrink:0}}>
           <div>
-            <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:'var(--font-size-22)', fontWeight:700, color:'#2D2018'}}>Selection des photos</div>
+            <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-22)', fontWeight:700, color:'#2D2018'}}>Selection des photos</div>
             <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', marginTop:'var(--space-2px)'}}>Toutes cochees par defaut. Tape pour masquer (mise a jour immediate du PDF derriere).</div>
           </div>
           <button type="button" onClick={handleBackdropClick} aria-label="Fermer" style={{width:36, height:36, borderRadius:'50%', border:'1px solid #E5E0D8', background:'#fff', color:'#1A1714', cursor:'pointer', fontSize:'var(--font-size-lg)', fontFamily:'inherit', flexShrink:0}}>×</button>
@@ -15860,7 +15860,7 @@ function PdfShareModal({dossierId, currency = 'EUR', showPrice: initShowPrice = 
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
-        <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:'var(--font-size-22)', color:'#2D2018', fontWeight:700, marginBottom:'var(--space-6px)'}}>Partager le dossier</div>
+        <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-22)', color:'#2D2018', fontWeight:700, marginBottom:'var(--space-6px)'}}>Partager le dossier</div>
         <div style={{fontSize:'var(--font-size-13)', color:'var(--color-text-muted)', marginBottom:'var(--space-14px)', lineHeight:1.5}}>
           Le destinataire recevra le dossier avec les éléments suivants :
         </div>
@@ -15992,7 +15992,7 @@ function AIDraftNoteModal({clientId, onClose, onUse, showToast}) {
     <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:400, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-14px)'}}>
       <div style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', maxWidth:520, width:'100%', maxHeight:'90vh', overflow:'auto'}}>
         <div style={{display:'flex', alignItems:'center', marginBottom:'var(--space-3)'}}>
-          <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Rédiger avec l'IA</div>
+          <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Rédiger avec l'IA</div>
           <button onClick={onClose} style={{background:'none', border:'none', fontSize:'var(--font-size-lg)', cursor:'pointer', color:'var(--color-text-muted)'}}>×</button>
         </div>
         <textarea value={brief} onChange={e => setBrief(e.target.value)}
@@ -16074,7 +16074,7 @@ function AIDraftMessageModal({clientId, clientPhone, onClose, showToast}) {
     <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:400, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-14px)'}}>
       <div style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', maxWidth:520, width:'100%', maxHeight:'90vh', overflow:'auto'}}>
         <div style={{display:'flex', alignItems:'center', marginBottom:'var(--space-3)'}}>
-          <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Rédiger un message</div>
+          <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Rédiger un message</div>
           <button onClick={onClose} style={{background:'none', border:'none', fontSize:'var(--font-size-lg)', cursor:'pointer'}}>×</button>
         </div>
         <div style={{marginBottom:'var(--space-10px)'}}>
@@ -16407,7 +16407,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
   function Section({title, children}) {
     return (
       <div style={{background:'#fff', borderRadius:10, border:'1px solid var(--color-border-cream)', padding:'var(--space-14px)', marginBottom:'var(--space-14px)'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)'}}>{title}</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)'}}>{title}</div>
         {children}
       </div>
     );
@@ -16640,7 +16640,7 @@ function ScanWebModal({onClose, showToast, clientId}) {
     <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-10px)'}}>
       <div style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', maxWidth:500, width:'100%', maxHeight:'90vh', overflow:'auto'}}>
         <div style={{display:'flex', alignItems:'center', marginBottom:'var(--space-14px)'}}>
-          <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Scan Web</div>
+          <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Scan Web</div>
           <button onClick={onClose} style={{background:'none', border:'none', fontSize:'var(--font-size-lg)', cursor:'pointer', color:'var(--color-text-muted)'}}>×</button>
         </div>
         {!results && (
@@ -16801,7 +16801,7 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
         <div style={{flex:1, minWidth:0}}>
           <div style={{display:'flex', alignItems:'center', gap:'var(--space-2)'}}>
             <span style={{fontSize:'var(--font-size-lg)', lineHeight:1}}>🎯</span>
-            <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)'}}>Page cible</span>
+            <span style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)'}}>Page cible</span>
           </div>
           <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)', marginTop:'var(--space-1px)'}}>{counts.non_vu} match(s) non vu(s)</div>
         </div>
@@ -16891,7 +16891,7 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
                   )}
                 </div>
                 <div style={{flexShrink:0, textAlign:'right', minWidth:80}}>
-                  <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:'var(--font-size-42)', fontWeight:700, color: scoreColor, lineHeight:1}}>
+                  <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-42)', fontWeight:700, color: scoreColor, lineHeight:1}}>
                     {m.score_pct}<span style={{fontSize:'var(--font-size-21)'}}>%</span>
                   </div>
                   <div style={{fontSize:'var(--font-size-9)', fontWeight:700, letterSpacing:'0.14em', color:'var(--color-text-muted)', textTransform:'uppercase', marginTop:'var(--space-2px)'}}>MATCH</div>
@@ -16899,10 +16899,10 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
               </div>
               {/* Sous-titre photo */}
               <div style={{marginBottom:'var(--space-10px)'}}>
-                <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:'var(--font-size-15)', color:'var(--color-text-brown)', fontWeight:600, lineHeight:1.2}}>
+                <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-15)', color:'var(--color-text-brown)', fontWeight:600, lineHeight:1.2}}>
                   {[owner.bienLbl, owner.locationLbl].filter(x => x && x !== '—').join(' · ')}
                 </div>
-                <div style={{fontFamily:"'DM Sans', sans-serif", fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', marginTop:'var(--space-2px)'}}>
+                <div style={{fontFamily:"var(--font-sans)", fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', marginTop:'var(--space-2px)'}}>
                   {[owner.surfaceLbl, owner.chambresLbl].filter(x => x && x !== '—').join(' · ')}
                 </div>
               </div>
@@ -16912,12 +16912,12 @@ function MatchesView({onBack, openMatchDetail, showToast, toast}) {
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', borderBottom:'1px solid var(--color-border-light)'}}>
                   <div style={{padding:'10px 12px', background: ownerPalette.row, borderRight:'1px solid var(--color-border-light)'}}>
                     <div style={{fontSize:'var(--font-size-10)', fontWeight:700, color: ownerPalette.badge, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:'var(--space-1)'}}>{owner.projet || '—'}</div>
-                    <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:'var(--font-size-base)', fontWeight:600, color:'#2D2018', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{owner.nom}</div>
+                    <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-base)', fontWeight:600, color:'#2D2018', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{owner.nom}</div>
                     {owner.tel && <div style={{fontSize:'var(--font-size-10)', color:'#7A6E5D', marginTop:'var(--space-2px)'}}>{owner.tel}</div>}
                   </div>
                   <div style={{padding:'10px 12px', background: seekerPalette.row}}>
                     <div style={{fontSize:'var(--font-size-10)', fontWeight:700, color: seekerPalette.badge, letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:'var(--space-1)'}}>{seeker.projet || '—'}</div>
-                    <div style={{fontFamily:"'Cormorant Garamond', serif", fontSize:'var(--font-size-base)', fontWeight:600, color:'#2D2018', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{seeker.nom}</div>
+                    <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-base)', fontWeight:600, color:'#2D2018', lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{seeker.nom}</div>
                     {seeker.tel && <div style={{fontSize:'var(--font-size-10)', color:'#7A6E5D', marginTop:'var(--space-2px)'}}>{seeker.tel}</div>}
                   </div>
                 </div>
@@ -17025,7 +17025,7 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
     return (
       <div style={{padding:'var(--space-14px)', background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:'var(--space-10px)'}}>
         <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-1)', fontWeight:700}}>{label}</div>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)', lineHeight:1.1}}>{nom}</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-22)', fontWeight:700, color:'var(--color-accent)', lineHeight:1.1}}>{nom}</div>
         <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)', marginTop:'var(--space-2px)', marginBottom:'var(--space-2)'}}>{d.projet}{profil ? ' · ' + profil : ''}</div>
         <div style={{fontSize:'var(--font-size-13)', color:'var(--color-text-primary)', lineHeight:1.6}}>
           <div><b>{titreType}</b>{chambres ? ' · ' + chambres : ''}</div>
@@ -17138,9 +17138,9 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
     <div style={{height:'100%', display:'flex', flexDirection:'column', background: 'var(--color-bg-page)'}}>
       <div style={{background:'#fff', borderBottom:'1px solid var(--color-border-cream)', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:'var(--space-10px)'}}>
         <BackButton onClick={onBack}/>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Détail du match</div>
+        <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)'}}>Détail du match</div>
         {match && (
-          <div style={{padding:'4px 10px', background: scoreBg, color: scoreColor, borderRadius:14, fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:'var(--font-size-lg)'}}>
+          <div style={{padding:'4px 10px', background: scoreBg, color: scoreColor, borderRadius:14, fontFamily:'var(--font-serif)', fontWeight:700, fontSize:'var(--font-size-lg)'}}>
             {score}<span style={{fontSize:'var(--font-size-11)'}}>%</span>
           </div>
         )}
@@ -17152,7 +17152,7 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
         {!loading && match && (
           <>
             <div style={{textAlign:'center', marginBottom:'var(--space-14px)'}}>
-              <div style={{display:'inline-block', padding:'14px 24px', background: scoreBg, color: scoreColor, borderRadius:18, fontFamily:'Cormorant Garamond,serif', fontWeight:700}}>
+              <div style={{display:'inline-block', padding:'14px 24px', background: scoreBg, color: scoreColor, borderRadius:18, fontFamily:'var(--font-serif)', fontWeight:700}}>
                 <div style={{fontSize:'var(--font-size-5xl)', lineHeight:1}}>{score}<span style={{fontSize:'var(--font-size-22)'}}>%</span></div>
                 <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.6, marginTop:'var(--space-2px)', fontWeight:700}}>Score</div>
               </div>
@@ -17207,7 +17207,7 @@ function MatchDetailView({matchId, onBack, showToast, toast}) {
             {distKm !== null && (
               <div style={{padding:'var(--space-3)', background:'#fff', border:'1px solid #E5DDC8', borderRadius:10, marginBottom:'var(--space-10px)', textAlign:'center'}}>
                 <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-6px)', fontWeight:700}}>Distance</div>
-                <div style={{fontSize:'var(--font-size-2xl)', fontFamily:'Cormorant Garamond,serif', fontWeight:700, color:'var(--color-accent)'}}>{distKm.toFixed(1)} km</div>
+                <div style={{fontSize:'var(--font-size-2xl)', fontFamily:'var(--font-serif)', fontWeight:700, color:'var(--color-accent)'}}>{distKm.toFixed(1)} km</div>
                 <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)'}}>à vol d'oiseau (Haversine)</div>
               </div>
             )}
@@ -17332,7 +17332,7 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
           <div style={{textAlign:'center', color:'var(--color-text-muted)', padding:'var(--space-10)'}}>Chargement…</div>
         ) : (
           <div className="ocre-card">
-            <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-6px)'}}>Sync Google Sheet</div>
+            <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-6px)'}}>Sync Google Sheet</div>
             <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)', marginBottom:'var(--space-14px)', lineHeight:1.5}}>
               Ocre peut maintenir un Google Sheet à jour avec tous tes dossiers.
               Le Sheet est partagé en Éditeur avec ton compte Google ; seul toi y as accès.
@@ -17392,7 +17392,7 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
 
         {!loading && (
           <div className="ocre-card" style={{marginTop:'var(--space-14px)'}}>
-            <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-6px)'}}>Notifications email</div>
+            <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-6px)'}}>Notifications email</div>
             <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)', marginBottom:'var(--space-14px)', lineHeight:1.5}}>
               Recevoir les rappels de rendez-vous et messages importants par email à <b>{currentUser && currentUser.email}</b>.
               Les emails de sécurité (mot de passe réinitialisé, invitation) sont toujours envoyés.
@@ -17590,8 +17590,8 @@ function OcreLogoButton() {
     <div style={{flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', userSelect:'none', minHeight:36}}>
       {/* M/2026/05/07/117 — wordmark rebrand "OCRE immo" -> "Oi Agent" (Cormorant + DM Sans, OI_VISION figee 7 mai 2026). */}
       <div style={{display:'flex', alignItems:'baseline', justifyContent:'center', gap:'var(--space-1)'}}>
-        <span style={{fontFamily:'Cormorant Garamond,serif', fontWeight:700, fontSize:'var(--font-size-2xl)', color:'var(--color-accent)', lineHeight:1}}>Oi</span>
-        <span style={{fontFamily:'DM Sans,sans-serif', fontWeight:600, fontSize:'var(--font-size-sm)', letterSpacing:.5, color:'#2A1810', lineHeight:1}}>Agent</span>
+        <span style={{fontFamily:'var(--font-serif)', fontWeight:700, fontSize:'var(--font-size-2xl)', color:'var(--color-accent)', lineHeight:1}}>Oi</span>
+        <span style={{fontFamily:'var(--font-sans)', fontWeight:600, fontSize:'var(--font-size-sm)', letterSpacing:.5, color:'#2A1810', lineHeight:1}}>Agent</span>
       </div>
       <TestBadge/>
     </div>
@@ -17770,7 +17770,7 @@ function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCo
   return (
     <div style={{background:'#fff', borderTop:'1px solid var(--color-border-subtle)', borderBottom:'1px solid var(--color-border-subtle)', maxHeight:'70vh', overflowY:'auto', padding:'8px 12px 10px', boxShadow:'0 4px 8px rgba(139,94,60,.06) inset'}}>
       <div style={{display:'flex', alignItems:'center', gap:'var(--space-2)', marginBottom:'var(--space-1)'}}>
-        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-base)', fontWeight:700, color:'var(--color-accent)', flex:1}}>Recherche avancée</span>
+        <span style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-base)', fontWeight:700, color:'var(--color-accent)', flex:1}}>Recherche avancée</span>
         <button type="button" onClick={onClose}
           style={{width:36, height:36, padding:'var(--space-0)', background:'var(--color-bg-tint-warm)', border:'1px solid var(--color-border-medium)', borderRadius:18, fontSize:'var(--font-size-lg)', color:'var(--color-accent)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit', flexShrink:0}}>×</button>
       </div>
@@ -18251,7 +18251,7 @@ function MatchModal({clientId, clients, findClientById, setEditingFromMatch, onC
   return (
     <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.55)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{background:'#fff', width:'100%', maxWidth:520, maxHeight:'85vh', borderRadius:'16px 16px 0 0', padding:'var(--space-18px)', paddingBottom:'var(--space-6)', overflowY:'auto'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-1)', textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--space-2)'}}><IconTarget size={18}/> Matchs potentiels</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xl)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-1)', textAlign:'center', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--space-2)'}}><IconTarget size={18}/> Matchs potentiels</div>
         <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)', marginBottom:'var(--space-14px)', textAlign:'center'}}>Pour <b>{srcName}</b></div>
         {loading && <div style={{textAlign:'center', color:'var(--color-text-muted)', fontSize:'var(--font-size-13)', padding:'var(--space-5)'}}>Chargement…</div>}
         {error && <div style={{textAlign:'center', color:'var(--color-error)', fontSize:'var(--font-size-13)', padding:'var(--space-5)'}}>{error}</div>}
@@ -18784,7 +18784,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         <div style={{flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'space-between', gap:'var(--space-6px)'}}>
           {/* LIGNE 1 : nom + (société italique si Pro) + pill profil à droite */}
           <div style={{display:'flex', alignItems:'center', gap:'var(--space-6px)', minWidth:0}}>
-            <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:0, maxWidth: isSociete ? '40%' : '75%'}}>
+            <span style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:0, maxWidth: isSociete ? '40%' : '75%'}}>
               {displayNameLine1}
             </span>
             {isSociete && raisonSocialeLine1 && (
@@ -18951,7 +18951,7 @@ function ConfirmModal({title, message, danger, success, confirmLabel, cancelLabe
       style={{position:'fixed', inset:0, background:'rgba(20,15,10,.6)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-5)'}}>
       <div onClick={e => e.stopPropagation()}
         style={{background:'#fff', border:'1.5px solid #A67F5A', borderRadius:14, padding:'var(--space-5)', width:'100%', maxWidth:340, boxShadow:'0 20px 50px rgba(0,0,0,.25)'}}>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color: danger ? 'var(--color-error)' : 'var(--color-accent)', marginBottom:'var(--space-2)'}}>{title}</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color: danger ? 'var(--color-error)' : 'var(--color-accent)', marginBottom:'var(--space-2)'}}>{title}</div>
         {message && <div style={{fontSize:'var(--font-size-13)', color:'var(--color-text-primary)', lineHeight:1.5, marginBottom:'var(--space-4)'}}>{message}</div>}
         <div style={{display:'flex', gap:'var(--space-2)', justifyContent:'flex-end'}}>
           <button onClick={onCancel}
@@ -19115,7 +19115,7 @@ function EventModal({clientId, defaultLocation, initial, onClose, onSaved, showT
     <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.5)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div style={{background:'#fff', borderRadius:'16px 16px 0 0', width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', padding:'14px 16px 24px', animation:'slideUp .25s'}} onClick={e => e.stopPropagation()}>
         <div style={{width:40, height:4, background:'#E2D8CC', borderRadius:2, margin:'0 auto 10px'}}/>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', textAlign:'center', marginBottom:'var(--space-3)'}}>{ed.id ? 'Modifier' : 'Nouveau'} {EVENT_TYPE_LABEL[type] || 'RDV'}</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', textAlign:'center', marginBottom:'var(--space-3)'}}>{ed.id ? 'Modifier' : 'Nouveau'} {EVENT_TYPE_LABEL[type] || 'RDV'}</div>
         <label style={{display:'block', fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', marginBottom:'var(--space-1)', textTransform:'uppercase', letterSpacing:.4}}>Type</label>
         <div style={{display:'flex', gap:'var(--space-5px)', marginBottom:'var(--space-10px)', flexWrap:'wrap'}}>
           {Object.keys(EVENT_TYPE_LABEL).map(k => (
@@ -19188,7 +19188,7 @@ function TodoModal({clientId, initial, onClose, onSaved, showToast}) {
     <div style={{position:'fixed', inset:0, background:'rgba(42,32,24,.5)', zIndex:9999, display:'flex', alignItems:'flex-end', justifyContent:'center'}} onClick={onClose}>
       <div style={{background:'#fff', borderRadius:'16px 16px 0 0', width:'100%', maxWidth:560, padding:'14px 16px 24px', animation:'slideUp .25s'}} onClick={e => e.stopPropagation()}>
         <div style={{width:40, height:4, background:'#E2D8CC', borderRadius:2, margin:'0 auto 10px'}}/>
-        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', textAlign:'center', marginBottom:'var(--space-3)'}}>{ed.id ? 'Modifier la tâche' : 'Nouvelle tâche'}</div>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', textAlign:'center', marginBottom:'var(--space-3)'}}>{ed.id ? 'Modifier la tâche' : 'Nouvelle tâche'}</div>
         <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Rappeler Marc, envoyer documents…"
           style={{width:'100%', padding:'9px 11px', borderRadius:8, fontSize:'var(--font-size-sm)', outline:'none', fontFamily:'inherit', border:'1.5px solid var(--color-border-subtle)', background:'var(--color-bg-input)', marginBottom:'var(--space-10px)'}}/>
         <div style={{display:'flex', gap:'var(--space-2)', marginBottom:'var(--space-10px)'}}>
@@ -19588,7 +19588,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
       <div style={{background:'#fff', borderBottom:'1.5px solid #A67F5A', padding:'10px 14px', position:'sticky', top:0, zIndex:20, display:'flex', alignItems:'center', gap:'var(--space-10px)'}}>
         {/* M/2026/04/29/34 — BackButton charte unique (remplace ancien OI Cormorant). */}
         <BackButton onClick={onBack} ariaLabel="Retour à l'accueil"/>
-        <div style={{flex:1, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'#1A1208', display:'flex', alignItems:'center', gap:'var(--space-6px)'}}>
+        <div style={{flex:1, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'#1A1208', display:'flex', alignItems:'center', gap:'var(--space-6px)'}}>
           <span style={{fontSize:'var(--font-size-lg)'}}>▦</span>
           <span>Vue tableau</span>
           <span style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', fontFamily:'inherit', fontWeight:500, marginLeft:'var(--space-6px)'}}>{totalCount} dossier{totalCount > 1 ? 's' : ''}</span>
@@ -19638,7 +19638,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
               {SHEET_SECTIONS.map(s => (
                 <th key={s.key} colSpan={s.cols}
                   style={{background:s.color, color:'#fff', padding:'6px 12px', fontSize:'var(--font-size-10-5)', fontWeight:700, letterSpacing:.6, textTransform:'uppercase', borderRight:'1.5px solid rgba(255,255,255,0.2)', position:'sticky', top:0, zIndex:4, textAlign:'left', fontFamily:'inherit'}}>
-                  <span style={{fontFamily:'Cormorant Garamond,serif', fontStyle:'italic', fontSize:'var(--font-size-13)', marginRight:'var(--space-2)', opacity:.85}}>{s.num}</span>
+                  <span style={{fontFamily:'var(--font-serif)', fontStyle:'italic', fontSize:'var(--font-size-13)', marginRight:'var(--space-2)', opacity:.85}}>{s.num}</span>
                   <span>{s.label.replace(/^[IVX]+\.\s*/, '')}</span>
                 </th>
               ))}
@@ -19728,7 +19728,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
                     <div style={{display:'flex', alignItems:'center', gap:'var(--space-6px)'}}>
                       <div style={{width:24, height:24, borderRadius:'50%', background: profilColor, color:'#fff', fontSize:'var(--font-size-10)', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'inherit'}}>{initials}</div>
                       <div style={{flex:1, minWidth:0}}>
-                        <div style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-12-5)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'normal', wordBreak:'break-word', lineHeight:1.2, textAlign:'left'}}>
+                        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-12-5)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'normal', wordBreak:'break-word', lineHeight:1.2, textAlign:'left'}}>
                           {((c.prenom || '') + ' ' + (c.nom || '')).trim() || c.societe_nom || '—'}
                         </div>
                         <span style={{display:'inline-block', marginTop:'var(--space-2px)', padding:'0px 5px', fontSize:'var(--font-size-8-5)', fontWeight:700, letterSpacing:.3, textTransform:'uppercase', borderRadius:6, background: pl.bg, color: pl.fg, whiteSpace:'nowrap'}}>{profil}</span>
@@ -19822,7 +19822,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
                   </td>
                   {/* III.11 Prix demandé */}
                   <td style={cellStyle}>
-                    {prixDem ? <span><b style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-13-5)', color:'var(--color-text-primary)'}}>{fmtSheetMoney(prixDem)}</b> <small style={{color:'var(--color-text-brown)', fontSize:'var(--font-size-10)', fontWeight:600}}>{planCur}</small></span> : <span style={{color:'#C4B5A0'}}>—</span>}
+                    {prixDem ? <span><b style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-13-5)', color:'var(--color-text-primary)'}}>{fmtSheetMoney(prixDem)}</b> <small style={{color:'var(--color-text-brown)', fontSize:'var(--font-size-10)', fontWeight:600}}>{planCur}</small></span> : <span style={{color:'#C4B5A0'}}>—</span>}
                   </td>
                   {/* III.12 Prix accepté */}
                   <td style={cellStyle}><span style={{color:'#C4B5A0'}}>—</span></td>
@@ -19834,7 +19834,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
                   </td>
                   {/* III.15 Frais montant */}
                   <td style={cellStyle}>
-                    {fin.frais_montant ? <b style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-12-5)'}}>{fmtSheetMoney(fin.frais_montant)}</b> : <span style={{color:'#C4B5A0'}}>—</span>}
+                    {fin.frais_montant ? <b style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-12-5)'}}>{fmtSheetMoney(fin.frais_montant)}</b> : <span style={{color:'#C4B5A0'}}>—</span>}
                   </td>
                   {/* III.16 Statut */}
                   <td style={cellStyle}>
@@ -19847,7 +19847,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
                         <div style={{width:40, height:5, borderRadius:3, background:'#F0E9DC', overflow:'hidden'}}>
                           <div style={{width: pct + '%', height:'100%', background: pct >= 100 ? '#3E8B5E' : 'var(--color-accent)'}}/>
                         </div>
-                        <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-text-primary)'}}>{pct} %</span>
+                        <span style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-text-primary)'}}>{pct} %</span>
                       </div>
                     ) : <span style={{color:'#C4B5A0'}}>—</span>}
                   </td>
@@ -19860,7 +19860,7 @@ function SheetView({onBack, clients, openClient, showToast}) {
                   </td>
                   {/* IV.19 Score */}
                   <td style={cellStyle}>
-                    <span style={{padding:'1px 8px', borderRadius:9, background:'#F4ECE3', color: scoreColor, fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-13)', fontWeight:700, border:'1px solid ' + scoreColor + '33'}}>{score}</span>
+                    <span style={{padding:'1px 8px', borderRadius:9, background:'#F4ECE3', color: scoreColor, fontFamily:'var(--font-serif)', fontSize:'var(--font-size-13)', fontWeight:700, border:'1px solid ' + scoreColor + '33'}}>{score}</span>
                   </td>
                   {/* IV.20 Dernier contact */}
                   <td style={cellStyle}>
@@ -20143,7 +20143,7 @@ function DownloadsView({onBack, staged, clients, onStagedCreated, openClient, on
       )}
       <div style={{background:'#fff', borderBottom:'1.5px solid #A67F5A', padding:'10px 14px', position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', gap:'var(--space-10px)'}}>
         <BackButton onClick={onBack}/>
-        <div style={{flex:1, textAlign:'center', fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:700, color:'#1A1208', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--space-6px)'}}>
+        <div style={{flex:1, textAlign:'center', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'#1A1208', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--space-6px)'}}>
           <DownloadIcon size={20} color="var(--color-accent)"/>
           <span>Téléchargements</span>
         </div>
@@ -20908,7 +20908,7 @@ function PhotosGalleryV28({dossier, showToast}) {
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           )}
-          <div style={{position:'absolute', bottom:20, left:0, right:0, textAlign:'center', color:'#fff', fontSize:'var(--font-size-sm)', fontFamily:"'DM Sans', sans-serif"}}>
+          <div style={{position:'absolute', bottom:20, left:0, right:0, textAlign:'center', color:'#fff', fontSize:'var(--font-size-sm)', fontFamily:"var(--font-sans)"}}>
             {(lightboxIdx + 1)} / {uuids.length}
           </div>
         </div>
@@ -21037,7 +21037,7 @@ function M80MandatBlock({d, set}) {
   const _onSel = (k, v) => set(k, v, {commit: true});
   return (
     <div style={{padding:'12px 14px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:11}}>
-      <div style={{fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'var(--font-size-sm)', color:'var(--color-text-brown)', marginBottom:'var(--space-2)', letterSpacing:.3}}>06a &middot; Mandat</div>
+      <div style={{fontFamily:"var(--font-serif)", fontStyle:'italic', fontSize:'var(--font-size-sm)', color:'var(--color-text-brown)', marginBottom:'var(--space-2)', letterSpacing:.3}}>06a &middot; Mandat</div>
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'var(--space-2)'}}>
         <div>
           <label style={{display:'block', fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', marginBottom:'var(--space-1)', textTransform:'uppercase', letterSpacing:.4}}>Type de mandat</label>
@@ -21103,7 +21103,7 @@ function Section7({d, set}) {
       {/* Bandeau Cadre legal detecte */}
       <div style={{padding:'7px 11px', background:'linear-gradient(90deg, #F4E5C8, #FFF8E8)', border:'1px solid #C9A961', borderRadius:9, marginBottom:'var(--space-10px)', display:'flex', alignItems:'center', gap:'var(--space-2)', flexWrap:'wrap'}}>
         <span style={{fontSize:'var(--font-size-lg)', flexShrink:0}}>{_ref ? _ref.flag : '🌐'}</span>
-        <span style={{flex:1, minWidth:0, fontFamily:"'Cormorant Garamond', serif", fontStyle:'italic', fontSize:'var(--font-size-13)', color:'var(--color-text-brown)'}}>
+        <span style={{flex:1, minWidth:0, fontFamily:"var(--font-serif)", fontStyle:'italic', fontSize:'var(--font-size-13)', color:'var(--color-text-brown)'}}>
           Cadre legal &middot; <b style={{fontStyle:'normal', fontWeight:700}}>{_ref ? _ref.name : (_pays || 'Pays non renseigne')}</b>
         </span>
         <span style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontStyle:'italic'}}>detecte Section II</span>
@@ -21832,7 +21832,7 @@ function FormView(props) {
     const sec1Line1 = sec1DisplayName
       ? (
         <span style={{display:'flex', alignItems:'center', gap:'var(--space-6px)', minWidth:0, width:'100%'}}>
-          <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:0, maxWidth: isSocieteSum ? '40%' : '75%'}}>
+          <span style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flexShrink:0, maxWidth: isSocieteSum ? '40%' : '75%'}}>
             {sec1DisplayName}
           </span>
           {sec1RaisonSociale && (
@@ -22213,7 +22213,7 @@ function FormView(props) {
                 value={formSearchInput}
                 onChange={e => setFormSearchInput(e.target.value)}
                 autoCapitalize="off" autoCorrect="off" spellCheck="false"
-                style={{flex:1, border:'none', outline:'none', fontSize:'var(--font-size-sm)', fontFamily:"'DM Sans', system-ui, sans-serif", color:'var(--color-text-primary)', background:'transparent', minWidth:0, padding:'4px 0'}}/>
+                style={{flex:1, border:'none', outline:'none', fontSize:'var(--font-size-sm)', fontFamily:"var(--font-sans)", color:'var(--color-text-primary)', background:'transparent', minWidth:0, padding:'4px 0'}}/>
               {formSearchQuery && (
                 <span style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', fontWeight:700, whiteSpace:'nowrap', flexShrink:0, padding:'0 6px'}}>
                   {formMatches.totalMatches}
@@ -22392,7 +22392,7 @@ function FormView(props) {
                     <line x1="12" y1="17" x2="12.01" y2="17"/>
                   </svg>
                 </div>
-                <div style={{fontSize:'var(--font-size-17)', fontWeight:700, color:'var(--color-text-primary)', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>{(confirmProfilSwitch && confirmProfilSwitch.title) || 'Profil modifié'}</div>
+                <div style={{fontSize:'var(--font-size-17)', fontWeight:700, color:'var(--color-text-primary)', fontFamily:"var(--font-serif)"}}>{(confirmProfilSwitch && confirmProfilSwitch.title) || 'Profil modifié'}</div>
               </div>
               <div style={{fontSize:'var(--font-size-13)', color:'var(--color-text-taupe)', lineHeight:1.5, marginBottom:'var(--space-18px)'}}>
                 {(confirmProfilSwitch && confirmProfilSwitch.message) || 'Confirmer le changement de profil ?'}
@@ -22470,7 +22470,7 @@ function FormView(props) {
                  return (
                    // M/2026/05/06/74 — alignement gauche : titre + hairline + pill profil colles, pas d espace vide.
                    <div style={{display:'flex', alignItems:'center', gap:'var(--space-2)', flex:1, minWidth:0, flexWrap:'wrap'}}>
-                     <span style={{fontFamily:'Cormorant Garamond,serif', fontSize:'var(--font-size-lg)', fontWeight:500, color:'#2A1F15', whiteSpace:'nowrap', flexShrink:0}}>{_titleStage1}</span>
+                     <span style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:500, color:'#2A1F15', whiteSpace:'nowrap', flexShrink:0}}>{_titleStage1}</span>
                      <span style={{display:'inline-block', width:1, height:16, background:'#E8DDC9', flexShrink:0}}/>
                      {_isPrincipal1A ? (
                        <button ref={profilBtnRef} type="button"
@@ -23109,7 +23109,7 @@ function FormView(props) {
             const BTN_BASE = _flagM31
               ? {flex:'1 1 0', minWidth:0, padding:'4px 4px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}
               : {flex:'1 1 0', minWidth:0, padding:'2px 2px', background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'var(--space-3px)'};
-            const LABEL_BASE = {fontFamily:"'DM Sans', sans-serif", fontSize:LABEL_FS, fontWeight:500, letterSpacing:LABEL_LS, marginTop:LABEL_MT};
+            const LABEL_BASE = {fontFamily:"var(--font-sans)", fontSize:LABEL_FS, fontWeight:500, letterSpacing:LABEL_LS, marginTop:LABEL_MT};
             const buttons = (
               <>
                 <button type="button" onClick={onSave} title="Enregistrer le dossier" style={BTN_BASE}>
@@ -23414,8 +23414,8 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{padding:'40px 24px', textAlign:'center', fontFamily:"'DM Sans', sans-serif", color:'var(--color-text-brown)', maxWidth:480, margin:'40px auto', background:'#fff', borderRadius:14, border:'1px solid var(--color-border-cream)'}}>
-          <h2 style={{fontFamily:"'Cormorant Garamond', Georgia, serif", color:'var(--color-accent)', fontSize:'var(--font-size-26)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Une erreur est survenue</h2>
+        <div style={{padding:'40px 24px', textAlign:'center', fontFamily:"var(--font-sans)", color:'var(--color-text-brown)', maxWidth:480, margin:'40px auto', background:'#fff', borderRadius:14, border:'1px solid var(--color-border-cream)'}}>
+          <h2 style={{fontFamily:"var(--font-serif)", color:'var(--color-accent)', fontSize:'var(--font-size-26)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Une erreur est survenue</h2>
           <p style={{fontSize:'var(--font-size-13)', color:'var(--color-text-muted)', lineHeight:1.5, marginBottom:'var(--space-18px)'}}>
             L'app a rencontre un probleme inattendu. Tes donnees sont sauvegardees automatiquement.<br/>
             Reviens a l accueil pour continuer.

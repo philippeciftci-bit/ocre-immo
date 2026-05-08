@@ -125,6 +125,10 @@
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, monospace;
 
+  /* M/2026/05/08/24 — DESIGN-TOKENS.2.8.4 : token --font-script pour Caveat
+     (logo brand, marqueurs cursifs Oi). Complete --font-serif/sans/mono. */
+  --font-script: 'Caveat', cursive;
+
   --font-size-xs: 12px;
   --font-size-sm: 14px;
   --font-size-base: 16px;
