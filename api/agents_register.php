@@ -17,6 +17,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 }
 
 $input = getInput();
+
+// M/2026/05/08/53 — DOUBLE VERROU EN HEAD : refus immediat si cgu_accepted ou rgpd_accepted manquants/false.
+// Garde-fou anti-bypass frontend, anti-attaque, anti-bug. AUCUN INSERT, AUCUN MAIL avant ce check.
+$_cguHead = filter_var($input['cgu_accepted'] ?? false, FILTER_VALIDATE_BOOLEAN);
+$_rgpdHead = filter_var($input['rgpd_accepted'] ?? false, FILTER_VALIDATE_BOOLEAN);
+if (!$_cguHead || !$_rgpdHead) {
+    @file_put_contents('/var/log/ocre-signup-errors.log',
+        '[' . date('c') . '] WARN agents_register POST sans CGU/RGPD valides : ip=' . ($_SERVER['REMOTE_ADDR'] ?? '?')
+        . ' email=' . ($input['email'] ?? '?') . ' cgu=' . var_export($_cguHead, true) . ' rgpd=' . var_export($_rgpdHead, true)
+        . ' ua=' . substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 100) . "\n", FILE_APPEND);
+    http_response_code(400);
+    echo json_encode([
+        'ok' => false,
+        'error' => 'CGU_RGPD_REQUIRED',
+        'detail' => 'Acceptation CGU et RGPD obligatoires avant toute action serveur.',
+    ]);
+    exit;
+}
+
 $errors = [];
 
 function _trim_str($v, $max = 255) {
