@@ -140,8 +140,15 @@
   .sa-section { margin-bottom: 32px; }
   .sa-section-title { font-family: var(--font-sans); font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 0; border-top: 1px solid var(--color-border-subtle); margin-bottom: 16px; }
   .sa-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
-  .sa-card { background: #fff; border: 1px solid var(--color-border-subtle); border-top: 3px solid var(--color-text-muted); border-radius: 10px; padding: 20px 22px; transition: box-shadow 150ms; }
+  .sa-card { background: #fff; border: 1px solid var(--color-border-subtle); border-top: 3px solid var(--color-text-muted); border-radius: 10px; padding: 20px 22px; transition: box-shadow 150ms, transform 150ms, border-top-width 150ms; position: relative; }
   .sa-card:hover { box-shadow: 0 2px 12px rgba(60,40,20,0.06); }
+  /* M/2026/05/08/37 — cards cliquables avec hover + flèche indicateur. */
+  .sa-card.clickable { cursor: pointer; }
+  .sa-card.clickable:hover { transform: translateY(-2px); border-top-width: 4px; box-shadow: 0 4px 18px rgba(60,40,20,0.10); }
+  .sa-card.clickable:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .sa-card.clickable .sa-card-arrow { position: absolute; bottom: 12px; right: 14px; font-size: 14px; color: var(--color-text-muted); opacity: 0.4; transition: opacity 150ms, transform 150ms; }
+  .sa-card.clickable:hover .sa-card-arrow { opacity: 1; transform: translateX(2px); }
+  .sa-card.is-empty { opacity: 0.7; }
   .sa-card.accent-ocre { border-top-color: var(--color-accent); }
   .sa-card.accent-success { border-top-color: var(--color-success); }
   .sa-card.accent-warning { border-top-color: var(--color-warning); }
@@ -230,13 +237,15 @@ function logout() {
 let currentTab = 'overview';
 let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '', q: ''};
 
-// M/2026/05/08/35 — Sous-titres dynamiques contextuels par onglet.
+// M/2026/05/08/35 → 37 — Sous-titres dynamiques contextuels + 2 nouveaux onglets Sessions/Users.
 const TAB_SUBTITLES = {
   overview: 'État global du système Ocre Immo',
   workspaces: 'Espaces actifs · gestion des comptes agents',
   clients: 'Clients inscrits · vue cross-workspaces',
   pending: 'Agents en attente d\'activation · action requise',
   audit: 'Historique des actions super-admin · 24h',
+  sessions: 'Sessions actives · connexions courantes',
+  users: 'Tous les users · cross-workspace',
 };
 const TAB_LABELS = {
   overview: 'Vue d\'ensemble',
@@ -244,12 +253,38 @@ const TAB_LABELS = {
   clients: 'Clients',
   pending: 'Inscriptions en attente',
   audit: 'Audit récent',
+  sessions: 'Sessions',
+  users: 'Users',
 };
+const TAB_ORDER = ['overview', 'workspaces', 'clients', 'users', 'sessions', 'pending', 'audit'];
+
+// Hash routing : URL #tab synchronise l'onglet actif.
+function parseHashTab() {
+  const h = (location.hash || '').replace(/^#/, '').split('?')[0];
+  return TAB_ORDER.indexOf(h) >= 0 ? h : 'overview';
+}
+function goToTab(tab) {
+  if (TAB_ORDER.indexOf(tab) < 0) return;
+  if (location.hash !== '#' + tab) location.hash = '#' + tab;
+  // hashchange listener s'occupe du reste.
+}
+window.addEventListener('hashchange', () => {
+  const newTab = parseHashTab();
+  if (newTab !== currentTab) {
+    currentTab = newTab;
+    document.querySelectorAll('.sa-tab').forEach(x => x.classList.toggle('active', x.dataset.t === newTab));
+    const lbl = document.getElementById('sa-tab-label'); if (lbl) lbl.textContent = TAB_LABELS[newTab];
+    const sub = document.getElementById('sa-subtitle'); if (sub) sub.textContent = TAB_SUBTITLES[newTab];
+    loadTab(newTab);
+  }
+});
 
 async function renderConsole() {
   const root = document.getElementById('root');
   const writeOn = localStorage.getItem('ocre_sa_write_mode') === '1';
-  const tabsHtml = ['overview','workspaces','clients','pending','audit'].map(t =>
+  // Sync currentTab depuis le hash si présent (boot avec hash routing).
+  currentTab = parseHashTab();
+  const tabsHtml = TAB_ORDER.map(t =>
     `<button class="sa-tab${t === currentTab ? ' active' : ''}" data-t="${t}">${TAB_LABELS[t]}</button>`
   ).join('');
   root.innerHTML =
@@ -271,13 +306,13 @@ async function renderConsole() {
     + '<div id="content"></div>'
     + '</div>';
   document.querySelectorAll('.sa-tab').forEach(t => t.addEventListener('click', e => {
-    document.querySelectorAll('.sa-tab').forEach(x => x.classList.remove('active'));
-    e.target.classList.add('active');
-    currentTab = e.target.dataset.t;
-    // Mise à jour sous-titre dynamique
-    const lbl = document.getElementById('sa-tab-label'); if (lbl) lbl.textContent = TAB_LABELS[currentTab];
-    const sub = document.getElementById('sa-subtitle'); if (sub) sub.textContent = TAB_SUBTITLES[currentTab];
-    loadTab(currentTab);
+    const target = e.target.dataset.t;
+    if (location.hash === '#' + target) {
+      // Re-render quand même si même hash (cas où rien à changer).
+      loadTab(target);
+    } else {
+      goToTab(target);
+    }
   }));
   loadTab(currentTab);
 }
@@ -288,28 +323,32 @@ async function loadTab(t) {
     const r = await api('/api/superadmin_v20.php?action=overview');
     if (!r.ok) { c.textContent = r.error; return; }
     const s = r.stats || {};
-    // M/2026/05/08/35 — Cards regroupées en sections thématiques + zone technique discrète.
-    const card = (key, label, desc, accent) => {
+    // M/2026/05/08/35 → 37 — Cards regroupées + cliquables (raccourcis vers détails via hash routing).
+    const card = (key, label, desc, accent, target, ariaLabel) => {
       const v = s[key] !== undefined ? s[key] : 0;
-      return `<div class="sa-card accent-${accent}"><div class="sa-card-value">${v}</div><div class="sa-card-label">${label}</div>${desc ? `<div class="sa-card-desc">${desc}</div>` : ''}</div>`;
+      const empty = (v === 0) ? ' is-empty' : '';
+      const clickable = target ? ' clickable' : '';
+      const onclick = target ? ` onclick="goToTab('${target}')" tabindex="0" role="button" aria-label="${ariaLabel || label}" onkeydown="if(event.key==='Enter')goToTab('${target}')"` : '';
+      const arrow = target ? '<span class="sa-card-arrow" aria-hidden="true">→</span>' : '';
+      return `<div class="sa-card accent-${accent}${clickable}${empty}"${onclick}><div class="sa-card-value">${v}</div><div class="sa-card-label">${label}</div>${desc ? `<div class="sa-card-desc">${desc}</div>` : ''}${arrow}</div>`;
     };
     const pendingAccent = (s.pending_ruptures || 0) > 0 ? 'warning' : 'muted';
     c.innerHTML =
       '<section class="sa-section">'
         + '<div class="sa-section-title">Espaces & Utilisateurs</div>'
         + '<div class="sa-cards">'
-          + card('workspaces', 'Workspaces', 'total créés', 'ocre')
-          + card('wsp_active', 'WSP actifs', 'profils agents', 'ocre')
-          + card('wsc_active', 'WSC actifs', 'profils clients', 'success')
-          + card('users', 'Users', 'comptes inscrits', 'muted')
+          + card('workspaces', 'Workspaces', 'total créés', 'ocre', 'workspaces', 'Voir tous les workspaces')
+          + card('wsp_active', 'WSP actifs', 'profils agents', 'ocre', 'workspaces', 'Voir les workspaces agents')
+          + card('wsc_active', 'WSC actifs', 'profils clients', 'success', 'clients', 'Voir tous les clients')
+          + card('users', 'Users', 'comptes inscrits', 'muted', 'users', 'Voir tous les users cross-workspace')
         + '</div>'
       + '</section>'
       + '<section class="sa-section">'
         + '<div class="sa-section-title">Activité temps réel</div>'
         + '<div class="sa-cards">'
-          + card('sessions_active', 'Sessions actives', 'connexions courantes', 'success')
-          + card('pending_ruptures', 'Pending ruptures', 'demandes à exécuter', pendingAccent)
-          + card('super_admin_actions_24h', 'Actions super-admin', 'dernières 24h', 'ocre')
+          + card('sessions_active', 'Sessions actives', 'connexions courantes', 'success', 'sessions', 'Voir les sessions actives')
+          + card('pending_ruptures', 'Pending ruptures', 'demandes à exécuter', pendingAccent, 'pending', 'Voir les inscriptions en attente')
+          + card('super_admin_actions_24h', 'Actions super-admin', 'dernières 24h', 'ocre', 'audit', 'Voir l\'audit récent')
         + '</div>'
       + '</section>'
       + '<section class="sa-tech-zone">'
@@ -332,6 +371,10 @@ async function loadTab(t) {
     await renderClientsTab();
   } else if (t === 'pending') {
     await renderPendingTab();
+  } else if (t === 'sessions') {
+    await renderSessionsTab();
+  } else if (t === 'users') {
+    await renderUsersTab();
   } else if (t === 'audit') {
     const r = await api('/api/superadmin_v20.php?action=audit_recent');
     c.innerHTML = '<table><thead><tr><th>Date</th><th>Workspace</th><th>Acteur</th><th>Action</th><th>Cible</th></tr></thead><tbody>'
@@ -474,6 +517,94 @@ async function tabReset(action, label) {
   } else {
     alert('⚠️ ' + (r.error || 'Erreur'));
   }
+}
+
+// M/2026/05/08/37 — Vue Sessions actives (cross-workspace).
+async function renderSessionsTab() {
+  const c = document.getElementById('content');
+  c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
+  const r = await api('/api/superadmin_sessions.php?action=list');
+  if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
+  const head = '<table><thead><tr>'
+    + '<th>Email</th><th>Rôle</th><th>Workspace</th><th>IP</th><th>User-agent</th>'
+    + '<th>Créée</th><th>Expire</th><th style="text-align:right">Actions</th>'
+    + '</tr></thead><tbody>';
+  const rows = (r.sessions || []).map(s => {
+    const created = fmtDateCompact(s.created_at);
+    const expires = fmtDateCompact(s.expires_at);
+    const selfBadge = s.is_self ? ' <span class="badge badge-enregistre">moi</span>' : '';
+    const action = s.is_self
+      ? '<span style="color:var(--color-text-muted);font-size:11px;font-style:italic">session active</span>'
+      : `<button class="icon-btn danger" onclick="forceLogoutSession(${s.id}, '${escHtml(s.email)}')" title="Forcer déconnexion" style="color:var(--color-error)">🚪</button>`;
+    return `<tr><td class="col-email">${escHtml(s.email)}${selfBadge}</td>`
+      + `<td>${s.role}</td>`
+      + `<td><b>${escHtml(s.workspace_slug)}</b></td>`
+      + `<td class="mono-tel">${escHtml(s.ip)}</td>`
+      + `<td class="col-provider" title="${escHtml(s.user_agent)}">${escHtml(s.user_agent)}</td>`
+      + `<td class="col-date" title="${escHtml(s.created_at)}">${created}</td>`
+      + `<td class="col-date" title="${escHtml(s.expires_at)}">${expires}</td>`
+      + `<td class="actions">${action}</td>`
+      + `</tr>`;
+  }).join('');
+  c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> session(s) active(s).</p>'
+    + '<div style="margin-bottom:12px"><button class="icon-btn danger" onclick="logoutAllSessions()" style="color:var(--color-error);width:auto;padding:6px 12px;font-size:12px;font-weight:600;border:1px solid var(--color-error);border-radius:6px">🚪 Déconnecter tous (sauf moi)</button></div>'
+    + head + (rows || '<tr><td colspan="8" style="text-align:center;padding:24px;color:#6B5E4A">Aucune session active.</td></tr>') + '</tbody></table>';
+}
+async function forceLogoutSession(sid, email) {
+  if (!requireWriteMode()) return;
+  if (!confirm(`Déconnecter la session de ${email} ?`)) return;
+  const r = await api('/api/superadmin_sessions.php', {method:'POST', body:{action:'force_logout', session_id:sid}});
+  if (r.ok) { renderSessionsTab(); }
+  else alert('⚠️ ' + (r.error || 'Erreur'));
+}
+async function logoutAllSessions() {
+  if (!requireWriteMode()) return;
+  if (!confirm('Déconnecter TOUTES les sessions sauf la tienne ?\n\nTous les agents connectés seront déconnectés.')) return;
+  const r = await api('/api/superadmin_sessions.php', {method:'POST', body:{action:'logout_all_except_me'}});
+  if (r.ok) { alert(`✅ ${r.deleted} session(s) déconnectée(s).`); renderSessionsTab(); }
+  else alert('⚠️ ' + (r.error || 'Erreur'));
+}
+
+// M/2026/05/08/37 — Vue Users cross-workspace.
+async function renderUsersTab() {
+  const c = document.getElementById('content');
+  c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
+  const r = await api('/api/superadmin_users_xt.php?action=list_all');
+  if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
+  const statusColor = (st) => st === 'active' ? 'green' : (st === 'pending_activation' ? 'orange' : 'red');
+  const head = '<table><thead><tr>'
+    + '<th class="state-cell" style="width:4px;padding:0"></th>'
+    + '<th>Email</th><th>Nom</th><th>Rôle</th><th>Statut</th><th>Workspace</th>'
+    + '<th>Téléphone</th><th>Dernière connexion</th><th>Inscrit</th><th style="text-align:right">Actions</th>'
+    + '</tr></thead><tbody>';
+  const rows = (r.users || []).map(u => {
+    const stateCls = 'state-' + statusColor(u.status);
+    const tel = fmtPhoneE164(u.telephone);
+    const lastLogin = u.last_login ? fmtDateCompact(u.last_login) : '—';
+    const created = fmtDateCompact(u.created_at);
+    return `<tr class="${stateCls}">`
+      + `<td class="state-cell"></td>`
+      + `<td class="col-email" title="${escHtml(u.email)}">${escHtml(u.email)}</td>`
+      + `<td class="col-name">${escHtml(u.display_name)}</td>`
+      + `<td><span style="font-size:11px;color:#6B5E4A;text-transform:uppercase">${u.role}</span></td>`
+      + `<td><span class="badge badge-${u.status === 'active' ? 'enregistre' : 'brouillon'}" style="text-transform:lowercase">${u.status}</span></td>`
+      + `<td><b>${escHtml(u.slug)}</b></td>`
+      + `<td class="mono-tel">${tel}</td>`
+      + `<td class="col-date" title="${escHtml(u.last_login || '')}">${lastLogin}</td>`
+      + `<td class="col-date" title="${escHtml(u.created_at)}">${created}</td>`
+      + `<td class="actions"><button class="icon-btn danger" onclick="deleteUserXt(${u.id}, '${escHtml(u.email)}', '${u.role}')" title="Supprimer le compte" style="color:var(--color-error)">🗑️</button></td>`
+      + `</tr>`;
+  }).join('');
+  c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> user(s) cross-workspace.</p>'
+    + head + (rows || '<tr><td colspan="10" style="text-align:center;padding:24px;color:#6B5E4A">Aucun user.</td></tr>') + '</tbody></table>';
+}
+async function deleteUserXt(uid, email, role) {
+  if (!requireWriteMode()) return;
+  if (role === 'super_admin' && !confirm('⚠️ Cet utilisateur est SUPER-ADMIN.\n\nSupprimer quand même ?')) return;
+  if (!confirm(`Supprimer définitivement ${email} ?\n\nCette action est irréversible.`)) return;
+  const r = await api('/api/superadmin_users_xt.php', {method:'POST', body:{action:'delete', user_id:uid, confirm_super_admin_delete: role === 'super_admin'}});
+  if (r.ok) { alert('✅ User supprimé.'); renderUsersTab(); }
+  else alert('⚠️ ' + (r.error || 'Erreur'));
 }
 
 async function resetTotal() {
