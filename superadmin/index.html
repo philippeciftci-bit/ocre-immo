@@ -26,8 +26,34 @@
   .stat-v { font-family: var(--font-serif); font-size: 32px; color: var(--color-accent); font-weight: 700; }
   .stat-l { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
   table { width: 100%; background: #fff; border-radius: 10px; overflow: hidden; border-collapse: collapse; margin-top: 16px; border: 1px solid #E5DDC8; }
-  th, td { padding: 12px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--color-bg-page); }
-  th { background: var(--color-bg-page); color: #6B4429; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  /* M/2026/05/08/32 — densité tables compact (Linear/Stripe/Notion). */
+  th, td { padding: 6px 10px; text-align: left; font-size: 13px; border-bottom: 1px solid #EDE6DC; vertical-align: middle; line-height: 1.35; }
+  th { background: var(--color-bg-tint-warm); color: #6B4429; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 8px 10px; }
+  tbody tr { height: 44px; }
+  tbody tr:hover { background: var(--color-bg-tint-warm); }
+  tbody tr:last-child td { border-bottom: none; }
+  /* Bordure gauche colorée pour état (au lieu de fond pleine largeur). */
+  td.state-cell { padding: 0; width: 4px; }
+  tr.state-green td.state-cell { background: #2D7A3E; }
+  tr.state-orange td.state-cell { background: #B8801E; }
+  tr.state-red td.state-cell { background: #C73E3E; }
+  /* Actions icônes alignées 1 ligne. */
+  td.actions { white-space: nowrap; text-align: right; }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; margin: 0 2px; border: 1px solid transparent; background: transparent; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; line-height: 1; opacity: 0.7; transition: opacity 120ms, background 120ms; }
+  .icon-btn:hover { opacity: 1; background: var(--color-bg-page); }
+  .icon-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  .icon-btn.danger:hover { background: #FBEAEA; }
+  .mono-tel { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--color-text-primary); }
+  .col-date { font-variant-numeric: tabular-nums; font-size: 12.5px; color: #6B5E4A; }
+  .col-attempts { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .col-provider { font-size: 11.5px; color: #6B5E4A; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col-email { font-weight: 500; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Mobile : scroll horizontal avec colonnes sticky. */
+  @media (max-width: 760px) {
+    table { display: block; overflow-x: auto; }
+    tbody tr { height: 52px; }
+  }
   .login { max-width: 380px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; border: 1px solid #E5DDC8; }
   .login input { width: 100%; padding: 10px 12px; border: 1px solid #B89968; border-radius: 6px; margin-bottom: 10px; font-family: inherit; }
   .login button { width: 100%; padding: 12px; background: var(--color-accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600; }
@@ -163,9 +189,9 @@ async function loadTab(t) {
     ).join('') + '</div>';
   } else if (t === 'workspaces') {
     const r = await api('/api/superadmin_v20.php?action=workspaces');
-    c.innerHTML = '<table><thead><tr><th>Slug</th><th>Type</th><th>Nom</th><th>Pays</th><th>Membres</th><th>Créé</th><th>Archivé</th></tr></thead><tbody>'
+    c.innerHTML = '<table><thead><tr><th>Slug</th><th>Type</th><th>Nom</th><th>Pays</th><th style="text-align:center">Membres</th><th>Créé</th><th style="text-align:center">Archivé</th></tr></thead><tbody>'
       + (r.workspaces || []).map(w =>
-        `<tr><td>${w.slug}</td><td>${w.type}</td><td>${w.display_name}</td><td>${w.country_code || ''}</td><td>${w.members_count}</td><td>${(w.created_at || '').slice(0, 10)}</td><td>${w.archived_at ? '✓' : ''}</td></tr>`
+        `<tr><td><b>${w.slug}</b></td><td><span style="font-size:11px;color:#6B5E4A;text-transform:uppercase">${w.type}</span></td><td class="col-name" title="${(w.display_name||'').replace(/"/g,'&quot;')}">${w.display_name}</td><td class="col-date">${w.country_code || '—'}</td><td class="col-attempts">${w.members_count}</td><td class="col-date" title="${w.created_at||''}">${(w.created_at || '').slice(0, 10).replace(/(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1')}</td><td style="text-align:center">${w.archived_at ? '✓' : '—'}</td></tr>`
       ).join('') + '</tbody></table>';
   } else if (t === 'clients') {
     await renderClientsTab();
@@ -174,9 +200,12 @@ async function loadTab(t) {
   } else if (t === 'audit') {
     const r = await api('/api/superadmin_v20.php?action=audit_recent');
     c.innerHTML = '<table><thead><tr><th>Date</th><th>Workspace</th><th>Acteur</th><th>Action</th><th>Cible</th></tr></thead><tbody>'
-      + (r.events || []).map(e =>
-        `<tr><td>${(e.created_at || '').replace('T', ' ').slice(0, 19)}</td><td>${e.workspace_slug || ''}</td><td>${e.email || ''}</td><td>${e.action}</td><td>${e.target_type || ''} ${e.target_id || ''}</td></tr>`
-      ).join('') + '</tbody></table>';
+      + (r.events || []).map(e => {
+        const dt = (e.created_at || '').replace('T', ' ');
+        const m = dt.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+        const dtCompact = m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : dt.slice(0, 16);
+        return `<tr><td class="col-date" title="${e.created_at||''}">${dtCompact}</td><td><b>${e.workspace_slug || '—'}</b></td><td class="col-email">${e.email || '—'}</td><td>${e.action}</td><td class="col-provider">${e.target_type || ''} ${e.target_id || ''}</td></tr>`;
+      }).join('') + '</tbody></table>';
   }
 }
 async function renderClientsTab() {
@@ -197,8 +226,10 @@ async function renderClientsTab() {
   const tableHead = '<table><thead><tr><th>Workspace</th><th>Nom</th><th>Société</th><th>Profil</th><th>Statut</th><th>Modifié</th></tr></thead><tbody>';
   const rows = (r.clients || []).map(cl => {
     const sBadge = `<span class="badge badge-${cl.statut}">${cl.statut}</span>`;
-    const updated = (cl.updated_at || '').replace('T', ' ').slice(0, 16);
-    return `<tr><td><b>${cl.workspace_slug}</b></td><td>${cl.nom_complet || '<i>(sans nom)</i>'}</td><td>${cl.societe || ''}</td><td>${cl.profil || ''}</td><td>${sBadge}</td><td>${updated}</td></tr>`;
+    const u = (cl.updated_at || '').replace('T', ' ');
+    const m = u.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+    const updated = m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : u.slice(0, 16);
+    return `<tr><td><b>${cl.workspace_slug}</b></td><td class="col-name" title="${(cl.nom_complet||'').replace(/"/g,'&quot;')}">${cl.nom_complet || '<i style="color:#A89882">(sans nom)</i>'}</td><td class="col-name">${cl.societe || '—'}</td><td>${cl.profil || '—'}</td><td>${sBadge}</td><td class="col-date" title="${cl.updated_at||''}">${updated}</td></tr>`;
   }).join('');
   const tableEnd = '</tbody></table>';
   let pagination = '';
@@ -216,26 +247,72 @@ async function renderClientsTab() {
 function filterClient(key, value) { clientsState[key] = value; clientsState.page = 1; renderClientsTab(); }
 function gotoPage(p) { clientsState.page = p; renderClientsTab(); }
 
-// M/2026/05/08/30 — Section Inscriptions en attente d'activation (super-admin centric).
+// M/2026/05/08/30 → 32 — Section Inscriptions en attente, refonte compacte.
+// Format date "DD/MM HH:MM" avec tooltip ISO. Téléphone en E.164. Bordure gauche colorée.
+function fmtDateCompact(iso) {
+  if (!iso) return '—';
+  const s = String(iso).replace('T', ' ');
+  // Extract YYYY-MM-DD HH:MM from "2026-05-08 08:20:00..."
+  const m = s.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+  if (!m) return s.slice(0, 16);
+  return `${m[3]}/${m[2]} ${m[4]}:${m[5]}`;
+}
+function fmtPhoneE164(raw) {
+  if (!raw) return '—';
+  const cleaned = String(raw).replace(/[\s\-\.\(\)]/g, '');
+  if (/^\+\d{8,15}$/.test(cleaned)) return cleaned;
+  // FR national 0X → +33X
+  if (/^0[1-9]\d{8}$/.test(cleaned)) return '+33' + cleaned.slice(1);
+  return cleaned;
+}
+function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+
 async function renderPendingTab() {
   const c = document.getElementById('content');
   c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
   const r = await api('/api/superadmin_pending_activations.php?action=list');
   if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
-  const colorBg = {green:'#D1FAE5', orange:'#FEF3C7', red:'#FEE2E2'};
-  const colorBorder = {green:'#6EE7B7', orange:'#FBBF24', red:'#FCA5A5'};
-  const head = '<table><thead><tr><th>État</th><th>Email</th><th>Agent</th><th>Agence</th><th>Téléphone</th><th>Inscrit</th><th>Tentatives</th><th>Dernière</th><th>Provider/Statut</th><th>Actions</th></tr></thead><tbody>';
+  const head = '<table><thead><tr>'
+    + '<th class="state-cell" style="width:4px;padding:0"></th>'
+    + '<th>Agent</th>'
+    + '<th>Email</th>'
+    + '<th>Téléphone</th>'
+    + '<th>Inscrit</th>'
+    + '<th style="text-align:center">Tent.</th>'
+    + '<th>Dernière</th>'
+    + '<th>Provider/Statut</th>'
+    + '<th style="text-align:right">Actions</th>'
+    + '</tr></thead><tbody>';
   const rows = (r.pending || []).map(u => {
-    const bg = colorBg[u.color] || '#fff';
-    const bd = colorBorder[u.color] || '#E5DDC8';
-    const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${bd};border:1.5px solid ${bd === '#6EE7B7' ? '#2D7A4F' : bd === '#FBBF24' ? '#B8801E' : '#C73E3E'}"></span>`;
-    const created = (u.created_at || '').replace('T',' ').slice(0,16);
-    const last = (u.last_attempt_at || '').replace('T',' ').slice(0,16) || '—';
-    const provStatus = (u.last_provider || '—') + ' / ' + (u.last_status || '—');
-    return `<tr style="background:${bg}"><td>${dot}</td><td>${u.email}</td><td>${u.prenom} ${u.nom}</td><td>${u.agence_nom||'—'}</td><td>${u.telephone||'—'}</td><td>${created} (${u.age_hours}h)</td><td><b>${u.attempts}</b></td><td>${last}</td><td style="font-size:11px;color:#6B5E4A">${provStatus}</td><td><button onclick="paResend(${u.id})" style="padding:4px 8px;font-size:11px;background:#fff;border:1px solid #B89968;border-radius:4px;cursor:pointer">🔄 Renvoyer</button> <button onclick="paActivateManual(${u.id},'${u.telephone||''}')" style="padding:4px 8px;font-size:11px;background:#10B981;color:#fff;border:none;border-radius:4px;cursor:pointer">✅ Activer manuel</button> <button onclick="paAddNote(${u.id})" style="padding:4px 8px;font-size:11px;background:#fff;border:1px solid #B89968;border-radius:4px;cursor:pointer">📞 Note</button> <button onclick="paHistory(${u.id})" style="padding:4px 8px;font-size:11px;background:#fff;border:1px solid #B89968;border-radius:4px;cursor:pointer">📋 Hist.</button> <button onclick="paDelete(${u.id})" style="padding:4px 8px;font-size:11px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:4px;cursor:pointer">🗑️</button></td></tr>`;
+    const stateCls = 'state-' + (u.color || 'green');
+    const name = (u.prenom || u.nom) ? `${u.prenom} ${u.nom}`.trim() : '<span style="color:#A89882">—</span>';
+    const tel = fmtPhoneE164(u.telephone);
+    const created = fmtDateCompact(u.created_at);
+    const last = fmtDateCompact(u.last_attempt_at);
+    const provStatus = u.last_provider || u.last_status
+      ? escHtml((u.last_provider || '—') + ' / ' + (u.last_status || '—'))
+      : '<span style="color:#A89882">—</span>';
+    const escEmail = escHtml(u.email);
+    return `<tr class="${stateCls}" data-uid="${u.id}">`
+      + `<td class="state-cell"></td>`
+      + `<td class="col-name" title="${escHtml(name)}">${name}</td>`
+      + `<td class="col-email" title="${escEmail}">${escEmail}</td>`
+      + `<td class="mono-tel">${tel}</td>`
+      + `<td class="col-date" title="${escHtml(u.created_at)}">${created} <span style="color:#A89882;font-size:11px">(${u.age_hours}h)</span></td>`
+      + `<td class="col-attempts">${u.attempts}</td>`
+      + `<td class="col-date" title="${escHtml(u.last_attempt_at || '')}">${last}</td>`
+      + `<td class="col-provider" title="${provStatus.replace(/<[^>]+>/g, '')}">${provStatus}</td>`
+      + `<td class="actions">`
+        + `<button class="icon-btn" onclick="paResend(${u.id})" title="Renvoyer le mail" style="color:var(--color-accent)">🔄</button>`
+        + `<button class="icon-btn" onclick="paActivateManual(${u.id},'${escHtml(u.telephone||'')}')" title="Activer manuellement" style="color:var(--color-success)">✅</button>`
+        + `<button class="icon-btn" onclick="paHistory(${u.id})" title="Voir l'historique" style="color:var(--color-text-muted)">📋</button>`
+        + `<button class="icon-btn" onclick="paAddNote(${u.id})" title="Ajouter une note" style="color:var(--color-text-muted)">📞</button>`
+        + `<button class="icon-btn danger" onclick="paDelete(${u.id})" title="Supprimer le compte" style="color:var(--color-error)">🗑️</button>`
+      + `</td>`
+    + `</tr>`;
   }).join('');
-  c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> inscription(s) en attente d\'activation. Couleurs : 🟢 <1h · 🟠 1-24h · 🔴 >24h ou >3 tentatives.</p>'
-    + head + (rows || '<tr><td colspan="10" style="text-align:center;padding:24px;color:#6B5E4A">Aucune inscription en attente.</td></tr>') + '</tbody></table>';
+  c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> inscription(s) en attente d\'activation · 🟢 <1h · 🟠 1-24h · 🔴 >24h ou >3 tentatives.</p>'
+    + head + (rows || '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B5E4A">Aucune inscription en attente.</td></tr>') + '</tbody></table>';
 }
 async function paResend(uid) {
   if (!confirm('Renvoyer un nouveau lien d\'activation à cet agent ?')) return;
