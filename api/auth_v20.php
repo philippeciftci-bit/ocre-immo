@@ -231,6 +231,15 @@ case 'login': {
     $stmt->execute([$email]);
     $u = $stmt->fetch();
     if (!$u || !password_verify($pwd, $u['password_hash'])) jout(['ok' => false, 'error' => 'Identifiants invalides'], 401);
+    // M/2026/05/08/28 — Reject pending_activation : sinon boucle redirect (workspace
+    // pas encore provisionne ou status != active). Message clair + lien renvoyer email.
+    if (($u['status'] ?? '') === 'pending_activation') {
+        jout([
+            'ok' => false,
+            'error' => 'Compte non activé. Vérifiez votre email pour activer votre compte (ou demandez un nouveau lien).',
+            'code' => 'PENDING_ACTIVATION',
+        ], 403);
+    }
     // V20 M/2026/04/27/3 : CGU integrees au login. Si user fresh ET pas accept_cgu → 403.
     if (empty($u['cgu_accepted_at']) && !$accept_cgu) jout(['ok' => false, 'error' => 'CGU non acceptées'], 403);
     if (empty($u['cgu_accepted_at']) && $accept_cgu) {

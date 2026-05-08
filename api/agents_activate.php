@@ -68,14 +68,10 @@ if (!$prov['ok'] && !$tolerableExisting) {
     _activate_html_page(500, 'Erreur technique', "Impossible de finaliser ton activation. Notre équipe est notifiée. Réessaye dans quelques minutes ou contacte support@ocre.immo.");
 }
 
-// Flip status pending_activation -> active + clear token.
-try {
-    $upd = $pdoMeta->prepare("UPDATE users SET status = 'active', activation_token = NULL, activation_token_expires_at = NULL WHERE id = ?");
-    $upd->execute([(int)$user['id']]);
-} catch (Throwable $e) {
-    @error_log('[agents_activate] flip_failed user_id=' . $user['id'] . ' err=' . $e->getMessage());
-    _activate_html_page(500, 'Erreur technique', "Activation partielle. Contacte support@ocre.immo en mentionnant ton email.");
-}
+// M/2026/05/08/28 — workspace provisionne mais status reste 'pending_activation'.
+// Le flip vers 'active' est fait par /api/agents_set_password.php apres que l agent
+// ait choisi (ou re-confirme) son mot de passe via la page /set-password.html.
+// Token reste valide jusqu'a ce moment (TTL 48h initial).
 
 // Log activation locale dans le workspace nouvellement provisionne.
 try {
@@ -88,6 +84,7 @@ try {
         ->execute([(int)$user['id'], json_encode(['provisioned_at' => date('c')]), $_SERVER['REMOTE_ADDR'] ?? '']);
 } catch (Throwable $_) { /* log best-effort, fail silencieux */ }
 
-// Redirect 302 vers login.
-header('Location: https://app.ocre.immo/login/?activated=1');
+// M/2026/05/08/28 — Redirect vers page set-password dediee (token preserve dans URL).
+// Plus de redirect direct vers /login (cause de la confusion code/password + boucle).
+header('Location: https://app.ocre.immo/set-password.html?token=' . urlencode($token));
 exit;
