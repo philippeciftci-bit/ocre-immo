@@ -43,7 +43,7 @@
   .card h2 { font-family: var(--font-serif); font-style: italic; font-size: 22px; font-weight: 500; color: #5C3B1E; margin: 0 0 14px; }
   label { display: block; font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
   label .req { color: #C0392B; margin-left: 2px; }
-  input[type=text], input[type=email], input[type=tel] {
+  input[type=text], input[type=email], input[type=tel], input[type=password] {
     width: 100%; padding: 11px 13px; border: 1.5px solid #E8DDC9; border-radius: 9px; font-size: 14px;
     font-family: var(--font-sans); background: #FDFAF7; color: var(--color-text-primary); outline: none; transition: border 150ms; }
   input:focus { border-color: var(--color-accent); background: #fff; }
@@ -302,7 +302,7 @@ function Wizard() {
           barre progression couleur + 4 Items inline-flex avec cercle rempli ✓ + label Faible/Moyen/Fort/Excellent. */}
       <div className="field"><label>Mot de passe<span className="req">*</span></label>
         <div style={{position:'relative'}}>
-          <input type={showPwd ? 'text' : 'password'} value={data.password} onChange={e=>set('password',e.target.value)} autoComplete="new-password" placeholder="Min 10 chars, 1 maj, 1 chiffre" style={{paddingRight:60}}/>
+          <input type={showPwd ? 'text' : 'password'} value={data.password} onChange={e=>set('password',e.target.value)} autoComplete="new-password" name="new-password" id="signup-password" placeholder="Min 10 chars, 1 maj, 1 chiffre" style={{paddingRight:60}}/>
           <button type="button" onClick={()=>setShowPwd(s=>!s)} style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'transparent',border:0,color:'var(--color-text-muted)',fontSize:12,cursor:'pointer',padding:'4px 8px'}}>{showPwd ? 'Masquer' : 'Voir'}</button>
         </div>
         {(() => {
@@ -334,7 +334,7 @@ function Wizard() {
         })()}
       </div>
       <div className="field"><label>Confirmation<span className="req">*</span></label>
-        <input type="password" value={data.password2} onChange={e=>set('password2',e.target.value)} onBlur={()=>setConfirmTouched(true)} autoComplete="new-password"/>
+        <input type="password" value={data.password2} onChange={e=>set('password2',e.target.value)} onBlur={()=>setConfirmTouched(true)} autoComplete="new-password" name="new-password" id="signup-password-confirm"/>
         {confirmTouched && data.password2.length > 0 && !pwdMatch && <div className="help err">⚠ Les mots de passe ne correspondent pas.</div>}
       </div>
       <div className="cgu-row"><input type="checkbox" id="cgu" checked={data.cgu} onChange={e=>set('cgu',e.target.checked)}/><label htmlFor="cgu">J'accepte les <a href="https://ocre.immo/cgu.html" target="_blank" rel="noopener">Conditions Générales d'Utilisation</a> de Oi Agent.</label></div>
