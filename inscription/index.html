@@ -129,15 +129,17 @@ const PHONE_COUNTRIES = [
   {code:'US', dial:'+1',   flag:'🇺🇸', name:'États-Unis',     nationalLength:10, intlLength:10, leadingZero:false},
 ];
 
-// M/2026/05/08/54 — validation pays-aware stricte. Accepte saisie locale avec ou sans 0 leading.
+// M/2026/05/08/54 → 55 — validation pays-aware. Saisie libre 0 leading : conserver 0 dans local
+// pendant la saisie ; strip uniquement dans composePhone() pour produire E.164.
 function getCountryRule(code) { return PHONE_COUNTRIES.find(c => c.code === code) || PHONE_COUNTRIES[0]; }
 function validatePhoneForCountry(local, countryCode) {
   const rule = getCountryRule(countryCode);
   const digits = (local || '').replace(/\D/g, '');
   if (digits.length === 0) return {valid: false, state: 'empty'};
-  // Strip 0 leading si pays avec leadingZero
-  let core = digits;
-  if (rule.leadingZero && core.startsWith('0')) core = core.replace(/^0+/, '');
+  // Cas spécial M55 : pays sans leadingZero (US/CA) refuse 0 en tête → 'invalid'.
+  if (!rule.leadingZero && digits.startsWith('0')) return {valid: false, state: 'invalid'};
+  // Pour pays leadingZero=true : core = digits sans 0 leading (un seul, pas /^0+/).
+  const core = (rule.leadingZero && digits.startsWith('0')) ? digits.slice(1) : digits;
   if (core.length === rule.intlLength) return {valid: true, state: 'ok', core};
   if (core.length < rule.intlLength) return {valid: false, state: 'short', core};
   return {valid: false, state: 'long', core};
@@ -155,11 +157,12 @@ function parsePhone(v) {
   return {country:'FR', local: s.replace(/[\s\-\.]/g,'')};
 }
 
-// M/2026/05/08/54 — composePhone strip leading 0 SI le pays a leadingZero=true. Sinon préserve.
+// M/2026/05/08/54 → 55 — composePhone strip 1 seul 0 leading SI pays leadingZero=true.
+// Sinon préserve les chiffres tels quels (US/CA refusent le 0 leading via validatePhoneForCountry).
 function composePhone(country, local) {
   const c = getCountryRule(country);
   let digits = (local || '').replace(/\D/g, '');
-  if (c.leadingZero && digits.startsWith('0')) digits = digits.replace(/^0+/, '');
+  if (c.leadingZero && digits.startsWith('0')) digits = digits.slice(1);
   if (!digits) return '';
   return `${c.dial}${digits}`;
 }
@@ -168,9 +171,10 @@ function PhoneInput({value, onChange, autoFocus}) {
   const parsed = parsePhone(value);
   const [country, setCountry] = useState(parsed.country);
   const [local, setLocal] = useState(parsed.local);
-  useEffect(() => { const p = parsePhone(value); setCountry(p.country); setLocal(p.local); }, [value]);
+  // M/2026/05/08/55 — useEffect mount-only. Pas de re-sync depuis value à chaque keystroke
+  // (qui écrasait le 0 leading FR car E.164 n'a pas de 0). State local self-contained.
+  useEffect(() => { const p = parsePhone(value); setCountry(p.country); setLocal(p.local); }, []);
   const cc = getCountryRule(country);
-  // M/2026/05/08/54 — règles dynamiques par pays.
   const validation = validatePhoneForCountry(local, country);
   const placeholder = cc.leadingZero
     ? '0' + '6'.padEnd(cc.intlLength, '5').slice(0, cc.intlLength) + ' (ou sans 0)'
@@ -181,10 +185,10 @@ function PhoneInput({value, onChange, autoFocus}) {
     onChange(composePhone(newC, local));
   }
   function onLocal(e) {
-    let v = e.target.value.replace(/[^\d]/g, ''); // chiffres uniquement
-    // Si pays sans leadingZero et user tape 0 en premier : silencieusement supprimer
-    if (!cc.leadingZero && v.startsWith('0')) v = v.replace(/^0+/, '');
-    // maxLength dynamique selon pays
+    // M/2026/05/08/55 — saisie libre : filtre uniquement chiffres + maxLength.
+    // AUCUN strip silencieux du 0 leading. Le 0 reste affiché pendant la saisie.
+    // Strip appliqué uniquement par composePhone() lors de la sortie E.164.
+    let v = e.target.value.replace(/[^\d]/g, '');
     if (v.length > cc.nationalLength) v = v.slice(0, cc.nationalLength);
     setLocal(v);
     onChange(composePhone(country, v));
