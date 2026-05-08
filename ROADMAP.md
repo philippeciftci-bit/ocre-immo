@@ -42,11 +42,11 @@
   - effort: 2-3h
   - source: OI_VISION.md ligne 71
 
-- [ ] **M118** — Architecture SSO Ocre (auth partagé multi-modules)
+- [~] **M118** — Architecture SSO Ocre (auth partagé multi-modules) — **analyse livrée M/2026/05/08/25** (`docs/M118_SSO_ANALYSIS.md`). Décision Philippe attendue avant implémentation. Découpage proposé : M118.1 (cookie .ocre.immo backend) + M118.2 (frontend wrapper setOcreToken) + M118.3 (E2E cross-subdomain, prereq M117) + M118.4 (logout cascade) + M118.5 (cleanup transition). Source OI_VISION.md absente du repo, analyse construite depuis audit code.
   - priorité: high
-  - prereqs: M117 livrée
-  - effort: 2-3h
-  - source: OI_VISION.md ligne 50
+  - prereqs: M117 livrée pour M118.3 ; M118.1+.2 indépendants
+  - effort: 2-3h cumul total des 5 sous-tâches
+  - source: docs/M118_SSO_ANALYSIS.md (M/2026/05/08/25)
 
 - [ ] **M114.2** — UI onboarding Telegram (naming Oi Agent)
   - priorité: medium
