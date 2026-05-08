@@ -11016,6 +11016,7 @@ function App() {
           fetch('/api/agents_activate_v2.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify({token: activateToken}),
           }).then(r => r.json().then(j => ({status: r.status, j}))).then(({status, j}) => {
             if (status === 200 && j && j.ok && j.session_token) {
@@ -11217,8 +11218,24 @@ function App() {
         window.history.replaceState({}, '', u.pathname + (u.search ? u.search : '') + u.hash);
       }
     } catch (e) {}
-    const token = localStorage.getItem('ocre_token');
-    if (!token) { window.location = '/login/'; return; }
+    let token = localStorage.getItem('ocre_token');
+    // M/2026/05/09/71 — auto-login via cookie session 30j : si pas de token localStorage, check cookie.
+    if (!token) {
+      // Fetch SYNC dans IIFE async pour bloquer le flow normal et eviter le redirect /login premature.
+      (async () => {
+        try {
+          const r = await fetch('/api/session_check.php', {credentials:'include', cache:'no-store'});
+          const d = await r.json();
+          if (d && d.ok && d.session_token) {
+            localStorage.setItem('ocre_token', d.session_token);
+            window.location.reload();
+          } else {
+            window.location = '/login/';
+          }
+        } catch (_) { window.location = '/login/'; }
+      })();
+      return;
+    }
     (async () => {
       try {
         await loadCountriesFromServer();
@@ -11567,6 +11584,8 @@ function App() {
   async function logout() {
     const token = localStorage.getItem('ocre_token');
     try { await fetch(API + '/auth.php?action=logout', {method:'POST', headers:{'X-Session-Token':token}}); } catch (e) {}
+    // M/2026/05/09/71 — revoke session cookie (table user_sessions) + clear cookie navigateur.
+    try { await fetch('/api/logout.php', {method:'POST', credentials:'include'}); } catch (e) {}
     localStorage.removeItem('ocre_token');
     localStorage.removeItem('ocre_user');
     window.location = '/login/';

@@ -19,6 +19,7 @@
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/_provision.php';
+require_once __DIR__ . '/_session.php';
 setCorsHeaders();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
@@ -101,6 +102,7 @@ try {
     exit;
 }
 
+// M/2026/05/09/71 — session legacy table 'sessions' (compat M61) + nouvelle session_token cookie 30j (M71).
 $sessionToken = bin2hex(random_bytes(32));
 try {
     $ins = $pdo->prepare(
@@ -115,14 +117,14 @@ try {
     ]);
 } catch (Throwable $e) {
     @error_log('[agents_activate_v2] session_insert_failed user_id=' . $userId . ' err=' . $e->getMessage());
-    http_response_code(200);
-    echo json_encode([
-        'ok' => true,
-        'session_token' => null,
-        'redirect' => '/login/?activated=1',
-        'note' => 'Session creation failed, redirect to login',
-    ]);
-    exit;
+}
+
+// M/2026/05/09/71 — pose cookie ocre_session 30j HttpOnly Secure SameSite Lax Domain=.ocre.immo.
+try {
+    $cookieToken = createSession($userId, $_SERVER['HTTP_USER_AGENT'] ?? '', $_SERVER['REMOTE_ADDR'] ?? '');
+    setSessionCookie($cookieToken);
+} catch (Throwable $e) {
+    @error_log('[agents_activate_v2] cookie_session_failed user_id=' . $userId . ' err=' . $e->getMessage());
 }
 
 $redirectUrl = ($slug !== '' && preg_match('/^[a-z0-9-]+$/', $slug))

@@ -181,20 +181,29 @@ $('form-login').addEventListener('submit', async ev => {
   }
 });
 
-// M/2026/05/01/15 — auto-redirect au load avec timeout 5s. Si timeout, on laisse le
-// formulaire de login visible (l utilisateur pourra retenter manuellement) au lieu de
-// rester sur un blank loading state.
+// M/2026/05/01/15 + M/2026/05/09/71 — auto-redirect au load:
+// 1) check cookie ocre_session (M71) via /api/session_check.php (priorite)
+// 2) fallback localStorage ocre_token (legacy M61) via /api/auth.php?action=me
 (async () => {
+  // 1) Cookie session 30j prioritaire
+  try {
+    const r1 = await fetchWithTimeout(API + '/session_check.php', {credentials:'include', cache:'no-store'}, 5000);
+    const d1 = await r1.json();
+    if (d1 && d1.ok && d1.session_token) {
+      localStorage.setItem('ocre_token', d1.session_token);
+      window.location = '/';
+      return;
+    }
+  } catch (_) {}
+  // 2) Fallback localStorage legacy
   const t = localStorage.getItem('ocre_token');
   if (!t) return;
   try {
-    const r = await fetchWithTimeout(API + '/auth.php?action=me', { headers: { 'X-Session-Token': t } }, 5000);
-    const d = await r.json();
-    if (d && d.ok) window.location = '/';
+    const r2 = await fetchWithTimeout(API + '/auth.php?action=me', { headers: { 'X-Session-Token': t } }, 5000);
+    const d2 = await r2.json();
+    if (d2 && d2.ok) window.location = '/';
     else localStorage.removeItem('ocre_token');
-  } catch (e) {
-    // AbortError ou reseau down : on n efface pas le token, l utilisateur peut retenter.
-  }
+  } catch (e) {}
 })();
 </script>
 </body>
