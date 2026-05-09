@@ -8796,7 +8796,19 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         <V55Bloc title="Prix" theme="prix">
           <PriceField2Col label="Budget min" valueKey="budget_min" set={set} d={d} forceUpdate={forceUpdate}/>
-          <PriceField2Col label="Budget max" valueKey="budget_max" set={set} d={d} hint={_warnMax ? '⚠ Budget max < Budget min' : (_isFR ? 'Inclure frais notaire ~7-8 % ancien / 2-3 % neuf' : null)} warn={_warnMax} forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Budget max" valueKey="budget_max" set={set} d={d} hint={_warnMax ? '⚠ Budget max < Budget min' : (
+            _isFR ? 'Inclure frais notaire ~7-8 % ancien / 2-3 % neuf' :
+            _isBE ? 'Inclure droits enregistrement 12,5 % Wallonie / 6-12 % Bruxelles / 12 % Flandre + notaire ~3,5 %' :
+            _isPT ? 'Inclure IMT 0-10 % progressif + IS 0,8 % + notário/registo' :
+            _isDE ? 'Inclure Grunderwerbsteuer 3,5-6,5 % selon Land + Notarkosten ~1,5 %' :
+            _isNL ? 'Inclure Overdrachtsbelasting 2 % résidence / 10,4 % investissement (depuis 2023)' :
+            _isES ? 'Inclure ITP 6-10 % selon CCAA / IVA 10 % si neuf + AJD 1-1,5 %' :
+            _isIT ? 'Inclure imposta di registro 2 % prima casa / 9 % seconda casa + IVA 4-22 % si neuf' :
+            _isMA ? 'Inclure droits enregistrement 4 % + frais notaire 1-1,5 % + conservation foncière 1-1,5 %' :
+            _isTN ? 'Inclure droits enregistrement ~5 % + frais notaire' :
+            _isDZ ? 'Inclure droits enregistrement + timbre 5-7 % + notaire 1-2 %' :
+            'Inclure frais d\'acquisition (% manuel selon pays)'
+          )} warn={_warnMax} forceUpdate={forceUpdate}/>
           <PriceField2Col label="Liquide dispo" valueKey="prix_liquide" set={set} d={d} hint="Cash hors crédit" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
