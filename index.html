@@ -8085,7 +8085,8 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
     : {fontSize:7.5, fontWeight:700, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginTop:1, lineHeight:1};
   const _pop = {position:'absolute', top:'calc(100% + 4px)', zIndex:80, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, boxShadow:'0 6px 16px rgba(0,0,0,0.14)', minWidth:180, maxHeight:240, overflowY:'auto', padding:4};
   const _popItem = (active) => ({display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:5, cursor:'pointer', fontFamily:'inherit', fontSize:'var(--font-size-12)', color: active ? 'var(--color-text-brown)' : 'var(--color-text-primary)', background: active ? 'var(--color-bg-tint-warm)' : 'transparent', minHeight:36, fontWeight: active ? 700 : 500});
-  const _showHint = hint && (warn || /🔒|⚠|mois|cash|crédit|hors compta|récupérables/i.test(hint)) && hint !== 'Conversion bidir live';
+  // M/2026/05/09/31 — M80 : élargi pour laisser passer les hints fiscaux pays-spécifiques (droits enreg, IMT, ITP, etc.).
+  const _showHint = hint && (warn || /🔒|⚠|mois|cash|crédit|hors compta|récupérables|inclure|droits|notaire|registro|steuer|overdracht|frais|honoraires|encadrement|loyer|conservation/i.test(hint)) && hint !== 'Conversion bidir live';
   return (
     <div style={{marginBottom:'var(--space-2)'}}>
       <div style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600, marginBottom:'var(--space-1)'}}>{label}</div>
