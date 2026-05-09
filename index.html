@@ -16772,11 +16772,19 @@ function CalendarSubscriptionField() {
 }
 
 // M/2026/04/28/54 — PreferencesPage : 4 sections (notif + types + match perso + apparence).
+// M/2026/05/09/40 — M87 — ReglagesPage refondue fidèle maquette M86 hybride V1 (iOS Settings) + V2 (Stripe Notifs).
+// Fonction conservée sous le nom PreferencesPage pour ne pas toucher les call sites (line 12050).
+// Renommage du titre header "Mes préférences" → "Réglages" (alignement standard iOS).
+// Telegram link UI complète SUPPRIMÉE FRANCHEMENT (paradigme M85b : PWA push uniquement côté UI utilisateur).
+// Endpoints serveur /api/telegram_link.php conservés (utilisés par notifs internes atelier dev).
 function PreferencesPage({onBack, showToast, currentUser}) {
   const [prefs, setPrefs] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
-  const [tgTesting, setTgTesting] = React.useState(false);
+  const [subscreen, setSubscreen] = React.useState('home'); // home | notifs | profil | apparence | abonnement | securite | aide
+  const [pwaPushEnabled, setPwaPushEnabled] = React.useState(() => {
+    try { return localStorage.getItem('ocre_pwa_push_enabled') === '1'; } catch (_) { return false; }
+  });
   const token = () => localStorage.getItem('ocre_token') || '';
 
   React.useEffect(() => {
@@ -16808,283 +16816,253 @@ function PreferencesPage({onBack, showToast, currentUser}) {
         method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
         body: JSON.stringify({preferences: prefs}),
       }).then(r => r.json());
-      if (r && r.ok) showToast && showToast('Préférences sauvegardées');
+      if (r && r.ok) showToast && showToast('Réglages sauvegardés');
       else showToast && showToast((r && r.error) || 'Erreur');
     } catch (e) { showToast && showToast('Erreur réseau'); }
     setSaving(false);
   }
 
-  async function testTelegram() {
-    const chatId = prefs && prefs.notif && prefs.notif.telegram && prefs.notif.telegram.chat_id;
-    if (!chatId) { showToast && showToast('Chat ID requis'); return; }
-    setTgTesting(true);
-    try {
-      const r = await fetch('/api/preferences.php?action=test_telegram', {
-        method:'POST', headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
-        body: JSON.stringify({chat_id: chatId}),
-      }).then(r => r.json());
-      if (r && r.ok) showToast && showToast('Message test envoyé');
-      else showToast && showToast((r && r.error) || 'Échec test');
-    } catch (e) { showToast && showToast('Erreur réseau'); }
-    setTgTesting(false);
-  }
-  // M/2026/05/07/114.2 — UI onboarding bot @ocreimmo_bot : bouton Lier mon compte -> generate_token
-  // -> deep link t.me + polling status 3s -> bascule lié quand /start callback recu via webhook.
-  // Bouton Délier pour reset chat_id.
-  const [tgLink, setTgLink] = React.useState({status: null, deep_link_https: null, token: null, polling: false, linked_username: null, linked_at: null});
-  async function loadTgStatus() {
-    try {
-      const r = await fetch('/api/telegram_link.php?action=status', {headers:{'X-Session-Token': token()}}).then(r => r.json());
-      if (r && r.ok) {
-        setTgLink(prev => ({...prev, status: r.linked ? 'linked' : 'unlinked', linked_username: r.username, linked_at: r.linked_at, stub_mode: r.stub_mode, bot_username: r.bot_username}));
-      }
-    } catch (_) {}
-  }
-  React.useEffect(() => { loadTgStatus(); }, []);
-  async function generateTgLink() {
-    try {
-      const r = await fetch('/api/telegram_link.php?action=generate_token', {method:'POST', headers:{'X-Session-Token': token()}}).then(r => r.json());
-      if (!r || !r.ok) { showToast && showToast('Echec generation token'); return; }
-      setTgLink(prev => ({...prev, token: r.token, deep_link_https: r.deep_links.https, status: 'pending', polling: true}));
-      // Polling status toutes 3s pour bascule lie quand webhook recoit /start <token>.
-      const id = setInterval(async () => {
+  async function togglePwaPush() {
+    // M87 stub : enregistre l'intention en localStorage. M88 implémentera VAPID + Service Worker push subscribe.
+    if (!pwaPushEnabled) {
+      if (typeof Notification !== 'undefined' && Notification.requestPermission) {
         try {
-          const s = await fetch('/api/telegram_link.php?action=status', {headers:{'X-Session-Token': token()}}).then(r => r.json());
-          if (s && s.ok && s.linked) {
-            clearInterval(id);
-            setTgLink({status: 'linked', linked_username: s.username, linked_at: s.linked_at, polling: false, deep_link_https: null, token: null, stub_mode: s.stub_mode, bot_username: s.bot_username});
-            showToast && showToast('Compte Telegram lie ! ✓');
-          }
+          const perm = await Notification.requestPermission();
+          if (perm !== 'granted') { showToast && showToast('Permission refusée. Active dans iOS Réglages > Notifications > Oi Agent.'); return; }
         } catch (_) {}
-      }, 3000);
-      // Stop polling apres 5 min (token expire 7j cote serveur, mais UX timeout local).
-      setTimeout(() => { clearInterval(id); setTgLink(prev => prev.polling ? {...prev, polling: false} : prev); }, 300000);
-    } catch (_) { showToast && showToast('Erreur reseau'); }
-  }
-  async function disconnectTg() {
-    if (!(await askConfirm({title: 'Délier Telegram ?', message: 'Tu ne recevras plus de notifications Telegram. Tu pourras te relier plus tard.', danger: false, confirmLabel: 'Délier'}))) return;
-    try {
-      const r = await fetch('/api/telegram_link.php?action=disconnect', {method:'POST', headers:{'X-Session-Token': token()}}).then(r => r.json());
-      if (r && r.ok) {
-        setTgLink({status: 'unlinked', linked_username: null, linked_at: null, polling: false, deep_link_https: null, token: null});
-        showToast && showToast('Compte Telegram délié');
       }
-    } catch (_) { showToast && showToast('Erreur reseau'); }
+      setPwaPushEnabled(true);
+      try { localStorage.setItem('ocre_pwa_push_enabled', '1'); } catch (_) {}
+      showToast && showToast('🔔 Notifications activées sur cet appareil');
+    } else {
+      setPwaPushEnabled(false);
+      try { localStorage.setItem('ocre_pwa_push_enabled', '0'); } catch (_) {}
+      showToast && showToast('Notifications désactivées sur cet appareil');
+    }
   }
-  async function testTgNotify() {
-    setTgTesting(true);
-    try {
-      const r = await fetch('/api/telegram_link.php?action=test_notify', {method:'POST', headers:{'X-Session-Token': token()}}).then(r => r.json());
-      if (r && r.ok) showToast && showToast('Notif test envoyée');
-      else showToast && showToast('Echec test notif');
-    } catch (_) { showToast && showToast('Erreur reseau'); }
-    setTgTesting(false);
-  }
-  function copyTgLink() {
-    const txt = tgLink.deep_link_https || '';
-    if (!txt) return;
-    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => showToast && showToast('Lien copié')).catch(() => {});
-    else { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); showToast && showToast('Lien copié'); } catch (_) {} document.body.removeChild(ta); }
+
+  function testNotification() {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try { new Notification('Oi Agent', {body: '✓ Notification test reçue. Vérifie ton écran verrouillé.', icon:'/icons/192.png'}); } catch (_) {}
+      showToast && showToast('🔔 Notification test envoyée');
+    } else {
+      showToast && showToast('Active d\'abord les notifications push.');
+    }
   }
 
   if (loading || !prefs) return <div style={{padding:'var(--space-30px)', textAlign:'center', color:'var(--color-text-muted)'}}>Chargement…</div>;
 
-  const NOTIF_TYPES = [
-    {k:'new_match_85', l:'Nouveau match détecté (≥85%)'},
-    {k:'edit_pending', l:'Edit pending dans WSc'},
-    {k:'edit_approved', l:'Edit approuvé'},
-    {k:'edit_rejected', l:'Edit refusé'},
-    {k:'event_reminder_1h', l:'Événement à venir dans 1h'},
-    {k:'document_delay', l:'Document attendu non envoyé'},
-  ];
-
-  function Section({title, children}) {
+  // Toggle iOS-style commun (M87 design tokens depuis maquette M86).
+  function Toggle({checked, onChange}) {
     return (
-      <div style={{background:'#fff', borderRadius:10, border:'1px solid var(--color-border-cream)', padding:'var(--space-14px)', marginBottom:'var(--space-14px)'}}>
-        <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', fontWeight:700, color:'var(--color-accent)', marginBottom:'var(--space-10px)'}}>{title}</div>
-        {children}
-      </div>
+      <label style={{position:'relative', display:'inline-block', width:40, height:22, cursor:'pointer', flexShrink:0}}>
+        <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} style={{opacity:0, width:0, height:0}}/>
+        <span style={{position:'absolute', cursor:'pointer', top:0, left:0, right:0, bottom:0, background: checked ? '#43A047' : '#D8CCB4', borderRadius:11, transition:'.2s'}}>
+          <span style={{position:'absolute', height:18, width:18, left: checked ? 20 : 2, top:2, background:'#fff', borderRadius:'50%', transition:'.2s', boxShadow:'0 1px 2px rgba(0,0,0,0.2)'}}/>
+        </span>
+      </label>
     );
   }
-  function Toggle({checked, onChange, label, sub}) {
+
+  // ─── HOME (V1 iOS Settings : 4 sections + bandeau utilisateur) ───
+  const renderHome = () => {
+    const userName = (currentUser && (currentUser.prenom || currentUser.nom)) ? ((currentUser.prenom || '') + ' ' + (currentUser.nom || '')).trim() : 'Mon compte';
+    const userEmail = (currentUser && currentUser.email) || '';
+    const userInitial = (userName || 'P').charAt(0).toUpperCase();
+    const planLabel = (prefs && prefs.plan && prefs.plan.label) || 'PLAN PRO';
+    const Row = ({icon, iconBg, label, value, valueClass, onClick, dangerLabel}) => (
+      <div onClick={onClick} style={{display:'flex', alignItems:'center', padding:'12px 14px', minHeight:52, cursor:'pointer', gap:12, borderBottom:'1px solid var(--color-border-cream)'}}>
+        <div style={{width:30, height:30, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:16, flexShrink:0, background:iconBg}}>{icon}</div>
+        <div style={{flex:1, fontSize:14, fontWeight:500, color: dangerLabel ? '#C62828' : 'var(--color-text-primary)'}}>{label}</div>
+        {value && <span style={{fontSize:12.5, color:'var(--color-text-muted)', ...(valueClass==='ok' ? {background:'#E8F5E9', color:'#43A047', padding:'2px 8px', borderRadius:8, fontWeight:700, fontSize:10} : {})}}>{value}</span>}
+        {!dangerLabel && <span style={{color:'var(--color-text-muted)', fontSize:16, opacity:0.5, marginLeft:4}}>›</span>}
+      </div>
+    );
+    const SectionTitle = ({children}) => <div style={{padding:'16px 16px 4px', fontSize:11, fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:0.6}}>{children}</div>;
+    const Group = ({children}) => <div style={{background:'#fff', margin:'0 12px 8px', borderRadius:10, overflow:'hidden', boxShadow:'0 1px 2px rgba(60,40,20,0.06)'}}>{children}</div>;
     return (
-      <div style={{display:'flex', alignItems:'center', gap:'var(--space-10px)', padding:'8px 0', borderBottom:'1px solid #F4EFE6'}}>
-        <div style={{flex:1}}>
-          <div style={{fontSize:'var(--font-size-13-5)', color:'var(--color-text-primary)'}}>{label}</div>
-          {sub && <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', marginTop:'var(--space-1px)'}}>{sub}</div>}
+      <>
+        {/* Bandeau utilisateur */}
+        <div style={{padding:'18px 16px 14px', background:'var(--color-bg-tint-warm, #FAF6EE)', display:'flex', alignItems:'center', gap:12, borderBottom:'1px solid var(--color-border-cream)'}}>
+          <div style={{width:50, height:50, borderRadius:'50%', background:'linear-gradient(135deg,#8B5E3C,#6B4429)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontStyle:'italic', fontWeight:700, fontSize:22, flexShrink:0}}>{userInitial}</div>
+          <div>
+            <div style={{fontFamily:'var(--font-serif)', fontSize:17, color:'var(--color-accent)', fontWeight:700, fontStyle:'italic', lineHeight:1.2, marginBottom:2}}>{userName}</div>
+            <div style={{fontSize:11.5, color:'var(--color-text-muted)'}}>{userEmail}</div>
+            <span style={{display:'inline-block', fontSize:9.5, background:'var(--color-bg-tint-warm)', color:'var(--color-accent)', padding:'2px 8px', borderRadius:8, fontWeight:700, marginTop:4, border:'1px solid var(--color-border-cream)'}}>{planLabel}</span>
+          </div>
         </div>
-        <label style={{position:'relative', display:'inline-block', width:42, height:22, cursor:'pointer'}}>
-          <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} style={{opacity:0, width:0, height:0}}/>
-          <span style={{
-            position:'absolute', cursor:'pointer', top:0, left:0, right:0, bottom:0,
-            background: checked ? 'var(--color-accent)' : '#D8CCB4', borderRadius:11, transition:'.2s'
-          }}>
-            <span style={{
-              position:'absolute', height:18, width:18, left: checked ? 22 : 2, top:2,
-              background:'#fff', borderRadius:'50%', transition:'.2s'
-            }}/>
-          </span>
-        </label>
-      </div>
+        <SectionTitle>Compte</SectionTitle>
+        <Group>
+          <Row icon="👤" iconBg="#5B3C1F" label="Profil" value="Modifier" onClick={() => setSubscreen('profil')}/>
+          <Row icon="🔒" iconBg="#1565C0" label="Sécurité" value="Sessions actives" onClick={() => setSubscreen('securite')}/>
+        </Group>
+        <SectionTitle>Notifications & affichage</SectionTitle>
+        <Group>
+          <Row icon="🔔" iconBg="#D32F2F" label="Notifications" value={pwaPushEnabled ? 'Activées' : 'Désactivées'} valueClass={pwaPushEnabled ? 'ok' : ''} onClick={() => setSubscreen('notifs')}/>
+          <Row icon="💱" iconBg="#2E7D32" label="Devise & langue" value={(prefs.appearance && prefs.appearance.lang === 'en') ? 'EN' : (prefs.appearance && prefs.appearance.lang === 'ar') ? 'AR' : 'FR'} onClick={() => setSubscreen('apparence')}/>
+        </Group>
+        <SectionTitle>Abonnement</SectionTitle>
+        <Group>
+          <Row icon="💳" iconBg="#6A1B9A" label="Abonnement" value="Gérer" onClick={() => setSubscreen('abonnement')}/>
+        </Group>
+        <SectionTitle>Aide & déconnexion</SectionTitle>
+        <Group>
+          <Row icon="🆘" iconBg="#F57F17" label="Aide & FAQ" onClick={() => { window.location.hash = '#help'; }}/>
+          <Row icon="🚪" iconBg="#455A64" label="Se déconnecter" dangerLabel onClick={() => { if (typeof window.__ocreLogout === 'function') window.__ocreLogout(); }}/>
+        </Group>
+        <div style={{padding:'18px 16px 30px', textAlign:'center', fontSize:10, color:'var(--color-text-muted)', fontStyle:'italic'}}>
+          Oi Agent · Tenant {(currentUser && currentUser.slug) || ''}
+        </div>
+      </>
     );
-  }
+  };
 
-  const T = prefs.notif.telegram;
-  const E = prefs.notif.email;
-  const I = prefs.notif.in_app;
-  const M = prefs.match_pref;
+  // ─── SUB-SCREEN NOTIFICATIONS (V2 Stripe : 3 cards) ───
+  const NOTIF_TYPES = [
+    {k:'new_pact', l:'Nouveau pact reçu', sub:'Un confrère t\'invite à collaborer'},
+    {k:'proposition_received', l:'Proposition reçue', sub:'Un dossier matche ton bien'},
+    {k:'document_signed', l:'Document signé', sub:'Mandat / compromis signature reçue'},
+    {k:'event_reminder_1h', l:'Rappel RDV à venir', sub:'1 heure avant l\'événement'},
+    {k:'new_match_85', l:'Matching détecté ≥ 85 %', sub:'Dossier corresponant trouvé automatiquement'},
+  ];
   const types = prefs.notif_types || [];
+  const E = (prefs.notif && prefs.notif.email) || {};
+
+  const renderNotifs = () => (
+    <>
+      <div style={{padding:'14px 14px 24px'}}>
+        {/* Card 1 — PWA push status */}
+        <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:'14px 14px 12px', marginBottom:10}}>
+          <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:4}}>🔔 Notifications push (PWA)</div>
+          <div style={{fontSize:11.5, color:'var(--color-text-muted)', marginBottom:10, lineHeight:1.5}}>Reçois sur ton iPhone les rappels et alertes urgentes même quand l'app n'est pas ouverte. Compatible iOS 16.4+ après installation à l'écran d'accueil.</div>
+          <div style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px', background: pwaPushEnabled ? '#E8F5E9' : '#F5F5F5', borderRadius:7, fontSize:11, color: pwaPushEnabled ? '#2E7D32' : 'var(--color-text-muted)', border:'1px solid '+(pwaPushEnabled ? '#C5E1A5' : '#D8CCB4'), marginBottom:10}}>
+            <span style={{width:7, height:7, borderRadius:'50%', background: pwaPushEnabled ? '#43A047' : '#9E9E9E', flexShrink:0, boxShadow: pwaPushEnabled ? '0 0 0 3px rgba(67,160,71,0.18)' : 'none'}}/>
+            <span style={{flex:1, fontWeight:600}}>{pwaPushEnabled ? 'Notifications push activées sur cet appareil' : 'Notifications push désactivées'}</span>
+          </div>
+          <button onClick={togglePwaPush} style={{padding:'7px 12px', background: pwaPushEnabled ? 'transparent' : 'var(--color-accent)', color: pwaPushEnabled ? 'var(--color-error)' : '#fff', border: '1.5px solid '+(pwaPushEnabled ? 'var(--color-error)' : 'var(--color-accent)'), borderRadius:14, fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'inherit', minHeight:32, marginRight:6}}>{pwaPushEnabled ? 'Désactiver' : 'Activer les notifications'}</button>
+          {pwaPushEnabled && <button onClick={testNotification} style={{padding:'7px 12px', background:'var(--color-accent)', color:'#fff', border:0, borderRadius:14, fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'inherit', minHeight:32}}>▶ Notification test</button>}
+        </div>
+        {/* Card 2 — Types de notifications */}
+        <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:'14px 14px 12px', marginBottom:10}}>
+          <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:4}}>Types de notifications</div>
+          <div style={{fontSize:11.5, color:'var(--color-text-muted)', marginBottom:10}}>Choisis ce que tu veux recevoir.</div>
+          {NOTIF_TYPES.map(t => (
+            <div key={t.k} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--color-border-cream)', minHeight:44, gap:10}}>
+              <div>
+                <div style={{fontSize:13, color:'var(--color-text-primary)', fontWeight:500}}>{t.l}</div>
+                {t.sub && <div style={{fontSize:11, color:'var(--color-text-muted)', marginTop:2}}>{t.sub}</div>}
+              </div>
+              <Toggle checked={types.includes(t.k)} onChange={v => {
+                const next = v ? [...types, t.k] : types.filter(x => x !== t.k);
+                update('notif_types', next);
+              }}/>
+            </div>
+          ))}
+        </div>
+        {/* Card 3 — Email récap */}
+        <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:'14px 14px 12px'}}>
+          <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:4}}>📧 Email de récap</div>
+          <div style={{fontSize:11.5, color:'var(--color-text-muted)', marginBottom:10}}>Reçois un récap par email quand tu es loin de l'app.</div>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--color-border-cream)', minHeight:44}}>
+            <div style={{fontSize:13, color:'var(--color-text-primary)', fontWeight:500}}>Récap quotidien (9h)</div>
+            <Toggle checked={!!(E && E.recap_daily)} onChange={v => update('notif.email.recap_daily', v)}/>
+          </div>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', minHeight:44}}>
+            <div style={{fontSize:13, color:'var(--color-text-primary)', fontWeight:500}}>Récap hebdomadaire (lundi 8h)</div>
+            <Toggle checked={!!(E && E.recap_weekly)} onChange={v => update('notif.email.recap_weekly', v)}/>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  // ─── SUB-SCREENS minimaux (M87 stubs, contenu détaillé en missions ultérieures) ───
+  const renderProfil = () => (
+    <div style={{padding:'14px'}}>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Mes informations</div>
+        <div style={{fontSize:12, color:'var(--color-text-muted)', marginBottom:6}}>Nom : <b style={{color:'var(--color-text-primary)'}}>{(currentUser && (currentUser.prenom || '') + ' ' + (currentUser.nom || '')) || '—'}</b></div>
+        <div style={{fontSize:12, color:'var(--color-text-muted)', marginBottom:6}}>Email : <b style={{color:'var(--color-text-primary)'}}>{(currentUser && currentUser.email) || '—'}</b> <span style={{fontSize:10, fontStyle:'italic'}}>(modif via support)</span></div>
+        <div style={{fontSize:11, color:'var(--color-text-muted)', fontStyle:'italic', marginTop:10}}>Édition photo / téléphone / bio en mission ultérieure.</div>
+      </div>
+    </div>
+  );
+
+  const renderSecurite = () => (
+    <div style={{padding:'14px'}}>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Sessions actives</div>
+        <div style={{fontSize:12, color:'var(--color-text-muted)', lineHeight:1.6}}>Cet appareil · iPhone Safari · session active depuis aujourd'hui</div>
+        <div style={{fontSize:11, color:'var(--color-text-muted)', fontStyle:'italic', marginTop:10}}>Listing détaillé multi-sessions + bouton "Déconnecter ailleurs" en mission ultérieure.</div>
+      </div>
+    </div>
+  );
+
+  const renderApparence = () => (
+    <div style={{padding:'14px'}}>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:10}}>Apparence & langue</div>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--color-border-cream)'}}>
+          <span style={{fontSize:13}}>Thème</span>
+          <select value={(prefs.appearance && prefs.appearance.theme) || 'auto'} onChange={e => update('appearance.theme', e.target.value)} style={{padding:6, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit'}}>
+            <option value="light">Clair</option>
+            <option value="dark">Sombre</option>
+            <option value="auto">Auto</option>
+          </select>
+        </div>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--color-border-cream)'}}>
+          <span style={{fontSize:13}}>Densité</span>
+          <select value={(prefs.appearance && prefs.appearance.density) || 'normal'} onChange={e => update('appearance.density', e.target.value)} style={{padding:6, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit'}}>
+            <option value="compact">Compacte</option>
+            <option value="normal">Normale</option>
+            <option value="spacious">Espacée</option>
+          </select>
+        </div>
+        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0'}}>
+          <span style={{fontSize:13}}>Langue</span>
+          <select value={(prefs.appearance && prefs.appearance.lang) || 'fr'} onChange={e => update('appearance.lang', e.target.value)} style={{padding:6, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit'}}>
+            <option value="fr">Français</option>
+            <option value="en">English (à venir)</option>
+            <option value="ar">العربية (à venir)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAbonnement = () => (
+    <div style={{padding:'14px'}}>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Mon abonnement</div>
+        <BillingSection showToast={showToast}/>
+      </div>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>AI Assistant (beta)</div>
+        <AIQuotaSection showToast={showToast}/>
+      </div>
+    </div>
+  );
+
+  // Titre selon subscreen
+  const TITRES = {
+    home:'Réglages', notifs:'Notifications', profil:'Profil', securite:'Sécurité',
+    apparence:'Devise & langue', abonnement:'Abonnement',
+  };
+  const titre = TITRES[subscreen] || 'Réglages';
+  const showSave = subscreen !== 'home';
+  const handleBack = () => { if (subscreen === 'home') onBack(); else setSubscreen('home'); };
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background: 'var(--color-bg-page)'}}>
-      <PageHeader onBack={onBack} title="Mes préférences"
-        rightAction={<button onClick={save} disabled={saving} style={{padding:'6px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:'var(--font-size-13)', fontWeight:600, cursor: saving ? 'wait' : 'pointer'}}>{saving ? '…' : 'Sauvegarder'}</button>}/>
-      <div style={{flex:1, overflowY:'auto', padding:'14px 14px 30px'}}>
-
-        <Section title="Notifications">
-          {/* M/2026/05/07/114.2 — UI onboarding bot @ocreimmo_bot. Pattern : bouton Lier mon
-              compte -> generate_token + deep link t.me + polling status 3s -> bascule lié
-              automatiquement quand /start <token> recu cote webhook. Bouton Délier pour reset.
-              Remplace l ancien chat_id manuel @atelierphilippe_bot. */}
-          <div style={{padding:'4px 0 10px', borderBottom:'1px solid #F4EFE6', marginBottom:'var(--space-6px)'}}>
-            <div style={{display:'flex', alignItems:'center', gap:'var(--space-10px)', marginBottom:'var(--space-6px)'}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:'var(--font-size-13-5)', color:'var(--color-text-primary)', fontWeight:600}}>Telegram</div>
-                <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', marginTop:'var(--space-1px)'}}>
-                  {tgLink.status === 'linked'
-                    ? <>✅ Lié{tgLink.linked_username ? ' (@' + tgLink.linked_username + ')' : ''}{tgLink.linked_at ? ' · ' + String(tgLink.linked_at).slice(0, 10) : ''}</>
-                    : tgLink.status === 'pending'
-                      ? <>⏳ En attente du /start sur Telegram…</>
-                      : <>Bot {tgLink.bot_username ? '@' + tgLink.bot_username : '@ocreimmo_bot'} · pas encore lié</>}
-                </div>
-              </div>
-              {tgLink.status === 'linked' ? (
-                <button onClick={disconnectTg} style={{padding:'6px 12px', background:'#FBEAEA', border:'1.5px solid var(--color-error)', borderRadius:6, color:'var(--color-error)', fontFamily:'inherit', fontSize:'var(--font-size-xs)', fontWeight:600, cursor:'pointer'}}>Délier</button>
-              ) : tgLink.status === 'pending' ? (
-                <button onClick={() => setTgLink(prev => ({...prev, polling: false, status: 'unlinked', deep_link_https: null, token: null}))} style={{padding:'6px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'var(--color-accent)', fontFamily:'inherit', fontSize:'var(--font-size-xs)', cursor:'pointer'}}>Annuler</button>
-              ) : (
-                <button onClick={generateTgLink} style={{padding:'6px 14px', background:'var(--color-accent)', border:'none', borderRadius:6, color:'#fff', fontFamily:'inherit', fontSize:'var(--font-size-xs)', fontWeight:600, cursor:'pointer'}}>Lier mon compte</button>
-              )}
-            </div>
-            {tgLink.status === 'pending' && tgLink.deep_link_https && (
-              <div style={{padding:'10px 12px', background:'#FAF6EE', border:'1px dashed var(--color-border-medium)', borderRadius:8, marginTop:'var(--space-1)'}}>
-                <div style={{fontSize:'var(--font-size-11-5)', color:'var(--color-text-taupe)', marginBottom:'var(--space-2)', lineHeight:1.4}}>1. Tap le lien ci-dessous (Telegram s'ouvrira) puis confirme avec <b>/start</b>.</div>
-                <a href={tgLink.deep_link_https} target="_blank" rel="noopener" style={{display:'inline-block', padding:'8px 14px', background:'#229ED9', color:'#fff', borderRadius:6, textDecoration:'none', fontWeight:600, fontSize:'var(--font-size-12-5)', marginRight:'var(--space-6px)'}}>Ouvrir Telegram</a>
-                <button onClick={copyTgLink} style={{padding:'8px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'var(--color-accent)', fontFamily:'inherit', fontSize:'var(--font-size-xs)', fontWeight:600, cursor:'pointer'}}>Copier le lien</button>
-                <div style={{fontSize:'var(--font-size-10-5)', color:'var(--color-text-muted)', marginTop:'var(--space-6px)', fontStyle:'italic'}}>Le statut se mettra à jour automatiquement.</div>
-              </div>
-            )}
-            {tgLink.status === 'linked' && (
-              <button onClick={testTgNotify} disabled={tgTesting} style={{padding:'6px 12px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'var(--color-accent)', fontFamily:'inherit', fontSize:'var(--font-size-xs)', cursor: tgTesting ? 'wait' : 'pointer', marginTop:'var(--space-1)'}}>{tgTesting ? 'Envoi…' : 'Tester l\'envoi'}</button>
-            )}
-            {tgLink.stub_mode && (
-              <div style={{fontSize:'var(--font-size-10-5)', color:'var(--color-warning)', marginTop:'var(--space-6px)', fontStyle:'italic'}}>⚠ Bot en mode stub (token serveur absent). Voir l'admin pour activer.</div>
-            )}
-          </div>
-          <Toggle checked={E.enabled} onChange={v => update('notif.email.enabled', v)} label="Email" sub={prefs._email || '—'}/>
-          {E.enabled && (
-            <div style={{padding:'4px 0 8px', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)'}}>
-              <label>Si hors ligne depuis : <b>{E.offline_threshold_min}</b> min</label>
-              <input type="range" min={5} max={120} step={5} value={E.offline_threshold_min}
-                onChange={e => update('notif.email.offline_threshold_min', Number(e.target.value))}
-                style={{width:'100%', marginTop:'var(--space-1)'}}/>
-            </div>
-          )}
-          <Toggle checked={I.enabled} onChange={v => update('notif.in_app.enabled', v)} label="In-app (cloche header)" sub="Toujours actif en pratique"/>
-        </Section>
-
-        <Section title="Types de notifications">
-          {NOTIF_TYPES.map(t => (
-            <Toggle key={t.k}
-              checked={types.includes(t.k)}
-              onChange={v => {
-                const next = v ? [...types, t.k] : types.filter(x => x !== t.k);
-                update('notif_types', next);
-              }}
-              label={t.l}/>
-          ))}
-        </Section>
-
-        <Section title="Mes critères de matching">
-          <div style={{padding:'8px 0', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)'}}>
-            <label>Seuil minimum : <b>{M.seuil_min_pct}%</b></label>
-            <input type="range" min={50} max={95} step={1} value={M.seuil_min_pct}
-              onChange={e => update('match_pref.seuil_min_pct', Number(e.target.value))}
-              style={{width:'100%', marginTop:'var(--space-1)'}}/>
-          </div>
-          <div style={{padding:'8px 0', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)'}}>
-            <label>Tolérance budget : <b>{M.tolerances.budget_pct}%</b></label>
-            <input type="range" min={5} max={30} value={M.tolerances.budget_pct}
-              onChange={e => update('match_pref.tolerances.budget_pct', Number(e.target.value))}
-              style={{width:'100%'}}/>
-          </div>
-          <div style={{padding:'8px 0', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)'}}>
-            <label>Tolérance surface hab. : <b>{M.tolerances.surface_hab_pct}%</b></label>
-            <input type="range" min={10} max={40} value={M.tolerances.surface_hab_pct}
-              onChange={e => update('match_pref.tolerances.surface_hab_pct', Number(e.target.value))}
-              style={{width:'100%'}}/>
-          </div>
-          <div style={{padding:'8px 0', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)'}}>
-            <label>Tolérance terrain : <b>{M.tolerances.surface_terrain_pct}%</b></label>
-            <input type="range" min={20} max={60} value={M.tolerances.surface_terrain_pct}
-              onChange={e => update('match_pref.tolerances.surface_terrain_pct', Number(e.target.value))}
-              style={{width:'100%'}}/>
-          </div>
-          <div style={{padding:'8px 0', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)'}}>
-            <label>Tolérance chambres : <b>±{M.tolerances.chambres}</b></label>
-            <input type="range" min={0} max={3} value={M.tolerances.chambres}
-              onChange={e => update('match_pref.tolerances.chambres', Number(e.target.value))}
-              style={{width:'100%'}}/>
-          </div>
-          <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', marginTop:'var(--space-2)'}}>Drag-and-drop critères + cross-profile-pairs : édition avancée à venir.</div>
-        </Section>
-
-        <Section title="Abonnement & facturation">
-          <BillingSection showToast={showToast}/>
-        </Section>
-
-        <Section title="AI Assistant (beta)">
-          <AIQuotaSection showToast={showToast}/>
-        </Section>
-
-        <Section title="Aide">
-          <a href="/help" onClick={(e) => { e.preventDefault(); window.location.hash = '#help'; }} style={{padding:'8px 14px', background:'transparent', border:'1.5px solid #B89968', borderRadius:6, color:'var(--color-accent)', fontFamily:'inherit', fontSize:'var(--font-size-13)', cursor:'pointer', textDecoration:'none', display:'inline-block'}}>FAQ & Aide</a>
-        </Section>
-
-        <Section title="Synchronisation calendrier">
-          <CalendarSubscriptionField/>
-        </Section>
-
-        <Section title="Apparence">
-          <div style={{padding:'8px 0', fontSize:'var(--font-size-13)', color:'var(--color-text-primary)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-            <span>Thème</span>
-            <select value={prefs.appearance.theme} onChange={e => update('appearance.theme', e.target.value)}
-              style={{padding:'var(--space-6px)', border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit'}}>
-              <option value="light">Clair</option>
-              <option value="dark">Sombre</option>
-              <option value="auto">Auto</option>
-            </select>
-          </div>
-          <div style={{padding:'8px 0', fontSize:'var(--font-size-13)', color:'var(--color-text-primary)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-            <span>Densité</span>
-            <select value={prefs.appearance.density} onChange={e => update('appearance.density', e.target.value)}
-              style={{padding:'var(--space-6px)', border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit'}}>
-              <option value="compact">Compacte</option>
-              <option value="normal">Normale</option>
-              <option value="spacious">Espacée</option>
-            </select>
-          </div>
-          <div style={{padding:'8px 0', fontSize:'var(--font-size-13)', color:'var(--color-text-primary)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-            <span>Langue</span>
-            <select value={prefs.appearance.lang} onChange={e => update('appearance.lang', e.target.value)}
-              style={{padding:'var(--space-6px)', border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit'}}>
-              <option value="fr">Français</option>
-              <option value="en">English (à venir)</option>
-              <option value="ar">العربية (à venir)</option>
-            </select>
-          </div>
-        </Section>
-
+      <PageHeader onBack={handleBack} title={titre}
+        rightAction={showSave ? <button onClick={save} disabled={saving} style={{padding:'6px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:6, fontFamily:'inherit', fontSize:'var(--font-size-13)', fontWeight:600, cursor: saving ? 'wait' : 'pointer'}}>{saving ? '…' : 'Sauver'}</button> : null}/>
+      <div style={{flex:1, overflowY:'auto'}}>
+        {subscreen === 'home' && renderHome()}
+        {subscreen === 'notifs' && renderNotifs()}
+        {subscreen === 'profil' && renderProfil()}
+        {subscreen === 'securite' && renderSecurite()}
+        {subscreen === 'apparence' && renderApparence()}
+        {subscreen === 'abonnement' && renderAbonnement()}
       </div>
     </div>
   );
