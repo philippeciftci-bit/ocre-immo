@@ -40,6 +40,14 @@ function auth_ensure_schema(): void {
         INDEX idx_email (email)
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
+    // M98 — colonnes profil ajoutées rétro-actif (idempotent).
+    foreach ([
+        "ALTER TABLE auth_users ADD COLUMN first_name VARCHAR(64) NULL",
+        "ALTER TABLE auth_users ADD COLUMN last_name VARCHAR(64) NULL",
+    ] as $sql) {
+        try { $db->exec($sql); } catch (Exception $e) { /* deja present */ }
+    }
+
     $db->exec("CREATE TABLE IF NOT EXISTS auth_magic_tokens (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -117,6 +125,32 @@ function auth_send_json($data, int $code = 200): void {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
+}
+
+// M98 — CORS pour cross-subdomain app.ocre.immo / agent.ocre.immo.
+// Whitelist stricte d'origines, credentials autorisés (cookies envoyés).
+function auth_cors_allow(): void {
+    $allowed = [
+        'https://app.ocre.immo',
+        'https://agent.ocre.immo',
+        'https://scan.ocre.immo',
+        'https://book.ocre.immo',
+        'https://demande.ocre.immo',
+    ];
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    // Aussi : tenant slugs <slug>.ocre.immo (Oi Agent multi-tenant M99)
+    $tenantOrigin = preg_match('#^https://[a-z0-9][a-z0-9-]*\.ocre\.immo$#', $origin);
+    if (in_array($origin, $allowed, true) || $tenantOrigin) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
+        header('Vary: Origin');
+    }
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
 }
 
 function auth_set_cookies(string $jwt, string $refresh): void {

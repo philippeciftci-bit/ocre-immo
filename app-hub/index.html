@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3D2818">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ocre">
+<meta name="robots" content="noindex,nofollow">
+<title>Ocre · Hub</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/favicon/favicon.ico">
+<link rel="apple-touch-icon" href="/favicon/apple-touch-icon-180x180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css?v=1">
+</head>
+<body>
+<div id="loader" class="loader" aria-busy="true">
+  <div class="spinner" aria-hidden="true"></div>
+  <p>Connexion à ton hub Ocre…</p>
+</div>
+
+<main id="hub" class="hub" hidden>
+  <header class="hub-header">
+    <button id="avatarBtn" class="avatar" type="button" aria-label="Réglages profil">
+      <span id="avatarInitial">·</span>
+    </button>
+    <button id="logoutBtn" class="icon-btn" type="button" aria-label="Se déconnecter">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
+    </button>
+  </header>
+
+  <section class="hub-greeting">
+    <h1 id="greeting">Bienvenue</h1>
+    <p>Que veux-tu faire aujourd'hui ?</p>
+  </section>
+
+  <section class="hub-grid" aria-label="Modules Ocre">
+    <button class="card card--active" data-module="agent" type="button">
+      <div class="card-icon" aria-hidden="true">🏠</div>
+      <div class="card-body">
+        <h2>Oi Agent</h2>
+        <p>CRM matching &amp; dossiers</p>
+      </div>
+      <span class="badge badge--active">ACTIF</span>
+    </button>
+
+    <button class="card card--active" data-module="scan" type="button">
+      <div class="card-icon" aria-hidden="true">📐</div>
+      <div class="card-body">
+        <h2>Oi Scan</h2>
+        <p>Diagnostic bâtiment</p>
+      </div>
+      <span class="badge badge--soon">BIENTÔT</span>
+    </button>
+
+    <button class="card card--locked" data-module="book" type="button">
+      <div class="card-icon" aria-hidden="true">📚</div>
+      <div class="card-body">
+        <h2>Oi Book</h2>
+        <p>Gestion locative</p>
+      </div>
+      <span class="badge badge--q3">BIENTÔT Q3</span>
+    </button>
+
+    <button class="card card--locked" data-module="demande" type="button">
+      <div class="card-icon" aria-hidden="true">🔔</div>
+      <div class="card-body">
+        <h2>Oi Demande</h2>
+        <p>Demandes mandant</p>
+      </div>
+      <span class="badge badge--q4">BIENTÔT Q4</span>
+    </button>
+  </section>
+
+  <footer class="hub-footer">
+    <button id="settingsLink" type="button" class="link-btn">Réglages</button>
+    <span class="dot">·</span>
+    <a href="https://agent.ocre.immo/?view=help" class="link-btn">Aide</a>
+    <span class="dot">·</span>
+    <a href="mailto:support@ocre.immo" class="link-btn">Contact</a>
+  </footer>
+</main>
+
+<dialog id="settingsModal" class="modal" aria-labelledby="settingsTitle">
+  <form id="settingsForm" method="dialog">
+    <h2 id="settingsTitle">Mon profil</h2>
+    <label for="emailRO">Email</label>
+    <input id="emailRO" type="email" readonly>
+    <label for="firstName">Prénom</label>
+    <input id="firstName" type="text" maxlength="64" autocomplete="given-name">
+    <label for="lastName">Nom</label>
+    <input id="lastName" type="text" maxlength="64" autocomplete="family-name">
+    <div id="settingsFeedback" class="feedback" role="status" aria-live="polite"></div>
+    <div class="modal-actions">
+      <button type="button" id="settingsCancel" class="btn-ghost">Fermer</button>
+      <button type="button" id="settingsSave" class="btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="soonModal" class="modal" aria-labelledby="soonTitle">
+  <h2 id="soonTitle">Bientôt disponible</h2>
+  <p id="soonMessage">Ce module arrive prochainement.</p>
+  <div class="modal-actions">
+    <button type="button" id="soonClose" class="btn-primary">OK</button>
+  </div>
+</dialog>
+
+<script src="/app.js?v=1"></script>
+</body>
+</html>

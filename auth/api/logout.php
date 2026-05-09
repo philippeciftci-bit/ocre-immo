@@ -5,6 +5,8 @@
 require_once __DIR__ . '/../lib/auth_db.php';
 require_once __DIR__ . '/../lib/jwt.php';
 
+auth_cors_allow();
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     auth_send_json(['ok' => false, 'error' => 'method'], 405);
 }
