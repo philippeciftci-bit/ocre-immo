@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Maquette — 5 styles alertes rouges Ocre Immo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/styles/tokens.css">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: #FBF7EE; color: #2A2018; padding: 20px; min-height: 100vh; }
+  .wrap { max-width: 800px; margin: 0 auto; transition: max-width 200ms ease; }
+  .wrap.size-mobile { max-width: 390px; }
+  .wrap.size-tablet { max-width: 820px; }
+  h1 { font-family: 'Cormorant Garamond', Georgia, serif; color: #8B5E3C; font-weight: 700; font-size: 28px; margin-bottom: 6px; text-align: center; }
+  .subtitle { text-align: center; color: #6B5E4A; font-size: 14px; margin-bottom: 18px; }
+  .toolbar { display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
+  .toolbar button { padding: 8px 14px; background: #fff; border: 1.5px solid #B89968; color: #6B4429; border-radius: 8px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .toolbar button.active { background: #8B5E3C; color: #fff; border-color: #8B5E3C; }
+  .proposal { background: #fff; border-radius: 14px; padding: 22px 24px; margin-bottom: 22px; border: 1px solid #E5DDC8; box-shadow: 0 1px 4px rgba(60,40,20,0.05); }
+  .prop-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 700; color: #8B5E3C; margin-bottom: 4px; }
+  .prop-desc { font-size: 12px; color: #6B5E4A; margin-bottom: 16px; font-style: italic; line-height: 1.5; }
+  .prop-spec { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; color: #8B7F6E; background: #F5F0E8; padding: 6px 10px; border-radius: 6px; margin-bottom: 16px; line-height: 1.6; }
+  .ctx-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #B89968; margin: 12px 0 6px; }
+  /* Contexte A : carte dossier */
+  .ctx-card { background: #FAF8F2; border: 1px solid #E5DDC8; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .ctx-card-name { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 700; color: #2A2018; }
+  /* Contexte B : page dossier en-tete */
+  .ctx-header { background: #fff; border-bottom: 1px solid #E5DDC8; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ctx-header-name { font-family: 'Cormorant Garamond', serif; font-size: 19px; font-weight: 700; color: #2A2018; }
+  /* Contexte C : bandeau ligne */
+  .ctx-banner { padding: 10px 12px; background: transparent; }
+
+  /* === PROPOSITION 1 — Sobre minimaliste === */
+  .alert-1 { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; text-transform: uppercase; color: #B91C1C; letter-spacing: 0.05em; }
+  /* === PROPOSITION 2 — Pill bordée pleine === */
+  .alert-2 { font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; color: #B91C1C; border: 1px solid #B91C1C; background: transparent; border-radius: 999px; padding: 4px 10px; display: inline-block; }
+  /* === PROPOSITION 3 — Pill bordée pointillée === */
+  .alert-3 { font-family: 'DM Sans', sans-serif; font-style: italic; font-size: 12px; font-weight: 500; color: #B91C1C; border: 1px dashed #B91C1C; background: transparent; border-radius: 999px; padding: 4px 10px; display: inline-block; }
+  /* === PROPOSITION 4 — Badge plein doux === */
+  .alert-4 { font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; text-transform: uppercase; color: #fff; background: #B91C1C; border-radius: 6px; padding: 3px 9px; display: inline-block; }
+  /* === PROPOSITION 5 — Hybride élégant === */
+  .alert-5 { font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #B91C1C; letter-spacing: 0.08em; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  .vote-row { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #E5DDC8; display: flex; gap: 8px; align-items: center; font-size: 11px; color: #6B5E4A; }
+  .vote-row strong { color: #8B5E3C; font-weight: 600; }
+
+  @media (max-width: 480px) {
+    body { padding: 12px; }
+    .proposal { padding: 16px 14px; }
+    .ctx-card { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .ctx-header { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <h1>5 styles d'alertes rouges</h1>
+  <p class="subtitle">Comparaison côte à côte · BROUILLON / Choisir un profil</p>
+  <div class="toolbar">
+    <button id="btn-default" class="active" onclick="setSize('default')">Vue défaut</button>
+    <button id="btn-tablet" onclick="setSize('tablet')">Tester sur tablette (820px)</button>
+    <button id="btn-mobile" onclick="setSize('mobile')">Tester sur mobile (390px)</button>
+  </div>
+
+  <!-- === Proposition 1 === -->
+  <div class="proposal">
+    <div class="prop-title">Proposition 1 — Sobre minimaliste</div>
+    <div class="prop-desc">Texte rouge sans fond ni bordure. Discret, repose sur la couleur seule.</div>
+    <div class="prop-spec">DM Sans · 13px · 600 · UPPERCASE · #B91C1C · letter-spacing 0.05em</div>
+    <div class="ctx-label">A · Carte dossier</div>
+    <div class="ctx-card"><span class="ctx-card-name">Marie DUBOIS</span><span class="alert-1">BROUILLON</span></div>
+    <div class="ctx-label">B · Page dossier en-tête</div>
+    <div class="ctx-header"><span class="ctx-header-name">Pierre MARTIN</span><span class="alert-1">CHOISIR UN PROFIL</span></div>
+    <div class="ctx-label">C · Bandeau ligne</div>
+    <div class="ctx-banner"><span class="alert-1">CHOISIR UN PROFIL</span></div>
+  </div>
+
+  <!-- === Proposition 2 === -->
+  <div class="proposal">
+    <div class="prop-title">Proposition 2 — Pill bordée pleine</div>
+    <div class="prop-desc">Pastille avec bordure rouge nette. Visible, structure formelle.</div>
+    <div class="prop-spec">DM Sans · 12px · 600 · Capitale initiale · #B91C1C · border 1px solid · radius 999px · padding 4×10</div>
+    <div class="ctx-label">A · Carte dossier</div>
+    <div class="ctx-card"><span class="ctx-card-name">Marie DUBOIS</span><span class="alert-2">Brouillon</span></div>
+    <div class="ctx-label">B · Page dossier en-tête</div>
+    <div class="ctx-header"><span class="ctx-header-name">Pierre MARTIN</span><span class="alert-2">Choisir un profil</span></div>
+    <div class="ctx-label">C · Bandeau ligne</div>
+    <div class="ctx-banner"><span class="alert-2">Choisir un profil</span></div>
+  </div>
+
+  <!-- === Proposition 3 === -->
+  <div class="proposal">
+    <div class="prop-title">Proposition 3 — Pill bordée pointillée</div>
+    <div class="prop-desc">Italique + bordure pointillée. Suggère « action requise / état temporaire ».</div>
+    <div class="prop-spec">DM Sans italic · 12px · 500 · Capitale initiale · #B91C1C · border 1px dashed · radius 999px · padding 4×10</div>
+    <div class="ctx-label">A · Carte dossier</div>
+    <div class="ctx-card"><span class="ctx-card-name">Marie DUBOIS</span><span class="alert-3">Brouillon</span></div>
+    <div class="ctx-label">B · Page dossier en-tête</div>
+    <div class="ctx-header"><span class="ctx-header-name">Pierre MARTIN</span><span class="alert-3">Choisir un profil</span></div>
+    <div class="ctx-label">C · Bandeau ligne</div>
+    <div class="ctx-banner"><span class="alert-3">Choisir un profil</span></div>
+  </div>
+
+  <!-- === Proposition 4 === -->
+  <div class="proposal">
+    <div class="prop-title">Proposition 4 — Badge plein doux</div>
+    <div class="prop-desc">Badge rouge plein, texte blanc. Très visible, ressemble à un statut.</div>
+    <div class="prop-spec">DM Sans · 12px · 600 · UPPERCASE · #fff sur #B91C1C · radius 6px · padding 3×9</div>
+    <div class="ctx-label">A · Carte dossier</div>
+    <div class="ctx-card"><span class="ctx-card-name">Marie DUBOIS</span><span class="alert-4">BROUILLON</span></div>
+    <div class="ctx-label">B · Page dossier en-tête</div>
+    <div class="ctx-header"><span class="ctx-header-name">Pierre MARTIN</span><span class="alert-4">CHOISIR UN PROFIL</span></div>
+    <div class="ctx-label">C · Bandeau ligne</div>
+    <div class="ctx-banner"><span class="alert-4">CHOISIR UN PROFIL</span></div>
+  </div>
+
+  <!-- === Proposition 5 === -->
+  <div class="proposal">
+    <div class="prop-title">Proposition 5 — Hybride élégant <span style="font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:#2D7A3E;background:#D1FAE5;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px;">recommandé</span></div>
+    <div class="prop-desc">Majuscules + soulignement subtil. Sobre comme P1 mais avec un accent visuel léger.</div>
+    <div class="prop-spec">DM Sans · 12px · 700 · UPPERCASE · #B91C1C · letter-spacing 0.08em · underline 1px offset 2px</div>
+    <div class="ctx-label">A · Carte dossier</div>
+    <div class="ctx-card"><span class="ctx-card-name">Marie DUBOIS</span><span class="alert-5">BROUILLON</span></div>
+    <div class="ctx-label">B · Page dossier en-tête</div>
+    <div class="ctx-header"><span class="ctx-header-name">Pierre MARTIN</span><span class="alert-5">CHOISIR UN PROFIL</span></div>
+    <div class="ctx-label">C · Bandeau ligne</div>
+    <div class="ctx-banner"><span class="alert-5">CHOISIR UN PROFIL</span></div>
+  </div>
+
+  <div class="vote-row" style="background:#FFF;border-radius:10px;padding:14px;border:1px solid #E5DDC8;flex-direction:column;align-items:flex-start;gap:6px;">
+    <strong>Pour choisir :</strong>
+    <span>Indique à Claude la proposition retenue (1 à 5) — par exemple « M78 : appliquer Proposition 5 partout » — et toutes les alertes BROUILLON / Choisir un profil seront unifiées dans tous les écrans.</span>
+  </div>
+</div>
+
+<script>
+function setSize(s) {
+  const wrap = document.getElementById('wrap');
+  wrap.classList.remove('size-mobile', 'size-tablet');
+  if (s === 'mobile') wrap.classList.add('size-mobile');
+  if (s === 'tablet') wrap.classList.add('size-tablet');
+  ['default','tablet','mobile'].forEach(k => {
+    const b = document.getElementById('btn-' + k);
+    if (b) b.classList.toggle('active', k === s);
+  });
+}
+</script>
+</body>
+</html>
