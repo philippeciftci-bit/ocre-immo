@@ -11532,6 +11532,12 @@ function App() {
     });
     return () => { window.__ocreAsk = null; };
   }, []);
+  // M/2026/05/09/44 — M90 : expose openPrefs + logout en globals (utilisés par HelpPage M90 lien PWA push + ReglagesPage M87 bouton Se déconnecter).
+  useEffect(() => {
+    window.__ocreOpenPrefs = () => pushView('preferences');
+    window.__ocreLogout = () => { try { logout && logout(); } catch (_) {} };
+    return () => { window.__ocreOpenPrefs = null; window.__ocreLogout = null; };
+  }, []);
   function resolveConfirm(result) {
     const r = confirmResolverRef.current;
     confirmResolverRef.current = null;
@@ -13274,73 +13280,154 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
 // impersonate / logs) + admin_logs. Nécessite user.is_admin=true (requireAdmin côté backend).
 
 // M/2026/04/28/64 — HelpPage : FAQ accordéon avec search.
+// M/2026/05/09/44 — M90 — HelpPage refondue fidèle maquette M85b hybride V1 + chips V3.
+// Header "Aide Oi Agent" + sous-titre, search bar, grid 2×3 catégories cliquables avec icônes,
+// sub-screens accordéons par catégorie, bandeau "Articles populaires" en bas, bloc contact Email seul,
+// mention "🔔 Activer les notifications" lien vers Réglages → Notifications (M87).
+// Suppression définitive des 2 mentions Telegram historiques (paradigme M85b PWA push).
+// Wording français agent immo non-tech (pas de chat_id/webhook/EditConsent).
 function HelpPage({onBack}) {
   const [search, setSearch] = React.useState('');
+  const [openedCat, setOpenedCat] = React.useState(null); // null = home, 'demarrer'|'dossiers'|...
   const [opened, setOpened] = React.useState({});
+
+  // Catégories + articles M90 (wording agent immo, paradigme PWA push M85b post-Telegram).
   const FAQ = [
-    {section: 'Démarrage', items: [
-      {q: 'Comment ajouter un dossier ?', a: 'Tap sur le bouton + dans la liste principale. Choisis le profil (Acheteur, Vendeur…) et remplis les sections progressivement. Les champs marqués d\'une astérisque sont obligatoires.'},
-      {q: 'Comment basculer entre mes espaces ?', a: 'Tap sur le logo OCRE en haut à gauche pour ouvrir le sélecteur. Tu y trouves ton espace personnel ainsi que les partenariats actifs.'},
+    { cat:'demarrer', icon:'🚀', label:'Démarrer rapidement', items:[
+      { q:'Comment créer mon premier dossier ?', a:"Tap sur le bouton + en bas à droite de la liste de dossiers. Choisis le profil client (Acheteur / Vendeur / Bailleur / Locataire / Investisseur / Marchand de biens / Promoteur). Remplis les sections progressivement, l'auto-save sécurise tout en continu." },
+      { q:'Comment compléter mon profil agent ?', a:"Réglages → Profil pour modifier ton nom, téléphone, photo. L'email est en lecture seule et nécessite un contact support pour modification." },
     ]},
-    {section: 'Dossiers', items: [
-      {q: 'A quoi sert le toggle Investisseur ?', a: 'Le toggle Investisseur (orthogonal aux 4 profils principaux) bascule la Section III en mode rendement (rentabilite locative, dispositifs fiscaux). Active-le si le contact achete pour investir / louer.'},
-      {q: 'Puis-je avoir plusieurs casquettes ?', a: 'Oui. Un même client peut avoir N dossiers liés (Acheteur + Vendeur + Bailleur). Utilise + Ajouter une casquette dans le menu dossier.'},
-      {q: 'Que devient un dossier supprimé ?', a: 'Soft-delete : il va dans la corbeille pendant 90 jours, restaurable par toi ou un super-admin. Après 90j, purge définitive.'},
+    { cat:'dossiers', icon:'📂', label:'Gérer mes dossiers', items:[
+      { q:'Comment archiver un dossier ?', a:"Swipe gauche sur la card du dossier dans la liste, puis tap Archiver. Le dossier reste accessible via le filtre Archivés et peut être restauré à tout moment." },
+      { q:'Comment exporter un dossier en PDF ?', a:"Ouvre le dossier, tap sur l'icône PDF en bas. Choisis les sections à inclure et les photos à afficher. Le PDF généré est partageable directement par email." },
     ]},
-    {section: 'Matching', items: [
-      {q: 'Comment fonctionne le scoring ?', a: '10 critères pondérés (Pays 5, Ville 15, Quartier 10, Type 25, Surface 10, Terrain 5, Chambres 8, Budget 15, Équipements 5, État 2 = 100 max).'},
-      {q: 'Mon seuil minimum est de 70%, je peux le baisser ?', a: 'Oui dans Préférences > Match perso. Slider 50% à 95%.'},
-      {q: 'C\'est quoi "Pertinent" / "À surveiller" / "Écarté" ?', a: 'Classification manuelle après visualisation. Pertinent = à pousser commercial. À surveiller = potentiel mais pas urgent. Écarté = inadéquat.'},
+    { cat:'matching', icon:'🎯', label:'Matching & pacts', items:[
+      { q:'Comment fonctionne le matching automatique ?', a:"Le matching croise tes dossiers Acheteur (critères de recherche) avec les dossiers Vendeur (caractéristiques du bien) selon 10 critères pondérés. Score sur 100. Au-dessus de 70%, le match est pertinent. À 85%+ tu reçois une notification PWA si activée." },
+      { q:'Comment inviter un confrère via un pacte ?', a:"Réglages → Pacts collaboratifs → Inviter. Saisis l'email du confrère. Il reçoit un lien sécurisé. Une fois accepté, vous collaborez sur des dossiers communs avec validation mutuelle des modifications." },
     ]},
-    {section: 'Calendrier', items: [
-      {q: 'Comment ajouter à mon Apple/Google Calendar ?', a: 'Préférences > Synchronisation calendrier > copier l\'URL .ics > coller dans ton app calendrier (Comptes > Ajouter > CalDAV/URL). Sync auto.'},
-      {q: 'Pourquoi je ne reçois pas les rappels ?', a: 'Vérifie : (1) reminder_offset_minutes défini sur l\'événement, (2) Préférences > Types de notifs > "Événement à venir" coché, (3) chat_id Telegram bien renseigné si Telegram activé.'},
+    { cat:'photos', icon:'📸', label:'Photos & documents', items:[
+      { q:'Comment ajouter des photos à un bien ?', a:"Ouvre le dossier, va à la Section V Photos, tap sur le bouton + ou glisse-dépose tes photos. Limite 30 photos par dossier." },
+      { q:'Quels formats sont acceptés ?', a:"JPG, PNG, WebP, HEIC/HEIF (iPhone) et PNG. Compression auto en WebP côté serveur. 25 Mo max avant compression." },
     ]},
-    {section: 'Notifications', items: [
-      {q: 'Comment configurer Telegram ?', a: 'Préférences > Notifications > Telegram ON > envoie /start au bot @atelierphilippe_bot pour récupérer ton chat_id > colle le chiffre dans le champ > bouton Tester.'},
-      {q: 'Pourquoi pas d\'email reçu ?', a: 'Le SMTP nécessite la configuration App Password Gmail côté admin. Tant qu\'elle n\'est pas faite, les emails sont loggés en /var/log/ocre-edit-notifs.log mais pas envoyés.'},
+    { cat:'compte', icon:'👤', label:'Compte & abonnement', items:[
+      { q:'Comment changer la devise sur les prix ?', a:"Dans la Section III Budget, tap sur le bouton devise (drapeau + code) à côté du montant. Choisis parmi les 12 devises supportées (EUR, MAD, USD, GBP, CHF, CAD, JPY, INR, AED, SAR, TRY, CNY)." },
+      { q:'Comment activer les notifications PWA sur mon iPhone ?', a:"Réglages → Notifications → Activer les notifications. Compatible iPhone iOS 16.4+ après installation de l'app à l'écran d'accueil. Tu reçois alors les rappels RDV, matchings ≥85%, propositions reçues directement sur l'écran verrouillé." },
     ]},
-    {section: 'Workspace commun (WSc)', items: [
-      {q: 'C\'est quoi un WSc ?', a: 'Workspace partagé entre 2+ agents qui collaborent sur un même dossier. Tout edit doit être validé par les autres membres avant application (workflow EditConsent).'},
-      {q: 'J\'ai reçu une notif "Modifications en attente"', a: 'Ouvre la cloche header ou /notifications, tap sur la notif, tu arrives sur la page review avec 3 boutons : Valider / Modifier / Refuser.'},
-    ]},
-    {section: 'Documents & photos', items: [
-      {q: 'Combien de photos puis-je uploader ?', a: 'Limite par défaut : 30 photos par dossier, 5 Mo chacune. Configurable par Philippe dans system_settings.'},
-      {q: 'Format photos accepté ?', a: 'JPG / PNG / WebP. Compression auto WebP si flag activé.'},
+    { cat:'support', icon:'💬', label:'Contacter le support', items:[
+      { q:'Comment contacter le support Ocre ?', a:"Par email à support@ocre.immo. Réponse sous 2h en jours ouvrés. Inclus le numéro de ton dossier ou une capture d'écran si tu signales un bug, ça accélère le traitement." },
     ]},
   ];
 
-  const filtered = !search ? FAQ : FAQ.map(s => ({
-    section: s.section,
-    items: s.items.filter(i => (i.q + ' ' + i.a).toLowerCase().includes(search.toLowerCase())),
-  })).filter(s => s.items.length > 0);
+  // Articles populaires : 1er article de chaque catégorie (M85b spec : 9 items max, on prend 6 ici)
+  const popular = FAQ.map(c => ({...c.items[0], catIcon: c.icon, catLabel: c.label, cat: c.cat}));
+
+  const q = search.toLowerCase().trim();
+  const filtered = !q ? FAQ : FAQ.map(c => ({
+    ...c,
+    items: c.items.filter(i => (i.q + ' ' + i.a).toLowerCase().includes(q)),
+  })).filter(c => c.items.length > 0);
+
+  const Toggle = ({open, onClick, q, a, k}) => (
+    <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:8, marginBottom:6, overflow:'hidden'}}>
+      <button onClick={onClick} style={{width:'100%', textAlign:'left', padding:'10px 12px', background:'transparent', border:'none', fontFamily:'inherit', fontSize:'var(--font-size-13-5)', color:'var(--color-text-primary)', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', minHeight:44}}>
+        <span style={{flex:1, paddingRight:8}}>{q}</span>
+        <span style={{color:'var(--color-accent)', fontSize:14}}>{open ? '−' : '+'}</span>
+      </button>
+      {open && <div style={{padding:'4px 12px 12px', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)', lineHeight:1.6}}>{a}</div>}
+    </div>
+  );
+
+  const renderHome = () => (
+    <>
+      <h2 style={{fontFamily:'var(--font-serif)', fontSize:22, color:'var(--color-accent)', fontWeight:700, fontStyle:'italic', margin:'6px 0 4px'}}>Comment pouvons-nous t'aider ?</h2>
+      <p style={{fontSize:12, color:'var(--color-text-muted)', marginBottom:14, lineHeight:1.5}}>Trouve rapidement une réponse, ou contacte-nous directement.</p>
+      <div style={{display:'flex', alignItems:'center', gap:6, background:'#fff', border:'1.5px solid var(--color-border-cream)', borderRadius:10, padding:'10px 12px', marginBottom:16}}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{color:'var(--color-text-muted)', flexShrink:0}}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher dans l'aide..."
+          style={{flex:1, border:0, outline:'none', fontSize:13.5, fontFamily:'inherit', background:'transparent', color:'var(--color-text-primary)', minWidth:0}}/>
+      </div>
+      {!q && (
+        <>
+          {/* Grid 2x3 catégories */}
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:18}}>
+            {FAQ.map(c => (
+              <div key={c.cat} onClick={() => setOpenedCat(c.cat)}
+                style={{background:'#fff', border:'1.5px solid var(--color-border-cream)', borderRadius:10, padding:'12px 10px', minHeight:80, cursor:'pointer', display:'flex', flexDirection:'column', gap:4}}>
+                <span style={{fontSize:22, lineHeight:1, marginBottom:2}}>{c.icon}</span>
+                <span style={{fontSize:12.5, fontWeight:700, color:'var(--color-accent)', lineHeight:1.25}}>{c.label}</span>
+                <span style={{fontSize:10, color:'var(--color-text-muted)', marginTop:2}}>{c.items.length} article{c.items.length > 1 ? 's' : ''}</span>
+              </div>
+            ))}
+          </div>
+          {/* Articles populaires */}
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:11, fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:0.6, marginBottom:8, padding:'0 4px'}}>Articles populaires</div>
+            <div style={{display:'flex', flexDirection:'column', gap:6}}>
+              {popular.map((it, idx) => (
+                <div key={'pop'+idx} onClick={() => setOpenedCat(it.cat)} style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:8, padding:'10px 12px', cursor:'pointer', fontSize:13, color:'var(--color-text-primary)', display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, minHeight:44}}>
+                  <span style={{flex:1, paddingRight:8}}>{it.catIcon} {it.q}</span>
+                  <span style={{color:'var(--color-accent)', fontSize:12, opacity:0.6}}>›</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+      {q && filtered.map(c => (
+        <div key={c.cat} style={{marginBottom:18}}>
+          <div style={{fontSize:11, fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:0.6, marginBottom:8}}>{c.icon} {c.label}</div>
+          {c.items.map((it, i) => {
+            const k = c.cat + '-' + i;
+            return <Toggle key={k} open={!!opened[k]} onClick={() => setOpened(p => ({...p, [k]: !p[k]}))} q={it.q} a={it.a} k={k}/>;
+          })}
+        </div>
+      ))}
+      {/* CTA contact bas */}
+      <div style={{background:'linear-gradient(135deg,#8B5E3C,#6B4429)', color:'#fff', borderRadius:10, padding:'14px 16px', marginTop:8, textAlign:'center'}}>
+        <div style={{fontFamily:'var(--font-serif)', fontSize:16, fontWeight:700, fontStyle:'italic', marginBottom:4}}>Besoin d'aide personnalisée ?</div>
+        <div style={{fontSize:11, opacity:0.85, marginBottom:10}}>Notre équipe répond en moins de 2h en semaine.</div>
+        <a href="mailto:support@ocre.immo" style={{display:'inline-block', background:'#fff', color:'var(--color-accent)', padding:'10px 18px', borderRadius:22, fontWeight:700, fontSize:13, textDecoration:'none'}}>✉️ Contacter le support</a>
+      </div>
+      {/* Bandeau lien vers Réglages → Notifications PWA */}
+      <div onClick={() => { window.location.hash = ''; if (typeof window.__ocreOpenPrefs === 'function') window.__ocreOpenPrefs(); }}
+        style={{display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'12px 14px', background:'#E8F5E9', border:'1px solid #C5E1A5', borderRadius:10, cursor:'pointer'}}>
+        <span style={{fontSize:18}}>🔔</span>
+        <div style={{flex:1, fontSize:12, color:'#2E7D32'}}>
+          <div style={{fontWeight:700, marginBottom:2}}>Activer les notifications push</div>
+          <div style={{fontSize:11, opacity:0.85}}>Réglages → Notifications · Reçois les rappels et matchings sur ton iPhone</div>
+        </div>
+        <span style={{color:'#43A047', fontSize:18}}>›</span>
+      </div>
+    </>
+  );
+
+  const renderCat = (catId) => {
+    const c = FAQ.find(x => x.cat === catId);
+    if (!c) return null;
+    return (
+      <>
+        <h2 style={{fontFamily:'var(--font-serif)', fontSize:22, color:'var(--color-accent)', fontWeight:700, fontStyle:'italic', margin:'6px 0 4px', display:'flex', alignItems:'center', gap:8}}>
+          <span style={{fontSize:22}}>{c.icon}</span>{c.label}
+        </h2>
+        <p style={{fontSize:12, color:'var(--color-text-muted)', marginBottom:14}}>{c.items.length} article{c.items.length > 1 ? 's' : ''}</p>
+        <div>
+          {c.items.map((it, i) => {
+            const k = catId + '-' + i;
+            return <Toggle key={k} open={!!opened[k]} onClick={() => setOpened(p => ({...p, [k]: !p[k]}))} q={it.q} a={it.a} k={k}/>;
+          })}
+        </div>
+      </>
+    );
+  };
+
+  const handleBack = () => { if (openedCat) setOpenedCat(null); else onBack(); };
+  const titre = openedCat ? (FAQ.find(x => x.cat === openedCat) || {}).label || 'Aide' : 'Aide Oi Agent';
 
   return (
     <div style={{height:'100%', display:'flex', flexDirection:'column', background: 'var(--color-bg-page)'}}>
-      <PageHeader onBack={onBack} title="Aide & FAQ"/>
+      <PageHeader onBack={handleBack} title={titre}/>
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 30px'}}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher dans la FAQ…"
-          style={{width:'100%', padding:'var(--space-10px)', border:'1px solid #D8CCB4', borderRadius:8, fontFamily:'inherit', fontSize:'var(--font-size-13)', marginBottom:'var(--space-14px)', boxSizing:'border-box'}}/>
-        {filtered.map(sec => (
-          <div key={sec.section} style={{marginBottom:'var(--space-18px)'}}>
-            <div style={{fontSize:'var(--font-size-11)', textTransform:'uppercase', letterSpacing:.6, color:'var(--color-text-muted)', fontWeight:700, marginBottom:'var(--space-2)'}}>{sec.section}</div>
-            {sec.items.map((it, i) => {
-              const k = sec.section + '-' + i;
-              return (
-                <div key={k} style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:8, marginBottom:'var(--space-6px)', overflow:'hidden'}}>
-                  <button onClick={() => setOpened(p => ({...p, [k]: !p[k]}))}
-                    style={{width:'100%', textAlign:'left', padding:'10px 12px', background:'transparent', border:'none', fontFamily:'inherit', fontSize:'var(--font-size-13-5)', color:'var(--color-text-primary)', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                    <span>{it.q}</span><span style={{color:'var(--color-accent)'}}>{opened[k] ? '−' : '+'}</span>
-                  </button>
-                  {opened[k] && <div style={{padding:'4px 12px 12px', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)', lineHeight:1.5}}>{it.a}</div>}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-        <div style={{textAlign:'center', marginTop:'var(--space-5)', fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)'}}>
-          Une question pas dans la FAQ ? <a href="mailto:philippe.ciftci@gmail.com" style={{color:'var(--color-accent)'}}>Contacter le support</a>
-        </div>
+        {openedCat ? renderCat(openedCat) : renderHome()}
       </div>
     </div>
   );
