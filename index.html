@@ -8010,12 +8010,13 @@ function RatePopup2Col({onClose, forceUpdate}) {
   );
 }
 
-// PriceField2Col — fidélité maquette M70 V_A2 (drapeau 12px + code 10px medium ocre stack vertical).
-// Layout 1 ligne strict pour 10M€ ↔ 108M MAD sur iPhone 390px. Border unique sur la row,
-// pas de zones internes bordées (gain place). Bouton devise = mini stack vertical compact, no chevron.
-// Centre : taux + ✏️ + badge AUTO/MANUEL ; badge MANUEL cliquable = retour AUTO instantané.
-// Espaces fines U+202F via fmtNumV5. Hint italic supprimé sauf en cas de warn.
-// M/2026/05/09/23 — M73 : refonte fidèle V_A2.
+// PriceField2Col — fidélité PIXEL PRÈS à maquette M74 V3 (validée Philippe).
+// V3 : centre = 3 niveaux verticaux ("10,84" 12px / ✏️ 8px / "AUTO" 7.5px), gap 4px inter-blocs via
+// margin sur le rate-btn, row en flex (pas grid) pour absorber 99 999 999 EUR ↔ 1 083 999 989 MAD
+// sans troncature sur iPhone 390px. Bouton devise V_A2 conservé (drapeau 12 + code 10 medium ocre).
+// Badge MANUEL orange cliquable = restauration AUTO instantanée.
+// Format espaces fines U+202F via fmtNumV5. Hint italic supprimé sauf warn/lock/loyer mensuel.
+// M/2026/05/09/25 — M75 : application fidèle V3 (post M70/M73/M74 polish loop).
 function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
   const cur = getCurrencyV5State();
   const [pickerSide, setPickerSide] = React.useState(null);
@@ -8064,30 +8065,32 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
   const isManual = !!cur.manualRate;
   const _rowBorder = warn ? 'var(--color-error)' : '#D6C7AC';
   const _rowBg = warn ? '#FEF6F6' : '#fff';
-  // Row : 1 seule bordure, pas de zones internes — gain de place pour les montants.
-  const _row = {display:'grid', gridTemplateColumns:'minmax(0,1fr) auto minmax(0,1fr)', gap:3, alignItems:'stretch', background:_rowBg, border:'1.5px solid '+_rowBorder, borderRadius:9, position:'relative'};
-  const _side = {display:'flex', alignItems:'center', minHeight:44, gap:4, minWidth:0, padding:'0 4px 0 6px'};
-  const _input = {flex:1, border:'none', outline:'none', fontSize:'var(--font-size-13)', fontWeight:600, background:'transparent', minWidth:0, width:'100%', padding:'6px 0', fontFamily:'inherit', color:'var(--color-text-primary)', WebkitAppearance:'none', MozAppearance:'textfield'};
-  // Bouton devise V_A2 : flex column, drapeau 12px + code 10px medium ocre, padding compact, no chevron.
-  const _curBtn = {display:'inline-flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:36, minHeight:44, padding:'2px 4px', background:'var(--color-bg-tint-warm)', border:'1px solid transparent', borderRadius:6, cursor:'pointer', flexShrink:0, gap:0, lineHeight:1, userSelect:'none', fontFamily:'inherit'};
+  // Row V3 : flex (pas grid), padding 0 — les sides absorbent l'espace via flex:1.
+  const _row = {display:'flex', alignItems:'center', background:_rowBg, border:'1.5px solid '+_rowBorder, borderRadius:9, padding:0, position:'relative'};
+  // Side V3 : flex 1, padding 0 0 0 6px (gauche) / 0 6px 0 0 (droite), gap 3px.
+  const _sideLeft = {display:'flex', alignItems:'center', minHeight:44, gap:3, minWidth:0, flex:1, padding:'0 0 0 6px'};
+  const _sideRight = {display:'flex', alignItems:'center', minHeight:44, gap:3, minWidth:0, flex:1, padding:'0 6px 0 0'};
+  const _input = {flex:1, border:'none', outline:'none', fontSize:13.5, fontWeight:600, background:'transparent', minWidth:0, width:'100%', padding:'6px 2px', fontFamily:'inherit', color:'var(--color-text-primary)', fontVariantNumeric:'tabular-nums', WebkitAppearance:'none', MozAppearance:'textfield'};
+  // Bouton devise V_A2 (inchangé) : drapeau 12px + code 10px medium ocre stack vertical, no chevron.
+  const _curBtn = {display:'inline-flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:32, minHeight:44, padding:'2px 4px', background:'var(--color-bg-tint-warm)', border:'1px solid transparent', borderRadius:6, cursor:'pointer', flexShrink:0, gap:0, lineHeight:1, userSelect:'none', fontFamily:'inherit'};
   const _curFlag = {fontSize:12, lineHeight:1};
   const _curCode = {fontSize:10, fontWeight:500, color:'var(--color-text-brown)', marginTop:2};
-  // Bouton taux : flex column, taux + ✏️ inline puis badge AUTO/MANUEL.
-  const _rateBtn = {display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:44, padding:'2px 6px', background: isManual ? '#FBE7CB' : 'var(--color-bg-tint-warm)', border:'1.5px solid '+(isManual ? '#C77D2D' : 'transparent'), borderRadius:7, cursor:'pointer', fontFamily:'inherit', flexShrink:0, minWidth:54};
-  const _rateNum = {display:'flex', alignItems:'center', gap:2, fontSize:'var(--font-size-12)', fontWeight:700, color: isManual ? '#C77D2D' : 'var(--color-text-brown)', lineHeight:1.1, fontVariantNumeric:'tabular-nums'};
+  // Bouton taux V3 : flex column 3 niveaux (num + pencil + badge), gap 0, lineHeight 1, margin 0 4px = gap inter-blocs.
+  const _rateBtn = {display:'inline-flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:44, minWidth:50, padding:'1px 4px', background: isManual ? '#FBE7CB' : 'var(--color-bg-tint-warm)', border:'1.5px solid '+(isManual ? '#C77D2D' : 'transparent'), borderRadius:6, cursor:'pointer', flexShrink:0, gap:0, lineHeight:1, margin:'0 4px', fontFamily:'inherit'};
+  const _rateNum = {fontSize:12, fontWeight:700, color: isManual ? '#C77D2D' : 'var(--color-text-brown)', fontVariantNumeric:'tabular-nums'};
+  const _ratePencil = {fontSize:8, opacity:.55, marginTop:1};
   const _rateBadge = isManual
-    ? {fontSize:8, fontWeight:800, color:'#fff', background:'#C77D2D', textTransform:'uppercase', letterSpacing:.4, marginTop:1, lineHeight:1, padding:'1px 5px', borderRadius:8, cursor:'pointer'}
-    : {fontSize:8, fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginTop:1, lineHeight:1, padding:'1px 0'};
+    ? {fontSize:7.5, fontWeight:800, color:'#fff', background:'#C77D2D', letterSpacing:'0.04em', marginTop:1, lineHeight:1, padding:'1px 4px', borderRadius:6, cursor:'pointer'}
+    : {fontSize:7.5, fontWeight:700, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginTop:1, lineHeight:1};
   const _pop = {position:'absolute', top:'calc(100% + 4px)', zIndex:80, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, boxShadow:'0 6px 16px rgba(0,0,0,0.14)', minWidth:180, maxHeight:240, overflowY:'auto', padding:4};
   const _popItem = (active) => ({display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:5, cursor:'pointer', fontFamily:'inherit', fontSize:'var(--font-size-12)', color: active ? 'var(--color-text-brown)' : 'var(--color-text-primary)', background: active ? 'var(--color-bg-tint-warm)' : 'transparent', minHeight:36, fontWeight: active ? 700 : 500});
-  // Hint : suppression "Conversion bidir live" parasite. Garde uniquement si warn=true OU hint contient cadenas/avertissement.
   const _showHint = hint && (warn || /🔒|⚠|mois|cash|crédit|hors compta|récupérables/i.test(hint)) && hint !== 'Conversion bidir live';
   return (
     <div style={{marginBottom:'var(--space-2)'}}>
       <div style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600, marginBottom:'var(--space-1)'}}>{label}</div>
       <div style={_row}>
-        {/* GAUCHE : [input][devise stack vertical] */}
-        <div style={_side}>
+        {/* GAUCHE : [input][devise V_A2] */}
+        <div style={_sideLeft}>
           <input type="text" inputMode="numeric" value={fmtNumV5(displayLeft)} onChange={handleLeft} placeholder="0" style={_input}/>
           <button type="button" onClick={(e) => { e.stopPropagation(); setPickerSide(pickerSide === 'left' ? null : 'left'); }} style={_curBtn} title={CURRENCY_NAMES_V5[cur.left] || cur.left} aria-label={'Devise gauche : ' + cur.left}>
             <span style={_curFlag}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
@@ -8106,10 +8109,10 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
             </div>
           )}
         </div>
-        {/* MILIEU : taux + ✏️ + badge AUTO/MANUEL (cliquable si manuel) */}
+        {/* MILIEU V3 : 3 lignes empilées (num / pencil / badge), gap 0, margin 0 4px */}
         <button type="button" onClick={(e) => {
             e.stopPropagation();
-            if (e.target.dataset && e.target.dataset.badge === 'manual') return; // badge handler géré séparément
+            if (e.target.dataset && e.target.dataset.badge === 'manual') return;
             if (!rateEditing) { setRateDraft(Number(rate).toFixed(rate < 10 ? 4 : 2)); setRateEditing(true); }
           }}
           style={_rateBtn}
@@ -8121,21 +8124,19 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
               onBlur={commitRate}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitRate(); } else if (e.key === 'Escape') { e.preventDefault(); setRateEditing(false); } }}
-              style={{width:54, border:'1px solid var(--color-text-brown)', borderRadius:4, padding:'4px 6px', textAlign:'center', fontFamily:'inherit', fontSize:'var(--font-size-13)', fontWeight:700, color:'var(--color-text-brown)'}}/>
+              style={{width:48, border:'1px solid var(--color-text-brown)', borderRadius:4, padding:'3px 4px', textAlign:'center', fontFamily:'inherit', fontSize:12, fontWeight:700, color:'var(--color-text-brown)'}}/>
           ) : (
             <>
-              <span style={_rateNum}>
-                <span>{Number(rate).toFixed(rate < 10 ? 4 : 2)}</span>
-                <span style={{fontSize:10, opacity:.7}}>✏️</span>
-              </span>
+              <span style={_rateNum}>{Number(rate).toFixed(rate < 10 ? 4 : 2)}</span>
+              <span style={_ratePencil}>✏️</span>
               {isManual
                 ? <span data-badge="manual" onClick={restoreAuto} style={_rateBadge}>MANUEL</span>
                 : <span style={_rateBadge}>AUTO</span>}
             </>
           )}
         </button>
-        {/* DROITE : [devise stack vertical][input] */}
-        <div style={_side}>
+        {/* DROITE : [devise V_A2][input] */}
+        <div style={_sideRight}>
           <button type="button" onClick={(e) => { e.stopPropagation(); setPickerSide(pickerSide === 'right' ? null : 'right'); }} style={_curBtn} title={CURRENCY_NAMES_V5[cur.right] || cur.right} aria-label={'Devise droite : ' + cur.right}>
             <span style={_curFlag}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
             <span style={_curCode}>{cur.right}</span>
