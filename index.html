@@ -1272,6 +1272,40 @@ function Field({label, value, onChange, type='text', placeholder='', style={}, a
 
 // V17.1 — DateMaskField : saisie masquée JJ/MM/AAAA avec auto-advance.
 // Stockage back ISO YYYY-MM-DD, affichage front DD/MM/YYYY.
+// M/2026/05/09/74 — normalisation date qui accepte le / tape manuellement OU 8 chiffres consecutifs.
+// Strip tout sauf [0-9/], compresse // -> /, parse user-driven si / present sinon auto-inserts.
+function normalizeDateInput(rawValue) {
+  // Strip tout sauf chiffres et /. Tirets et points convertis en / pour gerer paste 15-07-1973.
+  const cleaned = String(rawValue || '').replace(/[\.\-]/g, '/').replace(/[^\d/]/g, '');
+  // Compresse les / multiples consecutifs.
+  const compressed = cleaned.replace(/\/+/g, '/');
+  if (compressed.includes('/')) {
+    // Mode user-driven : split par / + cap longueur de chaque segment.
+    const parts = compressed.split('/');
+    const day = (parts[0] || '').slice(0, 2);
+    const month = (parts[1] || '').slice(0, 2);
+    const year = (parts[2] || '').slice(0, 4);
+    let result = day;
+    if (parts.length > 1) result += '/' + month;
+    if (parts.length > 2) result += '/' + year;
+    return result;
+  }
+  // Mode auto-insertion : 8 chiffres max, / apres 2 et 4.
+  const digits = compressed.slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return digits.slice(0, 2) + '/' + digits.slice(2);
+  return digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4, 8);
+}
+// Verifie que la date est reelle (pas 32/13/1973). Retourne true pour vide, false pour invalide.
+function isValidFrenchDate(s) {
+  if (!s) return true;
+  const m = /^([0-3]?\d)\/([0-1]?\d)\/(\d{4})$/.exec(s);
+  if (!m) return false;
+  const dd = parseInt(m[1], 10), mm = parseInt(m[2], 10), yyyy = parseInt(m[3], 10);
+  if (mm < 1 || mm > 12 || dd < 1 || yyyy < 1900 || yyyy > 2100) return false;
+  const dt = new Date(yyyy, mm - 1, dd);
+  return dt.getFullYear() === yyyy && dt.getMonth() === mm - 1 && dt.getDate() === dd;
+}
 function DateMaskField({label, value, onChange, style={}}) {
   // value en ISO YYYY-MM-DD → display DD/MM/YYYY
   const toDisplay = (iso) => {
@@ -1281,35 +1315,37 @@ function DateMaskField({label, value, onChange, style={}}) {
     return iso;
   };
   const [display, setDisplay] = React.useState(toDisplay(value));
+  const [error, setError] = React.useState(false);
   React.useEffect(() => { setDisplay(toDisplay(value)); }, [value]);
 
   const filled = display && display.length >= 10;
   const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:'var(--font-size-sm)', outline:'none', fontFamily:'inherit', color:'var(--color-text-primary)', letterSpacing:'1px'};
 
   function handle(e) {
-    const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
-    let out = '';
-    if (digits.length <= 2) out = digits;
-    else if (digits.length <= 4) out = digits.slice(0,2) + '/' + digits.slice(2);
-    else out = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
+    const out = normalizeDateInput(e.target.value);
     setDisplay(out);
-    // Si 8 chiffres saisis → valider + pousser ISO au parent.
-    if (digits.length === 8) {
-      const dd = digits.slice(0,2), mm = digits.slice(2,4), yyyy = digits.slice(4,8);
-      const iso = `${yyyy}-${mm}-${dd}`;
-      onChange(iso);
-    } else if (digits.length === 0) {
+    if (error) setError(false);
+    // Si 10 chars JJ/MM/AAAA et date reelle, push ISO au parent.
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(out);
+    if (m && isValidFrenchDate(out)) {
+      onChange(`${m[3]}-${m[2]}-${m[1]}`);
+    } else if (out === '') {
       onChange('');
     }
   }
-
+  function handleBlur() {
+    if (display && !isValidFrenchDate(display)) setError(true);
+    else setError(false);
+  }
+  const errStyle = error ? {border:'1.5px solid #C0392B', background:'#FEF6F6'} : (filled ? FIELD_FILLED : FIELD_EMPTY);
   return (
     <div style={{marginBottom:'var(--space-10px)', minWidth:0, ...style}}>
       {label && <label style={{display:'block', fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', marginBottom:'var(--space-1)', textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
-      <input type="text" value={display} onChange={handle}
+      <input type="text" value={display} onChange={handle} onBlur={handleBlur}
         placeholder="JJ/MM/AAAA" inputMode="numeric" pattern="[0-9/]*" maxLength={10}
         autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false"
-        style={{...base, ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
+        style={{...base, ...errStyle}}/>
+      {error && <div style={{fontSize:'var(--font-size-11)', color:'#C0392B', marginTop:'var(--space-2px)', fontWeight:600}}>Date invalide</div>}
     </div>
   );
 }
