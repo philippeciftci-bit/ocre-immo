@@ -287,6 +287,10 @@ input, select, textarea, button { font-size: var(--font-size-13) }
 .row-pair > *{flex:1 1 0;min-width:0}
 .row-trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap: var(--space-6px)}
 .row-trio > *{min-width:0}
+/* M/2026/05/09/72 — modifier ciblé : empile en 1 colonne sous 768px (Tel | Email fiche contact). */
+@media (max-width: 767px) {
+  .row-pair--stack-mobile{flex-direction:column;gap: var(--space-10px)}
+}
 
 /* V18.9 — chips profil scroll horizontal single-line (gain 40px hauteur iPhone). */
 /* V18.15 — compactage : chips padding 5/10, fs 11, min-height 28. */
@@ -22716,8 +22720,8 @@ function FormView(props) {
                     showToast && showToast('Pré-rempli depuis ' + (c.societe_nom || ((c.prenom || '') + ' ' + (c.nom || '')).trim() || 'client existant'));
                   }}/>
               )}
-              {/* M/2026/04/28/27 — L2 Tel | Email côte à côte (row-pair). */}
-              <div className="row-pair">
+              {/* M/2026/04/28/27 + M/2026/05/09/72 — L2 Tel | Email côte à côte desktop, empile sous 768px. */}
+              <div className="row-pair row-pair--stack-mobile">
                 <div style={{flex:1, minWidth:0}}>
                   <TelephoneMulti value={d.tels} onChange={v => set('tels', v)} residenceCountry={d.pays_residence || d.nationalite || ''} showToast={showToast}/>
                 </div>
@@ -22861,8 +22865,8 @@ function FormView(props) {
                 <Field label="Quartier" value={d.quartier_residence} onChange={v => set('quartier_residence', v)} style={{marginBottom:'var(--space-0)'}}
                   placeholder="Optionnel" autoComplete="section-societe address-level3" name="societe-address-level3"/>
               </div>
-              {/* L6 Tel | Email (harmonise Particulier : Tel a gauche, Email a droite). */}
-              <div className="row-pair">
+              {/* L6 Tel | Email (harmonise Particulier : Tel a gauche, Email a droite). M72 stack mobile. */}
+              <div className="row-pair row-pair--stack-mobile">
                 <div style={{flex:1, minWidth:0}}>
                   <TelephoneMulti value={d.tels} onChange={v => set('tels', v)} residenceCountry={d.pays_residence || d.nationalite || ''} showToast={showToast}/>
                 </div>
