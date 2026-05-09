@@ -1,7 +1,8 @@
-// V52.5 KILL SWITCH — remplace l'ancien SW. Quand l'iPad récupère ce sw.js,
-// il purge tous les caches, désinscrit le SW, et force navigate des fenêtres
-// pour reload propre. Tous les fetchs passent par le réseau (pas de cache).
-const SW_VERSION = 'ocre-sw-v474.0-killswitch';
+// M/2026/05/09/42 — M88 — Service Worker actif (PWA push + network passthrough).
+// Conversion depuis killswitch v474 : on garde le SW REGISTERED (plus d'unregister à activate)
+// pour permettre la réception des push notifications PWA. Tous les fetchs restent en network-first
+// (pas de cache offline business — fallback minimal pour mode=navigate uniquement).
+const SW_VERSION = 'ocre-sw-v475.0-pwa-push';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -19,19 +20,13 @@ self.addEventListener('activate', (event) => {
       const keys = await caches.keys();
       await Promise.all(keys.map(k => caches.delete(k)));
     } catch (e) {}
-    try { await self.registration.unregister(); } catch (e) {}
-    try {
-      const cls = await self.clients.matchAll({type: 'window'});
-      cls.forEach(c => { try { c.navigate(c.url); } catch (e) {} });
-    } catch (e) {}
+    // M88 : NE PLUS unregister — on garde le SW pour PWA push.
+    try { await self.clients.claim(); } catch (e) {}
   })());
 });
 
 self.addEventListener('fetch', (event) => {
-  // Bypass cache total : toujours reseau pur.
-  // M/2026/05/07/115 — fallback offline.html sur navigation fail (mode=navigate).
-  // Utile uniquement si SW non-killswitch est active a l avenir, sinon no-op (SW unregister
-  // a activate). Le navigateur essaie /offline.html en cache, sinon tombe sur le fallback HTML inline.
+  // Network-first total, fallback offline.html sur navigation fail.
   const isNav = event.request.mode === 'navigate';
   event.respondWith(
     fetch(event.request).catch(async () => {
@@ -48,4 +43,34 @@ self.addEventListener('fetch', (event) => {
       return new Response('', {status: 504});
     })
   );
+});
+
+// M88 — Push notifications PWA (VAPID + endpoints serveur /api/push_*.php).
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  let data = {};
+  try { data = event.data.json(); } catch (_) { try { data = {title:'Oi Agent', body: event.data.text()}; } catch (__) {} }
+  const title = data.title || 'Oi Agent';
+  const opts = {
+    body: data.body || '',
+    icon: data.icon || '/icons/icon-192.png',
+    badge: data.badge || '/icons/badge-72.png',
+    tag: data.tag || 'ocre-default',
+    data: { url: data.url || '/', type: data.type || 'info' },
+    requireInteraction: false,
+  };
+  event.waitUntil(self.registration.showNotification(title, opts));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil((async () => {
+    try {
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const target = all.find(c => c.url && c.url.includes(self.location.origin));
+      if (target) { try { await target.focus(); await target.navigate(url); return; } catch (_) {} }
+      await self.clients.openWindow(url);
+    } catch (e) {}
+  })());
 });

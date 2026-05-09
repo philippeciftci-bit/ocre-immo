@@ -16782,9 +16782,8 @@ function PreferencesPage({onBack, showToast, currentUser}) {
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [subscreen, setSubscreen] = React.useState('home'); // home | notifs | profil | apparence | abonnement | securite | aide
-  const [pwaPushEnabled, setPwaPushEnabled] = React.useState(() => {
-    try { return localStorage.getItem('ocre_pwa_push_enabled') === '1'; } catch (_) { return false; }
-  });
+  const [pwaPushEnabled, setPwaPushEnabled] = React.useState(false);
+  const [pwaSyncing, setPwaSyncing] = React.useState(false);
   const token = () => localStorage.getItem('ocre_token') || '';
 
   React.useEffect(() => {
@@ -16797,6 +16796,28 @@ function PreferencesPage({onBack, showToast, currentUser}) {
       setLoading(false);
     })();
   }, []);
+
+  // M88 — Détection état réel PushManager au montage (remplace stub localStorage M87).
+  React.useEffect(() => {
+    (async () => {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') { setPwaPushEnabled(false); return; }
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        setPwaPushEnabled(!!sub);
+      } catch (_) {}
+    })();
+  }, []);
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const arr = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) arr[i] = rawData.charCodeAt(i);
+    return arr;
+  }
 
   function update(path, value) {
     setPrefs(prev => {
@@ -16822,31 +16843,70 @@ function PreferencesPage({onBack, showToast, currentUser}) {
     setSaving(false);
   }
 
+  // M88 — VAPID + PushManager + endpoints réels (remplace stubs localStorage M87).
   async function togglePwaPush() {
-    // M87 stub : enregistre l'intention en localStorage. M88 implémentera VAPID + Service Worker push subscribe.
-    if (!pwaPushEnabled) {
-      if (typeof Notification !== 'undefined' && Notification.requestPermission) {
-        try {
+    if (pwaSyncing) return;
+    setPwaSyncing(true);
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        showToast && showToast('Notifications push non supportées sur ce navigateur.');
+        return;
+      }
+      if (!pwaPushEnabled) {
+        // ACTIVATION
+        if (typeof Notification !== 'undefined' && Notification.requestPermission) {
           const perm = await Notification.requestPermission();
           if (perm !== 'granted') { showToast && showToast('Permission refusée. Active dans iOS Réglages > Notifications > Oi Agent.'); return; }
-        } catch (_) {}
+        }
+        const reg = await navigator.serviceWorker.ready;
+        const k = await fetch('/api/push_vapid_key.php').then(r => r.json());
+        if (!k || !k.ok || !k.publicKey) { showToast && showToast('Clé VAPID indisponible.'); return; }
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(k.publicKey) });
+        }
+        const j = sub.toJSON();
+        const r = await fetch('/api/push_subscribe.php?action=subscribe', {
+          method:'POST',
+          headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+          body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys, types: ['new_pact','proposal','document_signed','reminder','matching'] }),
+        }).then(r => r.json());
+        if (r && r.ok) { setPwaPushEnabled(true); showToast && showToast('🔔 Notifications activées sur cet appareil'); }
+        else { showToast && showToast('Échec enregistrement : ' + ((r && r.error) || 'erreur')); }
+      } else {
+        // DÉSACTIVATION
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        let endpoint = null;
+        if (sub) { endpoint = sub.endpoint; try { await sub.unsubscribe(); } catch (_) {} }
+        await fetch('/api/push_unsubscribe.php', {
+          method:'POST',
+          headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+          body: JSON.stringify({ endpoint }),
+        }).catch(() => {});
+        setPwaPushEnabled(false);
+        showToast && showToast('Notifications désactivées sur cet appareil');
       }
-      setPwaPushEnabled(true);
-      try { localStorage.setItem('ocre_pwa_push_enabled', '1'); } catch (_) {}
-      showToast && showToast('🔔 Notifications activées sur cet appareil');
-    } else {
-      setPwaPushEnabled(false);
-      try { localStorage.setItem('ocre_pwa_push_enabled', '0'); } catch (_) {}
-      showToast && showToast('Notifications désactivées sur cet appareil');
-    }
+    } catch (e) {
+      showToast && showToast('Erreur : ' + (e && e.message ? e.message : 'inconnue'));
+    } finally { setPwaSyncing(false); }
   }
 
-  function testNotification() {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      try { new Notification('Oi Agent', {body: '✓ Notification test reçue. Vérifie ton écran verrouillé.', icon:'/icons/192.png'}); } catch (_) {}
-      showToast && showToast('🔔 Notification test envoyée');
-    } else {
-      showToast && showToast('Active d\'abord les notifications push.');
+  async function testNotification() {
+    try {
+      const r = await fetch('/api/push_test.php', {
+        method:'POST',
+        headers:{'X-Session-Token': token(), 'Content-Type':'application/json'},
+        body: '{}',
+      }).then(r => r.json());
+      if (r && r.ok && (r.sent || 0) > 0) {
+        const okCount = (r.results || []).filter(x => x && x.ok).length;
+        showToast && showToast(okCount > 0 ? '🔔 Notification test envoyée (' + okCount + '/' + r.sent + ')' : 'Push envoyé mais aucune subscription active.');
+      } else {
+        showToast && showToast('Aucune subscription active pour cet utilisateur.');
+      }
+    } catch (e) {
+      showToast && showToast('Erreur réseau : ' + (e && e.message ? e.message : ''));
     }
   }
 
