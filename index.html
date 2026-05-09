@@ -8955,6 +8955,8 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           _isNL ? 'Verkoopprijs (overdrachtsbelasting)' :
           _isTN ? 'Prix vendeur (TN)' :
           _isDZ ? 'Prix vendeur (DZ)' :
+          _isMA ? 'Prix vendeur (MA)' :
+          _isWORLD ? ('Prix vendeur' + (paysBien ? ' (' + paysBien + ')' : '')) :
           'Prix'
         } theme="prix">
           <PriceField2Col label={_isFR ? 'Prix vendeur affiché' : 'Prix'} valueKey="prix_affiche" set={set} d={d} hint={_isFR ? 'Honoraires libres loi Hoguet 1970 — afficher Prix FAI vs Prix vendeur séparé' : null} forceUpdate={forceUpdate}/>
