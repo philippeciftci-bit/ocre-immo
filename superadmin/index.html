@@ -171,14 +171,17 @@
   /* M/2026/05/08/35 — Refonte présentation Console super-admin (hiérarchie + sections + élégance Ocre). */
   body { padding: 32px 24px; }
   .sa-shell { max-width: 1280px; margin: 0 auto; }
-  .sa-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  /* M62 — header compacté margin 24->12. */
+  .sa-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
   .sa-titles h1 { font-family: var(--font-serif); font-style: italic; font-weight: 500; font-size: 32px; color: var(--color-text-primary); margin: 0 0 4px; line-height: 1.2; }
   .sa-titles .sa-subtitle { font-family: var(--font-sans); font-size: 14px; color: var(--color-text-muted); font-style: italic; line-height: 1.4; }
-  .sa-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  /* M62 — actions plus denses gap 10->6. */
+  .sa-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .sa-mode-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
   .sa-mode-badge.read { background: #EDE6DC; color: #6B5E4A; }
   .sa-mode-badge.write { background: #FEE2E2; color: #C73E3E; }
-  .sa-link { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; font-size: 12px; color: var(--color-accent); text-decoration: none; cursor: pointer; transition: background 150ms, border-color 150ms; }
+  /* M62 — sa-link compactée (tap target 36px conserve via line-height). */
+  .sa-link { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; font-size: 12px; color: var(--color-accent); text-decoration: none; cursor: pointer; transition: background 150ms, border-color 150ms; min-height: 36px; }
   .sa-link:hover { background: var(--color-bg-tint-warm); border-color: var(--color-border-medium); }
   .sa-link kbd { font-family: ui-monospace, monospace; font-size: 10px; padding: 1px 5px; background: #F5EDDF; border: 1px solid #D9C9A8; border-radius: 3px; color: #6B4429; }
   /* Tabs nav unifiée. */
@@ -187,47 +190,54 @@
      - background ocre + color blanc + box-shadow inset redondance
      - bordure bottom 3px en plus comme indicateur visuel anti-bug Safari iPad
      - scrollIntoView retiré (cause potentielle de mauvais positionnement Safari iPad). */
-  .sa-tabs { display: flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--color-border-subtle); border-radius: 12px; margin-bottom: 28px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; max-width: 100%; min-width: 0; }
+  /* M62 — tabs marginBottom 28->14. */
+  .sa-tabs { display: flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--color-border-subtle); border-radius: 12px; margin-bottom: 14px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; max-width: 100%; min-width: 0; }
   .sa-tabs::-webkit-scrollbar { height: 4px; }
   .sa-tabs::-webkit-scrollbar-thumb { background: var(--color-border-subtle); border-radius: 2px; }
-  .sa-tab { display: inline-flex; align-items: center; padding: 9px 16px; border: none; background: transparent; color: var(--color-text-muted); font-family: inherit; font-size: 13.5px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: background 150ms ease, color 150ms ease; flex-shrink: 0; white-space: nowrap; min-width: max-content; border-bottom: 3px solid transparent; box-sizing: border-box; }
+  /* M62 — tab padding 9->7. */
+  .sa-tab { display: inline-flex; align-items: center; padding: 7px 14px; border: none; background: transparent; color: var(--color-text-muted); font-family: inherit; font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: background 150ms ease, color 150ms ease; flex-shrink: 0; white-space: nowrap; min-width: max-content; border-bottom: 3px solid transparent; box-sizing: border-box; }
   .sa-tab:hover { background: var(--color-bg-tint-warm); color: var(--color-text-primary); }
   .sa-tab.active { background: var(--color-accent) !important; color: #fff !important; font-weight: 500; box-shadow: inset 0 0 0 1px var(--color-accent); border-bottom-color: var(--color-ocre-700, #5C3E27); }
-  /* Sections groupées Vue d'ensemble. */
-  .sa-section { margin-bottom: 32px; }
-  .sa-section-title { font-family: var(--font-sans); font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 0; border-top: 1px solid var(--color-border-subtle); margin-bottom: 16px; }
+  /* Sections groupées Vue d'ensemble. M/2026/05/09/12 (M62) — section margin compactée 32->14px. */
+  .sa-section { margin-bottom: 14px; }
+  .sa-section-title { font-family: var(--font-sans); font-size: 10px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 5px 0; border-top: 1px solid var(--color-border-subtle); margin-bottom: 8px; }
   .sa-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
-  .sa-card { background: #fff; border: 1px solid var(--color-border-subtle); border-top: 3px solid var(--color-text-muted); border-radius: 10px; padding: 20px 22px; transition: box-shadow 150ms, transform 150ms, border-top-width 150ms; position: relative; }
+  /* M62 — card compactée : padding 20->10, transitions inchangées. */
+  .sa-card { background: #fff; border: 1px solid var(--color-border-subtle); border-top: 2px solid var(--color-text-muted); border-radius: 10px; padding: 10px 12px; transition: box-shadow 150ms, transform 150ms, border-top-width 150ms; position: relative; }
   .sa-card:hover { box-shadow: 0 2px 12px rgba(60,40,20,0.06); }
   /* M/2026/05/08/37 — cards cliquables avec hover + flèche indicateur. */
   .sa-card.clickable { cursor: pointer; }
   .sa-card.clickable:hover { transform: translateY(-2px); border-top-width: 4px; box-shadow: 0 4px 18px rgba(60,40,20,0.10); }
   .sa-card.clickable:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .sa-card.clickable .sa-card-arrow { position: absolute; bottom: 12px; right: 14px; font-size: 14px; color: var(--color-text-muted); opacity: 0.4; transition: opacity 150ms, transform 150ms; }
+  /* M62 — fleche en haut a droite (meme ligne que valeur), gain hauteur. */
+  .sa-card.clickable .sa-card-arrow { position: absolute; top: 8px; right: 10px; font-size: 12px; color: var(--color-text-muted); opacity: 0.5; transition: opacity 150ms, transform 150ms; }
   .sa-card.clickable:hover .sa-card-arrow { opacity: 1; transform: translateX(2px); }
   .sa-card.is-empty { opacity: 0.7; }
   .sa-card.accent-ocre { border-top-color: var(--color-accent); }
   .sa-card.accent-success { border-top-color: var(--color-success); }
   .sa-card.accent-warning { border-top-color: var(--color-warning); }
   .sa-card.accent-muted { border-top-color: var(--color-border-medium); }
-  .sa-card-value { font-family: var(--font-serif); font-size: 36px; font-weight: 500; color: var(--color-text-primary); line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .sa-card-label { font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
-  .sa-card-desc { font-size: 12px; color: var(--color-text-muted); font-style: italic; margin-top: 4px; line-height: 1.4; }
+  /* M62 — typo compactée mobile-first. */
+  .sa-card-value { font-family: var(--font-serif); font-size: 26px; font-weight: 500; color: var(--color-text-primary); line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .sa-card-label { font-size: 10px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px; }
+  .sa-card-desc { font-size: 11px; color: var(--color-text-muted); font-style: italic; margin-top: 2px; line-height: 1.3; }
   /* Zone technique Reset (intégrée discrètement). */
   .sa-tech-zone { margin-top: 40px; padding: 24px; background: var(--color-bg-tint-soft); border: 1px solid var(--color-border-subtle); border-radius: 10px; }
   .sa-tech-zone .sa-tech-label { font-family: var(--font-sans); font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
   .sa-tech-zone .sa-tech-warn { font-size: 13px; color: var(--color-text-brown); font-style: italic; margin-bottom: 14px; line-height: 1.5; }
   .sa-tech-zone .reset-total-btn { padding: 11px 20px; background: #B91C1C; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: background 150ms; }
   .sa-tech-zone .reset-total-btn:hover { background: #8B0000; }
-  /* Mobile responsive. */
+  /* Mobile responsive — M62 (max-height iPhone densifié). */
   @media (max-width: 760px) {
-    body { padding: 16px 12px; }
-    .sa-titles h1 { font-size: 24px; }
-    .sa-cards { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .sa-card { padding: 14px 16px; }
-    .sa-card-value { font-size: 28px; }
-    .sa-tabs { width: 100%; }
-    .sa-tab { flex: 1 1 auto; padding: 8px 10px; font-size: 12px; }
+    body { padding: 12px 10px; }
+    .sa-titles h1 { font-size: 22px; }
+    .sa-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .sa-card { padding: 8px 10px; }
+    .sa-card-value { font-size: 22px; }
+    .sa-tabs { width: 100%; padding: 3px; margin-bottom: 14px; }
+    .sa-tab { flex: 1 1 auto; padding: 7px 8px; font-size: 12px; min-height: 36px; }
+    .sa-link { padding: 6px 10px; font-size: 11.5px; min-height: 36px; }
+    .sa-section { margin-bottom: 10px; }
   }
 </style>
 </head>
