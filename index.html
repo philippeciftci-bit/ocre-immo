@@ -21176,6 +21176,21 @@ function OcreBottomBar({buttons}) {
 // M/2026/05/04/28 — M28 PhotosGalleryV28 : upload multi + webp serveur + grid + lightbox + suppression.
 // M/2026/05/04/30 — M30 drag-drop reorder photos (HTML5 desktop + touch mobile long-press 350ms).
 // Wrap dans flag M137_GALLERY_ENRICHED. Reorder wrap dans flag M30_PHOTOS_REORDER.
+//
+// ⚠ M/2026/05/09/36 — M84 — STATUT ORPHELIN MAIS PRÉSERVÉ INTENTIONNELLEMENT :
+//   - 0 callsite actif (drop zone retirée du wizard en M/2026/05/05/64).
+//   - Stage V Photos utilise PhotoUpload bound à `d.bien.photos[]` (storage différent).
+//   - PhotosGalleryV28 utilise `dossier.photos_uuids` (JSON column) + endpoints dédiés
+//     /api/photo_upload.php, /api/photo_serve.php, /api/photo_delete.php, /api/photo_reorder.php
+//     qui RESTENT actifs côté serveur (backend opérationnel, fichiers /var/lib/ocre/uploads/).
+//   - Flag M137_GALLERY_ENRICHED en DB feature_flags (default_value=1, ON depuis 2026-05-04).
+//   - Ne pas supprimer sans avoir d'abord :
+//     1. Vérifié /api/photo_serve.php absence d'usage par d'autres composants (PDF export, share, etc.)
+//     2. Migré les éventuels uploads existants `clients.photos_uuids` vers `d.bien.photos[]`
+//     3. Désactivé le flag M137_GALLERY_ENRICHED (UPDATE feature_flags SET default_value=0)
+//     4. Décommissionné les 4 endpoints /api/photo_*.php
+//   Décision M84 : conservation documentée, suppression différée à mission dédiée si Philippe valide
+//   l'abandon définitif après check des usages backend.
 function PhotosGalleryV28({dossier, showToast}) {
   const [uuids, setUuids] = React.useState(() => {
     if (!dossier || !dossier.photos_uuids) return [];
