@@ -782,38 +782,114 @@ async function logoutAllSessions() {
 }
 
 // M/2026/05/08/37 — Vue Users cross-workspace.
+// M/2026/05/09/9 (M61) — Onglet Users enrichi : profile_label + modules utilises + last_seen + accordeon historique 5 + action kill.
+const PROFILE_BADGE = {
+  super_admin: {emoji:'🛡️', label:'Super admin', bg:'#DAA520', fg:'#3a2a08'},
+  admin: {emoji:'🔧', label:'Admin', bg:'#1F3A5F', fg:'#fff'},
+  diamant: {emoji:'💎', label:'Diamant', bg:'#5B3A8A', fg:'#fff'},
+  standard: {emoji:'⚪', label:'Standard', bg:'#E5DDC8', fg:'#3a2e22'},
+  restreint: {emoji:'🟠', label:'Restreint', bg:'#C46A4F', fg:'#fff'},
+};
+const PROFILE_OPTIONS = ['super_admin','admin','diamant','standard','restreint'];
+const MODULE_LABEL = {app:'Oi Agent', scan:'Oi Scan', book:'Oi Book', demande:'Oi Demande', dashboard:'Dashboard', superadmin:'Super-admin'};
+const MODULE_BADGE = (m) => `<span style="display:inline-block;padding:1px 6px;margin:1px;border-radius:4px;font-size:10px;background:#F4EEE6;color:#6B4429;font-weight:600">${escHtml(MODULE_LABEL[m] || m)}</span>`;
+function fmtRelTime(iso) {
+  if (!iso) return '—';
+  const t = new Date(iso.replace(' ', 'T') + (iso.includes('T') ? '' : 'Z'));
+  const diffSec = (Date.now() - t.getTime()) / 1000;
+  if (diffSec < 60) return 'à l\'instant';
+  if (diffSec < 3600) return 'Il y a ' + Math.floor(diffSec/60) + 'min';
+  if (diffSec < 86400) return 'Il y a ' + Math.floor(diffSec/3600) + 'h';
+  if (diffSec < 86400 * 2) return 'Hier ' + String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+  if (diffSec < 86400 * 7) return 'Il y a ' + Math.floor(diffSec/86400) + 'j';
+  return String(t.getDate()).padStart(2,'0') + '/' + String(t.getMonth()+1).padStart(2,'0') + '/' + String(t.getFullYear()).slice(-2);
+}
+function profileBadge(label) {
+  const p = PROFILE_BADGE[label] || PROFILE_BADGE.standard;
+  return `<span class="profile-badge" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${p.bg};color:${p.fg};cursor:pointer" title="Cliquez pour modifier">${p.emoji} ${escHtml(p.label)}</span>`;
+}
+let usersM61State = {filterProfile:'', filterModule:'', filterStatus:''};
 async function renderUsersTab() {
   const c = document.getElementById('content');
   c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
-  const r = await api('/api/superadmin_users_xt.php?action=list_all');
+  const r = await api('/api/superadmin_clients_list.php');
   if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
-  const statusColor = (st) => st === 'active' ? 'green' : (st === 'pending_activation' ? 'orange' : 'red');
-  const head = '<table><thead><tr>'
-    + '<th class="state-cell" style="width:4px;padding:0"></th>'
-    + '<th>Email</th><th>Nom</th><th>Rôle</th><th>Statut</th><th>Workspace</th>'
-    + '<th>Téléphone</th><th>Dernière connexion</th><th>Inscrit</th><th style="text-align:right">Actions</th>'
-    + '</tr></thead><tbody>';
-  const rows = (r.users || []).map(u => {
-    const stateCls = 'state-' + statusColor(u.status);
-    const tel = fmtPhoneE164(u.telephone);
-    const lastLogin = u.last_login ? fmtDateCompact(u.last_login) : '—';
-    const created = fmtDateCompact(u.created_at);
-    return `<tr class="${stateCls}">`
-      + `<td class="state-cell"></td>`
-      + `<td class="col-email" title="${escHtml(u.email)}">${escHtml(u.email)}</td>`
-      + `<td class="col-name">${escHtml(u.display_name)}</td>`
-      + `<td><span style="font-size:11px;color:#6B5E4A;text-transform:uppercase">${u.role}</span></td>`
-      + `<td><span class="badge badge-${u.status === 'active' ? 'enregistre' : 'brouillon'}" style="text-transform:lowercase">${u.status}</span></td>`
-      + `<td><b>${escHtml(u.slug)}</b></td>`
-      + `<td class="mono-tel">${tel}</td>`
-      + `<td class="col-date" title="${escHtml(u.last_login || '')}">${lastLogin}</td>`
-      + `<td class="col-date" title="${escHtml(u.created_at)}">${created}</td>`
-      + `<td class="actions"><button class="icon-btn danger" onclick="deleteUserXt(${u.id}, '${escHtml(u.email)}', '${u.role}')" title="Supprimer le compte" style="color:var(--color-error)">🗑️</button></td>`
-      + `</tr>`;
+  const profileOpts = '<option value="">Tous profils</option>' + PROFILE_OPTIONS.map(p => `<option value="${p}"${p===usersM61State.filterProfile?' selected':''}>${PROFILE_BADGE[p].emoji} ${PROFILE_BADGE[p].label}</option>`).join('');
+  const moduleOpts = '<option value="">Tous outils</option>' + Object.keys(MODULE_LABEL).map(m => `<option value="${m}"${m===usersM61State.filterModule?' selected':''}>${MODULE_LABEL[m]}</option>`).join('');
+  const statusOpts = '<option value="">Tous statuts</option><option value="online"' + (usersM61State.filterStatus==='online'?' selected':'') + '>🟢 En ligne</option><option value="offline"' + (usersM61State.filterStatus==='offline'?' selected':'') + '>⚪ Offline</option>';
+  let users = r.users || [];
+  if (usersM61State.filterProfile) users = users.filter(u => u.profile_label === usersM61State.filterProfile);
+  if (usersM61State.filterModule) users = users.filter(u => Array.isArray(u.modules_used) && u.modules_used.includes(usersM61State.filterModule));
+  if (usersM61State.filterStatus === 'online') users = users.filter(u => u.has_active_session);
+  if (usersM61State.filterStatus === 'offline') users = users.filter(u => !u.has_active_session);
+  const filters = `<div class="filters" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <select onchange="usersM61State.filterProfile=this.value;renderUsersTab()">${profileOpts}</select>
+    <select onchange="usersM61State.filterModule=this.value;renderUsersTab()">${moduleOpts}</select>
+    <select onchange="usersM61State.filterStatus=this.value;renderUsersTab()">${statusOpts}</select>
+  </div>`;
+  const head = '<table><thead><tr><th>Email</th><th>Nom</th><th>Profil</th><th>Outils utilisés</th><th>Connexion</th><th style="text-align:right">Action</th></tr></thead><tbody>';
+  const rows = users.map(u => {
+    const modulesHtml = (u.modules_used || []).length ? u.modules_used.map(MODULE_BADGE).join('') : '<span style="color:#A89882">—</span>';
+    const lastSeen = fmtRelTime(u.last_seen_at || u.last_login);
+    const killBtn = u.has_active_session
+      ? `<button class="icon-btn" onclick="killUserSessionsM61(${u.id}, '${escHtml(u.email).replace(/'/g,'&#39;')}')" title="Stopper toutes les sessions actives" style="background:#FBEAEA;color:#C0392B;border:1px solid #C0392B;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer">🚫 Stopper</button>`
+      : '<span style="color:#A89882;font-size:11px">—</span>';
+    return `<tr id="u-${u.id}">
+        <td class="col-email" title="${escHtml(u.email)}">${escHtml(u.email)}</td>
+        <td class="col-name">${escHtml(u.display_name || '')}</td>
+        <td><span onclick="openProfilePopover(${u.id}, this)">${profileBadge(u.profile_label)}</span></td>
+        <td>${modulesHtml}</td>
+        <td onclick="toggleHistoryAccordion(${u.id})" style="cursor:pointer" title="Cliquez pour voir 5 dernières connexions">${u.has_active_session ? '🟢 ' : ''}${escHtml(lastSeen)} ▾</td>
+        <td class="actions" style="text-align:right">${killBtn}</td>
+      </tr>
+      <tr id="hist-${u.id}" style="display:none"><td colspan="6" style="background:#FAF8F2;padding:10px"><div id="hist-content-${u.id}" style="font-size:11px;color:#6B5E4A">Chargement…</div></td></tr>`;
   }).join('');
-  c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> user(s) cross-workspace.</p>'
-    + head + (rows || '<tr><td colspan="10" style="text-align:center;padding:24px;color:#6B5E4A">Aucun user.</td></tr>') + '</tbody></table>'
+  const empty = users.length === 0 ? '<tr><td colspan="6" style="text-align:center;padding:24px;color:#6B5E4A">Aucun user (filtres en cours).</td></tr>' : '';
+  c.innerHTML = `<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>${users.length}</b>/${r.count} user(s) cross-workspace.</p>${filters}${head}${rows || empty}</tbody></table>`
     + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_users\', \'TOUS les users sauf super-admin\')">🔥 Reset Users</button></div>';
+}
+async function toggleHistoryAccordion(uid) {
+  const tr = document.getElementById('hist-' + uid);
+  if (!tr) return;
+  if (tr.style.display === 'none') {
+    tr.style.display = '';
+    const r = await api('/api/superadmin_client_history.php?user_id=' + uid);
+    const div = document.getElementById('hist-content-' + uid);
+    if (!r || !r.ok) { div.textContent = 'Erreur chargement historique.'; return; }
+    if (!r.sessions || r.sessions.length === 0) {
+      div.innerHTML = '<i>Aucune connexion enregistrée.</i>';
+      return;
+    }
+    const histRows = r.sessions.map(s => {
+      const dur = s.duration_seconds < 60 ? s.duration_seconds + 's' : (s.duration_seconds < 3600 ? Math.floor(s.duration_seconds/60) + 'min' : Math.floor(s.duration_seconds/3600) + 'h');
+      const dt = (s.date || '').replace('T',' ').slice(0, 16);
+      return `<tr><td style="padding:3px 8px">${escHtml(dt)}</td><td style="padding:3px 8px">${dur}</td><td style="padding:3px 8px">${escHtml(MODULE_LABEL[s.module] || s.module)}</td><td style="padding:3px 8px;color:${s.is_active?'#2D7A3E':'#A89882'}">${s.is_active ? '🟢 active' : 'fermée'}</td></tr>`;
+    }).join('');
+    div.innerHTML = '<b>5 dernières connexions :</b><table style="width:100%;margin-top:6px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:3px 8px;font-size:10px;text-transform:uppercase;color:#A89882">Date</th><th style="text-align:left;padding:3px 8px;font-size:10px;text-transform:uppercase;color:#A89882">Durée</th><th style="text-align:left;padding:3px 8px;font-size:10px;text-transform:uppercase;color:#A89882">Module</th><th style="text-align:left;padding:3px 8px;font-size:10px;text-transform:uppercase;color:#A89882">Statut</th></tr></thead><tbody>' + histRows + '</tbody></table>';
+  } else {
+    tr.style.display = 'none';
+  }
+}
+function openProfilePopover(uid, anchor) {
+  if (!requireWriteMode()) return;
+  // Popover simple : prompt menu via confirm chain
+  const choice = prompt('Choisir profil pour user ' + uid + ' :\n1. super_admin\n2. admin\n3. diamant\n4. standard\n5. restreint\n(tape 1-5)');
+  const map = {'1':'super_admin','2':'admin','3':'diamant','4':'standard','5':'restreint'};
+  const newLabel = map[choice];
+  if (!newLabel) return;
+  updateClientProfile(uid, newLabel);
+}
+async function updateClientProfile(uid, label) {
+  const r = await api('/api/superadmin_update_client_profile.php', {method:'POST', body:{user_id:uid, profile_label:label}});
+  if (r && r.ok) { renderUsersTab(); }
+  else alert('⚠️ ' + (r && r.error || 'Erreur update profile'));
+}
+async function killUserSessionsM61(uid, email) {
+  if (!requireWriteMode()) return;
+  if (!confirm('Stopper toutes les sessions actives de ' + email + ' ?')) return;
+  const r = await api('/api/superadmin_kill_user_sessions.php', {method:'POST', body:{user_id:uid}});
+  if (r && r.ok) { alert('✅ ' + r.revoked_count + ' session(s) stoppée(s).'); renderUsersTab(); }
+  else alert('⚠️ ' + (r && r.error || 'Erreur kill sessions'));
 }
 async function deleteUserXt(uid, email, role) {
   if (!requireWriteMode()) return;
