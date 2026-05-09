@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS `audit_log_local` (
 CREATE TABLE IF NOT EXISTS `clients` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `user_id` int(10) unsigned NOT NULL,
-  `projet` varchar(40) NOT NULL DEFAULT 'Acheteur',
+  `projet` varchar(40) DEFAULT NULL,
   `is_investisseur` tinyint(1) NOT NULL DEFAULT 0,
   `archived` tinyint(1) NOT NULL DEFAULT 0,
   `is_draft` tinyint(1) NOT NULL DEFAULT 1,

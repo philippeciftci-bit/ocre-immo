@@ -11139,7 +11139,8 @@ function App() {
   // sans modifier signature de chaque component. Retrocompat truthy si toast.msg, falsy si null.
   const [toast, setToast] = useState(null);
   const [formKey, setFormKey] = useState(0);
-  const [activeProfil, setActiveProfil] = useState('Acheteur');
+  // M/2026/05/09/73 — null par defaut (pas de profil silencieux). User doit explicitement cliquer un chip.
+  const [activeProfil, setActiveProfil] = useState(null);
   const [isInvestisseur, setIsInvestisseur] = useState(false);
   // M/2026/05/02/1 — M109 : nouveaux toggles profil avance.
   const [isPromoteur, setIsPromoteur] = useState(false);
@@ -11551,7 +11552,8 @@ function App() {
   function openClient(c) {
     setEditing(c);
     editingIdRef.current = (c && c.id && !String(c.id).startsWith('tmp-')) ? c.id : null;
-    const profil = c.projet || 'Acheteur';
+    // M/2026/05/09/73 — pas de fallback Acheteur silencieux : null si pas de profil choisi.
+    const profil = c.projet || null;
     setActiveProfil(profil);
     setIsInvestisseur(profil === 'Investisseur' || !!c.is_investisseur);
     setIsPromoteur(!!c.is_promoteur);
@@ -11562,7 +11564,7 @@ function App() {
   }
   function openClientAtSection(c, sectionIdx, focus) {
     setEditing(c);
-    const profil = c.projet || 'Acheteur';
+    const profil = c.projet || null;
     setActiveProfil(profil);
     setIsInvestisseur(profil === 'Investisseur' || !!c.is_investisseur);
     setIsPromoteur(!!c.is_promoteur);
@@ -11703,7 +11705,7 @@ function App() {
       onCreated={(newClient) => {
         setClients(prev => [newClient, ...prev]);
         setEditing(newClient);
-        setActiveProfil(newClient.projet || 'Acheteur');
+        setActiveProfil(newClient.projet || null);
         setIsInvestisseur(newClient.projet === 'Investisseur' || !!newClient.is_investisseur);
         pushView('form');
       }}/>;
@@ -11798,7 +11800,7 @@ function App() {
       matchesById={matchesById} openMatchModal={setMatchFor}
       matchFor={matchFor} closeMatchModal={() => setMatchFor(null)}
       findClientById={(id) => clients.find(c => c.id === id)}
-      setEditingFromMatch={(c) => { setEditing(c); setActiveProfil(c.projet || 'Acheteur'); setIsInvestisseur(c.projet === 'Investisseur' || !!c.is_investisseur); setMatchFor(null); pushView('form'); }}
+      setEditingFromMatch={(c) => { setEditing(c); setActiveProfil(c.projet || null); setIsInvestisseur(c.projet === 'Investisseur' || !!c.is_investisseur); setMatchFor(null); pushView('form'); }}
     />
   ) : (
     <FormView
@@ -18479,10 +18481,11 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   // qui faisait un flash d ecran (recharge complete), on anime opacity+translateX 200ms puis on appelle
   // props.onRemove(id) qui retire la card du state parent. Backend appele en parallele de l animation.
   const [removing, setRemoving] = React.useState(false);
-  const profil = c.projet || c.profil_detecte || 'Acheteur';
-  const col = PROFILS[profil] || PROFILS.Acheteur;
-  const tint = PROFILS_TINT[profil] || PROFILS_TINT.Acheteur;
-  const badge = BADGES[profil] || 'ACH';
+  // M/2026/05/09/73 — profil null si pas explicitement choisi (cf state DB nullable).
+  const profil = c.projet || c.profil_detecte || null;
+  const col = profil ? (PROFILS[profil] || PROFILS.Acheteur) : '#C0392B';
+  const tint = profil ? (PROFILS_TINT[profil] || PROFILS_TINT.Acheteur) : 'transparent';
+  const badge = profil ? (BADGES[profil] || 'ACH') : null;
   const isSociete = c.profil_type === 'Société';
   const name = isSociete
     ? (c.societe_nom || 'Société')
@@ -18934,11 +18937,17 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             {c.is_demo && (
               <span title="Dossier de démonstration" style={{fontSize:'var(--font-size-9)', fontWeight:700, letterSpacing:.5, color:'#fff', background:'var(--color-accent)', borderRadius:8, padding:'1px 6px', whiteSpace:'nowrap', flexShrink:0}}>DÉMO</span>
             )}
-            {/* M/2026/05/06/82.2 — span "Brouillon" gauche pastille profil RETIRE. Marker centre au-dessus a la place (rendu plus haut dans la card). */}
-            {/* Pill profil principal — collee a droite via marginLeft auto. */}
-            <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:'var(--font-size-9-5)', fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background: PROFILS[profil] || 'var(--color-accent)', color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
-              {PROFILS_LABEL[profil] || (profil || '').toUpperCase()}
-            </span>
+            {/* M/2026/05/06/82.2 — span "Brouillon" gauche pastille profil RETIRE. */}
+            {/* M/2026/05/09/73 — Pill profil principal OU placeholder rouge "Choisir un profil" si null. */}
+            {profil ? (
+              <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:'var(--font-size-9-5)', fontWeight:700, letterSpacing:.4, textTransform:'uppercase', background: PROFILS[profil] || 'var(--color-accent)', color:'#fff', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+                {PROFILS_LABEL[profil] || (profil || '').toUpperCase()}
+              </span>
+            ) : (
+              <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:'var(--font-size-9-5)', fontWeight:700, letterSpacing:.4, background:'transparent', border:'1.5px solid #C0392B', color:'#C0392B', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+                Choisir un profil
+              </span>
+            )}
             {/* M/2026/05/02/36 — M140.B livrable C : badge source d'annonce (Mandat/Partenaire/Veille).
                 Pas de badge si source_type absent (anti-régression dossiers existants). */}
             {c.source_type && (
@@ -20539,10 +20548,16 @@ function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, 
         <span style={{fontFamily:'"Cormorant Garamond", serif', fontSize:'var(--font-size-17)', fontWeight:700, color:'var(--color-text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flexShrink:1}}>
           {displayName}
         </span>
-        {/* Pill ACTIVE */}
-        <span style={{padding: useAbbr ? '1px 5px' : '1px 6px', borderRadius:5, background:activeColor, color:'#fff', fontSize:'var(--font-size-9)', fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, lineHeight:1.4}}>
-          {useAbbr ? (BADGES[activeProfil] || activeProfil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase())}
-        </span>
+        {/* M/2026/05/09/73 — Pill ACTIVE OU placeholder rouge "Choisir un profil" si null. */}
+        {activeProfil ? (
+          <span style={{padding: useAbbr ? '1px 5px' : '1px 6px', borderRadius:5, background:activeColor, color:'#fff', fontSize:'var(--font-size-9)', fontWeight:700, letterSpacing:.5, textTransform:'uppercase', fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, lineHeight:1.4}}>
+            {useAbbr ? (BADGES[activeProfil] || activeProfil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase())}
+          </span>
+        ) : (
+          <span style={{padding:'1px 6px', borderRadius:5, background:'transparent', border:'1.5px solid #C0392B', color:'#C0392B', fontSize:'var(--font-size-9)', fontWeight:700, letterSpacing:.5, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, lineHeight:1.4}}>
+            Choisir un profil
+          </span>
+        )}
         {/* Pills LIÉES */}
         {linkedDossiers.map(lc => {
           const p = lc.projet || 'Acheteur';

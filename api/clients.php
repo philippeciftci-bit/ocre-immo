@@ -211,7 +211,8 @@ switch ($action) {
             $d['is_draft'] = (bool)(int)$r['is_draft'];
             $d['is_staged'] = (bool)(int)($r['is_staged'] ?? 0);
             $d['promoted_at'] = $r['promoted_at'] ?? null;
-            $d['projet'] = $r['projet'] ?? ($d['projet'] ?? 'Acheteur');
+            // M/2026/05/09/73 — projet NULL = pas de profil choisi (frontend affiche 'Choisir un profil').
+            $d['projet'] = $r['projet'] ?? ($d['projet'] ?? null);
             $d['is_investisseur'] = (bool)(int)($r['is_investisseur'] ?? 0);
             $d['updated_at'] = $r['updated_at'];
             // M/2026/04/28/24 — fusionne colonnes top-level (frontend lit
@@ -246,7 +247,8 @@ switch ($action) {
         $d['id'] = (int)$r['id'];
         $d['archived'] = (bool)(int)$r['archived'];
         $d['is_draft'] = (bool)(int)$r['is_draft'];
-        $d['projet'] = $r['projet'] ?? ($d['projet'] ?? 'Acheteur');
+        // M/2026/05/09/73 — projet NULL si pas de profil choisi.
+        $d['projet'] = $r['projet'] ?? ($d['projet'] ?? null);
         $d['is_investisseur'] = (bool)(int)($r['is_investisseur'] ?? 0);
         // M/2026/04/28/24 — fusionne colonnes top-level (sinon perte des
         // champs identité dans le formulaire d'édition).
@@ -282,7 +284,9 @@ switch ($action) {
                 jsonOk(['client' => ['id' => null, 'is_draft' => true, 'archived' => false, 'is_staged' => false, 'skipped_empty' => true]]);
             }
         }
-        $projet = (string)($c['projet'] ?? 'Acheteur');
+        // M/2026/05/09/73 — projet NULL si pas explicitement choisi (suppression default Acheteur silencieux).
+        $projetIn = $c['projet'] ?? null;
+        $projet = ($projetIn !== null && $projetIn !== '') ? (string)$projetIn : null;
         $is_investisseur = !empty($c['is_investisseur']) ? 1 : 0;
         $archived = !empty($c['archived']) ? 1 : 0;
         $is_draft = computeIsDraft($c);
@@ -298,7 +302,7 @@ switch ($action) {
         // applique deja la matrice cote UI mais on revalide pour eviter toute injection).
         $is_promoteur          = !empty($c['is_promoteur'])          ? 1 : 0;
         $is_marchand_de_biens  = !empty($c['is_marchand_de_biens'])  ? 1 : 0;
-        $profil_lc = strtolower($projet);
+        $profil_lc = $projet !== null ? strtolower($projet) : '';
         // Locataire : aucun toggle avance autorise.
         if ($profil_lc === 'locataire') { $is_investisseur = 0; $is_promoteur = 0; $is_marchand_de_biens = 0; }
         // Acheteur : pas de Promoteur.
