@@ -11602,7 +11602,15 @@ function App() {
           const d = await r.json();
           if (d && d.ok && d.session_token) {
             localStorage.setItem('ocre_token', d.session_token);
+            // M99 — store SSO source pour bandeau front (sso|legacy).
+            try { localStorage.setItem('ocre_sso_source', d._sso_source || 'legacy'); } catch (e) {}
             window.location.reload();
+          } else if (d && d.reason === 'no_tenant_user') {
+            // M99 — SSO valide mais aucun tenant user pour cet email.
+            try { localStorage.setItem('ocre_sso_no_tenant', d.email || '1'); } catch (e) {}
+            window.location = 'https://app.ocre.immo/?error=no_tenant_user';
+          } else if (d && d.reason === 'tenant_mismatch') {
+            window.location = 'https://app.ocre.immo/?error=tenant_mismatch';
           } else {
             window.location = '/login/';
           }
@@ -12127,8 +12135,25 @@ function App() {
       openClient={(c) => { openClient(c); }}/>;
   }
   const pwaOverlay = pwaOverlayOpen ? <PWAInstallOverlay onClose={() => setPwaOverlayOpen(false)}/> : null;
-  return (<><OnlineIndicator/>{impersonation && (
-    <div style={{position:'fixed', top:0, left:0, right:0, zIndex:300, background:'var(--color-accent)', color:'#fff', padding:'8px 14px', display:'flex', alignItems:'center', gap:'var(--space-10px)', fontSize:'var(--font-size-12-5)', fontFamily:'inherit', fontWeight:600, boxShadow:'0 2px 8px rgba(0,0,0,.2)'}}>
+  // M99 — bandeau SSO si l'user est connecte via auth.ocre.immo (cookie ocre_jwt valide).
+  const ssoSource = (typeof window !== 'undefined') ? (localStorage.getItem('ocre_sso_source') || '') : '';
+  const ssoBannerVisible = ssoSource === 'sso' && !impersonation;
+  const ssoLogout = async () => {
+    try { await fetch('/api/sso_logout.php', {method:'POST', credentials:'include'}); } catch (e) {}
+    try { localStorage.removeItem('ocre_sso_source'); localStorage.removeItem('ocre_token'); } catch (e) {}
+    window.location.href = 'https://auth.ocre.immo/';
+  };
+  return (<><OnlineIndicator/>{ssoBannerVisible && (
+    <div data-testid="sso-banner" style={{position:'fixed', top:0, left:0, right:0, zIndex:299, background:'rgba(139,111,58,0.92)', color:'#fff', padding:'7px 14px', display:'flex', alignItems:'center', gap:'10px', fontSize:'12.5px', fontFamily:'inherit', fontWeight:500, boxShadow:'0 1px 4px rgba(0,0,0,.12)', backdropFilter:'blur(4px)'}}>
+      <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+        <span aria-hidden="true" style={{marginRight:6}}>🔐</span>
+        Connecté via <b>Ocre SSO</b>
+      </span>
+      <a href="https://app.ocre.immo/" style={{color:'#fff', textDecoration:'none', fontSize:'11.5px', fontWeight:600, padding:'4px 10px', borderRadius:12, background:'rgba(255,255,255,0.15)', whiteSpace:'nowrap'}}>← Changer de module</a>
+      <button onClick={ssoLogout} style={{background:'rgba(255,255,255,0.15)', color:'#fff', border:'none', borderRadius:12, padding:'4px 10px', fontSize:'11.5px', fontWeight:600, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>Logout SSO</button>
+    </div>
+  )}{impersonation && (
+    <div style={{position:'fixed', top: ssoBannerVisible ? 32 : 0, left:0, right:0, zIndex:300, background:'var(--color-accent)', color:'#fff', padding:'8px 14px', display:'flex', alignItems:'center', gap:'var(--space-10px)', fontSize:'var(--font-size-12-5)', fontFamily:'inherit', fontWeight:600, boxShadow:'0 2px 8px rgba(0,0,0,.2)'}}>
       <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
         ⚠ Mode admin · en tant que <b>{impersonation.target_email}</b>
         {impersonation.expires_at && (<span style={{opacity:.75, marginLeft:'var(--space-6px)', fontSize:'var(--font-size-11)'}}>(exp. {String(impersonation.expires_at).replace('T', ' ').slice(11, 16)})</span>)}
@@ -12136,7 +12161,7 @@ function App() {
       <button onClick={stopImpersonation} style={{background:'#fff', color:'var(--color-accent)', border:'none', borderRadius:14, padding:'4px 10px', fontSize:'var(--font-size-11)', fontWeight:700, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}>Revenir admin</button>
     </div>
   )}
-  <div style={{paddingTop: impersonation ? 40 : 0, height:'100%'}}>
+  <div style={{paddingTop: (ssoBannerVisible ? 32 : 0) + (impersonation ? 40 : 0), height:'100%'}}>
   {view === 'list' ? (
     <ListView
       clients={clients} country={country} setCountry={setCountry}

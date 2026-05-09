@@ -137,3 +137,20 @@ function getCurrentUserFromCookie(): ?array {
     if ($token === '') return null;
     return validateSessionToken($token);
 }
+
+// M99 — Dual-mode SSO + legacy. Priorite 1 : cookie ocre_jwt (auth.ocre.immo).
+// Priorite 2 : cookie ocre_session (M71 magic link tenant). Coexistence 30j prevue.
+// Retour : meme structure que validateSessionToken + cle '_sso_source' = 'sso'|'legacy'.
+function getCurrentUserDualMode(): ?array {
+    if (file_exists(__DIR__ . '/sso_bridge.php')) {
+        require_once __DIR__ . '/sso_bridge.php';
+        $sso = getUserFromSsoCookie(true);
+        if ($sso !== null) return $sso;
+    }
+    $legacy = getCurrentUserFromCookie();
+    if ($legacy !== null) {
+        $legacy['_sso_source'] = 'legacy';
+        return $legacy;
+    }
+    return null;
+}
