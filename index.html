@@ -7739,13 +7739,17 @@ function getOfficialRateV5(left, right) {
   const b = RATES_OFFICIAL_V5['EUR_'+right] || 1;
   return b / a;
 }
+// M/2026/05/09/23 — M73 : format francais strict avec espace fine insecable U+202F entre milliers
+// (norme typographique FR AFNOR NF Z 44-001). Cross-browser : Intl peut renvoyer U+202F, U+00A0 ou
+// espace ordinaire selon le moteur — on normalise en U+202F.
 function fmtNumV5(n) {
   const x = Number(n);
   if (!isFinite(x) || x === 0) return '';
-  return Math.round(x).toLocaleString('fr-FR').replace(/ /g, ' ');
+  return Math.round(x).toLocaleString('fr-FR').replace(/[\s\u00A0\u202F]/g, '\u202F');
 }
 function parseNumV5(s) {
-  return parseFloat(String(s).replace(/\s/g, '').replace(',', '.')) || 0;
+  // Strip espaces ordinaires + U+00A0 NBSP + U+202F narrow NBSP avant parse.
+  return parseFloat(String(s).replace(/[\s\u00A0\u202F]/g, '').replace(',', '.')) || 0;
 }
 
 // Wrapper card sable rond border-radius 14, Section III only.
@@ -8006,10 +8010,12 @@ function RatePopup2Col({onClose, forceUpdate}) {
   );
 }
 
-// Input prix M66 — 3 zones partagées : [montant + code-flag] [taux ✏️ Auto/Manuel] [flag-code + montant]
-// Devise + taux partagés à la fiche client via getCurrencyV5State (state global session).
-// Drapeau accolé APRÈS le code (côté gauche : code-flag à droite de l'input ; côté droit : flag-code à gauche).
-// M/2026/05/09/17 — M67 : refonte vers UX maquette M66 validée Philippe (DualCurrencyPair partagé fiche).
+// PriceField2Col — fidélité maquette M70 V_A2 (drapeau 12px + code 10px medium ocre stack vertical).
+// Layout 1 ligne strict pour 10M€ ↔ 108M MAD sur iPhone 390px. Border unique sur la row,
+// pas de zones internes bordées (gain place). Bouton devise = mini stack vertical compact, no chevron.
+// Centre : taux + ✏️ + badge AUTO/MANUEL ; badge MANUEL cliquable = retour AUTO instantané.
+// Espaces fines U+202F via fmtNumV5. Hint italic supprimé sauf en cas de warn.
+// M/2026/05/09/23 — M73 : refonte fidèle V_A2.
 function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
   const cur = getCurrencyV5State();
   const [pickerSide, setPickerSide] = React.useState(null);
@@ -8044,28 +8050,48 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
   };
   const commitRate = () => {
     const v = parseNumV5(rateDraft);
-    if (v > 0 && v < 100000) setCurrencyV5State({rate: v, manualRate: true}, forceUpdate);
+    if (v > 0 && v < 100000) {
+      const auto = getOfficialRateV5(cur.left, cur.right);
+      setCurrencyV5State({rate: v, manualRate: Math.abs(v - auto) > 0.001}, forceUpdate);
+    }
     setRateEditing(false);
   };
+  const restoreAuto = (e) => {
+    e.stopPropagation();
+    const auto = getOfficialRateV5(cur.left, cur.right);
+    setCurrencyV5State({rate: auto, manualRate: false}, forceUpdate);
+  };
   const isManual = !!cur.manualRate;
-  const _border = warn ? 'var(--color-error)' : '#D6C7AC';
-  const _bg = warn ? '#FEF6F6' : '#fff';
-  const _zone = {display:'flex', alignItems:'center', background:_bg, border:'1px solid '+_border, borderRadius:7, padding:'4px 5px', minHeight:44, gap:'var(--space-4px)', boxSizing:'border-box', minWidth:0, position:'relative'};
-  const _input = {flex:1, border:'none', outline:'none', fontSize:'var(--font-size-13)', fontWeight:600, background:'transparent', minWidth:0, width:'100%', padding:'6px 4px', fontFamily:'inherit', color:'var(--color-text-primary)', WebkitAppearance:'none', MozAppearance:'textfield'};
-  const _cb = {display:'inline-flex', alignItems:'center', gap:3, minHeight:36, padding:'4px 6px', background:'var(--color-bg-tint-warm)', border:'1px solid '+_border, borderRadius:6, cursor:'pointer', fontFamily:'inherit', fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-brown)', flexShrink:0, userSelect:'none'};
-  const _pop = {position:'absolute', top:'calc(100% + 4px)', zIndex:80, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, boxShadow:'0 6px 16px rgba(0,0,0,0.14)', minWidth:170, maxHeight:240, overflowY:'auto', padding:4};
+  const _rowBorder = warn ? 'var(--color-error)' : '#D6C7AC';
+  const _rowBg = warn ? '#FEF6F6' : '#fff';
+  // Row : 1 seule bordure, pas de zones internes — gain de place pour les montants.
+  const _row = {display:'grid', gridTemplateColumns:'minmax(0,1fr) auto minmax(0,1fr)', gap:3, alignItems:'stretch', background:_rowBg, border:'1.5px solid '+_rowBorder, borderRadius:9, position:'relative'};
+  const _side = {display:'flex', alignItems:'center', minHeight:44, gap:4, minWidth:0, padding:'0 4px 0 6px'};
+  const _input = {flex:1, border:'none', outline:'none', fontSize:'var(--font-size-13)', fontWeight:600, background:'transparent', minWidth:0, width:'100%', padding:'6px 0', fontFamily:'inherit', color:'var(--color-text-primary)', WebkitAppearance:'none', MozAppearance:'textfield'};
+  // Bouton devise V_A2 : flex column, drapeau 12px + code 10px medium ocre, padding compact, no chevron.
+  const _curBtn = {display:'inline-flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:36, minHeight:44, padding:'2px 4px', background:'var(--color-bg-tint-warm)', border:'1px solid transparent', borderRadius:6, cursor:'pointer', flexShrink:0, gap:0, lineHeight:1, userSelect:'none', fontFamily:'inherit'};
+  const _curFlag = {fontSize:12, lineHeight:1};
+  const _curCode = {fontSize:10, fontWeight:500, color:'var(--color-text-brown)', marginTop:2};
+  // Bouton taux : flex column, taux + ✏️ inline puis badge AUTO/MANUEL.
+  const _rateBtn = {display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:44, padding:'2px 6px', background: isManual ? '#FBE7CB' : 'var(--color-bg-tint-warm)', border:'1.5px solid '+(isManual ? '#C77D2D' : 'transparent'), borderRadius:7, cursor:'pointer', fontFamily:'inherit', flexShrink:0, minWidth:54};
+  const _rateNum = {display:'flex', alignItems:'center', gap:2, fontSize:'var(--font-size-12)', fontWeight:700, color: isManual ? '#C77D2D' : 'var(--color-text-brown)', lineHeight:1.1, fontVariantNumeric:'tabular-nums'};
+  const _rateBadge = isManual
+    ? {fontSize:8, fontWeight:800, color:'#fff', background:'#C77D2D', textTransform:'uppercase', letterSpacing:.4, marginTop:1, lineHeight:1, padding:'1px 5px', borderRadius:8, cursor:'pointer'}
+    : {fontSize:8, fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginTop:1, lineHeight:1, padding:'1px 0'};
+  const _pop = {position:'absolute', top:'calc(100% + 4px)', zIndex:80, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, boxShadow:'0 6px 16px rgba(0,0,0,0.14)', minWidth:180, maxHeight:240, overflowY:'auto', padding:4};
   const _popItem = (active) => ({display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:5, cursor:'pointer', fontFamily:'inherit', fontSize:'var(--font-size-12)', color: active ? 'var(--color-text-brown)' : 'var(--color-text-primary)', background: active ? 'var(--color-bg-tint-warm)' : 'transparent', minHeight:36, fontWeight: active ? 700 : 500});
+  // Hint : suppression "Conversion bidir live" parasite. Garde uniquement si warn=true OU hint contient cadenas/avertissement.
+  const _showHint = hint && (warn || /🔒|⚠|mois|cash|crédit|hors compta|récupérables/i.test(hint)) && hint !== 'Conversion bidir live';
   return (
     <div style={{marginBottom:'var(--space-2)'}}>
       <div style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600, marginBottom:'var(--space-1)'}}>{label}</div>
-      <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) auto minmax(0,1fr)', gap:4, alignItems:'stretch'}}>
-        {/* GAUCHE : [input][code 🇪🇺 ▾] */}
-        <div style={_zone}>
+      <div style={_row}>
+        {/* GAUCHE : [input][devise stack vertical] */}
+        <div style={_side}>
           <input type="text" inputMode="numeric" value={fmtNumV5(displayLeft)} onChange={handleLeft} placeholder="0" style={_input}/>
-          <button type="button" onClick={(e) => { e.stopPropagation(); setPickerSide(pickerSide === 'left' ? null : 'left'); }} style={_cb} title={CURRENCY_NAMES_V5[cur.left] || cur.left}>
-            <span>{CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
-            <span style={{fontSize:14, lineHeight:1}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
-            <span style={{fontSize:9, opacity:.6}}>▾</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); setPickerSide(pickerSide === 'left' ? null : 'left'); }} style={_curBtn} title={CURRENCY_NAMES_V5[cur.left] || cur.left} aria-label={'Devise gauche : ' + cur.left}>
+            <span style={_curFlag}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+            <span style={_curCode}>{cur.left}</span>
           </button>
           {pickerSide === 'left' && (
             <div onClick={(e) => e.stopPropagation()} style={{..._pop, left:0, right:'auto'}}>
@@ -8080,10 +8106,15 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
             </div>
           )}
         </div>
-        {/* MILIEU : taux + ✏️ + badge Auto/Manuel */}
-        <button type="button" onClick={(e) => { e.stopPropagation(); if (!rateEditing) { setRateDraft(Number(rate).toFixed(rate < 10 ? 4 : 2)); setRateEditing(true); } }}
-          style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:44, padding:'2px 8px', background: isManual ? '#F4ECE3' : 'var(--color-bg-tint-warm)', border:'1.5px '+(isManual ? 'solid' : 'dashed')+' '+(isManual ? 'var(--color-text-brown)' : 'var(--color-border-medium)'), borderRadius:7, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}
-          title="Modifier le taux">
+        {/* MILIEU : taux + ✏️ + badge AUTO/MANUEL (cliquable si manuel) */}
+        <button type="button" onClick={(e) => {
+            e.stopPropagation();
+            if (e.target.dataset && e.target.dataset.badge === 'manual') return; // badge handler géré séparément
+            if (!rateEditing) { setRateDraft(Number(rate).toFixed(rate < 10 ? 4 : 2)); setRateEditing(true); }
+          }}
+          style={_rateBtn}
+          title={isManual ? 'Cliquer sur MANUEL pour revenir au taux automatique' : 'Cliquer pour modifier le taux'}
+          aria-label="Taux de change">
           {rateEditing ? (
             <input ref={rateInputRef} type="text" inputMode="decimal" value={rateDraft}
               onChange={(e) => setRateDraft(e.target.value)}
@@ -8093,20 +8124,21 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
               style={{width:54, border:'1px solid var(--color-text-brown)', borderRadius:4, padding:'4px 6px', textAlign:'center', fontFamily:'inherit', fontSize:'var(--font-size-13)', fontWeight:700, color:'var(--color-text-brown)'}}/>
           ) : (
             <>
-              <span style={{display:'flex', alignItems:'center', gap:3, fontSize:'var(--font-size-12)', fontWeight:700, color:'var(--color-text-brown)'}}>
+              <span style={_rateNum}>
                 <span>{Number(rate).toFixed(rate < 10 ? 4 : 2)}</span>
                 <span style={{fontSize:10, opacity:.7}}>✏️</span>
               </span>
-              <span style={{fontSize:8, fontWeight:700, color: isManual ? 'var(--color-ocre-deep)' : 'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginTop:1, lineHeight:1}}>{isManual ? 'Manuel' : 'Auto'}</span>
+              {isManual
+                ? <span data-badge="manual" onClick={restoreAuto} style={_rateBadge}>MANUEL</span>
+                : <span style={_rateBadge}>AUTO</span>}
             </>
           )}
         </button>
-        {/* DROITE : [🇲🇦 code ▾][input] */}
-        <div style={_zone}>
-          <button type="button" onClick={(e) => { e.stopPropagation(); setPickerSide(pickerSide === 'right' ? null : 'right'); }} style={_cb} title={CURRENCY_NAMES_V5[cur.right] || cur.right}>
-            <span style={{fontSize:14, lineHeight:1}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
-            <span>{CURRENCY_SYMBOL_V5[cur.right] || cur.right}</span>
-            <span style={{fontSize:9, opacity:.6}}>▾</span>
+        {/* DROITE : [devise stack vertical][input] */}
+        <div style={_side}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); setPickerSide(pickerSide === 'right' ? null : 'right'); }} style={_curBtn} title={CURRENCY_NAMES_V5[cur.right] || cur.right} aria-label={'Devise droite : ' + cur.right}>
+            <span style={_curFlag}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+            <span style={_curCode}>{cur.right}</span>
           </button>
           <input type="text" inputMode="numeric" value={fmtNumV5(displayRight)} onChange={handleRight} placeholder="0" style={{..._input, textAlign:'right'}}/>
           {pickerSide === 'right' && (
@@ -8123,7 +8155,7 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
           )}
         </div>
       </div>
-      {hint && <div style={{fontSize:'var(--font-size-10)', color:warn ? 'var(--color-error)' : 'var(--color-text-muted)', fontStyle:'italic', textAlign:'center', marginTop:'var(--space-3px)', fontWeight:warn ? 600 : 400}}>{hint}</div>}
+      {_showHint && <div style={{fontSize:'var(--font-size-10)', color:warn ? 'var(--color-error)' : 'var(--color-text-muted)', fontStyle:'italic', textAlign:'center', marginTop:'var(--space-3px)', fontWeight:warn ? 600 : 400}}>{hint}</div>}
     </div>
   );
 }
