@@ -18624,19 +18624,23 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     return '/api/image.php?path=' + encodeURIComponent(firstPhotoRaw.replace(/^\//, ''));
   })();
 
-  // Budget compact : 1,2 MEUR / 620kEUR / 500 000 MAD. Travaux ou mensualité en sous-ligne.
+  // M/2026/05/09/83 — helpers devise -> drapeau zone monetaire + symbole.
+  function currencyToFlag(code) {
+    const map = {EUR:'🇪🇺', MAD:'🇲🇦', USD:'🇺🇸', GBP:'🇬🇧', CHF:'🇨🇭', CAD:'🇨🇦', JPY:'🇯🇵', INR:'🇮🇳', AED:'🇦🇪', SAR:'🇸🇦', TRY:'🇹🇷', CNY:'🇨🇳'};
+    return map[(code || '').toUpperCase()] || '';
+  }
+  function currencySymbol(code) {
+    const map = {EUR:'€', MAD:'DH', USD:'$', GBP:'£', CHF:'CHF', CAD:'C$', JPY:'¥', INR:'₹', AED:'AED', SAR:'SAR', TRY:'₺', CNY:'¥'};
+    return map[(code || '').toUpperCase()] || (code || '');
+  }
+  // Budget : format complet "230 000 € 🇪🇺" ou "2 500 000 DH 🇲🇦" (M83 spec Philippe).
   function fmtMoney(n, cur) {
     const x = Number(n);
     if (!x) return '';
-    if (cur === 'EUR') {
-      if (x >= 1000000) {
-        const v = x / 1000000;
-        return (v === Math.floor(v) ? v.toFixed(0) : v.toFixed(1).replace('.', ',')) + ' MEUR';
-      }
-      if (x >= 1000) return Math.round(x / 1000) + 'kEUR';
-      return x.toLocaleString('fr-FR') + ' EUR';
-    }
-    return x.toLocaleString('fr-FR') + ' ' + cur;
+    const formatted = x >= 1000 ? Math.round(x).toLocaleString('fr-FR').replace(/,/g, ' ') : x.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    const sym = currencySymbol(cur);
+    const flag = currencyToFlag(cur);
+    return formatted + ' ' + sym + (flag ? ' ' + flag : '');
   }
   let budgetMain = '', budgetSub = '';
   // V45 — Si payment_plan défini, l'utiliser en priorité (résumé compact multi-monnaies).
@@ -18688,6 +18692,11 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
                  : (dn + ' ' + hh);
         return {l1, l2: (nextEvent.title || '').slice(0, 22), urgent: days < 1};
       }
+      // M/2026/05/09/83 — echeances > 7j affichent JJ/MM/AA (annee 2 chiffres) avec icone calendrier.
+      const dd = String(t.getDate()).padStart(2, '0');
+      const mm = String(t.getMonth() + 1).padStart(2, '0');
+      const yy = String(t.getFullYear()).slice(-2);
+      return {l1: '📅 ' + dd + '/' + mm + '/' + yy, l2: (nextEvent.title || '').slice(0, 22), urgent: false};
     }
     if (nextTodo && nextTodo.due_at) {
       const t = new Date(nextTodo.due_at.replace(' ', 'T'));

@@ -175,6 +175,24 @@ switch ($action) {
             $stmt->execute([$user['id'], $user['id']]);
             foreach ($stmt->fetchAll() as $e) $next_events[(int)$e['client_id']] = $e;
         }
+        // M/2026/05/09/83 — fallback sur table events (Section IV Activite) pour workspaces sans suivi_events.
+        if ($client_ids && tableExists('events')) {
+            $stmt = db()->prepare(
+                "SELECT e.client_id, e.title, e.scheduled_at AS when_at, e.type FROM events e
+                 JOIN (
+                   SELECT client_id, MIN(scheduled_at) AS w
+                   FROM events
+                   WHERE owner_user_id = ? AND status NOT IN ('fait','annule') AND scheduled_at >= NOW()
+                   GROUP BY client_id
+                 ) m ON m.client_id = e.client_id AND m.w = e.scheduled_at
+                 WHERE e.owner_user_id = ? AND e.status NOT IN ('fait','annule')"
+            );
+            $stmt->execute([$user['id'], $user['id']]);
+            foreach ($stmt->fetchAll() as $e) {
+                $cid = (int)$e['client_id'];
+                if (!isset($next_events[$cid])) $next_events[$cid] = $e;
+            }
+        }
         if ($client_ids && tableExists('suivi_todos')) {
             $stmt = db()->prepare(
                 "SELECT t.* FROM suivi_todos t
