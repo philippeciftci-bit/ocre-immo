@@ -18925,10 +18925,10 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         const onClickBrouillon = (e) => { e.stopPropagation(); try { window.dispatchEvent(new CustomEvent('ocre-filter-brouillon')); } catch (_) {} };
         return (
           <div style={{display:'flex', justifyContent:'center', alignItems:'center', gap:'var(--space-6px)', flexWrap:'wrap', padding:'5px 10px 0', background: tint}}>
-            <span data-filter="brouillon" onClick={onClickBrouillon}
+            <span data-filter="brouillon" className="alert-label" onClick={onClickBrouillon}
               onMouseEnter={e => { e.currentTarget.style.opacity = '0.75'; }}
               onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-              style={{cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:'var(--font-size-9-5)', letterSpacing:0.5, textTransform:'uppercase', color:'#B91C1C', lineHeight:1.2, transition:'opacity 120ms'}}>Brouillon</span>
+              style={{cursor:'pointer', transition:'opacity 120ms'}}>Brouillon</span>
           </div>
         );
       })()}
@@ -19004,7 +19004,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
                 {PROFILS_LABEL[profil] || (profil || '').toUpperCase()}
               </span>
             ) : (
-              <span style={{flexShrink:0, marginLeft:'auto', padding:'3px 9px', borderRadius:12, fontSize:'var(--font-size-9-5)', fontWeight:700, letterSpacing:.4, background:'transparent', border:'1.5px solid #C0392B', color:'#C0392B', fontFamily:'inherit', whiteSpace:'nowrap'}}>
+              <span className="alert-label" style={{flexShrink:0, marginLeft:'auto'}}>
                 Choisir un profil
               </span>
             )}
@@ -20614,7 +20614,7 @@ function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, 
             {useAbbr ? (BADGES[activeProfil] || activeProfil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase())}
           </span>
         ) : (
-          <span style={{padding:'1px 6px', borderRadius:5, background:'transparent', border:'1.5px solid #C0392B', color:'#C0392B', fontSize:'var(--font-size-9)', fontWeight:700, letterSpacing:.5, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, lineHeight:1.4}}>
+          <span className="alert-label" style={{flexShrink:0}}>
             Choisir un profil
           </span>
         )}
@@ -22493,7 +22493,7 @@ function FormView(props) {
               </div>
               {/* M/2026/05/07/92bis — label BROUILLON unifie : texte rouge upper-case simple (sans pill/fond/border) coherent home + detail. color #B91C1C, fontWeight 700, letterSpacing 0.5. Sync state d.is_draft via useEffect post-auto-save (fix bug 1). */}
               {_isBrouillonBar && (
-                <span style={{flexShrink:0, fontFamily:'inherit', fontWeight:700, fontSize:'var(--font-size-10)', letterSpacing:0.5, textTransform:'uppercase', color:'#B91C1C', whiteSpace:'nowrap', marginRight:'var(--space-2)'}}>
+                <span className="alert-label" style={{flexShrink:0, marginRight:'var(--space-2)'}}>
                   Brouillon
                 </span>
               )}
@@ -22686,12 +22686,12 @@ function FormView(props) {
                          {_profilLabel1A}{_isBrouillon1A && <span style={{fontSize:'var(--font-size-8)', opacity:.85}}>▾</span>}
                        </button>
                      ) : (
-                       <button ref={profilBtnRef} type="button"
+                       <button ref={profilBtnRef} type="button" className="alert-label"
                          onClick={(e) => { e.stopPropagation(); toggleProfilPicker(); }}
                          title="Choisir un profil"
                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(192,57,43,0.1)'}
                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                         style={{padding:'5px 11px', borderRadius:99, background:'transparent', border:'1.5px dashed #C0392B', color:'#C0392B', fontStyle:'italic', fontSize:'var(--font-size-10-5)', fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap', flexShrink:0, cursor:'pointer'}}>
+                         style={{flexShrink:0, cursor:'pointer'}}>
                          Choisir un profil
                        </button>
                      )}

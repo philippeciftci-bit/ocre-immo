@@ -60,6 +60,27 @@
   --color-bg-tint-cream: #F4EEE6;    /* neutral cream chip/border bg */
   --color-bg-tint-soft: #FFFCF5;     /* filled state input (legacy, supersede par --color-field-filled M79) */
   --color-field-filled: #E8F5E9;     /* M/2026/05/09/79 — vert clair Material green-50 : champ rempli ET valide */
+  /* M/2026/05/09/80 — alerte rouge unifiee (BROUILLON, Choisir un profil, futur). Var prete pour expose superadmin Apparence. */
+  --color-alert: #B91C1C;
+  --alert-border-style: dashed;
+}
+/* M/2026/05/09/80 — classe utilitaire alert-label (Pill pointillee italique, Proposition 3 M77). */
+.alert-label {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-style: italic;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-alert);
+  border: 1px var(--alert-border-style) var(--color-alert);
+  border-radius: 999px;
+  padding: 4px 10px;
+  display: inline-block;
+  background: transparent;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+/* M/2026/05/09/80 — bloc :root continue (cascade CSS preserve les autres tokens definis ci-dessous). */
+:root {
   /* M/2026/05/08/12 — DESIGN-TOKENS.2.7.4 : borders + ocres derives (audit 7 hex distincts).
      Strategie A : 7 tokens dedies pour preservation pixel-parfait, gradients composes intacts. */
   --color-border-subtle: #E8DDD0;    /* border subtle (cf --border-subtle legacy) */
