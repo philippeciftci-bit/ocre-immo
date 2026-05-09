@@ -6,7 +6,6 @@
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/_session.php';
-require_once __DIR__ . '/_magic_link.php'; // M/2026/05/09/13 (M63) — bot bypass + window 5min
 setCorsHeaders();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
@@ -36,37 +35,34 @@ try {
     exit;
 }
 
-// M/2026/05/09/13 (M63) — checkMagicLinkConsume tolere prefetch bots Gmail/Slack/etc, fenetre 5 min, cap 3 sessions, audit attempts.
-$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-$check = checkMagicLinkConsume($pdo, $token, $ua, $ip);
-if ($check['action'] === 'bot_bypass') {
-    http_response_code(200);
-    header('Content-Type: text/html; charset=utf-8');
-    echo magicLinkBotPage();
-    exit;
-}
-if ($check['action'] === 'reject') {
-    http_response_code($check['http']);
-    echo json_encode($check['response']);
-    exit;
-}
-$user = $check['user'];
+$st = $pdo->prepare("SELECT id, email, prenom, nom, role, activation_token_expires_at FROM users WHERE activation_token = ? AND archived_at IS NULL LIMIT 1");
+$st->execute([$token]);
+$user = $st->fetch();
 
-// Garde-fou role super_admin (apres consume check).
+if (!$user) {
+    http_response_code(404);
+    echo json_encode(['ok' => false, 'error' => 'TOKEN_NOT_FOUND']);
+    exit;
+}
 if ($user['role'] !== 'super_admin') {
     http_response_code(403);
     echo json_encode(['ok' => false, 'error' => 'NOT_SUPER_ADMIN']);
     exit;
 }
+$expiresAt = (string)($user['activation_token_expires_at'] ?? '');
+if ($expiresAt && strtotime($expiresAt) < time()) {
+    http_response_code(410);
+    echo json_encode(['ok' => false, 'error' => 'TOKEN_EXPIRED']);
+    exit;
+}
 
 $userId = (int)$user['id'];
 try {
-    // M/2026/05/09/13 (M63) — NE PLUS effacer activation_token au consume (laisser fenetre 5 min multi-consume).
-    $upd = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+    // Consomme le token (anti-replay).
+    $upd = $pdo->prepare("UPDATE users SET activation_token = NULL, activation_token_expires_at = NULL, last_login = NOW() WHERE id = ?");
     $upd->execute([$userId]);
 } catch (Throwable $e) {
-    @error_log('[superadmin_activate] last_login update failed err=' . $e->getMessage());
+    @error_log('[superadmin_activate] consume_token_failed err=' . $e->getMessage());
 }
 
 // Cree session via _session.php (cookie ocre_session HttpOnly Secure SameSite=Lax Domain=.ocre.immo, sliding 30j).

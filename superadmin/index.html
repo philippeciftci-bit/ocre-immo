@@ -1106,28 +1106,51 @@ function searchDebounced(v) {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => { clientsState.q = v; clientsState.page = 1; renderClientsTab(); }, 300);
 }
-// M/2026/05/09/75 — boot: handler ?activate= magic link + auto-login via cookie session.
+// M/2026/05/09/14 (M64) — Pattern industriel sign-in confirmation page (Stripe/Vercel/Notion):
+// GET ?activate= -> page intermediate avec bouton 'Continuer' (NO auto-POST, NO consume).
+// Clic bouton -> POST /api/superadmin_activate.php = consume one-shot + cookie + redirect.
+// Bots Gmail/Slack/etc qui prefetchent ne consomment JAMAIS le token (pas de clic = pas de POST).
 (async () => {
-  // 1) Handler magic link si ?activate=<token> dans URL.
   const params = new URLSearchParams(location.search);
   const activateToken = params.get('activate');
   if (activateToken && /^[a-f0-9]{32,128}$/i.test(activateToken)) {
-    try {
-      const r = await fetch('/api/superadmin_activate.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({token: activateToken})});
-      const j = await r.json();
-      if (r.ok && j.ok) {
-        // Cookie session pose. Clean URL + pas de reload (on continue le boot avec le cookie present).
-        params.delete('activate');
-        const cleanUrl = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
-        history.replaceState({}, '', cleanUrl);
-      } else {
-        document.getElementById('err').textContent = 'Lien invalide ou expire.';
-        return;
+    // Affiche page intermediate, attend clic explicite. NE consume PAS au load.
+    document.body.innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#FCFAF6">
+        <div style="max-width:380px;width:100%;background:#fff;border-radius:14px;padding:36px 28px;box-shadow:0 4px 30px rgba(139,94,60,0.08);text-align:center">
+          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:700;color:#8B5E3C;font-style:italic;margin-bottom:8px">Connexion à Ocre Immo</div>
+          <p style="color:#6B5E4A;font-size:14px;margin-bottom:24px;line-height:1.5">Cliquez sur le bouton ci-dessous pour vous connecter au dashboard super-admin.</p>
+          <button id="m64-continue" type="button" style="width:100%;padding:14px 20px;background:#8B5E3C;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">Continuer vers le dashboard</button>
+          <p id="m64-msg" style="color:#8B0000;font-size:12px;margin-top:14px;min-height:14px"></p>
+          <p style="color:#8B7F6E;font-size:11px;margin-top:18px;font-style:italic">Lien valide une seule fois.</p>
+        </div>
+      </div>`;
+    document.getElementById('m64-continue').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const msg = document.getElementById('m64-msg');
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:s 0.7s linear infinite;vertical-align:-2px"></span> Connexion…';
+      const style = document.createElement('style'); style.textContent = '@keyframes s{to{transform:rotate(360deg)}}'; document.head.appendChild(style);
+      try {
+        const r = await fetch('/api/superadmin_activate.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({token: activateToken})});
+        const j = await r.json();
+        if (r.ok && j.ok) {
+          // Cookie session pose, redirect vers home propre.
+          const nextParam = params.get('next');
+          const target = (nextParam && /^https:\/\/[a-z0-9-]+\.ocre\.immo\//.test(nextParam)) ? nextParam : '/';
+          location.replace(target);
+        } else {
+          msg.textContent = '⚠ ' + (j && (j.detail || j.error) || 'Lien expire ou deja utilise. Demandez un nouveau lien.');
+          btn.disabled = false;
+          btn.textContent = 'Reessayer';
+        }
+      } catch (_) {
+        msg.textContent = '⚠ Erreur reseau. Reessayez.';
+        btn.disabled = false;
+        btn.textContent = 'Reessayer';
       }
-    } catch (_) {
-      document.getElementById('err').textContent = 'Erreur reseau lors de l activation.';
-      return;
-    }
+    });
+    return; // Stop boot, attend clic
   }
   // 2) Check cookie session : si valide ET role=super_admin -> renderConsole.
   try {

@@ -11048,55 +11048,51 @@ function App() {
   // promise .then() jamais résolue sur la page d'origine → token jamais posé → boucle infinie.
   // FIX : early-return SYNC un loader minimal tant que ?activate= est présent. Aucun useState/useEffect
   // ne s'enregistre. Quand le fetch finit : reload() (succès) ou redirect /login/?activate_error= (échec).
+  // M/2026/05/09/14 (M64) — Pattern industriel sign-in confirmation page (Stripe/Vercel/Notion):
+  // GET ?activate= -> page intermediate avec bouton 'Continuer' (NO auto-POST, NO consume).
+  // Clic bouton -> POST /api/agents_activate_v2.php = consume one-shot + cookie + redirect.
+  // Bots Gmail/Slack/etc qui prefetchent ne consomment JAMAIS le token (pas de clic = pas de POST).
   if (typeof window !== 'undefined' && /[?&]activate=/.test(window.location.search)) {
-    if (!window.__ocreActivateHandoffStarted) {
-      window.__ocreActivateHandoffStarted = true;
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const activateToken = params.get('activate');
-        if (activateToken && /^[a-f0-9]{32,128}$/i.test(activateToken)) {
-          fetch('/api/agents_activate_v2.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include',
-            body: JSON.stringify({token: activateToken}),
-          }).then(r => r.json().then(j => ({status: r.status, j}))).then(({status, j}) => {
-            if (status === 200 && j && j.ok && j.session_token) {
-              localStorage.setItem('ocre_token', j.session_token);
-              params.delete('activate');
-              const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
-              window.history.replaceState({}, '', cleanUrl);
-              window.location.reload();
-            } else {
-              const reason = (j && j.error) || 'UNKNOWN';
-              window.location = '/login/?activate_error=' + encodeURIComponent(reason);
-            }
-          }).catch(() => {
-            window.location = '/login/?activate_error=NETWORK';
-          });
-        } else {
-          window.location = '/login/?activate_error=TOKEN_FORMAT';
-        }
-      } catch (_) {
-        window.location = '/login/?activate_error=BOOT';
-      }
+    const params = new URLSearchParams(window.location.search);
+    const activateToken = params.get('activate');
+    if (!activateToken || !/^[a-f0-9]{32,128}$/i.test(activateToken)) {
+      window.location = '/login/?activate_error=TOKEN_FORMAT';
+      return null;
     }
-    return React.createElement('div', {
-      style: {
-        display:'flex', alignItems:'center', justifyContent:'center',
-        minHeight:'100vh', flexDirection:'column', gap:'16px',
-        background:'var(--color-bg-page, #FCFAF6)',
-        fontFamily:"'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
-        color:'var(--color-accent, #8B5E3C)', textAlign:'center', padding:'24px'
-      }
-    },
-      React.createElement('div', {style:{
-        width:42, height:42, border:'3px solid #E8DDC9', borderTopColor:'#8B5E3C',
-        borderRadius:'50%', animation:'ocreSpin 0.8s linear infinite'
-      }}),
-      React.createElement('div', {style:{fontSize:18, fontWeight:600}}, 'Activation de votre compte…'),
-      React.createElement('div', {style:{fontSize:13, color:'#8B7F6E', maxWidth:300}}, 'Cela ne prend que quelques secondes.'),
-      React.createElement('style', null, '@keyframes ocreSpin { to { transform: rotate(360deg); } }')
+    function handleClick(e) {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:ocreSpin 0.7s linear infinite;vertical-align:-2px"></span> Connexion…';
+      fetch('/api/agents_activate_v2.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({token: activateToken})})
+        .then(r => r.json().then(j => ({status: r.status, j})))
+        .then(({status, j}) => {
+          if (status === 200 && j && j.ok && j.session_token) {
+            localStorage.setItem('ocre_token', j.session_token);
+            params.delete('activate');
+            const target = j.redirect || (window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash);
+            window.location.replace(target);
+          } else {
+            const reason = (j && (j.detail || j.error)) || 'Lien expire ou deja utilise.';
+            const msgEl = document.getElementById('m64-msg');
+            if (msgEl) msgEl.textContent = '⚠ ' + reason;
+            btn.disabled = false; btn.textContent = 'Reessayer';
+          }
+        })
+        .catch(() => {
+          const msgEl = document.getElementById('m64-msg');
+          if (msgEl) msgEl.textContent = '⚠ Erreur reseau. Reessayez.';
+          btn.disabled = false; btn.textContent = 'Reessayer';
+        });
+    }
+    return React.createElement('div', {style:{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',background:'#FCFAF6'}},
+      React.createElement('div', {style:{maxWidth:380,width:'100%',background:'#fff',borderRadius:14,padding:'36px 28px',boxShadow:'0 4px 30px rgba(139,94,60,0.08)',textAlign:'center'}},
+        React.createElement('div', {style:{fontFamily:"'Cormorant Garamond',Georgia,serif",fontSize:30,fontWeight:700,color:'#8B5E3C',fontStyle:'italic',marginBottom:8}}, 'Connexion à Ocre Immo'),
+        React.createElement('p', {style:{color:'#6B5E4A',fontSize:14,marginBottom:24,lineHeight:1.5}}, 'Cliquez sur le bouton ci-dessous pour vous connecter à votre espace de travail.'),
+        React.createElement('button', {type:'button', onClick:handleClick, style:{width:'100%',padding:'14px 20px',background:'#8B5E3C',color:'#fff',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}, 'Continuer vers le dashboard'),
+        React.createElement('p', {id:'m64-msg', style:{color:'#8B0000',fontSize:12,marginTop:14,minHeight:14}}),
+        React.createElement('p', {style:{color:'#8B7F6E',fontSize:11,marginTop:18,fontStyle:'italic'}}, 'Lien valide une seule fois.'),
+        React.createElement('style', null, '@keyframes ocreSpin { to { transform: rotate(360deg); } }')
+      )
     );
   }
   const [apiLoading, setApiLoading] = useState(true);
