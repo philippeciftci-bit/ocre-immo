@@ -11131,12 +11131,11 @@ function App() {
   // promise .then() jamais résolue sur la page d'origine → token jamais posé → boucle infinie.
   // FIX : early-return SYNC un loader minimal tant que ?activate= est présent. Aucun useState/useEffect
   // ne s'enregistre. Quand le fetch finit : reload() (succès) ou redirect /login/?activate_error= (échec).
-  // M/2026/05/09/14 (M64) — Pattern industriel sign-in confirmation page (Stripe/Vercel/Notion).
-  // M/2026/05/09/21 (M71) — auto-submit invisible (Notion/Auth0/Linear/Slack pattern) :
-  //   listeners scroll/touch/mouse/keydown/focus/click capturent le 1er event humain (bot prefetch
-  //   n'en genere aucun) → auto-POST + redirect immediat. Spinner discret affiche pendant
-  //   <=1500ms ; si pas d'event humain dans ce delai → fade-in du fallback bouton classique.
-  //   Wording corrige pour tenant agent : "Connexion à votre espace" + "Accéder à mes dossiers".
+  // M/2026/05/09/22 (M72) — Page activate magic link : loader invisible (Stripe/Vercel pattern).
+  //   Au load → POST direct (pas d'attente d'event humain). Succes : redirect immediat,
+  //   l'utilisateur ne voit qu'un spinner ~100-300ms. Erreur : ecran erreur clair avec bouton
+  //   "Demander un nouveau lien". Risque prefetch bot Gmail accepte (cooldown magic link 5/15min
+  //   permet retry sans friction).
   if (typeof window !== 'undefined' && /[?&]activate=/.test(window.location.search)) {
     const params = new URLSearchParams(window.location.search);
     const activateToken = params.get('activate');
@@ -11144,73 +11143,37 @@ function App() {
       window.location = '/login/?activate_error=TOKEN_FORMAT';
       return null;
     }
-    // Idempotence : si le branch est re-evalue (ne devrait pas arriver mais safe), reuse listeners.
-    if (!window.__m71Init) {
-      window.__m71Init = true;
-      window.__m71HumanDetected = false;
-      window.__m71PostStarted = false;
-      const events = ['scroll','touchstart','touchmove','mousemove','keydown','focus','click','pointermove','pointerdown'];
-      const onHuman = () => {
-        if (window.__m71HumanDetected) return;
-        window.__m71HumanDetected = true;
-        events.forEach(ev => window.removeEventListener(ev, onHuman, true));
-        // Delai mini 100ms anti-flicker / anti-script-kiddie
-        setTimeout(() => { if (window.__m71DoActivate) window.__m71DoActivate(); }, 100);
-      };
-      events.forEach(ev => window.addEventListener(ev, onHuman, {passive:true, capture:true}));
-      // Reveal fallback bouton apres 1500ms si aucun event humain
-      setTimeout(() => {
-        if (window.__m71HumanDetected) return;
-        const c = document.getElementById('m71-content'); if (c) c.style.opacity = '1';
-      }, 1500);
-    }
-    function doActivate() {
-      if (window.__m71PostStarted) return;
-      window.__m71PostStarted = true;
-      const btn = document.getElementById('m71-btn');
-      const msgEl = document.getElementById('m71-msg');
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:ocreSpin 0.7s linear infinite;vertical-align:-2px"></span> Connexion…';
+    if (!window.__m72PostStarted) {
+      window.__m72PostStarted = true;
+      // POST direct au load, sans attendre d'event humain.
+      Promise.resolve().then(() => {
+        fetch('/api/agents_activate_v2.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({token: activateToken})})
+          .then(r => r.json().then(j => ({status: r.status, j})))
+          .then(({status, j}) => {
+            if (status === 200 && j && j.ok && j.session_token) {
+              localStorage.setItem('ocre_token', j.session_token);
+              params.delete('activate');
+              const target = j.redirect || (window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash);
+              window.location.replace(target);
+            } else {
+              showError();
+            }
+          })
+          .catch(() => showError());
+      });
+      function showError() {
+        const sp = document.getElementById('m72-spinner'); if (sp) sp.style.display = 'none';
+        const er = document.getElementById('m72-error'); if (er) er.style.display = 'block';
       }
-      fetch('/api/agents_activate_v2.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({token: activateToken})})
-        .then(r => r.json().then(j => ({status: r.status, j})))
-        .then(({status, j}) => {
-          if (status === 200 && j && j.ok && j.session_token) {
-            localStorage.setItem('ocre_token', j.session_token);
-            params.delete('activate');
-            const target = j.redirect || (window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash);
-            window.location.replace(target);
-          } else {
-            window.__m71PostStarted = false;
-            const reason = (j && (j.detail || j.error)) || 'Lien expire ou deja utilise.';
-            if (msgEl) msgEl.textContent = '⚠ ' + reason;
-            const c = document.getElementById('m71-content'); if (c) c.style.opacity = '1';
-            if (btn) { btn.disabled = false; btn.textContent = 'Reessayer'; }
-          }
-        })
-        .catch(() => {
-          window.__m71PostStarted = false;
-          if (msgEl) msgEl.textContent = '⚠ Erreur reseau. Reessayez.';
-          const c = document.getElementById('m71-content'); if (c) c.style.opacity = '1';
-          if (btn) { btn.disabled = false; btn.textContent = 'Reessayer'; }
-        });
     }
-    window.__m71DoActivate = doActivate;
-    // Si humanDetected deja arrive avant ce return (typical), re-arme un POST immediat.
-    if (window.__m71HumanDetected && !window.__m71PostStarted) setTimeout(doActivate, 100);
     return React.createElement('div', {style:{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',background:'#FCFAF6',position:'relative'}},
-      // Spinner toujours visible (sous le content fade-in)
-      React.createElement('div', {id:'m71-spinner', style:{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:32,height:32,border:'3px solid #E5DCCB',borderTopColor:'#8B5E3C',borderRadius:'50%',animation:'ocreSpin 0.8s linear infinite'}}),
-      // Content : opacity 0 par defaut, fade-in apres 1500ms si pas d'humanDetected
-      React.createElement('div', {id:'m71-content', style:{maxWidth:380,width:'100%',background:'#fff',borderRadius:14,padding:'36px 28px',boxShadow:'0 4px 30px rgba(139,94,60,0.08)',textAlign:'center',opacity:0,transition:'opacity 250ms ease',position:'relative',zIndex:1}},
-        React.createElement('div', {style:{fontFamily:"'Cormorant Garamond',Georgia,serif",fontSize:30,fontWeight:700,color:'#8B5E3C',fontStyle:'italic',marginBottom:8}}, 'Connexion à votre espace'),
-        React.createElement('p', {style:{color:'#6B5E4A',fontSize:14,marginBottom:24,lineHeight:1.5}}, 'Vous allez être redirigé automatiquement…'),
-        React.createElement('button', {id:'m71-btn', type:'button', onClick: () => doActivate(), style:{width:'100%',padding:'14px 20px',background:'#8B5E3C',color:'#fff',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}, 'Accéder à mes dossiers'),
-        React.createElement('p', {id:'m71-msg', style:{color:'#8B0000',fontSize:12,marginTop:14,minHeight:14}}),
-        React.createElement('p', {style:{color:'#8B7F6E',fontSize:11,marginTop:18,fontStyle:'italic'}}, 'Lien valide une seule fois.'),
-        React.createElement('style', null, '@keyframes ocreSpin { to { transform: rotate(360deg); } }')
-      )
+      React.createElement('div', {id:'m72-spinner', style:{width:32,height:32,border:'3px solid #E5DCCB',borderTopColor:'#8B5E3C',borderRadius:'50%',animation:'ocreSpin 0.8s linear infinite'}}),
+      React.createElement('div', {id:'m72-error', style:{display:'none',maxWidth:340,width:'100%',background:'#fff',borderRadius:14,padding:'32px 24px',boxShadow:'0 4px 30px rgba(139,94,60,0.08)',textAlign:'center'}},
+        React.createElement('div', {style:{fontFamily:"'Cormorant Garamond',Georgia,serif",fontSize:24,fontWeight:700,color:'#8B5E3C',fontStyle:'italic',marginBottom:8}}, 'Lien expiré ou invalide'),
+        React.createElement('p', {style:{color:'#6B5E4A',fontSize:13,marginBottom:20,lineHeight:1.5}}, "Demandez un nouveau lien d'accès."),
+        React.createElement('a', {href:'/login/', style:{display:'block',padding:'12px 18px',background:'#8B5E3C',color:'#fff',border:'none',borderRadius:10,fontSize:14,fontWeight:700,textDecoration:'none',fontFamily:"'DM Sans',sans-serif"}}, 'Demander un nouveau lien')
+      ),
+      React.createElement('style', null, '@keyframes ocreSpin { to { transform: rotate(360deg); } }')
     );
   }
   const [apiLoading, setApiLoading] = useState(true);

@@ -1106,74 +1106,41 @@ function searchDebounced(v) {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => { clientsState.q = v; clientsState.page = 1; renderClientsTab(); }, 300);
 }
-// M/2026/05/09/14 (M64) — Pattern industriel sign-in confirmation page (Stripe/Vercel/Notion).
-// M/2026/05/09/21 (M71) — auto-submit invisible (Notion/Auth0/Linear/Slack pattern) :
-//   listeners scroll/touch/mouse/keydown/focus/click capturent le 1er event humain.
-//   Bot prefetch = aucun event = page reste visible avec bouton fallback. Humain = redirect immediat.
-//   Wording corrige : "Connexion super-admin" + "Accéder au dashboard".
+// M/2026/05/09/22 (M72) — Page activate magic link superadmin : loader invisible.
+//   POST direct au load, redirect immediat si succes. Ecran erreur clair seulement si echec.
+//   Risque prefetch bot Gmail accepte (cooldown magic link permet retry).
 (async () => {
   const params = new URLSearchParams(location.search);
   const activateToken = params.get('activate');
   if (activateToken && /^[a-f0-9]{32,128}$/i.test(activateToken)) {
     document.body.innerHTML = `
-      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#FCFAF6;position:relative">
-        <div id="m71-spinner" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:32px;height:32px;border:3px solid #E5DCCB;border-top-color:#8B5E3C;border-radius:50%;animation:s 0.8s linear infinite"></div>
-        <div id="m71-content" style="max-width:380px;width:100%;background:#fff;border-radius:14px;padding:36px 28px;box-shadow:0 4px 30px rgba(139,94,60,0.08);text-align:center;opacity:0;transition:opacity 250ms ease;position:relative;z-index:1">
-          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:700;color:#8B5E3C;font-style:italic;margin-bottom:8px">Connexion super-admin</div>
-          <p style="color:#6B5E4A;font-size:14px;margin-bottom:24px;line-height:1.5">Vous allez être redirigé automatiquement…</p>
-          <button id="m71-btn" type="button" style="width:100%;padding:14px 20px;background:#8B5E3C;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">Accéder au dashboard</button>
-          <p id="m71-msg" style="color:#8B0000;font-size:12px;margin-top:14px;min-height:14px"></p>
-          <p style="color:#8B7F6E;font-size:11px;margin-top:18px;font-style:italic">Lien valide une seule fois.</p>
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#FCFAF6">
+        <div id="m72-spinner" style="width:32px;height:32px;border:3px solid #E5DCCB;border-top-color:#8B5E3C;border-radius:50%;animation:s 0.8s linear infinite"></div>
+        <div id="m72-error" style="display:none;max-width:340px;width:100%;background:#fff;border-radius:14px;padding:32px 24px;box-shadow:0 4px 30px rgba(139,94,60,0.08);text-align:center">
+          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:700;color:#8B5E3C;font-style:italic;margin-bottom:8px">Lien expiré ou invalide</div>
+          <p style="color:#6B5E4A;font-size:13px;margin-bottom:20px;line-height:1.5">Demandez un nouveau lien d'accès.</p>
+          <a href="/" style="display:block;padding:12px 18px;background:#8B5E3C;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;font-family:'DM Sans',sans-serif">Demander un nouveau lien</a>
         </div>
       </div>`;
     const style = document.createElement('style'); style.textContent = '@keyframes s{to{transform:rotate(360deg)}}'; document.head.appendChild(style);
-
-    let humanDetected = false;
-    let postStarted = false;
-    const events = ['scroll','touchstart','touchmove','mousemove','keydown','focus','click','pointermove','pointerdown'];
-    const onHuman = () => {
-      if (humanDetected) return;
-      humanDetected = true;
-      events.forEach(ev => window.removeEventListener(ev, onHuman, true));
-      setTimeout(doActivate, 100);
-    };
-    events.forEach(ev => window.addEventListener(ev, onHuman, {passive:true, capture:true}));
-    setTimeout(() => {
-      if (humanDetected) return;
-      const c = document.getElementById('m71-content'); if (c) c.style.opacity = '1';
-    }, 1500);
-
-    async function doActivate() {
-      if (postStarted) return;
-      postStarted = true;
-      const btn = document.getElementById('m71-btn');
-      const msg = document.getElementById('m71-msg');
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:s 0.7s linear infinite;vertical-align:-2px"></span> Connexion…';
-      }
-      try {
-        const r = await fetch('/api/superadmin_activate.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({token: activateToken})});
-        const j = await r.json();
-        if (r.ok && j.ok) {
-          const nextParam = params.get('next');
-          const target = (nextParam && /^https:\/\/[a-z0-9-]+\.ocre\.immo\//.test(nextParam)) ? nextParam : '/';
-          location.replace(target);
-        } else {
-          postStarted = false;
-          if (msg) msg.textContent = '⚠ ' + (j && (j.detail || j.error) || 'Lien expire ou deja utilise. Demandez un nouveau lien.');
-          const c = document.getElementById('m71-content'); if (c) c.style.opacity = '1';
-          if (btn) { btn.disabled = false; btn.textContent = 'Reessayer'; }
-        }
-      } catch (_) {
-        postStarted = false;
-        if (msg) msg.textContent = '⚠ Erreur reseau. Reessayez.';
-        const c = document.getElementById('m71-content'); if (c) c.style.opacity = '1';
-        if (btn) { btn.disabled = false; btn.textContent = 'Reessayer'; }
-      }
+    function showError() {
+      const sp = document.getElementById('m72-spinner'); if (sp) sp.style.display = 'none';
+      const er = document.getElementById('m72-error'); if (er) er.style.display = 'block';
     }
-    document.getElementById('m71-btn').addEventListener('click', doActivate);
-    return; // Stop boot, attend humanDetected ou clic manuel
+    try {
+      const r = await fetch('/api/superadmin_activate.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({token: activateToken})});
+      const j = await r.json();
+      if (r.ok && j.ok) {
+        const nextParam = params.get('next');
+        const target = (nextParam && /^https:\/\/[a-z0-9-]+\.ocre\.immo\//.test(nextParam)) ? nextParam : '/';
+        location.replace(target);
+      } else {
+        showError();
+      }
+    } catch (_) {
+      showError();
+    }
+    return; // Stop boot, page ne s'affiche jamais en mode succes
   }
   // 2) Check cookie session : si valide ET role=super_admin -> renderConsole.
   try {
