@@ -151,6 +151,25 @@ case 'classify': {
     );
     $upd->execute([$newStatus, $uid, $id]);
     $m = decodeMatch(fetchMatch($id, $uid));
+    // M/2026/05/09/43 — M89 : push 'proposal' aux co-owners du match si statut 'pertinent'
+    // (agent A pousse une proposition à ses partenaires WSc pour suite commerciale).
+    if ($newStatus === 'pertinent') {
+        @require_once __DIR__ . '/lib/push_notify.php';
+        if (function_exists('ocre_push_notify')) {
+            $owners = is_array($m['owner_user_ids'] ?? null) ? $m['owner_user_ids'] : [];
+            $score = (int) ($m['score_pct'] ?? 0);
+            foreach ($owners as $ouid) {
+                $ouid = (int) $ouid;
+                if ($ouid <= 0 || $ouid === $uid) continue; // skip soi-même
+                try {
+                    ocre_push_notify($ouid, 'proposal',
+                        '📨 Proposition reçue ' . $score . '%',
+                        'Un confrère t\'a transmis une proposition pertinente',
+                        '/matches/' . $id);
+                } catch (Throwable $e) { /* swallow */ }
+            }
+        }
+    }
     jsonOk(['match' => $m]);
 }
 

@@ -225,6 +225,9 @@ case 'rejouer_complet': {
     $owner = json_encode([$uid]);
     $seuil = (int) $rules['seuil_min_pct_default'];
     $calcules = 0; $inseres = 0; $en_dessous = 0;
+    // M/2026/05/09/43 — M89 : événements push à dispatcher après le commit (matching ≥85%).
+    // Collecté pour batch post-loop pour ne pas pénaliser la perf SQL.
+    $pushQueue = [];
     $n = count($clients);
     for ($i = 0; $i < $n; $i++) {
         for ($j = $i + 1; $j < $n; $j++) {
@@ -238,12 +241,34 @@ case 'rejouer_complet': {
                 $insert->execute([$aId, $bId, $r['score_pct'], $owner,
                     json_encode($r['criteres_matched'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
                 $inseres++;
+                if ($r['score_pct'] >= 85) {
+                    $aLab = trim(($clients[$i]['prenom'] ?? '') . ' ' . ($clients[$i]['nom'] ?? '')) ?: ('Dossier #' . $aId);
+                    $bLab = trim(($clients[$j]['prenom'] ?? '') . ' ' . ($clients[$j]['nom'] ?? '')) ?: ('Dossier #' . $bId);
+                    $pushQueue[] = ['uid' => $uid, 'score' => $r['score_pct'], 'aLab' => $aLab, 'bLab' => $bLab, 'aId' => $aId, 'bId' => $bId];
+                }
             } catch (PDOException $e) { /* doublon UNIQUE silencieux */ }
+        }
+    }
+    // Dispatch push (fire-and-forget, n'affecte pas la réponse)
+    if (!empty($pushQueue)) {
+        @require_once __DIR__ . '/lib/push_notify.php';
+        if (function_exists('ocre_push_notify')) {
+            $pushed = 0;
+            foreach (array_slice($pushQueue, 0, 5) as $p) { // max 5 push par run pour éviter spam
+                try {
+                    if (ocre_push_notify(
+                        (int)$p['uid'], 'matching',
+                        '🎯 Match détecté ' . $p['score'] . '%',
+                        $p['aLab'] . ' ↔ ' . $p['bLab'],
+                        '/matches?a=' . $p['aId'] . '&b=' . $p['bId']
+                    )) $pushed++;
+                } catch (Throwable $e) { /* swallow */ }
+            }
         }
     }
     $duree_ms = (int) round((microtime(true) - $t0) * 1000);
     jsonOk(['calcules' => $calcules, 'inseres' => $inseres, 'en_dessous_seuil' => $en_dessous,
-            'seuil_pct' => $seuil, 'duree_ms' => $duree_ms]);
+            'seuil_pct' => $seuil, 'duree_ms' => $duree_ms, 'push_queued' => count($pushQueue)]);
 }
 
 case 'score_paire': {

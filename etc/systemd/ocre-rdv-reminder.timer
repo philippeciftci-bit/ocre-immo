@@ -1,0 +1,10 @@
+[Unit]
+Description=Ocre Immo RDV reminder PWA push timer (every 5 min)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=ocre-rdv-reminder.service
+
+[Install]
+WantedBy=timers.target
