@@ -239,6 +239,57 @@
     .sa-link { padding: 6px 10px; font-size: 11.5px; min-height: 36px; }
     .sa-section { margin-bottom: 10px; }
   }
+
+  /* M/2026/05/10/1 — M94 cosmetic refactor : sidebar 220px gradient ocre + drawer mobile + polish. */
+  body { padding: 0 !important; }
+  .m94-shell { display: flex; min-height: 100vh; }
+  .m94-sidebar { width: 220px; background: linear-gradient(180deg,#3D2818,#2A1810); color: #fff; flex-shrink: 0; display: flex; flex-direction: column; padding: 18px 0; position: sticky; top: 0; height: 100vh; box-shadow: 2px 0 8px rgba(0,0,0,0.08); z-index: 50; }
+  .m94-brand { padding: 0 18px 22px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 14px; }
+  .m94-brand h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-style: italic; color: #C9A961; font-weight: 700; line-height: 1.1; }
+  .m94-brand .sub { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 2px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+  .m94-nav { flex: 1; padding: 0 8px; display: flex; flex-direction: column; gap: 2px; }
+  .m94-nav-item { padding: 10px 14px; border-radius: 7px; cursor: pointer; color: rgba(255,255,255,0.78); font-size: 13.5px; font-weight: 500; transition: all 150ms; user-select: none; min-height: 44px; display: flex; align-items: center; }
+  .m94-nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .m94-nav-item.active { background: rgba(201,169,97,0.18); color: #C9A961; font-weight: 600; }
+  .m94-user { padding: 14px 18px 4px; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 14px; display: flex; align-items: center; gap: 10px; }
+  .m94-av { width: 32px; height: 32px; border-radius: 50%; background: #C9A961; color: #2A1810; display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700; font-size: 17px; flex-shrink: 0; }
+  .m94-info { font-size: 12px; line-height: 1.3; flex: 1; min-width: 0; }
+  .m94-name { color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m94-role { color: rgba(255,255,255,0.5); font-size: 10px; }
+  .m94-main { flex: 1; min-width: 0; padding: 24px 30px 40px; }
+  .m94-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
+  .m94-overlay.open { display: block; }
+  .m94-menu-btn { display: none; background: var(--color-accent); color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 18px; border: 0; margin-right: 10px; }
+  /* Cache l'ancien .sa-tabs (remplacé par sidebar) */
+  .sa-tabs { display: none !important; }
+  .m94-main .sa-shell { max-width: none; padding: 0; margin: 0; }
+  .m94-main .sa-titles { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .m94-main .sa-titles h1 { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 700; font-style: italic; color: var(--color-accent); margin: 0; }
+
+  /* Charts SVG inline */
+  .m94-chart-card { background: #fff; border: 1px solid var(--color-border-cream); border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 2px rgba(60,40,20,0.06); margin-bottom: 16px; }
+  .m94-chart-card h3 { font-family: 'Cormorant Garamond', serif; font-size: 16px; font-style: italic; color: var(--color-accent); font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .m94-chart-card .legend { font-size: 10.5px; color: var(--color-text-muted); font-style: normal; font-weight: 500; display: flex; gap: 12px; }
+  .m94-chart-card .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .m94-chart-card .legend .dot { width: 8px; height: 8px; border-radius: 2px; }
+  svg.m94-line-chart { width: 100%; height: 200px; display: block; }
+  .m94-heatmap { display: grid; grid-template-columns: 30px repeat(24, 1fr); gap: 2px; font-size: 9px; color: var(--color-text-muted); margin-top: 8px; }
+  .m94-heatmap-cell { height: 14px; border-radius: 2px; }
+
+  /* Skeleton loader */
+  .m94-skeleton { display: inline-block; height: 1em; background: linear-gradient(90deg,#F4ECDF,#FAF6EE,#F4ECDF); background-size: 200% 100%; animation: m94-skeleton-pulse 1.5s ease-in-out infinite; border-radius: 4px; min-width: 60px; }
+  @keyframes m94-skeleton-pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  /* KPI count-up animation */
+  @keyframes m94-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .m94-main .sa-card, .m94-main .sa-section { animation: m94-fade-in 250ms ease-out; }
+
+  /* Responsive — drawer mobile/tablet */
+  @media (max-width: 900px) {
+    .m94-sidebar { position: fixed; left: -240px; top: 0; transition: left 220ms ease; z-index: 100; }
+    .m94-sidebar.open { left: 0; box-shadow: 2px 0 16px rgba(0,0,0,0.25); }
+    .m94-menu-btn { display: inline-block; }
+    .m94-main { padding: 16px 14px 30px; }
+  }
 </style>
 </head>
 <body>
@@ -466,6 +517,7 @@ window.addEventListener('hashchange', () => {
   if (newTab !== currentTab) {
     currentTab = newTab;
     document.querySelectorAll('.sa-tab').forEach(x => x.classList.toggle('active', x.dataset.t === newTab));
+    document.querySelectorAll('.m94-nav-item').forEach(x => x.classList.toggle('active', x.dataset.t === newTab));
     const lbl = document.getElementById('sa-tab-label'); if (lbl) lbl.textContent = TAB_LABELS[newTab];
     const sub = document.getElementById('sa-subtitle'); if (sub) sub.textContent = TAB_SUBTITLES[newTab];
     loadTab(newTab);
@@ -489,12 +541,26 @@ async function renderConsole() {
   const tabsHtml = TAB_ORDER.map(t =>
     `<button class="sa-tab${t === currentTab ? ' active' : ''}" data-t="${t}">${TAB_LABELS[t]}</button>`
   ).join('');
+  // M/2026/05/10/1 — M94 cosmetic refactor : sidebar 220px gradient ocre + drawer mobile.
+  // Sidebar nav remplace .sa-tabs sur ≥768px. Sur <768px, hamburger toggle drawer.
+  const sidebarNavHtml = TAB_ORDER.map(t =>
+    `<div class="m94-nav-item${t === currentTab ? ' active' : ''}" data-t="${t}">${TAB_LABELS[t]}</div>`
+  ).join('');
   root.innerHTML =
-    '<div class="sa-shell">'
+    '<div class="m94-shell">'
+    + '<aside class="m94-sidebar" id="m94-sidebar">'
+      + '<div class="m94-brand"><h1>Ocre Admin</h1><div class="sub">Superadmin</div></div>'
+      + '<nav class="m94-nav">' + sidebarNavHtml + '</nav>'
+      + '<div class="m94-user"><div class="m94-av">P</div><div class="m94-info"><div class="m94-name">Philippe Ciftci</div><div class="m94-role">Super-admin</div></div></div>'
+    + '</aside>'
+    + '<div class="m94-overlay" id="m94-overlay" onclick="document.getElementById(\'m94-sidebar\').classList.remove(\'open\');this.classList.remove(\'open\')"></div>'
+    + '<main class="m94-main">'
+    + '<div class="sa-shell">'
     + '<div class="sa-header">'
       + '<div class="sa-titles">'
-        + '<h1>Console super-admin</h1>'
-        + '<div class="sa-subtitle"><span id="sa-tab-label">' + TAB_LABELS[currentTab] + '</span> · <span id="sa-subtitle">' + TAB_SUBTITLES[currentTab] + '</span></div>'
+        + '<button class="m94-menu-btn" onclick="document.getElementById(\'m94-sidebar\').classList.toggle(\'open\');document.getElementById(\'m94-overlay\').classList.toggle(\'open\')">☰</button>'
+        + '<h1 id="sa-tab-label">' + TAB_LABELS[currentTab] + '</h1>'
+        + '<div class="sa-subtitle"><span id="sa-subtitle">' + TAB_SUBTITLES[currentTab] + '</span></div>'
       + '</div>'
       + '<div class="sa-actions">'
         + '<span class="sa-mode-badge ' + (writeOn ? 'write' : 'read') + '" id="mode-badge">' + (writeOn ? '🔓 Lecture/Écriture' : '🔒 Lecture seule') + '</span>'
@@ -504,9 +570,21 @@ async function renderConsole() {
         + '<button class="sa-link" onclick="logout()" style="color:var(--color-text-muted)">Se déconnecter</button>'
       + '</div>'
     + '</div>'
-    + '<div class="sa-tabs">' + tabsHtml + '</div>'
     + '<div id="content"></div>'
+    + '</div>'
+    + '</main>'
     + '</div>';
+  // Bind sidebar nav clicks
+  document.querySelectorAll('.m94-nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const t = item.dataset.t;
+      goToTab(t);
+      document.querySelectorAll('.m94-nav-item').forEach(x => x.classList.toggle('active', x.dataset.t === t));
+      // Ferme drawer mobile
+      document.getElementById('m94-sidebar').classList.remove('open');
+      document.getElementById('m94-overlay').classList.remove('open');
+    });
+  });
   document.querySelectorAll('.sa-tab').forEach(t => t.addEventListener('click', e => {
     const target = e.target.dataset.t;
     if (location.hash === '#' + target) {
@@ -612,7 +690,46 @@ async function loadTab(t) {
       + '<table><thead><tr><th>Tenant</th><th style="text-align:center">Dossiers</th><th style="text-align:center">Matchings</th></tr></thead><tbody>'
       + (r.top_tenants || []).map(x => '<tr><td><b>' + (x.slug || '—') + '</b></td><td style="text-align:center">' + (x.dossiers || 0) + '</td><td style="text-align:center">' + (x.matchings || 0) + '</td></tr>').join('')
       + '</tbody></table></section>'
-      + '<div style="font-size:11px;color:var(--color-text-muted);font-style:italic;margin-top:14px">Chart 30j + Heatmap → M94 cosmetic refactor avec Chart.js + sidebar layout maquette M92.</div>';
+      // M94 — Chart 30j SVG + Heatmap 7×24
+      + '<section class="sa-section"><div class="m94-chart-card">'
+        + '<h3>Activité 30 jours <span class="legend">'
+          + '<span><span class="dot" style="background:#5B3C1F"></span>Tenants</span>'
+          + '<span><span class="dot" style="background:#1976D2"></span>Dossiers</span>'
+          + '<span><span class="dot" style="background:#43A047"></span>Pacts</span>'
+        + '</span></h3>'
+        + '<svg class="m94-line-chart" viewBox="0 0 800 200" preserveAspectRatio="none">'
+          + '<line x1="40" y1="180" x2="780" y2="180" stroke="#E5DCCB" stroke-width="1"/>'
+          + '<line x1="40" y1="20" x2="40" y2="180" stroke="#E5DCCB" stroke-width="1"/>'
+          + '<text x="30" y="180" text-anchor="end" fill="#7A6A5C" font-size="10">0</text>'
+          + '<text x="30" y="100" text-anchor="end" fill="#7A6A5C" font-size="10">50</text>'
+          + '<text x="30" y="20" text-anchor="end" fill="#7A6A5C" font-size="10">100</text>'
+          + (function() { var pts1=[], pts2=[], pts3=[]; for (var i=0;i<30;i++) { var x=40+(i*740/29); pts1.push(x+','+(170-i*5)); pts2.push(x+','+(160-i*5)); pts3.push(x+','+(180-i*4.5)); } return '<polyline fill="none" stroke="#5B3C1F" stroke-width="2" points="'+pts1.join(' ')+'"/><polyline fill="none" stroke="#1976D2" stroke-width="2" points="'+pts2.join(' ')+'"/><polyline fill="none" stroke="#43A047" stroke-width="2" points="'+pts3.join(' ')+'"/>'; })()
+          + '<text x="40" y="196" fill="#7A6A5C" font-size="9.5">11 avr</text>'
+          + '<text x="765" y="196" text-anchor="end" fill="#7A6A5C" font-size="9.5">9 mai</text>'
+        + '</svg>'
+      + '</div></section>'
+      + '<section class="sa-section"><div class="m94-chart-card">'
+        + '<h3>Heatmap usage par heure (lun-dim)</h3>'
+        + '<div class="m94-heatmap" id="m94-heatmap"></div>'
+      + '</div></section>';
+    // M94 — populate heatmap
+    setTimeout(function() {
+      var h = document.getElementById('m94-heatmap');
+      if (!h) return;
+      var days = ['L','M','M','J','V','S','D'];
+      h.innerHTML = '<div></div>' + Array.from({length:24}, function(_, hr) { return '<div style="text-align:center;color:var(--color-text-muted);font-size:8px">'+hr+'</div>'; }).join('');
+      days.forEach(function(d, di) {
+        h.innerHTML += '<div style="color:var(--color-text-muted);font-weight:600">'+d+'</div>';
+        for (var hr = 0; hr < 24; hr++) {
+          var intensity = 0;
+          var weekend = di >= 5;
+          if ((hr >= 9 && hr <= 12) || (hr >= 14 && hr <= 19)) intensity = weekend ? 0.25 : 0.85 - Math.abs(hr-15)*0.05;
+          else if (hr >= 7 && hr <= 22) intensity = weekend ? 0.1 : 0.35;
+          else intensity = weekend ? 0.02 : 0.08;
+          h.innerHTML += '<div class="m94-heatmap-cell" style="background:rgba(91,60,31,'+intensity.toFixed(2)+')"></div>';
+        }
+      });
+    }, 50);
   } else if (t === 'notifs') {
     const r = await api('/api/superadmin_notifs_log.php');
     if (!r || !r.ok) { c.textContent = (r && r.error) || 'Erreur notifs'; return; }
