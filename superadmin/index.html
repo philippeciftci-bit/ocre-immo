@@ -406,34 +406,55 @@ async function logout() {
   localStorage.removeItem(TOKEN_KEY);
   location.reload();
 }
-let currentTab = 'overview';
+let currentTab = 'tenants'; // M93 : default = tenants (ex-workspaces)
 let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '', q: ''};
 
-// M/2026/05/08/35 → 37 — Sous-titres dynamiques contextuels + 2 nouveaux onglets Sessions/Users.
+// M/2026/05/09/47 — M93 : refactor 7 onglets → 6 onglets fidèle maquette M92 :
+//   tenants (ex-workspaces), agents (ex-users+clients), metrics (ex-overview), notifs (ex-audit),
+//   modules (NOUVEAU statique), system (ex-sessions + monitoring).
+//   Les anciens onglets pending/clients/sessions/audit deviennent des sous-vues drill-down accessibles
+//   depuis les 6 onglets principaux (route hash conservé pour compat URLs sauvegardées).
 const TAB_SUBTITLES = {
-  overview: 'État global du système Ocre Immo',
-  workspaces: 'Espaces actifs · gestion des comptes agents',
-  clients: 'Clients inscrits · vue cross-workspaces',
-  pending: 'Agents en attente d\'activation · action requise',
-  audit: 'Historique des actions super-admin · 24h',
-  sessions: 'Sessions actives · connexions courantes',
-  users: 'Tous les users · cross-workspace',
+  tenants: 'Workspaces & comptes agents · vue cross-tenant',
+  agents: 'Tous les agents · activité & pacts cross-workspace',
+  metrics: 'KPIs business · MRR / ARR / churn / conversion',
+  notifs: 'Logs PWA push (M88-M89) & audit super-admin',
+  modules: 'Catalogue Oi · Agent / Scan / Book / Demande',
+  system: 'Santé serveur Hetzner · backups · deploys',
+  // Routes legacy conservées (drill-down) :
+  workspaces: 'Workspaces (legacy alias → tenants)',
+  clients: 'Clients inscrits · drill-down',
+  pending: 'Inscriptions en attente · action requise',
+  audit: 'Audit super-admin · drill-down',
+  sessions: 'Sessions actives · drill-down',
+  users: 'Users (legacy alias → agents)',
+  overview: 'Vue d\'ensemble (legacy → metrics)',
 };
 const TAB_LABELS = {
-  overview: 'Vue d\'ensemble',
+  tenants: '🏢 Tenants',
+  agents: '👥 Agents',
+  metrics: '📊 Métriques',
+  notifs: '🔔 Notifs & Events',
+  modules: '🧩 Modules Oi',
+  system: '🛠 Système',
+  // Legacy (gardés pour compat hash URLs)
   workspaces: 'Workspaces',
   clients: 'Clients',
-  pending: 'Inscriptions en attente',
-  audit: 'Audit récent',
+  pending: 'Inscriptions',
+  audit: 'Audit',
   sessions: 'Sessions',
   users: 'Users',
+  overview: 'Vue ensemble',
 };
-const TAB_ORDER = ['overview', 'workspaces', 'clients', 'users', 'sessions', 'pending', 'audit'];
+const TAB_ORDER = ['tenants', 'agents', 'metrics', 'notifs', 'modules', 'system'];
 
 // Hash routing : URL #tab synchronise l'onglet actif.
 function parseHashTab() {
   const h = (location.hash || '').replace(/^#/, '').split('?')[0];
-  return TAB_ORDER.indexOf(h) >= 0 ? h : 'overview';
+  // M93 : alias legacy → nouveaux noms
+  const ALIAS = { overview: 'metrics', workspaces: 'tenants', users: 'agents', clients: 'agents', sessions: 'system', audit: 'notifs', pending: 'tenants' };
+  const target = ALIAS[h] || h;
+  return TAB_ORDER.indexOf(target) >= 0 ? target : 'tenants';
 }
 function goToTab(tab) {
   if (TAB_ORDER.indexOf(tab) < 0) return;
@@ -566,6 +587,75 @@ async function loadTab(t) {
         return `<tr><td class="col-date" title="${e.created_at||''}">${dtCompact}</td><td><b>${e.workspace_slug || '—'}</b></td><td class="col-email">${e.email || '—'}</td><td>${e.action}</td><td class="col-provider">${e.target_type || ''} ${e.target_id || ''}</td></tr>`;
       }).join('') + '</tbody></table>'
       + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_audit\', \'audit récent (TRUNCATE super_admin_events)\')">🔥 Reset Audit récent</button></div>';
+  // M93 — 6 nouveaux onglets fidèles maquette M92.
+  } else if (t === 'tenants') {
+    await loadTab('workspaces'); // alias : tenants = vue workspaces enrichie
+    return;
+  } else if (t === 'agents') {
+    await renderUsersTab(); // alias : agents = vue users cross-workspace
+    return;
+  } else if (t === 'metrics') {
+    const r = await api('/api/superadmin_metrics.php');
+    if (!r || !r.ok) { c.textContent = (r && r.error) || 'Erreur metrics'; return; }
+    const k = r.kpis || {};
+    const fmt = (v) => v == null ? '—' : v;
+    c.innerHTML = '<section class="sa-section">'
+      + '<div class="sa-section-title">KPIs business</div>'
+      + '<div class="sa-cards">'
+        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + fmt(k.mrr_eur) + ' €</div><div class="sa-card-label">MRR</div><div class="sa-card-desc">monthly recurring revenue</div></div>'
+        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + fmt(k.arr_eur) + ' €</div><div class="sa-card-label">ARR projeté</div><div class="sa-card-desc">annual recurring (MRR × 12)</div></div>'
+        + '<div class="sa-card accent-success"><div class="sa-card-value">' + fmt(k.churn_pct_30d) + ' %</div><div class="sa-card-label">Churn 30j</div><div class="sa-card-desc">tenants suspendus</div></div>'
+        + '<div class="sa-card accent-success"><div class="sa-card-value">' + fmt(k.conversion_trial_paid_pct) + ' %</div><div class="sa-card-label">Conversion trial→paid</div><div class="sa-card-desc">30 derniers jours</div></div>'
+      + '</div></section>'
+      + '<section class="sa-section">'
+      + '<div class="sa-section-title">Top tenants par activité</div>'
+      + '<table><thead><tr><th>Tenant</th><th style="text-align:center">Dossiers</th><th style="text-align:center">Matchings</th></tr></thead><tbody>'
+      + (r.top_tenants || []).map(x => '<tr><td><b>' + (x.slug || '—') + '</b></td><td style="text-align:center">' + (x.dossiers || 0) + '</td><td style="text-align:center">' + (x.matchings || 0) + '</td></tr>').join('')
+      + '</tbody></table></section>'
+      + '<div style="font-size:11px;color:var(--color-text-muted);font-style:italic;margin-top:14px">Chart 30j + Heatmap → M94 cosmetic refactor avec Chart.js + sidebar layout maquette M92.</div>';
+  } else if (t === 'notifs') {
+    const r = await api('/api/superadmin_notifs_log.php');
+    if (!r || !r.ok) { c.textContent = (r && r.error) || 'Erreur notifs'; return; }
+    const k = r.kpis || {};
+    c.innerHTML = '<section class="sa-section">'
+      + '<div class="sa-section-title">PWA push (M88-M89)</div>'
+      + '<div class="sa-cards">'
+        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + (k.push_24h || 0) + '</div><div class="sa-card-label">Push 24h</div></div>'
+        + '<div class="sa-card accent-success"><div class="sa-card-value">' + (k.delivery_pct || 0) + ' %</div><div class="sa-card-label">Taux delivery</div></div>'
+        + '<div class="sa-card accent-success"><div class="sa-card-value">' + (k.subs_active || 0) + '</div><div class="sa-card-label">Subs actives</div></div>'
+        + '<div class="sa-card accent-warning"><div class="sa-card-value">' + (k.subs_expired || 0) + '</div><div class="sa-card-label">Expired (410)</div></div>'
+      + '</div></section>'
+      + '<section class="sa-section">'
+      + '<div class="sa-section-title">Logs push (50 dernières)</div>'
+      + '<table><thead><tr><th>Timestamp</th><th>User</th><th>Type</th><th>Status</th><th>Détail</th></tr></thead><tbody>'
+      + (r.events || []).map(e => '<tr><td class="col-date">' + (e.ts || '—') + '</td><td>' + (e.user_id || '—') + '</td><td><span class="badge badge-enregistre">' + (e.type || '—') + '</span></td><td>' + (e.status || '—') + '</td><td style="font-size:10.5px;color:var(--color-text-muted)">' + (e.detail || '').slice(0, 80) + '</td></tr>').join('')
+      + '</tbody></table></section>';
+  } else if (t === 'modules') {
+    c.innerHTML = '<section class="sa-section">'
+      + '<div class="sa-section-title">Catalogue Modules Oi</div>'
+      + '<div class="sa-cards" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">'
+        + '<div class="sa-card accent-success"><div class="sa-card-value" style="font-size:24px">🟢 Oi Agent</div><div class="sa-card-label">PROD · v476</div><div class="sa-card-desc">CRM agents immobiliers multi-tenant. Section III adaptative profil×pays (M77-M82). PWA push (M88-M89).</div></div>'
+        + '<div class="sa-card accent-warning"><div class="sa-card-value" style="font-size:24px">🟡 Oi Scan</div><div class="sa-card-label">BETA · v0.3</div><div class="sa-card-desc">OCR + extraction structurée documents (mandats/factures/ID). Backend ExpertScan séparé.</div></div>'
+        + '<div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:24px">⚪ Oi Book</div><div class="sa-card-label">PLANIFIÉ · Q3 2026</div><div class="sa-card-desc">Booking visites + signatures électroniques.</div></div>'
+        + '<div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:24px">⚪ Oi Demande</div><div class="sa-card-label">PLANIFIÉ · Q4 2026</div><div class="sa-card-desc">Marketplace de demandes acquéreurs anonymisées matchées sur biens des tenants.</div></div>'
+      + '</div></section>';
+  } else if (t === 'system') {
+    const r = await api('/api/superadmin_system.php');
+    if (!r || !r.ok) { c.textContent = (r && r.error) || 'Erreur system'; return; }
+    const s = r.server || {};
+    c.innerHTML = '<section class="sa-section">'
+      + '<div class="sa-section-title">Santé serveur Hetzner</div>'
+      + '<div class="sa-cards">'
+        + '<div class="sa-card accent-success"><div class="sa-card-value">' + (s.uptime || '—') + '</div><div class="sa-card-label">Uptime</div></div>'
+        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + (s.cpu_pct || 0) + ' %</div><div class="sa-card-label">CPU</div></div>'
+        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + (s.ram_pct || 0) + ' %</div><div class="sa-card-label">RAM</div></div>'
+        + '<div class="sa-card ' + ((s.disk_pct || 0) > 80 ? 'accent-warning' : 'accent-ocre') + '"><div class="sa-card-value">' + (s.disk_pct || 0) + ' %</div><div class="sa-card-label">Disque</div></div>'
+      + '</div></section>'
+      + '<section class="sa-section">'
+      + '<div class="sa-section-title">Deploys récents</div>'
+      + '<table><thead><tr><th>Timestamp</th><th>Commit</th><th>Mission</th><th style="text-align:center">Status</th></tr></thead><tbody>'
+      + (r.deploys || []).map(d => '<tr><td class="col-date">' + (d.ts || '—') + '</td><td><code style="font-size:11px;color:var(--color-accent)">' + (d.commit || '—') + '</code></td><td style="font-size:11.5px">' + (d.mission || '').slice(0, 100) + '</td><td style="text-align:center"><span class="badge badge-enregistre">OK</span></td></tr>').join('')
+      + '</tbody></table></section>';
   }
 }
 async function renderClientsTab() {
