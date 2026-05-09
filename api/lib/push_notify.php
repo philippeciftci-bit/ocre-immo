@@ -29,16 +29,21 @@ function ocre_push_notify(int $userId, string $type, string $title, string $body
         'internal_token' => $token,
     ];
 
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $url = 'http://127.0.0.1/api/push_send.php';
+    // En CLI HTTP_HOST est vide → nginx 301 vers https. On utilise un host tenant valide en fallback.
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    if ($host === '') $host = 'app.ocre.immo';
+    // Détermine schéma : si on est en HTTP local (nginx redirige vers https systematic), utiliser https direct.
+    $url = 'https://' . $host . '/api/push_send.php';
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => json_encode($payload),
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Host: ' . $host],
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 8,
         CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_SSL_VERIFYPEER => false, // loopback HTTPS, on peut tolérer cert
+        CURLOPT_SSL_VERIFYHOST => 0,
     ]);
     $resp = curl_exec($ch);
     $err = curl_error($ch);
