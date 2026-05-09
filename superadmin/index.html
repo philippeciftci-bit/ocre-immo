@@ -17,6 +17,24 @@
 <!-- M/2026/05/08/4 — DESIGN-TOKENS.2.6 link tokens.css -->
 <link rel="stylesheet" href="/styles/tokens.css">
 <style>
+  /* M/2026/05/09/7 (M59-FIX) — Fallback :root pour cas ou /styles/tokens.css ne charge pas (vhost superadmin renvoie text/html MIME -> Safari strict bloque). Sans ces vars, bouton background:var(--color-accent) etait invisible visuellement (pas de couleur). */
+  :root {
+    --color-bg-page: #FCFAF6;
+    --color-text-primary: #2A2018;
+    --color-text-muted: #6B5E4A;
+    --color-accent: #8B5E3C;
+    --color-bg-tint-warm: #FBF1E4;
+    --color-bg-tint-soft: #FFFCF5;
+    --color-bg-tint-hover: #FFF3EC;
+    --color-border-subtle: #E8DDD0;
+    --color-border-cream: #EDE6DC;
+    --color-text-brown: #6B4429;
+    --color-error: #C0392B;
+    --color-warning: #D68910;
+    --color-success: #2D7A3E;
+    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-serif: 'Cormorant Garamond', Georgia, serif;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: var(--font-sans); background: var(--color-bg-page); color: var(--color-text-primary); padding: 24px; }
   h1 { font-family: var(--font-serif); color: var(--color-accent); margin-bottom: 6px; font-size: 28px; }
