@@ -18753,16 +18753,21 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   async function doArchive(e) {
     if (e) e.stopPropagation();
     if (!c.id) return;
+    // M/2026/05/09/78 — toggle archive/restore selon etat courant.
+    const isRestore = !!c.archived;
+    const titleText = isRestore ? 'Restaurer ce dossier ?' : 'Archiver ce dossier ?';
+    const msgText = isRestore
+      ? 'Le dossier reapparaîtra dans la liste principale.'
+      : 'Le dossier sera retiré de la liste principale mais restera accessible dans Archives.';
     if (!(await askConfirm({
-      title: 'Archiver ce dossier ?',
-      message: 'Le dossier sera retiré de la liste principale mais restera accessible dans Archives.',
-      danger: false, confirmLabel: 'Archiver',
+      title: titleText, message: msgText,
+      danger: false, confirmLabel: isRestore ? 'Restaurer' : 'Archiver',
     }))) { setSwipeX(0); return; }
     try {
       const token = localStorage.getItem('ocre_token') || '';
       const r = await fetch(API + '/clients.php?action=archive', {
         method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
-        body: JSON.stringify({id: c.id, archived: 1}),
+        body: JSON.stringify({id: c.id, archived: isRestore ? 0 : 1}),
       });
       const j = await r.json();
       if (j && j.ok) {
@@ -18781,9 +18786,10 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
     // Empeche l alert "id requis" du backend sur swipe-delete d un dossier neuf vide pas encore POST.
     if (!c.id || String(c.id).startsWith('tmp-')) { setSwipeX(0); return; }
     const nameLabel = (c.prenom || c.nom) ? ((c.prenom || '') + ' ' + (c.nom || '')).trim() : (c.raison_sociale || 'ce dossier');
+    // M/2026/05/09/78 — modale durcie : suppression definitive depuis archives uniquement.
     if (!(await askConfirm({
-      title: 'Supprimer ce dossier ?',
-      message: 'Le dossier "' + nameLabel + '" sera supprimé. Cette suppression est restaurable pendant 90 jours depuis Archives, après quoi le dossier et ses fichiers attachés seront purgés définitivement.',
+      title: 'Supprimer définitivement ?',
+      message: 'Cette action est irréversible. Le dossier "' + nameLabel + '" et toutes ses données seront perdus définitivement. Confirmer la suppression ?',
       danger: true, confirmLabel: 'Supprimer',
     }))) { setSwipeX(0); return; }
     try {
@@ -18850,46 +18856,62 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   const wrapperMargin = isGrouped ? 0 : 10;
   return (
     <div ref={swipeRowRef} style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent', transition:'opacity 200ms ease-out, transform 200ms ease-out, max-height 220ms ease-out, margin-bottom 220ms ease-out', opacity: removing ? 0 : 1, transform: removing ? 'translateX(-30px)' : 'none', maxHeight: removing ? 0 : '600px', marginBottom: removing ? 0 : wrapperMargin, pointerEvents: removing ? 'none' : 'auto'}}>
-      {/* M/2026/04/30/33 — Variante A : 3 boutons compacts 60px chacun = 180px total swipe gauche.
-          SUPPR. (right:120, var(--color-error) trash) + ARCHIV. (right:60, #C9B698 archive) + APERÇU (right:0, #8B6F4E eye).
-          Reveles si swipeX <= -90 (threshold 50% de 180). PARTAGER retire du swipe (accessible via
-          APERCU -> fiche PDF -> Partager interne PdfShareModal M/25). */}
-      <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX <= -60) doDelete(e); }}
-        disabled={swipeX > -60}
-        title="Supprimer"
-        style={{position:'absolute', right:80, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'var(--color-error)', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="3 6 5 6 21 6"/>
-          <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
-          <path d="M10 11v6"/><path d="M14 11v6"/>
-          <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-        </svg>
-        <span>SUPPR.</span>
-      </button>
-      <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX <= -60) doArchive(e); }}
-        disabled={swipeX > -60}
-        title="Archiver"
-        style={{position:'absolute', right:40, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#C9B698', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="21 8 21 21 3 21 3 8"/>
-          <rect x="1" y="3" width="22" height="5"/>
-          <line x1="10" y1="12" x2="14" y2="12"/>
-        </svg>
-        <span>ARCHIV.</span>
-      </button>
-      <button type="button"
-        onClick={e => { e.stopPropagation(); if (swipeX <= -60 && props.openDossierPdf) { props.openDossierPdf(c.id); setSwipeX(0); } }}
-        disabled={swipeX > -60}
-        title="Aperçu"
-        style={{position:'absolute', right:0, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#8B6F4E', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-          <circle cx="12" cy="12" r="3"/>
-        </svg>
-        <span>APERÇU</span>
-      </button>
+      {/* M/2026/05/09/78 — Swipe contextuel: si !archived (accueil) -> [Archiver] + [PDF].
+          Si archived (page Archives) -> [Restaurer] + [Suppr. definitivement] (modale durcie). */}
+      {c.archived ? (
+        <>
+          <button type="button"
+            onClick={e => { e.stopPropagation(); if (swipeX <= -60) doDelete(e); }}
+            disabled={swipeX > -60}
+            title="Supprimer définitivement"
+            style={{position:'absolute', right:40, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'var(--color-error)', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+            </svg>
+            <span>SUPPR.</span>
+          </button>
+          <button type="button"
+            onClick={e => { e.stopPropagation(); if (swipeX <= -60) doArchive(e); }}
+            disabled={swipeX > -60}
+            title="Restaurer"
+            style={{position:'absolute', right:0, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#2D7A3E', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 14 4 9 9 4"/>
+              <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+            </svg>
+            <span>RESTAURER</span>
+          </button>
+        </>
+      ) : (
+        <>
+          <button type="button"
+            onClick={e => { e.stopPropagation(); if (swipeX <= -60) doArchive(e); }}
+            disabled={swipeX > -60}
+            title="Archiver"
+            style={{position:'absolute', right:40, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#C9B698', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="21 8 21 21 3 21 3 8"/>
+              <rect x="1" y="3" width="22" height="5"/>
+              <line x1="10" y1="12" x2="14" y2="12"/>
+            </svg>
+            <span>ARCHIV.</span>
+          </button>
+          <button type="button"
+            onClick={e => { e.stopPropagation(); if (swipeX <= -60 && props.openDossierPdf) { props.openDossierPdf(c.id); setSwipeX(0); } }}
+            disabled={swipeX > -60}
+            title="PDF"
+            style={{position:'absolute', right:0, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#8B6F4E', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span>PDF</span>
+          </button>
+        </>
+      )}
     <div className="client-row-card"
       onClick={e => { if (swipeX !== 0) { setSwipeX(0); return; } if (onClick) onClick(e); }}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}

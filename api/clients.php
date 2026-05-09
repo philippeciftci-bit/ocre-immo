@@ -526,8 +526,16 @@ switch ($action) {
     case 'delete': {
         // V50 — soft delete (zéro destruction directe). Rétention 90j via cron, puis purge
         // physique avec dump JSON /root/backups. Restaurable via restore.php.
+        // M/2026/05/09/78 — garde-fou : refuser DELETE si dossier non archivé (anti-perte donnees).
         $id = (int)($input['id'] ?? 0);
         if (!$id) jsonError('id requis');
+        $stmt = db()->prepare("SELECT archived FROM clients WHERE id = ? AND user_id = ? LIMIT 1");
+        $stmt->execute([$id, $user['id']]);
+        $row = $stmt->fetch();
+        if (!$row) jsonError('Introuvable', 404);
+        if ((int)$row['archived'] !== 1) {
+            jsonError('Cannot delete a non-archived contact. Archive it first.', 400);
+        }
         $ok = soft_delete('clients', $id, (int)$user['id'], (int)$user['id']);
         if (!$ok) jsonError('Introuvable ou déjà supprimé', 404);
         logAction((int)$user['id'], 'client_soft_delete', "id=$id");
