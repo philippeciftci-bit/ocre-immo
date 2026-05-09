@@ -8752,10 +8752,12 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     set('devise_source', 'manual');
   }
   const neufAncien = (d.bien && d.bien.neuf_ancien) || 'ancien';
+  // M/2026/05/09/29 — M78 : flags pays-spécifiques pour wording adaptatif Section III.
+  // _isMA défini en M77 (CGI 2026, Mourabaha/Ijara, COS/CES). _isFR ajouté en M78 (DPE, Hoguet, Visale, LMNP, GFA).
+  // Les missions M79+ ajouteront _isES, _isIT, _isPT, etc.
+  const _isFR = paysBien === 'FR';
+  const _isMA = paysBien === 'MA';
 
-  // M/2026/05/07/94bis — UNIFICATION : 4 branches activeProfil transformees en IIFE
-  // toujours executees. Chaque bloc rendu inconditionnellement, profil = tag informatif
-  // PAS un filtre UI. L utilisateur saisit ce qui le concerne, ignore le reste.
   // Bloc Acheteur/Investisseur (Prix budget + Frais agence + Cout total + Strategie/Performance invest)
   const blocAcheteurInvest = (() => {
     const mode = d.mode_financement || '';
@@ -8781,8 +8783,8 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills + suppression DEVISE DOSSIER. */}
         {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         <V55Bloc title="Prix" theme="prix">
-          <PriceField2Col label="Budget min" valueKey="budget_min" set={set} d={d} hint="Conversion bidir live" forceUpdate={forceUpdate}/>
-          <PriceField2Col label="Budget max" valueKey="budget_max" set={set} d={d} hint={_warnMax ? '⚠ Budget max < Budget min' : 'Conversion bidir live'} warn={_warnMax} forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Budget min" valueKey="budget_min" set={set} d={d} forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Budget max" valueKey="budget_max" set={set} d={d} hint={_warnMax ? '⚠ Budget max < Budget min' : (_isFR ? 'Inclure frais notaire ~7-8 % ancien / 2-3 % neuf' : null)} warn={_warnMax} forceUpdate={forceUpdate}/>
           <PriceField2Col label="Liquide dispo" valueKey="prix_liquide" set={set} d={d} hint="Cash hors crédit" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
@@ -8909,11 +8911,22 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/05/03/2.1 — sémantique canonique : prix_affiche / prix_plancher / prix_liquide
             stockent un nombre nu sans unité ; l'unité (gauche-currency) vit en state UI
             window.__ocreCurrencyV5State. Reload = retour défaut EUR/MAD/10.84. */}
-        <V55Bloc title="Prix" theme="prix">
-          <PriceField2Col label="Prix" valueKey="prix_affiche" set={set} d={d} hint="Conversion bidir live" forceUpdate={forceUpdate}/>
+        <V55Bloc title={_isFR ? 'Prix vendeur (Hoguet)' : 'Prix'} theme="prix">
+          <PriceField2Col label={_isFR ? 'Prix vendeur affiché' : 'Prix'} valueKey="prix_affiche" set={set} d={d} hint={_isFR ? 'Honoraires libres loi Hoguet 1970 — afficher Prix FAI vs Prix vendeur séparé' : null} forceUpdate={forceUpdate}/>
           <PriceField2Col label="Prix plancher 🔒" valueKey="prix_plancher" set={set} d={d} hint="Visible agent uniquement (masqué sur PDF partagé)" forceUpdate={forceUpdate}/>
           <PriceField2Col label="Liquide" valueKey="prix_liquide" set={set} d={d} hint="Partie cash hors compta" forceUpdate={forceUpdate}/>
         </V55Bloc>
+
+        {_isFR && (
+          <V55Bloc title="Diagnostics obligatoires (DDT)" theme="agence">
+            <V55Field label="DPE classe énergie" type="select" value={d.fr_dpe_classe} onChange={v => set('fr_dpe_classe', v)}
+              options={['A','B','C','D','E','F (vente OK, location interdite 2025)','G (vente OK, location interdite 2028)','En cours']}
+              hint="Loi Climat : F interdit location 2025, G 2028. Mention obligatoire annonces depuis 2022."/>
+            <V55Field label="Diagnostics annexés au compromis" type="select" value={d.fr_ddt_etat} onChange={v => set('fr_ddt_etat', v)}
+              options={['Tous prêts (DPE + amiante + plomb si <1949 + termites + ERP + élec/gaz si >15 ans)','En cours','À planifier','Non applicable']}
+              hint="Validité : DPE 10 ans / amiante illimité si absence / termites 6 mois / ERP 6 mois"/>
+          </V55Bloc>
+        )}
 
         {/* M/2026/05/06/80.2.A — V55Bloc Frais d'agence Section III SUPPRIME. Composant M53FraisAgenceMulti
             migre vers Section VI 6b (placeholder remplace par instance fonctionnelle). totalAgenceMulti
@@ -8982,9 +8995,10 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills Locataire. */}
         {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         <V55Bloc title="Loyer recherché" theme="prix">
-          {/* M/2026/05/03/2.1 — sémantique canonique : loyer_min / loyer_max / caution_dispo
-              stockent un nombre nu sans unité ; unité gauche-currency = state UI window.__ocreCurrencyV5State. */}
-          <PriceField2Col label="Loyer min" valueKey="loyer_min" set={set} d={d} hint="Conversion bidir live" forceUpdate={forceUpdate}/>
+          {_isFR && (
+            <V55Field label="Revenus mensuels totaux (3× loyer cible)" type="number" value={d.fr_revenus_mensuels} onChange={v => set('fr_revenus_mensuels', v)} suffix="EUR/mois" hint="Règle FR : revenus ≥ 3× loyer charges comprises usuel. Visale possible si non éligible caution physique."/>
+          )}
+          <PriceField2Col label="Loyer min" valueKey="loyer_min" set={set} d={d} forceUpdate={forceUpdate}/>
           {(() => {
             const _min = Number(d.loyer_min) || 0;
             const _max = Number(d.loyer_max) || 0;
@@ -9068,13 +9082,21 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills Bailleur. */}
         {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
         <V55Bloc title="Loyer & conditions" theme="prix">
-          {/* M/2026/05/03/2.1 — sémantique canonique : loyer_demande / loyer_plancher /
-              charges_recuperables / depot_garantie_demande stockent un nombre nu sans unité. */}
-          <PriceField2Col label="Loyer" valueKey="loyer_demande" set={set} d={d} hint="Conversion bidir live" forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Loyer" valueKey="loyer_demande" set={set} d={d} hint={_isFR ? 'Mensuel hors charges. Encadrement zone tendue : Paris/Lyon/Bordeaux/Lille/Pays Basque/Annecy/Tours/La Rochelle/Clermont' : null} forceUpdate={forceUpdate}/>
           <PriceField2Col label="Loyer plancher 🔒" valueKey="loyer_plancher" set={set} d={d} hint="Visible agent uniquement" forceUpdate={forceUpdate}/>
           <PriceField2Col label="Charges récupérables" valueKey="charges_recuperables" set={set} d={d} hint="Mensuelles récupérables" forceUpdate={forceUpdate}/>
-          <PriceField2Col label="Caution" valueKey="depot_garantie_demande" set={set} d={d} hint={paysBien === 'FR' ? '1-2 mois loyer' : '2-3 mois loyer'} forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Caution" valueKey="depot_garantie_demande" set={set} d={d} hint={_isFR ? '1 mois nu / 2 mois meublé (légal max — 0 mois bail mobilité)' : '2-3 mois loyer'} forceUpdate={forceUpdate}/>
           <V55Field label="Charges non récupérables (propriétaire)" type="number" value={d.charges_non_recuperables} onChange={v => set('charges_non_recuperables', v)} suffix={(CURRENCY_SYMBOL_V5[cur.left] || cur.left) + '/mois'}/>
+          {_isFR && (
+            <>
+              <V55Field label="Type de bail (loi 89-462)" type="select" value={d.fr_type_bail} onChange={v => set('fr_type_bail', v)}
+                options={['Bail vide 3 ans (résidence principale)','Bail meublé 1 an (résidence principale)','Bail mobilité 1-10 mois (sans DG)','Bail étudiant 9 mois','Bail commercial 3-6-9','Saisonnier (Code civil)','Autre']}/>
+              <V55Field label="Zone tendue ?" type="toggle" value={!!d.fr_zone_tendue} onChange={v => set('fr_zone_tendue', v)} hint="Si oui, encadrement loyer + plafond complément exceptionnel motivé"/>
+              <V55Field label="DPE classe énergie" type="select" value={d.fr_dpe_classe} onChange={v => set('fr_dpe_classe', v)}
+                options={['A','B','C','D','E','F (loc interdite 2025)','G (loc interdite 2028)','En cours']}
+                hint="Loi Climat : F interdit 2025, G 2028"/>
+            </>
+          )}
         </V55Bloc>
 
         <V55Bloc title="Honoraires de location" theme="agence">
@@ -9168,12 +9190,8 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
   // M/2026/05/09/28 — M77 : restauration filtre conditionnel par profil (annule M/2026/05/07/94bis
   // "UNIFICATION" qui rendait les 4 blocs inconditionnellement et créait la confusion Vendeur ↔ Acheteur ↔
   // Bailleur ↔ Locataire constatée par Philippe sur Phil IPPE). Ajout Marchand de biens + Promoteur ex nihilo.
-  // Adaptation Maroc : libellés droits enregistrement CGI 2026 + mode financement Mourabaha/Ijara déjà
-  // présent via FINANCE_MODES.MA. Pour les autres pays (FR/ES/IT/...), missions M78+ ajusteront les
-  // libellés et seuils — pour M77 le rendu reste fonctionnel mais avec wording MA-leaning.
-  const _isMA = paysBien === 'MA';
-
-  // Bloc Marchand de biens (ex nihilo Maroc) — Prix achat / Travaux / Revente / Marge / Délai portage.
+  // M77 : wording MA-leaning ; M78 : wording FR-leaning ajouté ci-dessous via _isFR (déjà défini en haut).
+  // Bloc Marchand de biens (ex nihilo Maroc + France) — Prix achat / Travaux / Revente / Marge / Délai portage.
   const blocMarchandBiens = (() => {
     const _achatMax = Number(d.mdb_prix_achat_max) || 0;
     const _travaux = Number(d.mdb_travaux_estimes) || 0;
