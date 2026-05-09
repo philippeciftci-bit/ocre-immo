@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Ocre Immo — Super-admin</title>
 <link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
@@ -104,8 +104,16 @@
   .reset-total-btn:hover { background: #8B0000; }
   .reset-total-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .login { max-width: 380px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; border: 1px solid #E5DDC8; }
-  .login input { width: 100%; padding: 10px 12px; border: 1px solid #B89968; border-radius: 6px; margin-bottom: 10px; font-family: inherit; }
+  .login input { width: 100%; padding: 10px 12px; border: 1px solid #B89968; border-radius: 6px; margin-bottom: 10px; font-family: inherit; font-size: 16px; }
   .login button { width: 100%; padding: 12px; background: var(--color-accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .login button:disabled { background: #C9B698; cursor: not-allowed; opacity: 0.85; }
+  /* M/2026/05/09/6 — accessibilite clavier iOS : viewport reduit -> margin haut diminue pour garder bouton visible. */
+  @media (max-height: 600px) {
+    .login { margin: 16px auto; padding: 18px; }
+    .login h1 { margin-bottom: 4px; font-size: 22px; }
+  }
+  @keyframes oi-spin { to { transform: rotate(360deg); } }
+  .oi-spin { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: oi-spin 0.7s linear infinite; vertical-align: -2px; margin-right: 6px; }
   /* M/2026/05/07/96.1bis — fix oeil debordait bouton Se connecter sur iPad. ROOT CAUSE : selecteur .login button (specificite 0,1,1) plus fort que .pwd-eye (0,1,0) -> .pwd-eye heritait width:100% + padding:12px + background:var(--color-accent) du bouton login = bouton geant qui debordait sur le bouton suivant. FIX : selecteur .login button.pwd-eye (0,2,1) gagne en specificite. wrapper porte margin (pas input), padding-right reserve zone oeil, centrage top:50% translateY -50% independant hauteur input, z-index 2 modere. */
   .pwd-wrap { position: relative; margin-bottom: 10px; }
   .login .pwd-wrap input { margin-bottom: 0; padding-right: 44px; }
@@ -207,12 +215,24 @@
 </head>
 <body>
 <div id="root"><div class="login" id="login">
-  <h1>Super-admin</h1>
-  <p style="color:#6B5E4A;margin-bottom:14px;font-size:13px">Entrez votre email super-administrateur, recevez un lien d'accès direct au dashboard.</p>
-  <input id="email" type="email" placeholder="Email super-admin" autocomplete="email">
-  <button onclick="doSendMagicLink()">Recevoir mon lien</button>
-  <p id="msg" style="color:#2D7A3E;font-size:13px;margin-top:12px;display:none;text-align:center">Si cet email est un compte super-admin, un lien d'accès vient d'être envoyé. Vérifiez votre boîte mail (lien valide 24h).</p>
-  <p id="err" style="color:#8B0000;font-size:12px;margin-top:10px"></p>
+  <!-- M/2026/05/09/6 — Etat 1 (form) ou Etat 2 (confirmation) selon flag JS. -->
+  <div id="form-state">
+    <h1>Super-admin</h1>
+    <p style="color:#6B5E4A;margin-bottom:14px;font-size:13px">Entrez votre email super-administrateur, recevez un lien d'accès direct au dashboard.</p>
+    <form id="magic-form" autocomplete="on" novalidate>
+      <input id="email" type="email" placeholder="Email super-admin" autocomplete="email" inputmode="email" required>
+      <button id="btn-submit" type="submit" disabled>Demander un lien d'accès</button>
+    </form>
+    <p id="err" style="color:#8B0000;font-size:12px;margin-top:10px;min-height:14px"></p>
+  </div>
+  <div id="confirm-state" style="display:none;text-align:center">
+    <div style="font-size:54px;line-height:1;margin:8px 0 14px">✉️</div>
+    <h1 style="margin-bottom:6px">Lien envoyé</h1>
+    <p style="color:#3a2e22;font-size:14px;margin-bottom:14px;line-height:1.5">Un lien d'accès vient d'être envoyé à <b id="confirm-email"></b>. Vérifie ta boîte mail. Le lien est valide 24h.</p>
+    <button id="btn-resend" type="button" disabled style="background:transparent;color:var(--color-accent);border:1.5px solid var(--color-accent);font-weight:600">Disponible dans 60s</button>
+    <p style="margin-top:14px;font-size:13px;color:#6B5E4A"><a id="link-other-email" href="#" style="color:var(--color-accent);text-decoration:underline;cursor:pointer">Utiliser un autre email</a></p>
+    <p id="resend-msg" style="color:#2D7A3E;font-size:12px;margin-top:8px;min-height:14px"></p>
+  </div>
 </div></div>
 
 <script>
@@ -226,21 +246,133 @@ const api = (url, opts = {}) => {
   if (opts.body && typeof opts.body !== 'string') { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(opts.body); }
   return fetch(url, opts).then(r => r.json());
 };
-async function doSendMagicLink() {
-  const email = document.getElementById('email').value.trim();
+// M/2026/05/09/6 — pattern UX magic link Stripe/Vercel/Notion : 1 clic = 1 envoi, ecran confirmation, cooldown 60s.
+let isSubmitting = false;
+let lastEmail = '';
+let cooldownTimer = null;
+const SUBMIT_BTN_DEFAULT = "Demander un lien d'accès";
+const SUBMIT_BTN_SENDING = '<span class="oi-spin"></span>Envoi en cours…';
+const RESEND_COOLDOWN_S = 60;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function setSubmitEnabled(enabled) {
+  const btn = document.getElementById('btn-submit');
+  if (!btn) return;
+  btn.disabled = !enabled;
+}
+function emailValid(v) { return EMAIL_RE.test((v || '').trim()); }
+function bindForm() {
+  const emailEl = document.getElementById('email');
   const errEl = document.getElementById('err');
-  const msgEl = document.getElementById('msg');
+  const formEl = document.getElementById('magic-form');
+  if (!emailEl || !formEl) return;
+  emailEl.addEventListener('input', () => {
+    setSubmitEnabled(emailValid(emailEl.value));
+    if (errEl.textContent) errEl.textContent = '';
+  });
+  formEl.addEventListener('submit', (e) => { e.preventDefault(); doSendMagicLink(); });
+}
+async function doSendMagicLink() {
+  if (isSubmitting) return;
+  const emailEl = document.getElementById('email');
+  const errEl = document.getElementById('err');
+  const btn = document.getElementById('btn-submit');
+  const email = emailEl.value.trim();
   errEl.textContent = '';
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'Email invalide.'; return; }
+  if (!emailValid(email)) { errEl.textContent = 'Email invalide.'; return; }
+  isSubmitting = true;
+  setSubmitEnabled(false);
+  btn.innerHTML = SUBMIT_BTN_SENDING;
+  emailEl.disabled = true;
   try {
     const r = await fetch('/api/superadmin_send_magic_link.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email})});
     await r.json();
-    msgEl.style.display = '';
-    document.getElementById('email').disabled = true;
+    lastEmail = email;
+    showConfirmState(email);
   } catch (e) {
-    errEl.textContent = 'Erreur reseau';
+    errEl.textContent = 'Impossible d’envoyer pour le moment. Réessayez.';
+    btn.innerHTML = SUBMIT_BTN_DEFAULT;
+    emailEl.disabled = false;
+    setSubmitEnabled(emailValid(emailEl.value));
+    isSubmitting = false;
   }
 }
+function showConfirmState(email) {
+  document.getElementById('form-state').style.display = 'none';
+  document.getElementById('confirm-state').style.display = '';
+  document.getElementById('confirm-email').textContent = email;
+  document.getElementById('resend-msg').textContent = '';
+  startResendCooldown();
+}
+function showFormState() {
+  if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null; }
+  isSubmitting = false;
+  document.getElementById('confirm-state').style.display = 'none';
+  document.getElementById('form-state').style.display = '';
+  const emailEl = document.getElementById('email');
+  emailEl.value = '';
+  emailEl.disabled = false;
+  document.getElementById('btn-submit').innerHTML = SUBMIT_BTN_DEFAULT;
+  setSubmitEnabled(false);
+  document.getElementById('err').textContent = '';
+  emailEl.focus();
+}
+function startResendCooldown() {
+  const btn = document.getElementById('btn-resend');
+  if (!btn) return;
+  btn.disabled = true;
+  let s = RESEND_COOLDOWN_S;
+  btn.textContent = 'Disponible dans ' + s + 's';
+  if (cooldownTimer) clearInterval(cooldownTimer);
+  cooldownTimer = setInterval(() => {
+    s -= 1;
+    if (s <= 0) {
+      clearInterval(cooldownTimer); cooldownTimer = null;
+      btn.disabled = false;
+      btn.textContent = 'Renvoyer un lien';
+    } else {
+      btn.textContent = 'Disponible dans ' + s + 's';
+    }
+  }, 1000);
+}
+async function doResendMagicLink() {
+  if (!lastEmail) return;
+  const btn = document.getElementById('btn-resend');
+  const msg = document.getElementById('resend-msg');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.innerHTML = '<span class="oi-spin" style="border-color:rgba(139,94,60,0.3);border-top-color:var(--color-accent)"></span>Envoi…';
+  msg.style.color = '#2D7A3E';
+  msg.textContent = '';
+  try {
+    const r = await fetch('/api/superadmin_send_magic_link.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email: lastEmail})});
+    const j = await r.json().catch(() => ({}));
+    if (j && j.error === 'RATE_LIMIT') {
+      msg.style.color = '#8B0000';
+      msg.textContent = 'Trop de demandes, réessayez dans quelques minutes.';
+      btn.textContent = orig;
+      btn.disabled = false;
+    } else {
+      msg.textContent = 'Lien renvoyé.';
+      startResendCooldown();
+    }
+  } catch (e) {
+    msg.style.color = '#8B0000';
+    msg.textContent = 'Impossible d’envoyer. Réessayez.';
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+function bindConfirm() {
+  const btn = document.getElementById('btn-resend');
+  const lnk = document.getElementById('link-other-email');
+  if (btn) btn.addEventListener('click', doResendMagicLink);
+  if (lnk) lnk.addEventListener('click', (e) => { e.preventDefault(); showFormState(); });
+}
+// Bind initial au DOM ready (script charge en bas de body, OK direct).
+bindForm();
+bindConfirm();
 async function logout() {
   try { await fetch('/api/logout.php', {method:'POST', credentials:'include'}); } catch (e) {}
   localStorage.removeItem(TOKEN_KEY);
@@ -904,6 +1036,12 @@ function searchDebounced(v) {
         const j2 = await r2.json();
         if (j2 && j2.ok && j2.session_token) localStorage.setItem(TOKEN_KEY, j2.session_token);
       } catch (_) {}
+      // M/2026/05/09/4 — Handler ?next= : redirect vers next si valide *.ocre.immo (whitelist stricte).
+      const nextParam = params.get('next');
+      if (nextParam && /^https:\/\/[a-z0-9-]+\.ocre\.immo\//.test(nextParam)) {
+        window.location.replace(nextParam);
+        return;
+      }
       renderConsole();
     }
   } catch (_) {}
