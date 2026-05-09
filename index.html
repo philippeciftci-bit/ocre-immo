@@ -8795,6 +8795,15 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/04/30/49 + M/2026/05/07/94 — RechercheBienBloc retire ici (Section III Investisseur). Maintenant rendu unique en Section II via Stage 2 inline (tous profils, M94 unification). */}
         {/* M/2026/05/03/2.1 — Currency v5 barre 3 pills + suppression DEVISE DOSSIER. */}
         {/* M/2026/05/06/77 — ligne globale CurrencyBar3Pills supprimee. Chaque pair dual-currency devient autonome via DualCurrencyPair. */}
+        {(_isTN || _isDZ) && (
+          <V55Bloc title="Acquisition par étrangers" theme="agence">
+            <V55Field label="Restriction acquisition étrangers" type="select" value={d.maghreb_restriction_etrangers} onChange={v => set('maghreb_restriction_etrangers', v)}
+              options={_isTN
+                ? ['Aucune (zone touristique)','Autorisation gouverneur requise (terrain hors zone touristique)','Acquéreur résident tunisien','À vérifier']
+                : ['Acquéreur résident algérien (DZ)','Bien à usage propre uniquement','Restriction stricte étrangers','À vérifier']}
+              hint={_isTN ? 'TN : étrangers libres en zone touristique, autorisation gouverneur ailleurs' : 'DZ : restrictions importantes pour non-résidents'}/>
+          </V55Bloc>
+        )}
         <V55Bloc title="Prix" theme="prix">
           <PriceField2Col label="Budget min" valueKey="budget_min" set={set} d={d} forceUpdate={forceUpdate}/>
           <PriceField2Col label="Budget max" valueKey="budget_max" set={set} d={d} hint={_warnMax ? '⚠ Budget max < Budget min' : (
