@@ -7715,7 +7715,9 @@ function setCurrencyV5State(patch, forceUpdate) {
 // Distinction explicite avec la regle "zero decorative emoji UI" : ces drapeaux servent l'utilite
 // (lecture rapide de la devise dans le picker), pas la decoration. Le code ISO 3 lettres reste
 // l'unique identifiant ailleurs dans l'app (PDF, dossier list, montants formates).
-const _CURRENCY_FLAG_RAW_V5 = {EUR:'🇪🇺', MAD:'🇲🇦', USD:'🇺🇸', GBP:'🇬🇧', AED:'🇦🇪', CHF:'🇨🇭'};
+// M/2026/05/09/17 — M67 : extension à 12 devises (cohérence M66/M83) : EUR/MAD/USD/GBP/CHF/CAD/JPY/INR/AED/SAR/TRY/CNY.
+const _CURRENCY_FLAG_RAW_V5 = {EUR:'🇪🇺', MAD:'🇲🇦', USD:'🇺🇸', GBP:'🇬🇧', CHF:'🇨🇭', CAD:'🇨🇦', JPY:'🇯🇵', INR:'🇮🇳', AED:'🇦🇪', SAR:'🇸🇦', TRY:'🇹🇷', CNY:'🇨🇳'};
+const CURRENCY_NAMES_V5 = {EUR:'Euro', MAD:'Dirham marocain', USD:'Dollar US', GBP:'Livre sterling', CHF:'Franc suisse', CAD:'Dollar canadien', JPY:'Yen', INR:'Roupie indienne', AED:'Dirham EAU', SAR:'Riyal saoudien', TRY:'Livre turque', CNY:'Yuan'};
 // M/2026/05/04/19 — proxy via flag NEW_CURRENCY_PICKER_V5. Si flag OFF (toggle admin),
 // retourne '' pour cacher le drapeau. Sinon renvoie l'emoji depuis la map raw.
 const CURRENCY_FLAG_V5 = new Proxy(_CURRENCY_FLAG_RAW_V5, {
@@ -7726,9 +7728,9 @@ const CURRENCY_FLAG_V5 = new Proxy(_CURRENCY_FLAG_RAW_V5, {
     return flagOn ? (target[prop] || '') : '';
   }
 });
-const CURRENCY_SYMBOL_V5 = {EUR:'EUR', MAD:'MAD', USD:'USD', GBP:'GBP', AED:'AED', CHF:'CHF'};
-const CURRENCY_LIST_V5 = ['EUR','MAD','USD','GBP','AED','CHF'];
-const RATES_OFFICIAL_V5 = { EUR_MAD: 10.84, EUR_USD: 1.08, EUR_GBP: 0.857, EUR_AED: 3.97 };
+const CURRENCY_SYMBOL_V5 = {EUR:'EUR', MAD:'MAD', USD:'USD', GBP:'GBP', CHF:'CHF', CAD:'CAD', JPY:'JPY', INR:'INR', AED:'AED', SAR:'SAR', TRY:'TRY', CNY:'CNY'};
+const CURRENCY_LIST_V5 = ['EUR','MAD','USD','GBP','CHF','CAD','JPY','INR','AED','SAR','TRY','CNY'];
+const RATES_OFFICIAL_V5 = { EUR_MAD: 10.84, EUR_USD: 1.08, EUR_GBP: 0.857, EUR_CHF: 0.93, EUR_CAD: 1.49, EUR_JPY: 165.0, EUR_INR: 90.5, EUR_AED: 3.97, EUR_SAR: 4.05, EUR_TRY: 35.5, EUR_CNY: 7.8 };
 function getOfficialRateV5(left, right) {
   if (left === right) return 1;
   if (left === 'EUR') return RATES_OFFICIAL_V5['EUR_'+right] || 1;
@@ -8004,40 +8006,121 @@ function RatePopup2Col({onClose, forceUpdate}) {
   );
 }
 
-// Input prix double 2 cols [gauche-currency drapeau + montant] [droite-currency drapeau + montant].
-// Edit gauche → set canonique = nombre tapé. Edit droite → set canonique = nombre/cur_rate.
-// Conversion bidir live. Drapeaux flexShrink:0. minmax(0,1fr) sur grid (anti M-PAN-FIX1 overflow iPhone).
+// Input prix M66 — 3 zones partagées : [montant + code-flag] [taux ✏️ Auto/Manuel] [flag-code + montant]
+// Devise + taux partagés à la fiche client via getCurrencyV5State (state global session).
+// Drapeau accolé APRÈS le code (côté gauche : code-flag à droite de l'input ; côté droit : flag-code à gauche).
+// M/2026/05/09/17 — M67 : refonte vers UX maquette M66 validée Philippe (DualCurrencyPair partagé fiche).
 function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
   const cur = getCurrencyV5State();
+  const [pickerSide, setPickerSide] = React.useState(null);
+  const [rateEditing, setRateEditing] = React.useState(false);
+  const [rateDraft, setRateDraft] = React.useState('');
+  const rateInputRef = React.useRef(null);
+  React.useEffect(() => {
+    function onDocClick() { setPickerSide(null); }
+    function onEsc(e) { if (e.key === 'Escape') { setPickerSide(null); setRateEditing(false); } }
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => { document.removeEventListener('click', onDocClick); document.removeEventListener('keydown', onEsc); };
+  }, []);
+  React.useEffect(() => { if (rateEditing && rateInputRef.current) { rateInputRef.current.focus(); rateInputRef.current.select(); } }, [rateEditing]);
   const canonical = Number(d[valueKey]) || 0;
+  const rate = Number(cur.rate) || 1;
   const displayLeft = canonical;
-  const displayRight = canonical * (Number(cur.rate) || 1);
-  const handleLeft = (e) => {
-    const v = parseNumV5(e.target.value);
-    set(valueKey, v, {commit: true});
-  };
+  const displayRight = canonical * rate;
+  const handleLeft = (e) => set(valueKey, parseNumV5(e.target.value), {commit: true});
   const handleRight = (e) => {
     const v = parseNumV5(e.target.value);
-    const rate = Number(cur.rate) || 1;
     set(valueKey, rate > 0 ? v / rate : 0, {commit: true});
   };
-  const iwBase = {display:'flex', alignItems:'center', background:'#fff', borderRadius:6, padding:'6px 8px', height:38, gap:'var(--space-5px)', boxSizing:'border-box', minWidth:0, overflow:'hidden'};
-  const iwBorder = warn ? '1px solid var(--color-error)' : '1px solid #D6C7AC';
-  const iwBg = warn ? '#FEF6F6' : '#fff';
-  const inputStyle = {flex:1, border:'none', outline:'none', fontSize:'var(--font-size-13)', background:'transparent', minWidth:0, width:'100%', padding:'var(--space-0)', fontFamily:'inherit', color:'var(--color-text-primary)'};
+  const pickCurrency = (side, code) => {
+    const next = side === 'left' ? {left: code} : {right: code};
+    if (side === 'left' && code === cur.right) next.right = cur.left;
+    if (side === 'right' && code === cur.left) next.left = cur.right;
+    next.rate = getOfficialRateV5(next.left || cur.left, next.right || cur.right);
+    next.manualRate = false;
+    setCurrencyV5State(next, forceUpdate);
+    setPickerSide(null);
+  };
+  const commitRate = () => {
+    const v = parseNumV5(rateDraft);
+    if (v > 0 && v < 100000) setCurrencyV5State({rate: v, manualRate: true}, forceUpdate);
+    setRateEditing(false);
+  };
+  const isManual = !!cur.manualRate;
+  const _border = warn ? 'var(--color-error)' : '#D6C7AC';
+  const _bg = warn ? '#FEF6F6' : '#fff';
+  const _zone = {display:'flex', alignItems:'center', background:_bg, border:'1px solid '+_border, borderRadius:7, padding:'4px 5px', minHeight:44, gap:'var(--space-4px)', boxSizing:'border-box', minWidth:0, position:'relative'};
+  const _input = {flex:1, border:'none', outline:'none', fontSize:'var(--font-size-13)', fontWeight:600, background:'transparent', minWidth:0, width:'100%', padding:'6px 4px', fontFamily:'inherit', color:'var(--color-text-primary)', WebkitAppearance:'none', MozAppearance:'textfield'};
+  const _cb = {display:'inline-flex', alignItems:'center', gap:3, minHeight:36, padding:'4px 6px', background:'var(--color-bg-tint-warm)', border:'1px solid '+_border, borderRadius:6, cursor:'pointer', fontFamily:'inherit', fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-brown)', flexShrink:0, userSelect:'none'};
+  const _pop = {position:'absolute', top:'calc(100% + 4px)', zIndex:80, background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, boxShadow:'0 6px 16px rgba(0,0,0,0.14)', minWidth:170, maxHeight:240, overflowY:'auto', padding:4};
+  const _popItem = (active) => ({display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:5, cursor:'pointer', fontFamily:'inherit', fontSize:'var(--font-size-12)', color: active ? 'var(--color-text-brown)' : 'var(--color-text-primary)', background: active ? 'var(--color-bg-tint-warm)' : 'transparent', minHeight:36, fontWeight: active ? 700 : 500});
   return (
     <div style={{marginBottom:'var(--space-2)'}}>
       <div style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600, marginBottom:'var(--space-1)'}}>{label}</div>
-      <div style={{display:'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap:'var(--space-6px)'}}>
-        <div style={{...iwBase, border:iwBorder, background:iwBg}}>
-          <span style={{fontSize:'var(--font-size-sm)', lineHeight:1, flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
-          <input type="text" inputMode="numeric" value={fmtNumV5(displayLeft)} onChange={handleLeft} placeholder="0" style={inputStyle}/>
-          <span style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
+      <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) auto minmax(0,1fr)', gap:4, alignItems:'stretch'}}>
+        {/* GAUCHE : [input][code 🇪🇺 ▾] */}
+        <div style={_zone}>
+          <input type="text" inputMode="numeric" value={fmtNumV5(displayLeft)} onChange={handleLeft} placeholder="0" style={_input}/>
+          <button type="button" onClick={(e) => { e.stopPropagation(); setPickerSide(pickerSide === 'left' ? null : 'left'); }} style={_cb} title={CURRENCY_NAMES_V5[cur.left] || cur.left}>
+            <span>{CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
+            <span style={{fontSize:14, lineHeight:1}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+            <span style={{fontSize:9, opacity:.6}}>▾</span>
+          </button>
+          {pickerSide === 'left' && (
+            <div onClick={(e) => e.stopPropagation()} style={{..._pop, left:0, right:'auto'}}>
+              {CURRENCY_LIST_V5.map(c => (
+                <div key={c} onClick={() => pickCurrency('left', c)} style={_popItem(c === cur.left)}>
+                  <span style={{fontSize:16, lineHeight:1}}>{CURRENCY_FLAG_V5[c]}</span>
+                  <span style={{fontWeight:700, minWidth:32}}>{c}</span>
+                  <span style={{color:'var(--color-text-muted)', fontSize:'var(--font-size-10)', flex:1}}>{CURRENCY_NAMES_V5[c] || ''}</span>
+                  {c === cur.left && <span style={{color:'var(--color-text-brown)'}}>✓</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        <div style={{...iwBase, border:iwBorder, background:iwBg}}>
-          <span style={{fontSize:'var(--font-size-sm)', lineHeight:1, flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
-          <input type="text" inputMode="numeric" value={fmtNumV5(displayRight)} onChange={handleRight} placeholder="0" style={inputStyle}/>
-          <span style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right] || cur.right}</span>
+        {/* MILIEU : taux + ✏️ + badge Auto/Manuel */}
+        <button type="button" onClick={(e) => { e.stopPropagation(); if (!rateEditing) { setRateDraft(Number(rate).toFixed(rate < 10 ? 4 : 2)); setRateEditing(true); } }}
+          style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:44, padding:'2px 8px', background: isManual ? '#F4ECE3' : 'var(--color-bg-tint-warm)', border:'1.5px '+(isManual ? 'solid' : 'dashed')+' '+(isManual ? 'var(--color-text-brown)' : 'var(--color-border-medium)'), borderRadius:7, cursor:'pointer', fontFamily:'inherit', flexShrink:0}}
+          title="Modifier le taux">
+          {rateEditing ? (
+            <input ref={rateInputRef} type="text" inputMode="decimal" value={rateDraft}
+              onChange={(e) => setRateDraft(e.target.value)}
+              onBlur={commitRate}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitRate(); } else if (e.key === 'Escape') { e.preventDefault(); setRateEditing(false); } }}
+              style={{width:54, border:'1px solid var(--color-text-brown)', borderRadius:4, padding:'4px 6px', textAlign:'center', fontFamily:'inherit', fontSize:'var(--font-size-13)', fontWeight:700, color:'var(--color-text-brown)'}}/>
+          ) : (
+            <>
+              <span style={{display:'flex', alignItems:'center', gap:3, fontSize:'var(--font-size-12)', fontWeight:700, color:'var(--color-text-brown)'}}>
+                <span>{Number(rate).toFixed(rate < 10 ? 4 : 2)}</span>
+                <span style={{fontSize:10, opacity:.7}}>✏️</span>
+              </span>
+              <span style={{fontSize:8, fontWeight:700, color: isManual ? 'var(--color-ocre-deep)' : 'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginTop:1, lineHeight:1}}>{isManual ? 'Manuel' : 'Auto'}</span>
+            </>
+          )}
+        </button>
+        {/* DROITE : [🇲🇦 code ▾][input] */}
+        <div style={_zone}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); setPickerSide(pickerSide === 'right' ? null : 'right'); }} style={_cb} title={CURRENCY_NAMES_V5[cur.right] || cur.right}>
+            <span style={{fontSize:14, lineHeight:1}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+            <span>{CURRENCY_SYMBOL_V5[cur.right] || cur.right}</span>
+            <span style={{fontSize:9, opacity:.6}}>▾</span>
+          </button>
+          <input type="text" inputMode="numeric" value={fmtNumV5(displayRight)} onChange={handleRight} placeholder="0" style={{..._input, textAlign:'right'}}/>
+          {pickerSide === 'right' && (
+            <div onClick={(e) => e.stopPropagation()} style={{..._pop, right:0, left:'auto'}}>
+              {CURRENCY_LIST_V5.map(c => (
+                <div key={c} onClick={() => pickCurrency('right', c)} style={_popItem(c === cur.right)}>
+                  <span style={{fontSize:16, lineHeight:1}}>{CURRENCY_FLAG_V5[c]}</span>
+                  <span style={{fontWeight:700, minWidth:32}}>{c}</span>
+                  <span style={{color:'var(--color-text-muted)', fontSize:'var(--font-size-10)', flex:1}}>{CURRENCY_NAMES_V5[c] || ''}</span>
+                  {c === cur.right && <span style={{color:'var(--color-text-brown)'}}>✓</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       {hint && <div style={{fontSize:'var(--font-size-10)', color:warn ? 'var(--color-error)' : 'var(--color-text-muted)', fontStyle:'italic', textAlign:'center', marginTop:'var(--space-3px)', fontWeight:warn ? 600 : 400}}>{hint}</div>}
@@ -19103,7 +19186,8 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
             (col gauche du header). Pill adresse complete deplacee en ligne 3 col droite du header.
             Prix vente affiche (M134) reporte dans une mission dediee si Philippe le souhaite. */}
         <div className="client-row-sector" onClick={e => openSec(2, e)}>
-          <div className="client-row-sector-label"><IconMoney size={12}/> Budget</div>
+          {/* M/2026/05/09/17 — M67 : label profil-contextuel Prix FAI / Prix vendeur / Prix location / Prix bailleur. */}
+          <div className="client-row-sector-label"><IconMoney size={12}/> {(profil === 'Acheteur' || profil === 'Investisseur') ? 'Prix FAI' : profil === 'Vendeur' ? 'Prix vendeur' : profil === 'Locataire' ? 'Prix location' : profil === 'Bailleur' ? 'Prix bailleur' : 'Budget'}</div>
           {budgetMain ? (
             <>
               <div className="client-row-sector-l1">{budgetMain}</div>
@@ -22143,9 +22227,15 @@ function FormView(props) {
     const sec3Status = (planLines3.length > 0 || budgetVal) ? 'complete' : 'empty';
     const modeLabels = {classique:'💳 Classique', comptant:'💵 Comptant', mourabaha:'🕌 Mourabaha', ijara:'🕌 Ijara'};
     const modeLabel = fin.mode ? (modeLabels[fin.mode] || fin.mode) : '';
+    // M/2026/05/09/17 — M67 : wording prix profil-contextuel (VENTE = Prix FAI montré client / LOCATION = Prix location).
+    const _budgetLabel = (activeProfil === 'Acheteur' || activeProfil === 'Investisseur') ? 'Prix FAI'
+      : activeProfil === 'Vendeur' ? 'Prix vendeur'
+      : activeProfil === 'Locataire' ? 'Prix location'
+      : activeProfil === 'Bailleur' ? 'Prix bailleur'
+      : 'Budget';
+    const _isMonthly = (activeProfil === 'Locataire' || activeProfil === 'Bailleur') && (d.loyer_demande || d.loyer_max || d.loyer_min);
     const budgetLine1 = budgetVal ? (
-      <span><b style={{color:'var(--color-text-primary)'}}>💰 {fmtBudget(budgetVal, currency)}</b>
-        {d.loyer_demande && !d.prix_affiche ? <span> /mois</span> : null}
+      <span><b style={{color:'var(--color-text-primary)'}}>{_budgetLabel} : {fmtBudget(budgetVal, currency)}{_isMonthly ? '/mois' : ''}</b>
       </span>
     ) : null;
     const modeLine = (modeLabel || (fin.mode === 'classique' && fin.mensualite)) ? (
