@@ -208,60 +208,41 @@
 <body>
 <div id="root"><div class="login" id="login">
   <h1>Super-admin</h1>
-  <p style="color:#6B5E4A;margin-bottom:14px;font-size:13px">Connexion réservée aux super-administrateurs.</p>
-  <input id="email" type="email" placeholder="Email" autocomplete="username">
-  <div class="pwd-wrap">
-    <input id="pwd" type="password" placeholder="Mot de passe" autocomplete="current-password">
-    <button class="pwd-eye" type="button" onclick="togglePwd()" aria-label="Afficher mot de passe">
-      <svg id="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-      <svg id="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-    </button>
-  </div>
-  <button onclick="doLogin()">Se connecter</button>
-  <a class="forgot" onclick="toggleResetForm()">Mot de passe oublié ?</a>
-  <div id="reset-form" class="reset-form" style="display:none">
-    <input id="reset-email" type="email" placeholder="Votre email super-admin">
-    <button onclick="doResetRequest()" style="margin-top:8px">Recevoir le lien de réinitialisation</button>
-    <p id="reset-msg" style="color:#2D7A3E;font-size:12px;margin-top:8px;display:none">Si cet email est super-admin, un lien de réinitialisation a été envoyé.</p>
-  </div>
+  <p style="color:#6B5E4A;margin-bottom:14px;font-size:13px">Entrez votre email super-administrateur, recevez un lien d'accès direct au dashboard.</p>
+  <input id="email" type="email" placeholder="Email super-admin" autocomplete="email">
+  <button onclick="doSendMagicLink()">Recevoir mon lien</button>
+  <p id="msg" style="color:#2D7A3E;font-size:13px;margin-top:12px;display:none;text-align:center">Si cet email est un compte super-admin, un lien d'accès vient d'être envoyé. Vérifiez votre boîte mail (lien valide 24h).</p>
   <p id="err" style="color:#8B0000;font-size:12px;margin-top:10px"></p>
 </div></div>
 
 <script>
+// M/2026/05/09/75 — auth super-admin via magic link only (cookie ocre_session M71).
+// Pas de password, pas de localStorage token (cookie HttpOnly gere par le navigateur).
+// Conserve TOKEN_KEY localStorage pour compat headers X-Session-Token (legacy bridge endpoints).
 const TOKEN_KEY = 'ocre_sa_token';
 const api = (url, opts = {}) => {
   opts.headers = Object.assign({}, opts.headers || {}, { 'X-Session-Token': localStorage.getItem(TOKEN_KEY) || '' });
+  opts.credentials = 'include';
   if (opts.body && typeof opts.body !== 'string') { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(opts.body); }
   return fetch(url, opts).then(r => r.json());
 };
-function togglePwd() {
-  const pwd = document.getElementById('pwd');
-  const eyeOn = document.getElementById('eye-on');
-  const eyeOff = document.getElementById('eye-off');
-  if (pwd.type === 'password') { pwd.type = 'text'; eyeOn.style.display = 'none'; eyeOff.style.display = 'block'; }
-  else { pwd.type = 'password'; eyeOn.style.display = 'block'; eyeOff.style.display = 'none'; }
+async function doSendMagicLink() {
+  const email = document.getElementById('email').value.trim();
+  const errEl = document.getElementById('err');
+  const msgEl = document.getElementById('msg');
+  errEl.textContent = '';
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'Email invalide.'; return; }
+  try {
+    const r = await fetch('/api/superadmin_send_magic_link.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email})});
+    await r.json();
+    msgEl.style.display = '';
+    document.getElementById('email').disabled = true;
+  } catch (e) {
+    errEl.textContent = 'Erreur reseau';
+  }
 }
-function toggleResetForm() {
-  const f = document.getElementById('reset-form');
-  f.style.display = f.style.display === 'none' ? '' : 'none';
-}
-async function doResetRequest() {
-  const email = document.getElementById('reset-email').value.trim();
-  if (!email) return;
-  await fetch('/api/superadmin_password_reset.php', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email})});
-  document.getElementById('reset-msg').style.display = '';
-}
-async function doLogin() {
-  const email = document.getElementById('email').value;
-  const pwd = document.getElementById('pwd').value;
-  const r = await api('/api/auth_v20.php?action=login', { method: 'POST', body: { email, password: pwd } });
-  if (r.ok && r.token) {
-    localStorage.setItem(TOKEN_KEY, r.token);
-    if ((r.user || {}).role === 'super_admin') { renderConsole(); }
-    else { document.getElementById('err').textContent = 'Compte non super-admin.'; localStorage.removeItem(TOKEN_KEY); }
-  } else { document.getElementById('err').textContent = r.error || 'Échec connexion'; }
-}
-function logout() {
+async function logout() {
+  try { await fetch('/api/logout.php', {method:'POST', credentials:'include'}); } catch (e) {}
   localStorage.removeItem(TOKEN_KEY);
   location.reload();
 }
@@ -889,9 +870,44 @@ function searchDebounced(v) {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => { clientsState.q = v; clientsState.page = 1; renderClientsTab(); }, 300);
 }
-if (localStorage.getItem(TOKEN_KEY)) {
-  api('/api/auth_v20.php?action=me').then(r => { if (r.ok && (r.user || {}).role === 'super_admin') renderConsole(); });
-}
+// M/2026/05/09/75 — boot: handler ?activate= magic link + auto-login via cookie session.
+(async () => {
+  // 1) Handler magic link si ?activate=<token> dans URL.
+  const params = new URLSearchParams(location.search);
+  const activateToken = params.get('activate');
+  if (activateToken && /^[a-f0-9]{32,128}$/i.test(activateToken)) {
+    try {
+      const r = await fetch('/api/superadmin_activate.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({token: activateToken})});
+      const j = await r.json();
+      if (r.ok && j.ok) {
+        // Cookie session pose. Clean URL + pas de reload (on continue le boot avec le cookie present).
+        params.delete('activate');
+        const cleanUrl = location.pathname + (params.toString() ? '?' + params.toString() : '') + location.hash;
+        history.replaceState({}, '', cleanUrl);
+      } else {
+        document.getElementById('err').textContent = 'Lien invalide ou expire.';
+        return;
+      }
+    } catch (_) {
+      document.getElementById('err').textContent = 'Erreur reseau lors de l activation.';
+      return;
+    }
+  }
+  // 2) Check cookie session : si valide ET role=super_admin -> renderConsole.
+  try {
+    const r = await fetch('/api/superadmin_session_check.php', {credentials:'include', cache:'no-store'});
+    const j = await r.json();
+    if (j && j.ok && (j.user || {}).role === 'super_admin') {
+      // Bridge legacy : cree session legacy pour les endpoints qui veulent X-Session-Token.
+      try {
+        const r2 = await fetch('/api/session_check.php', {credentials:'include', cache:'no-store'});
+        const j2 = await r2.json();
+        if (j2 && j2.ok && j2.session_token) localStorage.setItem(TOKEN_KEY, j2.session_token);
+      } catch (_) {}
+      renderConsole();
+    }
+  } catch (_) {}
+})();
 
 // M/2026/05/07/98.1 — Command Palette Cmd+K (Stripe/Linear/Notion pattern)
 let cmdkActiveIdx = 0;
