@@ -8753,10 +8753,22 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
   }
   const neufAncien = (d.bien && d.bien.neuf_ancien) || 'ancien';
   // M/2026/05/09/29 — M78 : flags pays-spécifiques pour wording adaptatif Section III.
-  // _isMA défini en M77 (CGI 2026, Mourabaha/Ijara, COS/CES). _isFR ajouté en M78 (DPE, Hoguet, Visale, LMNP, GFA).
-  // Les missions M79+ ajouteront _isES, _isIT, _isPT, etc.
+  // _isMA M77 (CGI 2026, Mourabaha/Ijara, COS/CES). _isFR M78 (DPE, Hoguet, Visale, LMNP, GFA).
+  // M/2026/05/09/30 — M79 : _isES (ITP/AJD/LAU) + _isIT (imposta registro/cedolare/4+4).
+  // M/2026/05/09/31 — M80 : _isBE/_isPT/_isDE/_isNL (Europe).
+  // M/2026/05/09/32 — M81 : _isTN/_isDZ (Maghreb).
+  // M/2026/05/09/33 — M82 : _isWORLD fallback générique pour tous autres pays.
   const _isFR = paysBien === 'FR';
   const _isMA = paysBien === 'MA';
+  const _isES = paysBien === 'ES';
+  const _isIT = paysBien === 'IT';
+  const _isBE = paysBien === 'BE';
+  const _isPT = paysBien === 'PT';
+  const _isDE = paysBien === 'DE';
+  const _isNL = paysBien === 'NL';
+  const _isTN = paysBien === 'TN';
+  const _isDZ = paysBien === 'DZ';
+  const _isWORLD = !(_isMA || _isFR || _isES || _isIT || _isBE || _isPT || _isDE || _isNL || _isTN || _isDZ);
 
   // Bloc Acheteur/Investisseur (Prix budget + Frais agence + Cout total + Strategie/Performance invest)
   const blocAcheteurInvest = (() => {
@@ -8911,7 +8923,18 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         {/* M/2026/05/03/2.1 — sémantique canonique : prix_affiche / prix_plancher / prix_liquide
             stockent un nombre nu sans unité ; l'unité (gauche-currency) vit en state UI
             window.__ocreCurrencyV5State. Reload = retour défaut EUR/MAD/10.84. */}
-        <V55Bloc title={_isFR ? 'Prix vendeur (Hoguet)' : 'Prix'} theme="prix">
+        <V55Bloc title={
+          _isFR ? 'Prix vendeur (Hoguet)' :
+          _isES ? 'Precio (ITP/AJD)' :
+          _isIT ? 'Prezzo (provvigione + imposta registro)' :
+          _isBE ? 'Prix vendeur (droits enregistrement BE)' :
+          _isPT ? 'Preço (IMT)' :
+          _isDE ? 'Verkaufspreis (Grunderwerbsteuer)' :
+          _isNL ? 'Verkoopprijs (overdrachtsbelasting)' :
+          _isTN ? 'Prix vendeur (TN)' :
+          _isDZ ? 'Prix vendeur (DZ)' :
+          'Prix'
+        } theme="prix">
           <PriceField2Col label={_isFR ? 'Prix vendeur affiché' : 'Prix'} valueKey="prix_affiche" set={set} d={d} hint={_isFR ? 'Honoraires libres loi Hoguet 1970 — afficher Prix FAI vs Prix vendeur séparé' : null} forceUpdate={forceUpdate}/>
           <PriceField2Col label="Prix plancher 🔒" valueKey="prix_plancher" set={set} d={d} hint="Visible agent uniquement (masqué sur PDF partagé)" forceUpdate={forceUpdate}/>
           <PriceField2Col label="Liquide" valueKey="prix_liquide" set={set} d={d} hint="Partie cash hors compta" forceUpdate={forceUpdate}/>
@@ -9096,6 +9119,29 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
                 options={['A','B','C','D','E','F (loc interdite 2025)','G (loc interdite 2028)','En cours']}
                 hint="Loi Climat : F interdit 2025, G 2028"/>
             </>
+          )}
+          {_isES && (
+            <V55Field label="Tipo de contrato (LAU 1994)" type="select" value={d.es_tipo_contrato} onChange={v => set('es_tipo_contrato', v)}
+              options={['Vivienda habitual 5 años (LAU)','Uso distinto vivienda','Temporada','Local comercial','Otro']}
+              hint="LAU : fianza 1 mes vivienda / 2 meses uso distinto"/>
+          )}
+          {_isIT && (
+            <V55Field label="Tipo contratto" type="select" value={d.it_tipo_contratto} onChange={v => set('it_tipo_contratto', v)}
+              options={['Libero 4+4 (canone libero)','Concordato 3+2 (canone agevolato)','Transitorio 1-18 mois','Studenti universitari 6 mois-3 ans','Cedolare secca 21 % / 10 %','Altro']}
+              hint="Cedolare secca 21 % canone libero / 10 % concordato — option fiscale propriétaire"/>
+          )}
+          {(_isBE || _isPT || _isDE || _isNL) && (
+            <V55Field label="Type de bail" type="select" value={d.eu_type_bail} onChange={v => set('eu_type_bail', v)}
+              options={
+                _isBE ? ['Bail résidence principale 9 ans','Bail courte durée 3 ans max','Bail commercial','Étudiant','Autre'] :
+                _isPT ? ['Arrendamento habitacional 5 ans','Arrendamento não habitacional','Alojamento Local (AL)','Estudante','Outro'] :
+                _isDE ? ['Mietvertrag unbefristet','Befristeter Mietvertrag','Staffelmiete','Indexmiete','Untermiete','Sonstige'] :
+                ['Huurovereenkomst onbepaalde tijd','Tijdelijke huurovereenkomst','Geliberaliseerde huur','Sociale huur','Anders']
+              }/>
+          )}
+          {(_isTN || _isDZ) && (
+            <V55Field label="Type de bail" type="select" value={d.maghreb_type_bail} onChange={v => set('maghreb_type_bail', v)}
+              options={_isTN ? ['Bail habitation','Bail commercial','Saisonnier (zone touristique)','Autre'] : ['Bail habitation','Bail commercial','Autre']}/>
           )}
         </V55Bloc>
 
