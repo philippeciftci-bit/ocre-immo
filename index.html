@@ -1000,7 +1000,8 @@ const CHAUFFAGE_TYPES = ['Électrique','Gaz','Fioul','Bois / pellets','Pompe à 
 const TITRE_STATUTS_MA = ['Titré','Réquisition','Melkia','Autre'];
 const AUTHENTICITE_RIAD = ['Authentique','Rénové','Néo-riad'];
 
-const FIELD_FILLED = {border:'1.5px solid var(--color-border-strong)', background:'var(--color-bg-tint-soft)'};
+// M/2026/05/09/79 — fond vert clair Material green-50 pour champs remplis ET valides (var --color-field-filled).
+const FIELD_FILLED = {border:'1.5px solid var(--color-border-strong)', background:'var(--color-field-filled)'};
 const FIELD_EMPTY  = {border:'1.5px solid var(--color-border-subtle)', background:'var(--color-bg-input)'};
 
 // M/2026/04/30/14 — Cadastre Phase 1 : Maroc lien externe ANCFCC.
@@ -1318,7 +1319,8 @@ function DateMaskField({label, value, onChange, style={}}) {
   const [error, setError] = React.useState(false);
   React.useEffect(() => { setDisplay(toDisplay(value)); }, [value]);
 
-  const filled = display && display.length >= 10;
+  // M/2026/05/09/79 — vert UNIQUEMENT si date complete ET valide (pas juste 10 chars).
+  const filled = display && display.length >= 10 && isValidFrenchDate(display);
   const base = {width:'100%', boxSizing:'border-box', padding:'9px 11px', borderRadius:8, fontSize:'var(--font-size-sm)', outline:'none', fontFamily:'inherit', color:'var(--color-text-primary)', letterSpacing:'1px'};
 
   function handle(e) {
@@ -2804,7 +2806,7 @@ function PhoneField({label, value, onChange, onBlur, residenceCountry='', style=
   let helpText = '';
   let helpColor = '';
   if (empty) { /* neutre */ }
-  else if (valid) { borderColor = '#4BB77B'; bgColor = '#F6FCF8'; icon = '✓'; iconColor = '#4BB77B'; }
+  else if (valid) { borderColor = '#4BB77B'; bgColor = 'var(--color-field-filled)'; icon = '✓'; iconColor = '#4BB77B'; }
   else if (tooShort) { borderColor = 'var(--color-warning)'; bgColor = '#FFFBEF'; icon = '…'; iconColor = 'var(--color-warning)'; helpText = 'Numéro trop court'; helpColor = 'var(--color-warning)'; }
   else { borderColor = 'var(--color-error)'; bgColor = '#FEF6F6'; icon = '⚠'; iconColor = 'var(--color-error)'; helpText = 'Numéro invalide'; helpColor = 'var(--color-error)'; }
 
@@ -2843,7 +2845,7 @@ function EmailField({label, value, onChange, onBlur, style={}}) {
   let icon = '';
   let iconColor = 'var(--color-text-muted)';
   if (empty) { /* neutre */ }
-  else if (valid) { borderStyle = {border:'1.5px solid #4BB77B', background:'#F6FCF8'}; icon = '✓'; iconColor = '#4BB77B'; }
+  else if (valid) { borderStyle = {border:'1.5px solid #4BB77B', background:'var(--color-field-filled)'}; icon = '✓'; iconColor = '#4BB77B'; }
   else if (showInvalid) { borderStyle = {border:'1.5px solid var(--color-error)', background:'#FEF6F6'}; icon = '✗'; iconColor = 'var(--color-error)'; }
   else { borderStyle = {border:'1.5px solid var(--color-warning)', background:'#FFFBEF'}; icon = '…'; iconColor = 'var(--color-warning)'; }
 

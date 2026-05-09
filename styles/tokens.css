@@ -58,7 +58,8 @@
   --color-bg-tint-warm: #FBF1E4;     /* selected/active state, ocre soft (--ocre-bg-soft legacy) */
   --color-bg-tint-hover: #FFF3EC;    /* hover state ocre */
   --color-bg-tint-cream: #F4EEE6;    /* neutral cream chip/border bg */
-  --color-bg-tint-soft: #FFFCF5;     /* filled state input */
+  --color-bg-tint-soft: #FFFCF5;     /* filled state input (legacy, supersede par --color-field-filled M79) */
+  --color-field-filled: #E8F5E9;     /* M/2026/05/09/79 — vert clair Material green-50 : champ rempli ET valide */
   /* M/2026/05/08/12 — DESIGN-TOKENS.2.7.4 : borders + ocres derives (audit 7 hex distincts).
      Strategie A : 7 tokens dedies pour preservation pixel-parfait, gradients composes intacts. */
   --color-border-subtle: #E8DDD0;    /* border subtle (cf --border-subtle legacy) */
