@@ -20,6 +20,7 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/_provision.php';
 require_once __DIR__ . '/_session.php';
+require_once __DIR__ . '/_magic_link.php'; // M/2026/05/09/13 (M63) — bot bypass + window 5min
 setCorsHeaders();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
@@ -49,30 +50,34 @@ try {
     exit;
 }
 
-$st = $pdo->prepare("SELECT id, email, prenom, nom, slug, status, activation_token_expires_at FROM users WHERE activation_token = ? AND archived_at IS NULL LIMIT 1");
-$st->execute([$token]);
-$user = $st->fetch();
-
-if (!$user) {
-    http_response_code(404);
-    echo json_encode(['ok' => false, 'error' => 'TOKEN_NOT_FOUND']);
+// M/2026/05/09/13 (M63) — checkMagicLinkConsume tolere prefetch bots Gmail/Slack/etc, fenetre 5 min, cap 3 sessions, audit attempts.
+$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+$check = checkMagicLinkConsume($pdo, $token, $ua, $ip);
+if ($check['action'] === 'bot_bypass') {
+    http_response_code(200);
+    header('Content-Type: text/html; charset=utf-8');
+    echo magicLinkBotPage();
     exit;
 }
-
-$expiresAt = (string)($user['activation_token_expires_at'] ?? '');
-if ($expiresAt && strtotime($expiresAt) < time()) {
-    http_response_code(410);
-    echo json_encode(['ok' => false, 'error' => 'TOKEN_EXPIRED']);
+if ($check['action'] === 'reject') {
+    http_response_code($check['http']);
+    echo json_encode($check['response']);
     exit;
 }
+$user = $check['user'];
 
 $userId = (int)$user['id'];
 $slug = (string)$user['slug'];
 
 try {
+    // M/2026/05/09/13 (M63) — NE PLUS effacer activation_token au consume (laisser fenetre 5 min multi-consume).
+    // Le token reste valide jusqu a expires_at OU jusqu a window_expired (5 min apres first_consumed_at).
     if ($user['status'] !== 'active') {
-        $upd = $pdo->prepare("UPDATE users SET status = 'active', activation_token = NULL, activation_token_expires_at = NULL, activated_at = NOW(), last_login = NOW() WHERE id = ?");
+        $upd = $pdo->prepare("UPDATE users SET status = 'active', activated_at = NOW(), last_login = NOW() WHERE id = ?");
         $upd->execute([$userId]);
+    } else {
+        $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?")->execute([$userId]);
     }
     // M/2026/05/08/58 — provisionner DB tenant ocre_wsp_<slug> AVANT de créer la session.
     // Sans ça, le SPA charge sur le subdomain → fetch /api/clients.php → 503 → loader infini.
