@@ -9165,14 +9165,140 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
     );
   })();
 
-  // M/2026/05/07/94bis — UNION des 4 blocs financiers, rendus inconditionnellement.
-  // Profil = tag informatif. L utilisateur saisit ce qui le concerne. Pas de retour null.
+  // M/2026/05/09/28 — M77 : restauration filtre conditionnel par profil (annule M/2026/05/07/94bis
+  // "UNIFICATION" qui rendait les 4 blocs inconditionnellement et créait la confusion Vendeur ↔ Acheteur ↔
+  // Bailleur ↔ Locataire constatée par Philippe sur Phil IPPE). Ajout Marchand de biens + Promoteur ex nihilo.
+  // Adaptation Maroc : libellés droits enregistrement CGI 2026 + mode financement Mourabaha/Ijara déjà
+  // présent via FINANCE_MODES.MA. Pour les autres pays (FR/ES/IT/...), missions M78+ ajusteront les
+  // libellés et seuils — pour M77 le rendu reste fonctionnel mais avec wording MA-leaning.
+  const _isMA = paysBien === 'MA';
+
+  // Bloc Marchand de biens (ex nihilo Maroc) — Prix achat / Travaux / Revente / Marge / Délai portage.
+  const blocMarchandBiens = (() => {
+    const _achatMax = Number(d.mdb_prix_achat_max) || 0;
+    const _travaux = Number(d.mdb_travaux_estimes) || 0;
+    const _reventeC = Number(d.mdb_prix_revente_cible) || 0;
+    const _coutTotal = _achatMax + _travaux;
+    const _margeBruteCalc = _reventeC > 0 && _coutTotal > 0 ? Math.round((_reventeC - _coutTotal) / _reventeC * 1000) / 10 : null;
+    return (
+      <>
+        <V55Bloc title="Acquisition" theme="prix">
+          <PriceField2Col label="Prix d'achat max" valueKey="mdb_prix_achat_max" set={set} d={d} forceUpdate={forceUpdate}/>
+          <PriceField2Col label="Travaux estimés" valueKey="mdb_travaux_estimes" set={set} d={d} hint="Coût HT travaux + imprévus" forceUpdate={forceUpdate}/>
+        </V55Bloc>
+        <V55Bloc title="Revente cible" theme="prix">
+          <PriceField2Col label="Prix de revente cible" valueKey="mdb_prix_revente_cible" set={set} d={d} forceUpdate={forceUpdate}/>
+          <V55Field label="Marge brute cible" type="pct" value={d.mdb_marge_brute_cible} onChange={v => set('mdb_marge_brute_cible', v)} suffix="%" hint={_margeBruteCalc != null ? 'Marge calculée auto : ' + _margeBruteCalc + ' %' : 'Cible (ex. 15-25 %)'}/>
+          <V55Field label="Délai de portage cible" type="number" value={d.mdb_delai_portage_mois} onChange={v => set('mdb_delai_portage_mois', v)} suffix="mois" hint={_isMA ? 'Au Maroc, IS 30 % + TVA 20 % sur marge' : 'FR : engagement < 5 ans pour DMTO réduits'}/>
+        </V55Bloc>
+        <V55Bloc title="📊 Synthèse opération" theme="synthese">
+          {(() => {
+            if (_coutTotal <= 0 || _reventeC <= 0) return <div style={{color:'rgba(255,255,255,0.85)', fontSize:'var(--font-size-xs)', fontStyle:'italic'}}>Saisir prix achat + travaux + revente pour calcul marge</div>;
+            const sym = CURRENCY_SYMBOL_V5[cur.left] || cur.left;
+            const fmt = (n) => fmtNumV5(n) + ' ' + sym;
+            const margeMontant = _reventeC - _coutTotal;
+            return (
+              <>
+                <div style={{fontSize:'var(--font-size-22)', fontWeight:800, color:'#fff', marginBottom:'var(--space-1)', lineHeight:1.2}}>{fmt(margeMontant)}</div>
+                <div style={{fontSize:'var(--font-size-11)', color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
+                  Marge brute = Revente {fmt(_reventeC)} − (Achat {fmt(_achatMax)} + Travaux {fmt(_travaux)}){_margeBruteCalc != null ? ' = ' + _margeBruteCalc + ' %' : ''}
+                </div>
+              </>
+            );
+          })()}
+        </V55Bloc>
+        <V55Bloc title="Statut & fiscalité">
+          <V55Field label="Statut juridique" type="select" value={d.mdb_statut_juridique} onChange={v => set('mdb_statut_juridique', v)}
+            options={_isMA ? ['SARL marocaine','SA','Personne physique','Autre'] : ['EI','EURL','SARL','SAS','SCI (non éligible)','Autre']}/>
+          <V55Field label="Régime TVA" type="select" value={d.mdb_regime_tva} onChange={v => set('mdb_regime_tva', v)}
+            options={_isMA ? ['TVA 20 % sur marge','TVA 20 % classique','Exonéré'] : ['TVA sur marge','TVA classique','Exonéré']}/>
+        </V55Bloc>
+      </>
+    );
+  })();
+
+  // Bloc Promoteur (ex nihilo Maroc) — Terrain / Construction / Vente / Bilan / Calendrier.
+  const blocPromoteur = (() => {
+    const _surfM2 = Number(d.prom_surface_m2) || 0;
+    const _coutM2 = Number(d.prom_cout_construction_m2) || 0;
+    const _ventePm2 = Number(d.prom_prix_vente_cible_m2) || 0;
+    const _terrain = Number(d.prom_prix_terrain_max) || 0;
+    const _coutConstruction = _surfM2 * _coutM2;
+    const _caTotal = _surfM2 * _ventePm2;
+    const _coutTotal = _terrain + _coutConstruction;
+    const _margeCalc = _caTotal > 0 && _coutTotal > 0 ? Math.round((_caTotal - _coutTotal) / _caTotal * 1000) / 10 : null;
+    return (
+      <>
+        <V55Bloc title="Foncier / Terrain" theme="prix">
+          <PriceField2Col label="Prix terrain max" valueKey="prom_prix_terrain_max" set={set} d={d} forceUpdate={forceUpdate}/>
+          <V55Field label="Surface constructible" type="number" value={d.prom_surface_m2} onChange={v => set('prom_surface_m2', v)} suffix="m²" hint={_isMA ? 'COS / CES selon plan urbanisme' : 'Surface plancher selon PLU'}/>
+        </V55Bloc>
+        <V55Bloc title="Programme construction" theme="agence">
+          <V55Field label="Coût construction estimé" type="number" value={d.prom_cout_construction_m2} onChange={v => set('prom_cout_construction_m2', v)} suffix={(CURRENCY_SYMBOL_V5[cur.left] || cur.left) + '/m²'} hint={_isMA ? 'MA : 3 500-8 000 MAD/m² selon standing' : 'FR : 1 150-2 700 €/m² selon type'}/>
+          <V55Field label="Nombre de lots" type="number" value={d.prom_nb_lots} onChange={v => set('prom_nb_lots', v)} suffix="lots"/>
+          <V55Field label="Durée chantier" type="number" value={d.prom_duree_chantier_mois} onChange={v => set('prom_duree_chantier_mois', v)} suffix="mois"/>
+        </V55Bloc>
+        <V55Bloc title="Vente cible" theme="prix">
+          <V55Field label="Prix de vente cible" type="number" value={d.prom_prix_vente_cible_m2} onChange={v => set('prom_prix_vente_cible_m2', v)} suffix={(CURRENCY_SYMBOL_V5[cur.left] || cur.left) + '/m²'} hint={_isMA ? 'MA : 8 000-25 000 MAD/m² selon ville' : 'FR : 1 200-10 000 €/m² selon métropole'}/>
+          <V55Field label="Marge brute cible" type="pct" value={d.prom_marge_brute_cible} onChange={v => set('prom_marge_brute_cible', v)} suffix="%" hint={_margeCalc != null ? 'Marge calculée : ' + _margeCalc + ' %' : 'Cible (FR : 7-15 % usuel)'}/>
+        </V55Bloc>
+        <V55Bloc title="📊 Bilan promoteur" theme="synthese">
+          {(() => {
+            if (_caTotal <= 0 || _coutTotal <= 0) return <div style={{color:'rgba(255,255,255,0.85)', fontSize:'var(--font-size-xs)', fontStyle:'italic'}}>Saisir terrain + surface + coût construction + prix vente m² pour calcul</div>;
+            const sym = CURRENCY_SYMBOL_V5[cur.left] || cur.left;
+            const fmt = (n) => fmtNumV5(Math.round(n)) + ' ' + sym;
+            const margeMontant = _caTotal - _coutTotal;
+            return (
+              <>
+                <div style={{fontSize:'var(--font-size-22)', fontWeight:800, color:'#fff', marginBottom:'var(--space-1)', lineHeight:1.2}}>{fmt(margeMontant)}</div>
+                <div style={{fontSize:'var(--font-size-11)', color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
+                  CA {fmt(_caTotal)} − (Terrain {fmt(_terrain)} + Construction {fmt(_coutConstruction)}){_margeCalc != null ? ' = ' + _margeCalc + ' % marge' : ''}
+                </div>
+              </>
+            );
+          })()}
+        </V55Bloc>
+        <V55Bloc title="Réglementaire & financement">
+          <V55Field label="Type opération" type="select" value={d.prom_type_operation} onChange={v => set('prom_type_operation', v)}
+            options={_isMA ? ['Logement standing','Logement social','Bureau commercial','Mixte'] : ['VEFA logement','CCMI maison','Lotissement','Mixte']}/>
+          <V55Field label="Garantie financière" type="select" value={d.prom_garantie_financiere} onChange={v => set('prom_garantie_financiere', v)}
+            options={_isMA ? ['Garantie bancaire achèvement','Cautionnement','Aucune'] : ['GFA extrinsèque','GFA intrinsèque','VEFA classique','Aucune']}/>
+          <V55Field label="Date livraison cible" type="date_fr" value={d.prom_date_livraison_cible} onChange={v => set('prom_date_livraison_cible', v)}/>
+        </V55Bloc>
+      </>
+    );
+  })();
+
+  // Bloc Curieux (pré-qualification — profil non encore décidé).
+  const blocCurieux = (() => (
+    <V55Bloc title="Pré-qualification" theme="prix">
+      <div style={{fontSize:'var(--font-size-13)', color:'var(--color-text-muted)', lineHeight:1.5, padding:'8px 4px'}}>
+        Profil non encore qualifié. Identifier l'intention principale du contact et basculer le profil vers <b>Acheteur</b>, <b>Vendeur</b>, <b>Bailleur</b>, <b>Locataire</b>, <b>Investisseur</b>, <b>Marchand de biens</b> ou <b>Promoteur</b> via la pill profil en haut de fiche pour révéler les champs métier adaptés.
+      </div>
+      <V55Field label="Note de qualification" value={d.curieux_note_qualif} onChange={v => set('curieux_note_qualif', v)} placeholder="Indices recueillis sur l'intention…" hint="(recherche bien, vente, location, investissement, etc.)"/>
+    </V55Bloc>
+  ))();
+
+  // M/2026/05/09/28 — M77 : rendu CONDITIONNEL strict par profil. Chaque profil = SES blocs uniquement.
+  // Investisseur réutilise le bloc Acheteur+Invest existant (qui inclut déjà la sous-section "Stratégie
+  // investissement" sous condition isInvestisseur) + bloc Performance investissement bailleur si pertinent.
   return (
     <>
-      {blocAcheteurInvest}
-      {blocVendeur}
-      {blocLocataire}
-      {blocBailleur}
+      {activeProfil === 'Acheteur' && blocAcheteurInvest}
+      {activeProfil === 'Investisseur' && blocAcheteurInvest}
+      {activeProfil === 'Vendeur' && blocVendeur}
+      {activeProfil === 'Bailleur' && blocBailleur}
+      {activeProfil === 'Locataire' && blocLocataire}
+      {activeProfil === 'MarchandBiens' && blocMarchandBiens}
+      {activeProfil === 'Promoteur' && blocPromoteur}
+      {activeProfil === 'Curieux' && blocCurieux}
+      {!activeProfil && (
+        <V55Bloc title="Profil requis" theme="prix">
+          <div style={{fontSize:'var(--font-size-13)', color:'var(--color-text-muted)', fontStyle:'italic', padding:'8px 4px'}}>
+            Sélectionner un profil client (Acheteur / Vendeur / Bailleur / Locataire / Investisseur / Marchand de biens / Promoteur) en haut de la fiche pour afficher les champs Section III adaptés.
+          </div>
+        </V55Bloc>
+      )}
     </>
   );
 }
