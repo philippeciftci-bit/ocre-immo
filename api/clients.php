@@ -125,7 +125,7 @@ switch ($action) {
         $stmt = db()->prepare(
             "SELECT id, data, is_draft, archived, projet, is_investisseur, is_staged, promoted_at, updated_at,
                     prenom, nom, societe_nom, tel, email, vertical, seed_id
-             FROM clients WHERE user_id = ? AND is_staged = ? AND deleted_at IS NULL ORDER BY updated_at DESC"
+             FROM clients WHERE user_id = ? AND is_staged = ? AND deleted_at IS NULL ORDER BY updated_at DESC, id DESC"
         );
         $stmt->execute([$user['id'], $staged ? 1 : 0]);
         $rows = $stmt->fetchAll();
