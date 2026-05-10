@@ -27,9 +27,33 @@
 .osp-field input:focus { outline: none; border-color: #8B5E3C; background: #fff; }
 .osp-field input:disabled { opacity: 0.6; background: #F4ECDF; }
 
-.osp-btn-submit { width: 100%; padding: 14px; background: #8B5E3C; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; }
-.osp-btn-submit:hover { background: #3D2818; transform: translateY(-1px); }
+.osp-btn-submit { width: 100%; padding: 14px; background: #8B5E3C; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .2s ease; }
+.osp-btn-submit:hover:not(.osp-btn-disabled):not(:disabled) { background: #3D2818; transform: translateY(-1px); }
 .osp-btn-submit:disabled { opacity: 0.5; cursor: wait; transform: none; }
+/* M_OCRE_PARCOURS_V4_CORRECTIF — bouton désactivé tant que tous champs requis pas valides */
+.osp-btn-submit.osp-btn-disabled { background: #C8C8C8 !important; color: #888 !important; opacity: 0.6; cursor: not-allowed; pointer-events: none; transform: none; }
+
+/* M_OCRE_PARCOURS_V4_CORRECTIF — champ téléphone vert clair si E.164 valide pays-aware */
+.osp-phone-input.is-phone-valid { background: #E8F5E9 !important; border-color: #4CAF50 !important; transition: all .2s ease; }
+.osp-phone-input.is-phone-invalid { border-color: #E57373; background: #FFF5F5; }
+
+/* M_OCRE_PARCOURS_V4_CORRECTIF — sélecteur pays drapeau + dropdown 21 pays */
+.osp-country-wrap { position: relative; }
+.osp-country-btn { width: 100%; padding: 13px 30px 13px 14px; border: 1px solid #E5DAC6; border-radius: 9px; font-size: 14px; font-family: inherit; background: #FCFAF7; color: #3D2818; cursor: pointer; text-align: left; appearance: none; display: flex; align-items: center; gap: 8px; }
+.osp-country-btn::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #998877; pointer-events: none; }
+.osp-country-flag { font-size: 18px; line-height: 1; }
+.osp-country-code { font-weight: 600; font-size: 13px; }
+.osp-country-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid #E5DAC6; border-radius: 10px; max-height: 280px; overflow-y: auto; z-index: 10; box-shadow: 0 12px 28px rgba(0,0,0,0.12); display: none; }
+.osp-country-dropdown.osp-cd-open { display: block; }
+.osp-country-search { width: 100%; padding: 10px 12px; border: none; border-bottom: 1px solid #E5DAC6; font-size: 13px; font-family: inherit; background: #FCFAF7; outline: none; position: sticky; top: 0; }
+.osp-country-item { padding: 9px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
+.osp-country-item:hover, .osp-country-item.osp-ci-hover { background: #FBF1E4; }
+.osp-country-item .osp-ci-name { flex: 1; color: #3D2818; }
+.osp-country-item .osp-ci-code { color: #998877; font-weight: 500; font-size: 12.5px; }
+.osp-country-divider { padding: 6px 14px; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #998877; background: #F4ECDF; font-weight: 600; }
+
+.osp-email-error { font-size: 11.5px; color: #C62828; margin-top: 4px; display: none; }
+.osp-email-error.osp-show { display: block; }
 
 .osp-feedback { margin-top: 10px; padding: 9px 13px; border-radius: 8px; font-size: 12.5px; display: none; }
 .osp-feedback.osp-show-fb { display: block; }
@@ -62,6 +86,7 @@
       <div class="osp-field">
         <label for="osp-email">Email</label>
         <input type="email" id="osp-email" name="email" required autocomplete="email" placeholder="ton@email.com" autofocus>
+        <div class="osp-email-error" id="osp-email-error">Format email invalide</div>
       </div>
 
       <!-- Accordéon registration : visible si email pas reconnu -->
@@ -73,8 +98,23 @@
           </div>
           <div class="osp-field"><label for="osp-societe">Société (facultatif)</label><input type="text" id="osp-societe" autocomplete="organization" placeholder="Ton agence (facultatif)"></div>
           <div class="osp-tel-row">
-            <div class="osp-field"><label for="osp-indicatif">Indicatif</label><input type="text" id="osp-indicatif" value="+33" autocomplete="tel-country-code"></div>
-            <div class="osp-field"><label for="osp-phone">Téléphone *</label><input type="tel" id="osp-phone" autocomplete="tel" placeholder="6 12 34 56 78"></div>
+            <div class="osp-field osp-country-wrap">
+              <label>Pays</label>
+              <button type="button" class="osp-country-btn" id="osp-country-btn" aria-haspopup="listbox" aria-expanded="false">
+                <span class="osp-country-flag" id="osp-cf">🇫🇷</span>
+                <span class="osp-country-code" id="osp-cc">+33</span>
+              </button>
+              <div class="osp-country-dropdown" id="osp-country-dropdown" role="listbox">
+                <input type="text" class="osp-country-search" id="osp-country-search" placeholder="Recherche pays…">
+                <div id="osp-country-list"></div>
+              </div>
+              <input type="hidden" id="osp-country-code" name="country_code" value="FR">
+              <input type="hidden" id="osp-country-prefix" value="+33">
+            </div>
+            <div class="osp-field">
+              <label for="osp-phone">Téléphone *</label>
+              <input type="tel" id="osp-phone" name="phone" class="osp-phone-input" autocomplete="tel" placeholder="6 12 34 56 78">
+            </div>
           </div>
           <label class="osp-cgu"><input type="checkbox" id="osp-cgu"> J'accepte les <a href="https://ocre.immo/mentions-legales/" target="_blank">CGU</a> et la <a href="https://ocre.immo/confidentialite/" target="_blank">politique de confidentialité</a></label>
         </div>
@@ -93,8 +133,133 @@
 
 <script>
 // M_OCRE_PARCOURS_V4 — flow magic link only
-// État machine : INITIAL (email seul) → CHECKING (POST email-check) → DIRECT_LOGIN (existing) ou FORM_OPEN (new) → SUBMITTING_FORM → DONE (toast)
+// M_OCRE_PARCOURS_V4_CORRECTIF — PhoneInput country-aware E.164 + validation visuelle + bouton conditionnel + email onBlur
 var OCRE_SIGNUP_STATE = 'initial';
+
+// 21 pays supportés avec règles E.164 (cohérent Oi Agent app M86)
+var OSP_COUNTRIES = [
+  { code:'FR', name:'France',         flag:'🇫🇷', prefix:'+33',  length:9,  startsWith:['6','7','1','2','3','4','5','9'], priority:true },
+  { code:'MA', name:'Maroc',          flag:'🇲🇦', prefix:'+212', length:9,  startsWith:['5','6','7'],                     priority:true },
+  { code:'BE', name:'Belgique',       flag:'🇧🇪', prefix:'+32',  length:9,  startsWith:['4','2','3','9'],                 priority:true },
+  { code:'CH', name:'Suisse',         flag:'🇨🇭', prefix:'+41',  length:9,  startsWith:['7','2','3','4','5','6','8'],     priority:true },
+  { code:'ES', name:'Espagne',        flag:'🇪🇸', prefix:'+34',  length:9,  startsWith:['6','7','9'],                     priority:true },
+  { code:'IT', name:'Italie',         flag:'🇮🇹', prefix:'+39',  length:10,                                                priority:true },
+  { code:'DE', name:'Allemagne',      flag:'🇩🇪', prefix:'+49',  length:11,                                                priority:true },
+  { code:'PT', name:'Portugal',       flag:'🇵🇹', prefix:'+351', length:9,                                                 priority:true },
+  { code:'GB', name:'Royaume-Uni',    flag:'🇬🇧', prefix:'+44',  length:10,                                                priority:true },
+  { code:'US', name:'États-Unis',     flag:'🇺🇸', prefix:'+1',   length:10,                                                priority:true },
+  { code:'CA', name:'Canada',         flag:'🇨🇦', prefix:'+1',   length:10,                                                priority:true },
+  { code:'NL', name:'Pays-Bas',       flag:'🇳🇱', prefix:'+31',  length:9 },
+  { code:'TN', name:'Tunisie',        flag:'🇹🇳', prefix:'+216', length:8 },
+  { code:'DZ', name:'Algérie',        flag:'🇩🇿', prefix:'+213', length:9 },
+  { code:'LU', name:'Luxembourg',     flag:'🇱🇺', prefix:'+352', length:9 },
+  { code:'AE', name:'Émirats arabes', flag:'🇦🇪', prefix:'+971', length:9 },
+  { code:'SA', name:'Arabie saoudite',flag:'🇸🇦', prefix:'+966', length:9 },
+  { code:'TR', name:'Turquie',        flag:'🇹🇷', prefix:'+90',  length:10 },
+  { code:'IE', name:'Irlande',        flag:'🇮🇪', prefix:'+353', length:9 },
+  { code:'AT', name:'Autriche',       flag:'🇦🇹', prefix:'+43',  length:11 },
+  { code:'GR', name:'Grèce',          flag:'🇬🇷', prefix:'+30',  length:10 },
+];
+
+function ospValidatePhoneE164(rawPhone, countryCode) {
+  if (!rawPhone || !countryCode) return false;
+  var digits = rawPhone.replace(/\D/g, '');
+  // Strip leading 0 (numéros nationaux FR)
+  if (digits.length > 0 && digits[0] === '0') digits = digits.substring(1);
+  var rule = OSP_COUNTRIES.find(function(c){ return c.code === countryCode; });
+  if (!rule) return digits.length >= 8 && digits.length <= 15;
+  if (digits.length !== rule.length) return false;
+  if (rule.startsWith && !rule.startsWith.some(function(s){ return digits.startsWith(s); })) return false;
+  return true;
+}
+
+function ospRenderCountryList(filter) {
+  filter = (filter || '').toLowerCase().trim();
+  var list = document.getElementById('osp-country-list'); list.innerHTML = '';
+  var prio = OSP_COUNTRIES.filter(function(c){ return c.priority && (!filter || c.name.toLowerCase().indexOf(filter) !== -1 || c.code.toLowerCase().indexOf(filter) !== -1); });
+  var rest = OSP_COUNTRIES.filter(function(c){ return !c.priority && (!filter || c.name.toLowerCase().indexOf(filter) !== -1 || c.code.toLowerCase().indexOf(filter) !== -1); }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+  function appendItem(c) {
+    var item = document.createElement('div'); item.className = 'osp-country-item'; item.setAttribute('data-code', c.code); item.setAttribute('data-prefix', c.prefix);
+    item.innerHTML = '<span class="osp-country-flag">' + c.flag + '</span><span class="osp-ci-name">' + c.name + '</span><span class="osp-ci-code">' + c.prefix + '</span>';
+    item.addEventListener('click', function(){ ospSelectCountry(c); });
+    list.appendChild(item);
+  }
+  if (!filter && prio.length) {
+    var div = document.createElement('div'); div.className = 'osp-country-divider'; div.textContent = 'Pays prioritaires'; list.appendChild(div);
+    prio.forEach(appendItem);
+    var div2 = document.createElement('div'); div2.className = 'osp-country-divider'; div2.textContent = 'Tous les pays'; list.appendChild(div2);
+    rest.forEach(appendItem);
+  } else {
+    prio.forEach(appendItem); rest.forEach(appendItem);
+  }
+}
+
+function ospSelectCountry(c) {
+  document.getElementById('osp-cf').textContent = c.flag;
+  document.getElementById('osp-cc').textContent = c.prefix;
+  document.getElementById('osp-country-code').value = c.code;
+  document.getElementById('osp-country-prefix').value = c.prefix;
+  document.getElementById('osp-country-dropdown').classList.remove('osp-cd-open');
+  document.getElementById('osp-country-btn').setAttribute('aria-expanded', 'false');
+  ospValidateForm(); // revalider numéro avec nouvelles règles pays
+}
+
+function ospValidateForm() {
+  if (OCRE_SIGNUP_STATE !== 'form_open') return;
+  var prenom = (document.getElementById('osp-prenom').value || '').trim();
+  var nom = (document.getElementById('osp-nom').value || '').trim();
+  var phone = (document.getElementById('osp-phone').value || '').trim();
+  var country = document.getElementById('osp-country-code').value;
+  var cgu = document.getElementById('osp-cgu').checked;
+  var phoneValid = ospValidatePhoneE164(phone, country);
+  // Visuel champ téléphone
+  var phoneEl = document.getElementById('osp-phone');
+  phoneEl.classList.remove('is-phone-valid', 'is-phone-invalid');
+  if (phoneValid) phoneEl.classList.add('is-phone-valid');
+  else if (phone.replace(/\D/g, '').length > 4) phoneEl.classList.add('is-phone-invalid');
+  // Bouton submit
+  var btn = document.getElementById('osp-submit');
+  var allValid = prenom.length >= 2 && nom.length >= 2 && phoneValid && cgu;
+  btn.classList.toggle('osp-btn-disabled', !allValid);
+}
+
+// Email onBlur : check format + appel email-check pour entrée directe ou flow accordéon
+async function ospEmailBlur() {
+  if (OCRE_SIGNUP_STATE !== 'initial') return;
+  var emailEl = document.getElementById('osp-email');
+  var errEl = document.getElementById('osp-email-error');
+  var email = emailEl.value.trim().toLowerCase();
+  errEl.classList.remove('osp-show');
+  if (!email) return;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    errEl.textContent = 'Email invalide'; errEl.classList.add('osp-show');
+  }
+}
+
+// Init listeners au load
+function ospInitForm() {
+  ospRenderCountryList('');
+  // Toggle dropdown
+  document.getElementById('osp-country-btn').addEventListener('click', function(e){
+    e.stopPropagation();
+    var dd = document.getElementById('osp-country-dropdown');
+    var open = dd.classList.toggle('osp-cd-open');
+    document.getElementById('osp-country-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) setTimeout(function(){ document.getElementById('osp-country-search').focus(); }, 50);
+  });
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('.osp-country-wrap')) document.getElementById('osp-country-dropdown').classList.remove('osp-cd-open');
+  });
+  document.getElementById('osp-country-search').addEventListener('input', function(){ ospRenderCountryList(this.value); });
+  // Validate continue sur tous les inputs accordéon
+  ['osp-prenom','osp-nom','osp-phone'].forEach(function(id){ document.getElementById(id).addEventListener('input', ospValidateForm); });
+  document.getElementById('osp-cgu').addEventListener('change', ospValidateForm);
+  // Email onBlur
+  document.getElementById('osp-email').addEventListener('blur', ospEmailBlur);
+}
+document.addEventListener('DOMContentLoaded', ospInitForm);
+// Si DOM déjà chargé (popup inclus après load WP)
+if (document.readyState !== 'loading') ospInitForm();
 
 function ocreSignupOpen() {
   document.getElementById('osp-accordion').classList.remove('osp-open');
@@ -102,7 +267,10 @@ function ocreSignupOpen() {
   document.getElementById('osp-email').disabled = false;
   document.getElementById('osp-submit').textContent = 'Continuer';
   document.getElementById('osp-form').reset();
-  document.getElementById('osp-indicatif').value = '+33';
+  ospSelectCountry(OSP_COUNTRIES.find(function(c){ return c.code === 'FR'; }));
+  document.getElementById('osp-submit').classList.remove('osp-btn-disabled');
+  document.getElementById('osp-phone').classList.remove('is-phone-valid', 'is-phone-invalid');
+  document.getElementById('osp-email-error').classList.remove('osp-show');
   OCRE_SIGNUP_STATE = 'initial';
   var ov = document.getElementById('osp-overlay');
   ov.classList.add('osp-show');
@@ -153,6 +321,9 @@ async function ocreSignupSubmit(e) {
       acc.classList.add('osp-open');
       acc.setAttribute('aria-hidden', 'false');
       btn.disabled = false; btn.textContent = 'Recevoir mon lien';
+      // M_OCRE_PARCOURS_V4_CORRECTIF — bouton désactivé initialement (validation continue)
+      btn.classList.add('osp-btn-disabled');
+      ospValidateForm();
       // Focus sur prénom après animation
       setTimeout(function(){ document.getElementById('osp-prenom').focus(); }, 350);
       return false;
@@ -167,15 +338,12 @@ async function ocreSignupSubmit(e) {
   var prenom = document.getElementById('osp-prenom').value.trim();
   var nom = document.getElementById('osp-nom').value.trim();
   var phone = document.getElementById('osp-phone').value.trim();
-  var indicatif = document.getElementById('osp-indicatif').value.trim();
+  var indicatif = document.getElementById('osp-country-prefix').value;
+  var country = document.getElementById('osp-country-code').value;
   var cgu = document.getElementById('osp-cgu').checked;
-  if (!prenom || !nom || !phone) {
-    fb.textContent = '⚠ Prénom, nom, téléphone obligatoires.'; fb.classList.add('osp-show-fb', 'osp-error');
-    btn.disabled = false; btn.textContent = 'Recevoir mon lien';
-    return false;
-  }
-  if (!cgu) {
-    fb.textContent = '⚠ Tu dois accepter les CGU.'; fb.classList.add('osp-show-fb', 'osp-error');
+  if (!prenom || prenom.length < 2 || !nom || nom.length < 2 || !ospValidatePhoneE164(phone, country) || !cgu) {
+    // Defense supplementaire (le bouton est normalement disabled si pas valide, mais au cas où)
+    fb.textContent = '⚠ Tous les champs requis doivent être remplis valides + CGU cochée.'; fb.classList.add('osp-show-fb', 'osp-error');
     btn.disabled = false; btn.textContent = 'Recevoir mon lien';
     return false;
   }
