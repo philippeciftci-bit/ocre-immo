@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3D2818">
+<title>Exporter dossiers · Ocre Immo</title>
+<link rel="icon" href="/favicon/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --cream:#FAF6F1; --cream-2:#F4ECDF; --brown:#3D2818; --brown-soft:#6B5642; --brown-mute:#998877; --ocre:#B87333; --ocre-dark:#8B5E3C; --gold:#D4A256; --green:#2D7A3E; --green-soft:#E8F2EA; --line:#E5DAC6; }
+  *,*::before,*::after { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter',sans-serif; background:var(--cream); color:var(--brown); line-height:1.55; padding-top:env(safe-area-inset-top); }
+  .container { max-width:520px; margin:0 auto; padding:16px; }
+  header { display:flex; align-items:center; gap:10px; padding:6px 0 14px; border-bottom:1px solid var(--line); margin-bottom:24px; }
+  .back { background:none; border:1px solid var(--line); color:var(--brown); width:36px; height:36px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  h1 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:26px; margin:0; }
+  .meta { color:var(--brown-mute); font-size:12px; margin:2px 0 0; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:18px; }
+  .field { margin-bottom:16px; }
+  .field label { display:block; font-size:13px; font-weight:600; color:var(--brown); margin-bottom:6px; }
+  .field input[type="date"], .field select { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:14px; font-family:inherit; background:#fff; color:var(--brown); }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .format-radio { display:flex; gap:10px; }
+  .format-radio label { flex:1; padding:14px; border:2px solid var(--line); border-radius:10px; cursor:pointer; text-align:center; font-weight:600; transition:all .15s; }
+  .format-radio label.selected { border-color:var(--ocre-dark); background:var(--cream-2); color:var(--ocre-dark); }
+  .format-radio input { display:none; }
+  .format-radio .desc { font-size:11px; color:var(--brown-mute); font-weight:500; margin-top:4px; display:block; }
+  .multi-check { display:flex; flex-wrap:wrap; gap:6px; }
+  .multi-check label { padding:7px 12px; border:1px solid var(--line); border-radius:100px; cursor:pointer; font-size:12.5px; font-weight:500; user-select:none; }
+  .multi-check label.selected { background:var(--ocre-dark); color:#fff; border-color:var(--ocre-dark); }
+  .multi-check input { display:none; }
+  .btn { padding:14px 22px; border-radius:10px; font-size:15px; font-weight:600; border:none; cursor:pointer; text-align:center; font-family:inherit; width:100%; }
+  .btn-primary { background:var(--ocre-dark); color:#fff; }
+  .btn-primary:hover { background:var(--brown); }
+  .btn-primary:disabled { background:var(--brown-mute); cursor:wait; }
+  .feedback { margin-top:14px; padding:10px 14px; border-radius:8px; font-size:13px; display:none; }
+  .feedback.show { display:block; }
+  .feedback.error { background:#FDECEA; color:#C62828; }
+  .feedback.success { background:var(--green-soft); color:var(--green); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <button class="back" onclick="history.length>1?history.back():(location.href='/')" aria-label="Retour">←</button>
+    <div><h1>Exporter mes dossiers</h1><p class="meta">CSV ou Excel avec filtres date/statut/profil</p></div>
+  </header>
+  <div class="card">
+    <div class="field">
+      <label>Format de fichier</label>
+      <div class="format-radio" data-testid="format-radio">
+        <label class="selected" data-fmt="csv"><input type="radio" name="format" value="csv" checked> CSV<span class="desc">Excel FR · UTF-8 · ;</span></label>
+        <label data-fmt="xlsx"><input type="radio" name="format" value="xlsx"> XLSX<span class="desc">Excel formaté · header bold · auto-filter</span></label>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="date-from">Date début</label><input type="date" id="date-from"></div>
+      <div class="field"><label for="date-to">Date fin</label><input type="date" id="date-to"></div>
+    </div>
+    <div class="field">
+      <label>Statuts (vide = tous)</label>
+      <div class="multi-check" id="status-check" data-testid="status-check">
+        <label data-v="brouillon"><input type="checkbox" value="brouillon"> Brouillon</label>
+        <label data-v="enregistre"><input type="checkbox" value="enregistre"> Enregistré</label>
+        <label data-v="archive"><input type="checkbox" value="archive"> Archivé</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>Profils (vide = tous)</label>
+      <div class="multi-check" id="profil-check" data-testid="profil-check">
+        <label data-v="Acheteur"><input type="checkbox" value="Acheteur"> Acheteur</label>
+        <label data-v="Vendeur"><input type="checkbox" value="Vendeur"> Vendeur</label>
+        <label data-v="Bailleur"><input type="checkbox" value="Bailleur"> Bailleur</label>
+        <label data-v="Locataire"><input type="checkbox" value="Locataire"> Locataire</label>
+        <label data-v="Investisseur"><input type="checkbox" value="Investisseur"> Investisseur</label>
+        <label data-v="MarchandBiens"><input type="checkbox" value="MarchandBiens"> Marchand</label>
+        <label data-v="Promoteur"><input type="checkbox" value="Promoteur"> Promoteur</label>
+        <label data-v="Curieux"><input type="checkbox" value="Curieux"> Curieux</label>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="download-btn" type="button">📥 Télécharger</button>
+    <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+  </div>
+</div>
+<script>
+(function() {
+  const $ = id => document.getElementById(id);
+  document.querySelectorAll('.format-radio label').forEach(lab => {
+    lab.addEventListener('click', () => {
+      document.querySelectorAll('.format-radio label').forEach(l => l.classList.remove('selected'));
+      lab.classList.add('selected');
+      lab.querySelector('input').checked = true;
+    });
+  });
+  document.querySelectorAll('.multi-check label').forEach(lab => {
+    lab.addEventListener('click', e => {
+      if (e.target.tagName !== 'INPUT') { const cb = lab.querySelector('input'); cb.checked = !cb.checked; }
+      lab.classList.toggle('selected', lab.querySelector('input').checked);
+    });
+  });
+  function getFilters() {
+    const fmt = document.querySelector('input[name="format"]:checked').value;
+    return { format: fmt, filters: {
+      date_from: $('date-from').value || null,
+      date_to: $('date-to').value || null,
+      status: Array.from(document.querySelectorAll('#status-check input:checked')).map(c => c.value),
+      profil: Array.from(document.querySelectorAll('#profil-check input:checked')).map(c => c.value),
+    }};
+  }
+  $('download-btn').addEventListener('click', async () => {
+    const btn = $('download-btn'); const fb = $('feedback');
+    btn.disabled = true; btn.textContent = 'Génération en cours…'; fb.className = 'feedback';
+    try {
+      const r = await fetch('/api/dossiers/export.php', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(getFilters()) });
+      if (!r.ok) {
+        const ct = r.headers.get('Content-Type') || '';
+        const err = ct.includes('json') ? (await r.json()).error : 'Erreur ' + r.status;
+        throw new Error(err);
+      }
+      const blob = await r.blob();
+      const cd = r.headers.get('Content-Disposition') || '';
+      const m = cd.match(/filename="([^"]+)"/);
+      const fname = m ? m[1] : 'dossiers.csv';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      fb.className = 'feedback show success';
+      fb.textContent = 'Téléchargement ' + fname + ' réussi.';
+    } catch (e) {
+      fb.className = 'feedback show error';
+      fb.textContent = 'Erreur : ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📥 Télécharger';
+    }
+  });
+})();
+</script>
+</body>
+</html>
