@@ -15,6 +15,11 @@
 body{font-family:'Inter',-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;}
 .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;}
 
+/* M_RESPONSIVE_GLOBAL_COMPACT — drawer mobile + backdrop */
+.hamburger{display:none;width:36px;height:36px;border-radius:6px;background:var(--bg-3);border:1px solid var(--line);color:var(--text);cursor:pointer;align-items:center;justify-content:center;font-size:18px;margin-right:8px;}
+.backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99;opacity:0;transition:opacity .22s;}
+.backdrop.show{display:block;opacity:1;}
+
 /* Sidebar */
 .sidebar{background:var(--bg-2);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow-y:auto;}
 .sb-brand{padding:6px 12px 18px;border-bottom:1px solid var(--line);margin-bottom:10px;}
@@ -163,6 +168,89 @@ table tr:last-child td{border-bottom:none;}
 .set-row .meta .name{font-size:13px;color:var(--text);font-weight:500;}
 .set-row .meta .desc{font-size:11.5px;color:var(--text-mute);margin-top:2px;}
 .set-input{background:var(--bg-3);border:1px solid var(--line);color:var(--text);font-size:12.5px;padding:6px 10px;border-radius:5px;font-family:inherit;width:240px;}
+
+/* ============== M_RESPONSIVE_GLOBAL_COMPACT — Mobile compact iPhone 13 (≤768px) ============== */
+@media (max-width: 768px) {
+  .app{display:block;}
+  .hamburger{display:inline-flex;}
+  .sidebar{position:fixed;top:0;left:0;width:75%;max-width:290px;height:100vh;z-index:100;transform:translateX(-100%);transition:transform .25s cubic-bezier(.2,.7,.2,1);box-shadow:2px 0 18px rgba(0,0,0,0.4);padding:14px 10px;}
+  .sidebar.open{transform:translateX(0);}
+  .sb-brand{padding:4px 10px 12px;}
+  .sb-brand .name{font-size:18px;}
+  .sb-brand .role{font-size:9px;}
+  .sb-item{padding:8px 10px;font-size:13px;line-height:1.3;min-height:38px;}
+  .sb-item .ic{font-size:14px;width:18px;}
+  .sb-foot{padding:10px;font-size:10px;}
+  .head{padding:10px 14px;}
+  .head .crumb{font-size:13px;}
+  .head .actions{gap:6px;}
+  .head .search{display:none;}
+  .head .search-btn{display:inline-flex;width:32px;height:32px;border-radius:6px;background:var(--bg-3);border:1px solid var(--line);color:var(--text-mute);cursor:pointer;align-items:center;justify-content:center;font-size:14px;}
+  .head .ic-btn{width:32px;height:32px;font-size:13px;}
+  .head .av{width:30px;height:30px;font-size:12px;}
+  .content{padding:14px;}
+  .sec-title{font-size:16px;}
+  .sec-sub{font-size:12px;margin-bottom:14px;}
+  /* Stats : 2 cols mobile compact */
+  .stats{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+  .stat-card{padding:11px 12px;}
+  .stat-card .label{font-size:10px;margin-bottom:4px;}
+  .stat-card .value{font-size:22px;}
+  .stat-card .delta{font-size:10px;}
+  /* Subtabs scroll horizontal */
+  .subtabs{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .subtab{padding:7px 11px;font-size:12px;}
+  /* Tableau → card-list mobile */
+  .tbl-wrap{border-radius:6px;}
+  .tbl-head{padding:10px 12px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .tbl-head h3{font-size:13px;}
+  .tbl-head .filters{flex-wrap:wrap;width:100%;}
+  .tbl-head select{flex:1;font-size:11.5px;padding:5px 8px;}
+  table thead{display:none;}
+  table, table tbody{display:block;width:100%;}
+  table tr{display:block;border-bottom:1px solid var(--line-soft);padding:10px 12px;}
+  table tr:hover{background:transparent;}
+  table td{display:flex;justify-content:space-between;border:none;padding:3px 0;font-size:12px;}
+  table td::before{content:attr(data-lbl);color:var(--text-soft);font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;flex-shrink:0;margin-right:10px;}
+  table td.col-actions{justify-content:flex-end;padding-top:8px;}
+  table td.col-actions::before{display:none;}
+  .act-btn{padding:5px 10px;font-size:11px;min-height:32px;}
+  /* Card grid Finance/Maintenance : 1 col mobile */
+  .card-grid{grid-template-columns:1fr;gap:10px;margin-bottom:18px;}
+  .fin-card{padding:14px;}
+  .fin-card .total{font-size:24px;}
+  .fin-card ul li{font-size:12px;}
+  .danger-card{padding:14px;}
+  .danger-card h4{font-size:13px;}
+  .danger-card p{font-size:11.5px;}
+  .danger-card .btn{padding:10px 12px;font-size:13px;min-height:44px;}
+  /* IA rows compact */
+  .ia-row{padding:10px 12px;flex-direction:column;align-items:flex-start;gap:8px;}
+  .ia-row .right{text-align:left;font-size:10.5px;}
+  /* Map réduite */
+  .map-wrap{height:200px;padding:14px;}
+  .map-wrap h3{font-size:13px;}
+  .map-pin{width:11px;height:11px;}
+  .map-pin .lbl{font-size:9px;padding:1px 6px;}
+  .chart-wrap{padding:14px;}
+  .chart-wrap svg{height:130px;}
+  /* Builder : message overlay si mobile */
+  .builder{grid-template-columns:1fr;height:auto;}
+  .builder-side{display:none;}
+  .builder-preview{font-size:24px;padding:24px;min-height:200px;}
+  .builder-preview::before{content:'⚠ Constructeur optimisé desktop · ouvre sur écran plus large pour éditer les tokens';display:block;font-family:Inter,sans-serif;font-style:normal;font-size:11.5px;color:var(--brown-soft);margin-bottom:12px;text-align:center;}
+  /* Toggle row Réglages */
+  .set-row{padding:11px 12px;}
+  .set-row .meta .name{font-size:12.5px;}
+  .set-row .meta .desc{font-size:11px;}
+  .set-input{width:100%;font-size:12px;}
+  .set-row{flex-direction:column;align-items:stretch;gap:8px;}
+}
+@media (max-width: 380px) {
+  .stats{grid-template-columns:1fr;}
+  .head{padding:8px 12px;}
+  .content{padding:12px 10px;}
+}
 </style>
 </head>
 <body>
@@ -198,14 +286,19 @@ table tr:last-child td{border-bottom:none;}
 <!-- ========== MAIN ========== -->
 <div class="main">
   <header class="head">
-    <div class="crumb">Superadmin · <b id="crumb">Outils</b></div>
+    <div style="display:flex;align-items:center;min-width:0;">
+      <button class="hamburger" id="hamburger" aria-label="Menu">≡</button>
+      <div class="crumb">Superadmin · <b id="crumb">Outils</b></div>
+    </div>
     <div class="actions">
       <input type="text" class="search" placeholder="Recherche utilisateur, dossier, action…">
+      <button class="ic-btn search-btn" title="Recherche" style="display:none">🔍</button>
       <button class="ic-btn" title="Notifs">🔔</button>
       <button class="ic-btn" title="Aide">?</button>
       <div class="av">P</div>
     </div>
   </header>
+  <div class="backdrop" id="backdrop"></div>
 
   <main class="content">
 
@@ -658,6 +751,25 @@ document.querySelectorAll('.subtab').forEach(st => {
 });
 document.querySelectorAll('.toggle').forEach(t => {
   t.addEventListener('click', () => t.classList.toggle('on'));
+});
+// M_RESPONSIVE_GLOBAL_COMPACT — drawer mobile
+const ham = document.getElementById('hamburger');
+const sb = document.querySelector('.sidebar');
+const bd = document.getElementById('backdrop');
+function closeDrawer(){ sb.classList.remove('open'); bd.classList.remove('show'); document.body.style.overflow=''; }
+ham.addEventListener('click', () => {
+  const open = sb.classList.toggle('open');
+  bd.classList.toggle('show', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+});
+bd.addEventListener('click', closeDrawer);
+document.querySelectorAll('.sb-item').forEach(it => it.addEventListener('click', closeDrawer));
+// Auto-injecter data-lbl sur td pour mode card-list mobile depuis th
+document.querySelectorAll('.tbl-wrap table').forEach(tbl => {
+  const heads = [...tbl.querySelectorAll('thead th')].map(th => th.textContent.trim());
+  tbl.querySelectorAll('tbody tr').forEach(tr => {
+    [...tr.children].forEach((td, i) => { if (heads[i] && heads[i] !== 'Actions') td.setAttribute('data-lbl', heads[i]); });
+  });
 });
 // Live timer atelier (simulation)
 setInterval(() => {
