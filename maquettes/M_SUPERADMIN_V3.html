@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>M_SUPERADMIN_V3 · Maquette interactive 13 onglets</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F0E0C;--bg-2:#181613;--bg-3:#221F1A;--cream:#FAF6F1;--brown:#3D2818;--brown-soft:#6B5642;
+  --line:#2A2620;--line-soft:#36302A;--ocre:#C9A961;--ocre-dark:#8B5E3C;--gold:#D4A256;--gold-bright:#E8B95E;
+  --green:#34D399;--orange:#FBBF24;--red:#F87171;--blue:#60A5FA;--text:#E5DAC6;--text-mute:#998877;--text-soft:#7A7068;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;}
+
+/* Sidebar */
+.sidebar{background:var(--bg-2);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sb-brand{padding:6px 12px 18px;border-bottom:1px solid var(--line);margin-bottom:10px;}
+.sb-brand .name{font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:22px;color:var(--gold-bright);letter-spacing:-0.01em;}
+.sb-brand .role{font-size:10px;color:var(--text-soft);letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;}
+.sb-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:7px;cursor:pointer;color:var(--text-mute);font-size:13px;font-weight:500;transition:all .15s;border:1px solid transparent;}
+.sb-item:hover{background:var(--bg-3);color:var(--text);}
+.sb-item.active{background:rgba(232,185,94,0.10);color:var(--gold-bright);border-color:rgba(232,185,94,0.18);}
+.sb-item .ic{font-size:15px;width:20px;text-align:center;}
+.sb-foot{margin-top:auto;padding:12px;border-top:1px solid var(--line);font-size:11px;color:var(--text-soft);}
+
+/* Main */
+.main{display:flex;flex-direction:column;min-width:0;}
+.head{background:var(--bg-2);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.head .crumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mute);}
+.head .crumb b{color:var(--text);font-weight:600;}
+.head .actions{display:flex;align-items:center;gap:10px;}
+.head .search{background:var(--bg-3);border:1px solid var(--line);border-radius:6px;padding:6px 10px 6px 30px;color:var(--text);font-size:12px;width:240px;font-family:inherit;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23998877' stroke-width='2'><circle cx='11' cy='11' r='8'/><path d='m21 21-4.35-4.35'/></svg>");background-repeat:no-repeat;background-position:8px center;}
+.head .ic-btn{width:32px;height:32px;border-radius:6px;background:var(--bg-3);border:1px solid var(--line);color:var(--text-mute);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.head .ic-btn:hover{color:var(--text);background:var(--line-soft);}
+.head .av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--gold-bright),var(--ocre-dark));color:var(--brown);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+
+.content{padding:24px 28px;flex:1;}
+
+/* Sub-tabs (Outils) */
+.subtabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto;}
+.subtab{padding:9px 14px;color:var(--text-mute);cursor:pointer;font-size:13px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;}
+.subtab.active{color:var(--gold-bright);border-bottom-color:var(--gold-bright);}
+.subtab:hover{color:var(--text);}
+
+/* Cards/Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:14px 16px;}
+.stat-card .label{font-size:11px;color:var(--text-soft);letter-spacing:0.06em;text-transform:uppercase;font-weight:600;margin-bottom:6px;}
+.stat-card .value{font-size:26px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-0.01em;}
+.stat-card .delta{font-size:11px;color:var(--green);margin-top:4px;display:flex;align-items:center;gap:4px;}
+.stat-card .delta.down{color:var(--red);}
+.stat-card.live .value::before{content:'●';color:var(--green);font-size:14px;margin-right:6px;animation:pulse 1.6s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:0.4;}50%{opacity:1;}}
+
+/* Tables denses */
+.tbl-wrap{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.tbl-head{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+.tbl-head h3{font-size:14px;font-weight:600;color:var(--text);}
+.tbl-head .filters{display:flex;gap:8px;}
+.tbl-head select{background:var(--bg-3);border:1px solid var(--line);color:var(--text);font-size:12px;padding:5px 10px;border-radius:5px;font-family:inherit;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+table th{text-align:left;padding:9px 16px;font-size:11px;font-weight:600;color:var(--text-soft);text-transform:uppercase;letter-spacing:0.06em;background:var(--bg-3);border-bottom:1px solid var(--line);position:sticky;top:0;}
+table td{padding:11px 16px;border-bottom:1px solid var(--line-soft);color:var(--text);font-variant-numeric:tabular-nums;}
+table tr:hover td{background:rgba(232,185,94,0.04);}
+table tr:last-child td{border-bottom:none;}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-mute);}
+.col-actions{text-align:right;}
+.act-btn{background:transparent;border:1px solid var(--line-soft);color:var(--text-mute);padding:4px 9px;border-radius:5px;font-size:11px;cursor:pointer;font-family:inherit;margin-left:4px;transition:all .15s;}
+.act-btn:hover{color:var(--gold-bright);border-color:var(--gold-bright);}
+.act-btn.danger:hover{color:var(--red);border-color:var(--red);}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;}
+.badge-active{background:rgba(52,211,153,0.15);color:var(--green);}
+.badge-idle{background:rgba(122,112,104,0.18);color:var(--text-mute);}
+.badge-warn{background:rgba(251,191,36,0.15);color:var(--orange);}
+.badge-crit{background:rgba(248,113,113,0.18);color:var(--red);}
+.badge-info{background:rgba(96,165,250,0.18);color:var(--blue);}
+.badge-pro{background:rgba(212,162,86,0.18);color:var(--gold);}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--text-mute);margin-right:6px;}
+.dot.green{background:var(--green);box-shadow:0 0 8px rgba(52,211,153,0.5);animation:pulse 1.6s ease-in-out infinite;}
+.dot.orange{background:var(--orange);}
+.dot.red{background:var(--red);}
+
+/* Section title */
+.sec-title{font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;letter-spacing:-0.01em;}
+.sec-sub{font-size:13px;color:var(--text-mute);margin-bottom:20px;}
+
+/* Cards layout (Finance, Maintenance) */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:24px;}
+.fin-card{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:18px;}
+.fin-card .label{font-size:11px;color:var(--text-soft);letter-spacing:0.06em;text-transform:uppercase;font-weight:600;margin-bottom:10px;}
+.fin-card .total{font-size:28px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+.fin-card ul{list-style:none;margin-top:14px;}
+.fin-card ul li{display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px;color:var(--text-mute);border-bottom:1px solid var(--line-soft);}
+.fin-card ul li:last-child{border-bottom:none;}
+.fin-card ul li b{color:var(--text);font-weight:500;}
+
+.danger-zone{background:rgba(248,113,113,0.06);border:2px solid rgba(248,113,113,0.25);border-radius:8px;padding:20px;}
+.danger-card{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:18px;}
+.danger-card.lvl1{border-color:rgba(251,191,36,0.4);background:rgba(251,191,36,0.04);}
+.danger-card.lvl2{border-color:rgba(234,88,12,0.4);background:rgba(234,88,12,0.04);}
+.danger-card.lvl3{border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.04);}
+.danger-card h4{font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.danger-card p{font-size:12px;color:var(--text-mute);margin-bottom:12px;line-height:1.55;}
+.danger-card .btn{background:var(--ocre-dark);color:#fff;border:none;padding:9px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;}
+.danger-card.lvl3 .btn{background:#DC2626;}
+
+/* SVG mini chart */
+.chart-wrap{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:18px;margin-bottom:24px;}
+.chart-wrap h3{font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;}
+.chart-wrap svg{width:100%;height:160px;display:block;}
+.chart-line{fill:none;stroke:var(--gold-bright);stroke-width:2;}
+.chart-area{fill:url(#chart-grad);opacity:0.4;}
+.chart-bar{fill:var(--ocre);}
+.chart-bar:hover{fill:var(--gold-bright);}
+
+/* Map mondiale ASCII-style */
+.map-wrap{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:18px;margin-bottom:24px;height:280px;position:relative;background-image:radial-gradient(circle at 30% 40%,rgba(232,185,94,0.15) 0%,transparent 50%),radial-gradient(circle at 65% 30%,rgba(96,165,250,0.12) 0%,transparent 50%),radial-gradient(circle at 50% 60%,rgba(232,185,94,0.10) 0%,transparent 60%);overflow:hidden;}
+.map-wrap h3{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.map-pin{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--gold-bright);box-shadow:0 0 14px rgba(232,185,94,0.7);animation:pulse 2s ease-in-out infinite;}
+.map-pin.warn{background:var(--orange);box-shadow:0 0 14px rgba(251,191,36,0.7);}
+.map-pin.crit{background:var(--red);box-shadow:0 0 14px rgba(248,113,113,0.7);}
+.map-pin .lbl{position:absolute;top:18px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;white-space:nowrap;}
+
+/* Toggles */
+.toggle{position:relative;width:36px;height:20px;background:var(--line-soft);border-radius:10px;cursor:pointer;transition:background .2s;}
+.toggle.on{background:var(--gold-bright);}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s;}
+.toggle.on::after{left:18px;}
+
+/* Section panes */
+.pane{display:none;}
+.pane.active{display:block;animation:fadein .25s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* IA list */
+.ia-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line-soft);}
+.ia-row:last-child{border-bottom:none;}
+.ia-row .left{display:flex;align-items:center;gap:14px;}
+.ia-row .av-ia{width:36px;height:36px;border-radius:8px;background:var(--bg-3);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.ia-row .info .name{font-weight:600;color:var(--text);font-size:13px;}
+.ia-row .info .mission{font-size:11.5px;color:var(--text-mute);margin-top:2px;}
+.ia-row .right{font-size:11px;color:var(--text-soft);text-align:right;font-variant-numeric:tabular-nums;}
+.ia-row .right .cost{color:var(--gold);font-weight:600;}
+
+/* Constructeur */
+.builder{display:grid;grid-template-columns:280px 1fr;gap:14px;height:520px;}
+.builder-side{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-y:auto;}
+.builder-side h4{font-size:11px;color:var(--text-soft);letter-spacing:0.06em;text-transform:uppercase;font-weight:600;margin:14px 0 8px;}
+.builder-side h4:first-child{margin-top:0;}
+.builder-token{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;font-size:12px;color:var(--text);cursor:pointer;}
+.builder-token:hover{background:var(--bg-3);}
+.builder-token .swatch{width:18px;height:18px;border-radius:4px;border:1px solid var(--line);}
+.builder-preview{background:var(--cream);color:var(--brown);border-radius:8px;border:1px solid var(--line);padding:30px;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-style:italic;font-size:36px;color:var(--ocre-dark);}
+
+/* Réglages */
+.set-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line-soft);}
+.set-row:last-child{border-bottom:none;}
+.set-row .meta .name{font-size:13px;color:var(--text);font-weight:500;}
+.set-row .meta .desc{font-size:11.5px;color:var(--text-mute);margin-top:2px;}
+.set-input{background:var(--bg-3);border:1px solid var(--line);color:var(--text);font-size:12.5px;padding:6px 10px;border-radius:5px;font-family:inherit;width:240px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- ========== SIDEBAR ========== -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="name">Oc<span style="color:var(--ocre);">re</span> Admin</div>
+    <div class="role">Superadmin · V3</div>
+  </div>
+  <div class="sb-item active" data-pane="outils"><span class="ic">🛠</span> Outils</div>
+  <div class="sb-item" data-pane="users"><span class="ic">👥</span> Utilisateurs</div>
+  <div class="sb-item" data-pane="dossiers"><span class="ic">📂</span> Dossiers</div>
+  <div class="sb-item" data-pane="atelier"><span class="ic">🏗</span> Atelier live</div>
+  <div class="sb-item" data-pane="ia"><span class="ic">🤖</span> Activité IA</div>
+  <div class="sb-item" data-pane="securite"><span class="ic">🛡</span> Sécurité</div>
+  <div class="sb-item" data-pane="finance"><span class="ic">💰</span> Finance</div>
+  <div class="sb-item" data-pane="abos"><span class="ic">💳</span> Abonnements</div>
+  <div class="sb-item" data-pane="metrics"><span class="ic">📊</span> Métriques</div>
+  <div class="sb-item" data-pane="privileges"><span class="ic">⚙</span> Privilèges</div>
+  <div class="sb-item" data-pane="builder"><span class="ic">🎨</span> Constructeur</div>
+  <div class="sb-item" data-pane="settings"><span class="ic">🔧</span> Réglages</div>
+  <div class="sb-item" data-pane="maint"><span class="ic">🧨</span> Maintenance</div>
+  <div class="sb-foot">
+    Mission M/2026/05/10/70<br>
+    Maquette V3 · 2026-05-10<br>
+    <span style="color:var(--gold);">⚠ DATA FACTICE</span>
+  </div>
+</aside>
+
+<!-- ========== MAIN ========== -->
+<div class="main">
+  <header class="head">
+    <div class="crumb">Superadmin · <b id="crumb">Outils</b></div>
+    <div class="actions">
+      <input type="text" class="search" placeholder="Recherche utilisateur, dossier, action…">
+      <button class="ic-btn" title="Notifs">🔔</button>
+      <button class="ic-btn" title="Aide">?</button>
+      <div class="av">P</div>
+    </div>
+  </header>
+
+  <main class="content">
+
+  <!-- ========== 1. OUTILS ========== -->
+  <section class="pane active" id="pane-outils">
+    <h2 class="sec-title">🛠 Outils Oi · supervision cross-utilisateurs</h2>
+    <p class="sec-sub">6 modules · état temps réel · actions par utilisateur disponibles</p>
+
+    <div class="subtabs">
+      <div class="subtab active" data-out="agent">🏠 Oi Agent</div>
+      <div class="subtab" data-out="scan">📷 Oi Scan</div>
+      <div class="subtab" data-out="book">✈️ Oi Book</div>
+      <div class="subtab" data-out="recherche">🔍 Oi Recherche</div>
+      <div class="subtab" data-out="capture">📄 Oi Capture</div>
+      <div class="subtab" data-out="estimer">💰 Oi Estimer</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card"><div class="label">Utilisateurs total</div><div class="value">128</div><div class="delta">+12 cette semaine</div></div>
+      <div class="stat-card live"><div class="label">Actifs maintenant</div><div class="value">17</div></div>
+      <div class="stat-card"><div class="label">Dossiers gérés</div><div class="value">2 348</div><div class="delta">+184 / 7j</div></div>
+      <div class="stat-card"><div class="label">Sessions 24h</div><div class="value">89</div></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Utilisateurs Oi Agent · 8 derniers</h3>
+        <div class="filters">
+          <select><option>Tous statuts</option><option>Actifs</option><option>Inactifs 7j</option></select>
+          <select><option>Tous pays</option><option>FR</option><option>MA</option></select>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Utilisateur</th><th>Email</th><th>Statut</th><th>Dernière session</th><th>Devices</th><th>Pays</th><th>Dossiers</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          <tr><td><b>Karim Benhamou</b></td><td class="mono">karim@agence-atlas.ma</td><td><span class="badge badge-active"><span class="dot green"></span>actif</span></td><td>il y a 2 min</td><td>iPhone 14, MacBook</td><td>🇲🇦 MA</td><td>47</td><td class="col-actions"><button class="act-btn">Surveiller</button><button class="act-btn danger">Restreindre</button></td></tr>
+          <tr><td><b>Sophie Leroux</b></td><td class="mono">sophie@immo-paris.fr</td><td><span class="badge badge-active"><span class="dot green"></span>actif</span></td><td>il y a 12 min</td><td>iPhone 15</td><td>🇫🇷 FR</td><td>23</td><td class="col-actions"><button class="act-btn">Surveiller</button><button class="act-btn danger">Restreindre</button></td></tr>
+          <tr><td><b>Inès Tazi</b></td><td class="mono">ines@diag-casa.ma</td><td><span class="badge badge-idle"><span class="dot"></span>idle 2h</span></td><td>il y a 2h</td><td>iPad Pro</td><td>🇲🇦 MA</td><td>31</td><td class="col-actions"><button class="act-btn">Surveiller</button><button class="act-btn danger">Restreindre</button></td></tr>
+          <tr><td><b>Marc Durand</b></td><td class="mono">marc@riad-search.com</td><td><span class="badge badge-active"><span class="dot green"></span>actif</span></td><td>il y a 8 min</td><td>iPhone 13</td><td>🇫🇷 FR</td><td>15</td><td class="col-actions"><button class="act-btn">Surveiller</button><button class="act-btn danger">Restreindre</button></td></tr>
+          <tr><td><b>Yasmine Alaoui</b></td><td class="mono">yasmine@invest.ma</td><td><span class="badge badge-idle"><span class="dot"></span>idle 1j</span></td><td>hier 18:30</td><td>MacBook Air</td><td>🇲🇦 MA</td><td>8</td><td class="col-actions"><button class="act-btn">Surveiller</button><button class="act-btn danger">Restreindre</button></td></tr>
+          <tr><td><b>Pauline Mercier</b></td><td class="mono">pauline@lyon-immo.fr</td><td><span class="badge badge-active"><span class="dot green"></span>actif</span></td><td>il y a 1 min</td><td>iPhone 15 Pro</td><td>🇫🇷 FR</td><td>62</td><td class="col-actions"><button class="act-btn">Surveiller</button><button class="act-btn danger">Restreindre</button></td></tr>
+          <tr><td><b>Hassan Idrissi</b></td><td class="mono">hassan@vente-villa.ma</td><td><span class="badge badge-idle"><span class="dot"></span>idle 3j</span></td><td>jeu. 14:22</td><td>iPad mini</td><td>🇲🇦 MA</td><td>5</td><td class="col-actions"><button class="act-btn">Surveiller</button><button class="act-btn danger">Restreindre</button></td></tr>
+          <tr><td><b>Anaïs Roux</b></td><td class="mono">anais@marrakech.fr</td><td><span class="badge badge-active"><span class="dot green"></span>actif</span></td><td>il y a 5 min</td><td>iPhone 14</td><td>🇫🇷 FR</td><td>29</td><td class="col-actions"><button class="act-btn">Surveiller</button><button class="act-btn danger">Restreindre</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 2. UTILISATEURS ========== -->
+  <section class="pane" id="pane-users">
+    <h2 class="sec-title">👥 Base utilisateurs cross-outils</h2>
+    <p class="sec-sub">128 utilisateurs · 6 outils · 5 pays · drill-down détail disponible</p>
+
+    <div class="stats">
+      <div class="stat-card"><div class="label">Total inscrits</div><div class="value">128</div><div class="delta">+18 / 30j</div></div>
+      <div class="stat-card"><div class="label">Multi-outils</div><div class="value">42</div></div>
+      <div class="stat-card"><div class="label">Pays uniques</div><div class="value">5</div></div>
+      <div class="stat-card live"><div class="label">Connectés</div><div class="value">17</div></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Tous utilisateurs · vue cross-outils</h3>
+        <div class="filters">
+          <select><option>Tous outils</option><option>Oi Agent</option><option>Oi Scan</option><option>Oi Book</option><option>Oi Recherche</option></select>
+          <select><option>Tous statuts</option><option>Actif 7j</option><option>Inactif 30j</option></select>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Nom</th><th>Email</th><th>Outils</th><th>Inscrit</th><th>Pays</th><th>Dossiers</th><th>Dernière session</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          <tr><td><b>Karim Benhamou</b></td><td class="mono">karim@agence-atlas.ma</td><td><span class="badge badge-pro">Agent</span> <span class="badge badge-pro">Recherche</span></td><td>2024-11-12</td><td>🇲🇦 MA</td><td>47</td><td>il y a 2 min</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td><b>Sophie Leroux</b></td><td class="mono">sophie@immo-paris.fr</td><td><span class="badge badge-pro">Agent</span></td><td>2025-01-08</td><td>🇫🇷 FR</td><td>23</td><td>il y a 12 min</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td><b>Inès Tazi</b></td><td class="mono">ines@diag-casa.ma</td><td><span class="badge badge-pro">Agent</span> <span class="badge badge-pro">Scan</span></td><td>2025-02-22</td><td>🇲🇦 MA</td><td>31</td><td>il y a 2h</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td><b>Marc Durand</b></td><td class="mono">marc@riad-search.com</td><td><span class="badge badge-pro">Recherche</span> <span class="badge badge-pro">Book</span></td><td>2025-03-14</td><td>🇫🇷 FR</td><td>15</td><td>il y a 8 min</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td><b>Yasmine Alaoui</b></td><td class="mono">yasmine@invest.ma</td><td><span class="badge badge-pro">Agent</span> <span class="badge badge-pro">Estimer</span></td><td>2025-04-02</td><td>🇲🇦 MA</td><td>8</td><td>hier 18:30</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td><b>Pauline Mercier</b></td><td class="mono">pauline@lyon-immo.fr</td><td><span class="badge badge-pro">Agent</span> <span class="badge badge-pro">Capture</span> <span class="badge badge-pro">Estimer</span></td><td>2024-09-30</td><td>🇫🇷 FR</td><td>62</td><td>il y a 1 min</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td><b>Philippe Ciftci</b></td><td class="mono">philippe.ciftci@gmail.com</td><td><span class="badge badge-pro">Agent</span> <span class="badge badge-pro">Recherche</span> <span class="badge badge-pro">+4</span></td><td>2024-04-22</td><td>🇫🇷 FR</td><td>118</td><td>maintenant</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 3. DOSSIERS ========== -->
+  <section class="pane" id="pane-dossiers">
+    <h2 class="sec-title">📂 Dossiers cross-utilisateurs</h2>
+    <p class="sec-sub">2 348 dossiers · 4 statuts · vue cross-outils</p>
+
+    <div class="subtabs">
+      <div class="subtab active">📋 En cours · 1 246</div>
+      <div class="subtab">📦 Archivés · 802</div>
+      <div class="subtab">🗑 Supprimés · 138</div>
+      <div class="subtab">📝 Brouillons · 162</div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Dossiers en cours · 6 derniers</h3>
+        <div class="filters">
+          <select><option>Tous outils</option><option>Oi Agent</option><option>Oi Recherche</option></select>
+          <select><option>Tous types</option><option>Vendeur</option><option>Acheteur</option><option>Bailleur</option></select>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>ID</th><th>Type</th><th>Localisation</th><th>Utilisateur</th><th>Outil</th><th>Créé</th><th>Dernière modif</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">#D-2147</td><td>Vendeur</td><td>Marrakech · Hivernage</td><td>Karim Benhamou</td><td><span class="badge badge-pro">Agent</span></td><td>2026-04-12</td><td>il y a 3h</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td class="mono">#D-2148</td><td>Acheteur</td><td>Casa · Anfa</td><td>Sophie Leroux</td><td><span class="badge badge-pro">Agent</span></td><td>2026-04-15</td><td>il y a 1h</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td class="mono">#D-2149</td><td>Bailleur</td><td>Paris 16e</td><td>Pauline Mercier</td><td><span class="badge badge-pro">Agent</span></td><td>2026-04-18</td><td>aujourd'hui 10:22</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td class="mono">#D-2150</td><td>Vendeur</td><td>Lyon · Croix-Rousse</td><td>Pauline Mercier</td><td><span class="badge badge-pro">Agent</span></td><td>2026-04-22</td><td>il y a 5 min</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td class="mono">#D-2151</td><td>Acheteur</td><td>Marrakech · Médina</td><td>Marc Durand</td><td><span class="badge badge-pro">Recherche</span></td><td>2026-05-02</td><td>hier 16:00</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+          <tr><td class="mono">#D-2152</td><td>Investisseur</td><td>Casa · Bourgogne</td><td>Yasmine Alaoui</td><td><span class="badge badge-pro">Estimer</span></td><td>2026-05-08</td><td>aujourd'hui 09:14</td><td class="col-actions"><button class="act-btn">Détail</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 4. ATELIER LIVE ========== -->
+  <section class="pane" id="pane-atelier">
+    <h2 class="sec-title">🏗 Atelier · sessions Claude Code live</h2>
+    <p class="sec-sub">Latence ≤ 1 sec · refresh JS continu · CC actifs · missions en cours + historique</p>
+
+    <div class="stats">
+      <div class="stat-card live"><div class="label">CC actifs</div><div class="value">3</div></div>
+      <div class="stat-card"><div class="label">Missions 24h</div><div class="value">28</div><div class="delta">+8 vs hier</div></div>
+      <div class="stat-card"><div class="label">Tps moy mission</div><div class="value">4 min</div></div>
+      <div class="stat-card"><div class="label">Coût Anthropic 24h</div><div class="value">$24.80</div></div>
+    </div>
+
+    <div class="tbl-wrap" style="margin-bottom:18px">
+      <div class="tbl-head"><h3>Sessions actives <span class="dot green"></span></h3></div>
+      <table>
+        <thead><tr><th>Session tmux</th><th>Mission active</th><th>Projet</th><th>Début</th><th>Durée</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">claude:0</td><td>M_SUPERADMIN_V3_MAQUETTE</td><td>ocre</td><td>16:39:25</td><td>03 min 22s</td><td><span class="badge badge-active"><span class="dot green"></span>en cours</span></td></tr>
+          <tr><td class="mono">cc-atelier:0</td><td>M_ATELIER_TEST_E2E</td><td>atelier</td><td>16:35:10</td><td>07 min 37s</td><td><span class="badge badge-active"><span class="dot green"></span>en cours</span></td></tr>
+          <tr><td class="mono">cc-laliste:0</td><td>idle (attente mission)</td><td>laliste</td><td>—</td><td>—</td><td><span class="badge badge-idle"><span class="dot"></span>idle</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Historique 8 dernières missions</h3></div>
+      <table>
+        <thead><tr><th>Mission ID</th><th>Titre court</th><th>Projet</th><th>Durée</th><th>Status</th><th>Commit</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">M/2026/05/10/69</td><td>VOCAB_UTILISATEUR</td><td>ocre</td><td>2 min 18s</td><td><span class="badge badge-active">livré</span></td><td class="mono">2f27ce1</td></tr>
+          <tr><td class="mono">M/2026/05/10/68</td><td>RENAME_DEMANDE_RECHERCHE</td><td>ocre</td><td>4 min 02s</td><td><span class="badge badge-active">livré</span></td><td class="mono">83a84b1</td></tr>
+          <tr><td class="mono">M/2026/05/10/67</td><td>AUTH_EMAIL_CHECK_FIX</td><td>ocre</td><td>1 min 47s</td><td><span class="badge badge-active">livré</span></td><td class="mono">7156b96</td></tr>
+          <tr><td class="mono">M/2026/05/10/66</td><td>AUTH_ALIGN_V4</td><td>ocre</td><td>3 min 30s</td><td><span class="badge badge-active">livré</span></td><td class="mono">4fc1ff5</td></tr>
+          <tr><td class="mono">M/2026/05/10/65</td><td>MAGIC_LINK_DIAG</td><td>ocre</td><td>5 min 21s</td><td><span class="badge badge-active">livré</span></td><td class="mono">4a3501e</td></tr>
+          <tr><td class="mono">M/2026/05/10/64</td><td>PARCOURS_V4_CORRECTIF</td><td>ocre</td><td>4 min 45s</td><td><span class="badge badge-active">livré</span></td><td class="mono">17d7660</td></tr>
+          <tr><td class="mono">M/2026/05/10/63</td><td>PARCOURS_V4</td><td>ocre</td><td>9 min 12s</td><td><span class="badge badge-active">livré</span></td><td class="mono">6d749b5</td></tr>
+          <tr><td class="mono">M/2026/05/10/62</td><td>OAUTH_BOUCLE_FIX</td><td>ocre</td><td>3 min 56s</td><td><span class="badge badge-active">livré</span></td><td class="mono">171681d</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 5. ACTIVITÉ IA ========== -->
+  <section class="pane" id="pane-ia">
+    <h2 class="sec-title">🤖 Activité IA · supervision multi-modèles</h2>
+    <p class="sec-sub">Toutes les IA qui bossent · coûts temps réel · historique cross-projet</p>
+
+    <div class="stats">
+      <div class="stat-card"><div class="label">IA actives</div><div class="value">3</div></div>
+      <div class="stat-card"><div class="label">Tokens 24h</div><div class="value">2.4M</div></div>
+      <div class="stat-card"><div class="label">Coût 24h</div><div class="value">$24.80</div></div>
+      <div class="stat-card"><div class="label">Coût mois</div><div class="value">$487</div><div class="delta">budget $800</div></div>
+    </div>
+
+    <div class="tbl-wrap" style="margin-bottom:18px">
+      <div class="tbl-head"><h3>IA en cours de mission <span class="dot green"></span></h3></div>
+      <div class="ia-row"><div class="left"><div class="av-ia">🤖</div><div class="info"><div class="name">Claude Opus 4.7 · CC ocre</div><div class="mission">M_SUPERADMIN_V3_MAQUETTE · 13 onglets HTML</div></div></div><div class="right">3 min 22s · 14k tokens<br><span class="cost">$0.42</span></div></div>
+      <div class="ia-row"><div class="left"><div class="av-ia">🤖</div><div class="info"><div class="name">Claude Sonnet 4.6 · CC atelier</div><div class="mission">M_ATELIER_TEST_E2E · suite Playwright</div></div></div><div class="right">7 min 37s · 28k tokens<br><span class="cost">$0.18</span></div></div>
+      <div class="ia-row"><div class="left"><div class="av-ia">⚡</div><div class="info"><div class="name">Claude Haiku 4.5 · sub-agent ocre</div><div class="mission">Lecture mission inbox + classification</div></div></div><div class="right">42s · 1.2k tokens<br><span class="cost">$0.002</span></div></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Top consommateurs · 30 derniers jours</h3></div>
+      <table>
+        <thead><tr><th>Modèle</th><th>Missions</th><th>Tokens in</th><th>Tokens out</th><th>Coût</th><th>% mois</th></tr></thead>
+        <tbody>
+          <tr><td><b>Claude Opus 4.7</b></td><td>87</td><td>4.2M</td><td>1.1M</td><td>$312</td><td>64%</td></tr>
+          <tr><td><b>Claude Sonnet 4.6</b></td><td>156</td><td>3.8M</td><td>892k</td><td>$148</td><td>30%</td></tr>
+          <tr><td><b>Claude Haiku 4.5</b></td><td>402</td><td>2.1M</td><td>340k</td><td>$22</td><td>5%</td></tr>
+          <tr><td><b>GPT-4o</b></td><td>12</td><td>120k</td><td>34k</td><td>$5</td><td>1%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 6. SÉCURITÉ ========== -->
+  <section class="pane" id="pane-securite">
+    <h2 class="sec-title">🛡 Sécurité · supervision live</h2>
+    <p class="sec-sub">Alertes temps réel · géolocalisation connexions · logs auth · actions immédiates</p>
+
+    <div class="stats">
+      <div class="stat-card"><div class="label">Alertes actives</div><div class="value" style="color:var(--orange)">3</div></div>
+      <div class="stat-card"><div class="label">Critique</div><div class="value" style="color:var(--red)">1</div></div>
+      <div class="stat-card"><div class="label">Auth 24h</div><div class="value">142</div></div>
+      <div class="stat-card"><div class="label">IPs bloquées</div><div class="value">4</div></div>
+    </div>
+
+    <div class="map-wrap">
+      <h3>🌍 Connexions live</h3>
+      <div class="map-pin" style="top:50%;left:48%"><span class="lbl">Paris · 8</span></div>
+      <div class="map-pin" style="top:60%;left:46%"><span class="lbl">Marrakech · 5</span></div>
+      <div class="map-pin" style="top:55%;left:50%"><span class="lbl">Lyon · 2</span></div>
+      <div class="map-pin warn" style="top:38%;left:73%"><span class="lbl">⚠ Inde (Yasmine)</span></div>
+      <div class="map-pin" style="top:53%;left:52%"><span class="lbl">Bruxelles · 1</span></div>
+      <div class="map-pin" style="top:58%;left:44%"><span class="lbl">Casa · 3</span></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Alertes récentes</h3></div>
+      <table>
+        <thead><tr><th>Sévérité</th><th>Type</th><th>Utilisateur</th><th>Détail</th><th>Quand</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge badge-crit">CRITIQUE</span></td><td>Géoloc anormale</td><td>Yasmine Alaoui</td><td>Connexion Mumbai · habituellement Casablanca</td><td>il y a 5 min</td><td class="col-actions"><button class="act-btn danger">Lock compte</button><button class="act-btn">Bloquer IP</button></td></tr>
+          <tr><td><span class="badge badge-warn">WARN</span></td><td>Brute force</td><td>—</td><td>5 tentatives magic link · IP 92.45.221.x</td><td>il y a 18 min</td><td class="col-actions"><button class="act-btn danger">Bloquer IP</button></td></tr>
+          <tr><td><span class="badge badge-warn">WARN</span></td><td>Token expiré utilisé</td><td>Marc Durand</td><td>Magic link 16h+ après émission</td><td>il y a 1h</td><td class="col-actions"><button class="act-btn">Voir log</button></td></tr>
+          <tr><td><span class="badge badge-info">INFO</span></td><td>Nouveau device</td><td>Sophie Leroux</td><td>iPad Pro · première connexion</td><td>il y a 3h</td><td class="col-actions"><button class="act-btn">Approuver</button></td></tr>
+          <tr><td><span class="badge badge-info">INFO</span></td><td>Logout global</td><td>Admin (Philippe)</td><td>Force déconnexion 12 sessions tenant ABC</td><td>hier 22:14</td><td class="col-actions"><button class="act-btn">Voir log</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 7. FINANCE ========== -->
+  <section class="pane" id="pane-finance">
+    <h2 class="sec-title">💰 Finance · vue d'ensemble coûts</h2>
+    <p class="sec-sub">Coûts mensuels par catégorie · drill-down par poste · projection</p>
+
+    <div class="card-grid">
+      <div class="fin-card"><div class="label">👥 Coût utilisateurs (API)</div><div class="total">$148</div>
+        <ul><li>Anthropic API (matching IA)<b>$98</b></li><li>OpenAI (estimer)<b>$32</b></li><li>OVH SMTP magic link<b>$8</b></li><li>Stripe fees<b>$10</b></li></ul></div>
+      <div class="fin-card"><div class="label">🏗 Coût atelier (dev IA)</div><div class="total">$487</div>
+        <ul><li>Claude Opus 4.7<b>$312</b></li><li>Claude Sonnet 4.6<b>$148</b></li><li>Claude Haiku 4.5<b>$22</b></li><li>GPT-4o<b>$5</b></li></ul></div>
+      <div class="fin-card"><div class="label">💼 Abonnements infra</div><div class="total">$220</div>
+        <ul><li>Hetzner VPS<b>$48</b></li><li>OVH (DNS+mail)<b>$30</b></li><li>GitHub Pro<b>$4</b></li><li>Domaines (.immo .app)<b>$22</b></li><li>Anthropic API base<b>$60</b></li><li>OpenAI API base<b>$56</b></li></ul></div>
+      <div class="fin-card" style="background:linear-gradient(135deg,rgba(232,185,94,0.10),rgba(139,94,60,0.10));border-color:var(--gold);"><div class="label">💎 TOTAL MENSUEL</div><div class="total" style="color:var(--gold-bright);font-size:32px">$855</div>
+        <ul><li>Budget mensuel<b>$1 200</b></li><li>Reste<b style="color:var(--green)">$345</b></li><li>Coût/utilisateur<b>$6.68</b></li></ul></div>
+    </div>
+
+    <div class="chart-wrap">
+      <h3>📈 Évolution coûts mensuels (12 mois)</h3>
+      <svg viewBox="0 0 600 160" preserveAspectRatio="none">
+        <defs><linearGradient id="chart-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8B95E" stop-opacity="0.6"/><stop offset="100%" stop-color="#E8B95E" stop-opacity="0"/></linearGradient></defs>
+        <path class="chart-area" d="M0,140 L50,135 L100,128 L150,120 L200,110 L250,95 L300,82 L350,75 L400,60 L450,52 L500,42 L550,38 L600,30 L600,160 L0,160 Z"/>
+        <path class="chart-line" d="M0,140 L50,135 L100,128 L150,120 L200,110 L250,95 L300,82 L350,75 L400,60 L450,52 L500,42 L550,38 L600,30"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ========== 8. ABONNEMENTS ========== -->
+  <section class="pane" id="pane-abos">
+    <h2 class="sec-title">💳 Abonnements <span class="badge badge-warn">PLACEHOLDER</span></h2>
+    <p class="sec-sub">Tous les utilisateurs sont GRATUITS pour l'instant · bascule prévue · DB schema prête</p>
+
+    <div class="stats">
+      <div class="stat-card"><div class="label">Utilisateurs total</div><div class="value">128</div></div>
+      <div class="stat-card"><div class="label">MRR théorique</div><div class="value">$0</div><div class="delta">si plan Pro 49€ tous → $6 272</div></div>
+      <div class="stat-card"><div class="label">ARR théorique</div><div class="value">$0</div><div class="delta">→ $75 264</div></div>
+      <div class="stat-card"><div class="label">Conv. visée</div><div class="value">15%</div></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Plans disponibles (à activer)</h3></div>
+      <table>
+        <thead><tr><th>Plan</th><th>Prix mensuel</th><th>Quota dossiers</th><th>Modules inclus</th><th>Utilisateurs prévus</th><th>MRR</th></tr></thead>
+        <tbody>
+          <tr><td><b>🆓 Gratuit</b></td><td>0€</td><td>10</td><td>1 outil</td><td>~85</td><td>$0</td></tr>
+          <tr><td><b>💼 Pro</b></td><td>49€</td><td>illimité</td><td>3 outils</td><td>~30</td><td>$1 470</td></tr>
+          <tr><td><b>🏢 Equipe</b></td><td>99€</td><td>illimité + équipe 5</td><td>tous outils</td><td>~10</td><td>$990</td></tr>
+          <tr><td><b>💎 Channel Premium</b></td><td>+99€</td><td>diffusion 7 portails</td><td>add-on</td><td>~5</td><td>$495</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 9. MÉTRIQUES ========== -->
+  <section class="pane" id="pane-metrics">
+    <h2 class="sec-title">📊 Métriques · vue d'ensemble cross-tout</h2>
+    <p class="sec-sub">Live + trends 24h/7j/30j · pic d'usage · répartition géo</p>
+
+    <div class="stats">
+      <div class="stat-card live"><div class="label">Connectés maintenant</div><div class="value">17</div></div>
+      <div class="stat-card"><div class="label">Sessions 24h</div><div class="value">142</div><div class="delta">+12% vs hier</div></div>
+      <div class="stat-card"><div class="label">Pic du jour</div><div class="value">38</div><div class="delta">à 14:22</div></div>
+      <div class="stat-card"><div class="label">Inscriptions 7j</div><div class="value">12</div><div class="delta">+3 vs sem précéd.</div></div>
+    </div>
+
+    <div class="chart-wrap">
+      <h3>📉 Sessions sur 24h (live)</h3>
+      <svg viewBox="0 0 600 160" preserveAspectRatio="none">
+        <g>
+          <rect class="chart-bar" x="0" y="120" width="22" height="40"/><rect class="chart-bar" x="25" y="130" width="22" height="30"/><rect class="chart-bar" x="50" y="100" width="22" height="60"/><rect class="chart-bar" x="75" y="80" width="22" height="80"/><rect class="chart-bar" x="100" y="60" width="22" height="100"/><rect class="chart-bar" x="125" y="40" width="22" height="120"/><rect class="chart-bar" x="150" y="50" width="22" height="110"/><rect class="chart-bar" x="175" y="30" width="22" height="130"/><rect class="chart-bar" x="200" y="20" width="22" height="140"/><rect class="chart-bar" x="225" y="35" width="22" height="125"/><rect class="chart-bar" x="250" y="45" width="22" height="115"/><rect class="chart-bar" x="275" y="60" width="22" height="100"/><rect class="chart-bar" x="300" y="70" width="22" height="90"/><rect class="chart-bar" x="325" y="55" width="22" height="105"/><rect class="chart-bar" x="350" y="40" width="22" height="120"/><rect class="chart-bar" x="375" y="65" width="22" height="95"/><rect class="chart-bar" x="400" y="80" width="22" height="80"/><rect class="chart-bar" x="425" y="90" width="22" height="70"/><rect class="chart-bar" x="450" y="100" width="22" height="60"/><rect class="chart-bar" x="475" y="110" width="22" height="50"/><rect class="chart-bar" x="500" y="105" width="22" height="55"/><rect class="chart-bar" x="525" y="95" width="22" height="65"/><rect class="chart-bar" x="550" y="85" width="22" height="75"/><rect class="chart-bar" x="575" y="75" width="22" height="85"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="map-wrap" style="height:260px">
+      <h3>🌍 Répartition géo connexions live</h3>
+      <div class="map-pin" style="top:48%;left:48%"><span class="lbl">Paris · 8</span></div>
+      <div class="map-pin" style="top:62%;left:46%"><span class="lbl">Marrakech · 5</span></div>
+      <div class="map-pin" style="top:55%;left:50%"><span class="lbl">Lyon · 2</span></div>
+      <div class="map-pin" style="top:58%;left:44%"><span class="lbl">Casa · 3</span></div>
+      <div class="map-pin" style="top:53%;left:52%"><span class="lbl">Bruxelles · 1</span></div>
+    </div>
+  </section>
+
+  <!-- ========== 10. PRIVILÈGES ========== -->
+  <section class="pane" id="pane-privileges">
+    <h2 class="sec-title">⚙ Privilèges · gestion accès spéciaux</h2>
+    <p class="sec-sub">5 types · attribution par utilisateur · création types custom</p>
+
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Utilisateurs × privilèges</h3>
+        <button class="act-btn" style="border-color:var(--gold);color:var(--gold);">+ Nouveau type</button>
+      </div>
+      <table>
+        <thead><tr><th>Utilisateur</th><th>Admin partiel</th><th>Modérateur</th><th>Beta tester</th><th>Accès anticipé</th><th>VIP</th></tr></thead>
+        <tbody>
+          <tr><td><b>Philippe Ciftci</b></td><td><div class="toggle on"></div></td><td><div class="toggle on"></div></td><td><div class="toggle on"></div></td><td><div class="toggle on"></div></td><td><div class="toggle on"></div></td></tr>
+          <tr><td><b>Karim Benhamou</b></td><td><div class="toggle"></div></td><td><div class="toggle"></div></td><td><div class="toggle on"></div></td><td><div class="toggle on"></div></td><td><div class="toggle"></div></td></tr>
+          <tr><td><b>Sophie Leroux</b></td><td><div class="toggle"></div></td><td><div class="toggle"></div></td><td><div class="toggle on"></div></td><td><div class="toggle"></div></td><td><div class="toggle"></div></td></tr>
+          <tr><td><b>Pauline Mercier</b></td><td><div class="toggle"></div></td><td><div class="toggle on"></div></td><td><div class="toggle on"></div></td><td><div class="toggle on"></div></td><td><div class="toggle on"></div></td></tr>
+          <tr><td><b>Marc Durand</b></td><td><div class="toggle"></div></td><td><div class="toggle"></div></td><td><div class="toggle"></div></td><td><div class="toggle on"></div></td><td><div class="toggle"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 11. CONSTRUCTEUR ========== -->
+  <section class="pane" id="pane-builder">
+    <h2 class="sec-title">🎨 Constructeur de page · design tokens live</h2>
+    <p class="sec-sub">Édition tokens cream/ocre/typo · aperçu live · brouillon vs publier · branché design_tokens.php</p>
+
+    <div class="builder">
+      <div class="builder-side">
+        <h4>Couleurs principales</h4>
+        <div class="builder-token"><div class="swatch" style="background:#FAF6F1"></div>--cream <span style="margin-left:auto;color:var(--text-soft);font-size:11px;font-family:JetBrains Mono">#FAF6F1</span></div>
+        <div class="builder-token"><div class="swatch" style="background:#3D2818"></div>--brown <span style="margin-left:auto;color:var(--text-soft);font-size:11px;font-family:JetBrains Mono">#3D2818</span></div>
+        <div class="builder-token"><div class="swatch" style="background:#8B5E3C"></div>--ocre-dark <span style="margin-left:auto;color:var(--text-soft);font-size:11px;font-family:JetBrains Mono">#8B5E3C</span></div>
+        <div class="builder-token"><div class="swatch" style="background:#D4A256"></div>--gold <span style="margin-left:auto;color:var(--text-soft);font-size:11px;font-family:JetBrains Mono">#D4A256</span></div>
+        <div class="builder-token"><div class="swatch" style="background:#E8B95E"></div>--gold-bright <span style="margin-left:auto;color:var(--text-soft);font-size:11px;font-family:JetBrains Mono">#E8B95E</span></div>
+        <h4>Typo</h4>
+        <div class="builder-token">📝 Cormorant Garamond italic</div>
+        <div class="builder-token">📝 Inter sans</div>
+        <div class="builder-token">📝 JetBrains Mono</div>
+        <h4>Spacing tokens</h4>
+        <div class="builder-token">📐 14 / 18 / 22 / 30 / 60px</div>
+        <h4>Actions</h4>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="act-btn" style="flex:1">Aperçu brouillon</button>
+          <button class="act-btn" style="flex:1;background:var(--ocre-dark);color:#fff;border-color:var(--ocre-dark)">Publier</button>
+        </div>
+      </div>
+      <div class="builder-preview">Oc<span style="color:var(--gold)">re</span></div>
+    </div>
+  </section>
+
+  <!-- ========== 12. RÉGLAGES ========== -->
+  <section class="pane" id="pane-settings">
+    <h2 class="sec-title">🔧 Réglages plateforme</h2>
+    <p class="sec-sub">Config globale · toggles modules · textes app · paramètres généraux</p>
+
+    <div class="tbl-wrap" style="margin-bottom:18px">
+      <div class="tbl-head"><h3>Modules actifs</h3></div>
+      <div class="set-row"><div class="meta"><div class="name">🏠 Oi Agent</div><div class="desc">CRM matching dossiers immo · production</div></div><div class="toggle on"></div></div>
+      <div class="set-row"><div class="meta"><div class="name">🔍 Oi Recherche</div><div class="desc">Brief utilisateur + propositions agents · production</div></div><div class="toggle on"></div></div>
+      <div class="set-row"><div class="meta"><div class="name">📷 Oi Scan</div><div class="desc">Diagnostic IA bâtiment 2 min · placeholder</div></div><div class="toggle"></div></div>
+      <div class="set-row"><div class="meta"><div class="name">✈️ Oi Book</div><div class="desc">Planning voyage immo · placeholder</div></div><div class="toggle"></div></div>
+      <div class="set-row"><div class="meta"><div class="name">📄 Oi Capture</div><div class="desc">Scan documents OCR · placeholder</div></div><div class="toggle"></div></div>
+      <div class="set-row"><div class="meta"><div class="name">💰 Oi Estimer</div><div class="desc">Estimation IA marché · placeholder</div></div><div class="toggle"></div></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <div class="tbl-head"><h3>Textes app globaux</h3></div>
+      <div class="set-row"><div class="meta"><div class="name">Titre app</div><div class="desc">Affiché meta + manifest</div></div><input class="set-input" value="Ocre — Outils immo gratuits"></div>
+      <div class="set-row"><div class="meta"><div class="name">Tagline home</div><div class="desc">Hero principal ocre.immo</div></div><input class="set-input" value="Vos outils immo, gratuits."></div>
+      <div class="set-row"><div class="meta"><div class="name">Footer copyright</div><div class="desc">Pied de page toutes pages</div></div><input class="set-input" value="© 2026 Ocre"></div>
+      <div class="set-row"><div class="meta"><div class="name">Email contact</div><div class="desc">Lien support footer</div></div><input class="set-input" value="contact@ocre.immo"></div>
+      <div class="set-row"><div class="meta"><div class="name">Timezone défaut</div><div class="desc">Affichage dates app</div></div><input class="set-input" value="Europe/Paris"></div>
+      <div class="set-row"><div class="meta"><div class="name">Langue défaut</div><div class="desc">Si geo détection échoue</div></div><input class="set-input" value="fr-FR"></div>
+    </div>
+  </section>
+
+  <!-- ========== 13. MAINTENANCE ========== -->
+  <section class="pane" id="pane-maint">
+    <h2 class="sec-title">🧨 Maintenance · zone destructive</h2>
+    <p class="sec-sub">Backup auto · 3 niveaux reset · triple confirmation · logs maintenance</p>
+
+    <div class="tbl-wrap" style="margin-bottom:18px">
+      <div class="tbl-head"><h3>📦 Backups DB · 5 derniers</h3>
+        <button class="act-btn" style="background:var(--green);color:#000;border-color:var(--green);">📦 Backup manuel maintenant</button>
+      </div>
+      <table>
+        <thead><tr><th>Fichier</th><th>Type</th><th>Taille</th><th>Date</th><th class="col-actions">Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">manual-20260510-143022.sql.gz</td><td><span class="badge badge-info">manual</span></td><td>14.2 MB</td><td>aujourd'hui 14:30</td><td class="col-actions"><button class="act-btn">Télécharger</button><button class="act-btn">♻️ Restaurer</button></td></tr>
+          <tr><td class="mono">scheduled-20260510-000000.sql.gz</td><td><span class="badge badge-pro">scheduled</span></td><td>14.1 MB</td><td>aujourd'hui 00:00</td><td class="col-actions"><button class="act-btn">Télécharger</button><button class="act-btn">♻️ Restaurer</button></td></tr>
+          <tr><td class="mono">pre-reset-L1-exbat-20260509-180415.sql.gz</td><td><span class="badge badge-warn">pre-reset</span></td><td>13.8 MB</td><td>hier 18:04</td><td class="col-actions"><button class="act-btn">Télécharger</button><button class="act-btn">♻️ Restaurer</button></td></tr>
+          <tr><td class="mono">scheduled-20260509-000000.sql.gz</td><td><span class="badge badge-pro">scheduled</span></td><td>13.7 MB</td><td>hier 00:00</td><td class="col-actions"><button class="act-btn">Télécharger</button><button class="act-btn">♻️ Restaurer</button></td></tr>
+          <tr><td class="mono">scheduled-20260508-000000.sql.gz</td><td><span class="badge badge-pro">scheduled</span></td><td>13.5 MB</td><td>il y a 2j</td><td class="col-actions"><button class="act-btn">Télécharger</button><button class="act-btn">♻️ Restaurer</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-bottom:10px;color:var(--text);font-size:14px">⚠️ Reset par périmètre · triple confirmation</h3>
+    <div class="card-grid">
+      <div class="danger-card lvl1">
+        <h4>Niveau 1 — Reset DOSSIERS 🟡</h4>
+        <p>TRUNCATE dossiers + photos + matches d'un utilisateur. Garde users + abonnements + sessions des autres.</p>
+        <button class="btn">Reset DOSSIERS</button>
+      </div>
+      <div class="danger-card lvl2">
+        <h4>Niveau 2 — Reset UTILISATEUR unique 🟠</h4>
+        <p>DROP DATABASE ocre_wsp_&lt;slug&gt; uniquement. Conserve auth + abonnements autres utilisateurs.</p>
+        <button class="btn" style="background:#EA580C">Reset UTILISATEUR</button>
+      </div>
+      <div class="danger-card lvl3">
+        <h4>Reset TOTAL ⛔</h4>
+        <p>DROP toutes les bases ocre_wsp_* + TRUNCATE meta. Conserve uniquement super_admin + feature_flags + settings + audit_logs. Tape "RESET TOTAL".</p>
+        <button class="btn">🧨 Reset TOTAL</button>
+      </div>
+    </div>
+  </section>
+
+  </main>
+</div>
+</div>
+
+<script>
+const LABELS = {outils:'Outils',users:'Utilisateurs',dossiers:'Dossiers',atelier:'Atelier live',ia:'Activité IA',securite:'Sécurité',finance:'Finance',abos:'Abonnements',metrics:'Métriques',privileges:'Privilèges',builder:'Constructeur',settings:'Réglages',maint:'Maintenance'};
+document.querySelectorAll('.sb-item').forEach(it => {
+  it.addEventListener('click', () => {
+    document.querySelectorAll('.sb-item').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+    it.classList.add('active');
+    const p = it.dataset.pane;
+    document.getElementById('pane-'+p).classList.add('active');
+    document.getElementById('crumb').textContent = LABELS[p];
+    window.scrollTo(0, 0);
+  });
+});
+document.querySelectorAll('.subtab').forEach(st => {
+  st.addEventListener('click', () => {
+    st.parentElement.querySelectorAll('.subtab').forEach(x => x.classList.remove('active'));
+    st.classList.add('active');
+  });
+});
+document.querySelectorAll('.toggle').forEach(t => {
+  t.addEventListener('click', () => t.classList.toggle('on'));
+});
+// Live timer atelier (simulation)
+setInterval(() => {
+  document.querySelectorAll('[id^="pane-atelier"] .badge-active .dot').forEach(d => {});
+}, 1000);
+</script>
+</body>
+</html>
