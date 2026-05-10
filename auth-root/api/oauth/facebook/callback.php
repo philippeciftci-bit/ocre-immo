@@ -8,9 +8,14 @@ if (!$code) { http_response_code(400); echo "code requis"; exit; }
 if (!oauth_state_check('facebook', $state)) { http_response_code(400); echo "state invalide"; exit; }
 
 if ($env['_mock']) {
-    $email = 'philippe.ciftci@gmail.com';
-    $providerUserId = 'mock_facebook_user_' . hash('sha256', $email);
-    $firstName = 'Philippe'; $lastName = 'Ciftci';
+    // M_OAUTH_MOCK_ACCOUNT_PICKER — récupère depuis consent picker
+    $email = strtolower(trim((string)($_GET['email'] ?? 'philippe.ciftci@gmail.com')));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $email = 'philippe.ciftci@gmail.com';
+    $firstName = trim((string)($_GET['first_name'] ?? ''));
+    $lastName = trim((string)($_GET['last_name'] ?? ''));
+    if (!$firstName && $email === 'philippe.ciftci@gmail.com') $firstName = 'Philippe';
+    if (!$lastName && $email === 'philippe.ciftci@gmail.com') $lastName = 'Ciftci';
+    $providerUserId = 'mock_facebook_' . hash('sha256', $email);
 } else {
     // Exchange code → access_token GET
     $params = http_build_query([

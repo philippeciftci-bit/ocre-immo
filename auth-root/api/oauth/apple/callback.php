@@ -11,9 +11,14 @@ if (!$code) { http_response_code(400); echo "code requis"; exit; }
 if (!oauth_state_check('apple', $state)) { http_response_code(400); echo "state invalide"; exit; }
 
 if ($env['_mock']) {
-    $email = 'philippe.ciftci@gmail.com';
-    $providerUserId = 'mock_apple_user_' . hash('sha256', $email);
-    $firstName = 'Philippe'; $lastName = 'Ciftci';
+    // M_OAUTH_MOCK_ACCOUNT_PICKER — récupère depuis consent picker
+    $email = strtolower(trim((string)($_GET['email'] ?? $_POST['email'] ?? 'philippe.ciftci@gmail.com')));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $email = 'philippe.ciftci@gmail.com';
+    $firstName = trim((string)($_GET['first_name'] ?? $_POST['first_name'] ?? ''));
+    $lastName = trim((string)($_GET['last_name'] ?? $_POST['last_name'] ?? ''));
+    if (!$firstName && $email === 'philippe.ciftci@gmail.com') $firstName = 'Philippe';
+    if (!$lastName && $email === 'philippe.ciftci@gmail.com') $lastName = 'Ciftci';
+    $providerUserId = 'mock_apple_' . hash('sha256', $email);
 } else {
     // PROD STUB : Apple necessite generation client_secret JWT ES256 sign avec p8 file
     // Voir M_OCRE_AGENT_SIGNUP_V1-2 pour implementation full

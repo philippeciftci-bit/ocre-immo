@@ -8,10 +8,14 @@ if (!$code) { http_response_code(400); echo "code requis"; exit; }
 if (!oauth_state_check('google', $state)) { http_response_code(400); echo "state invalide"; exit; }
 
 if ($env['_mock']) {
-    // Mock user fixed
-    $email = 'philippe.ciftci@gmail.com';
-    $providerUserId = 'mock_google_user_' . hash('sha256', $email);
-    $firstName = 'Philippe'; $lastName = 'Ciftci';
+    // M_OAUTH_MOCK_ACCOUNT_PICKER — récupère email/first_name/last_name depuis consent page query string
+    $email = strtolower(trim((string)($_GET['email'] ?? 'philippe.ciftci@gmail.com')));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $email = 'philippe.ciftci@gmail.com';
+    $firstName = trim((string)($_GET['first_name'] ?? ''));
+    $lastName = trim((string)($_GET['last_name'] ?? ''));
+    if (!$firstName && $email === 'philippe.ciftci@gmail.com') $firstName = 'Philippe';
+    if (!$lastName && $email === 'philippe.ciftci@gmail.com') $lastName = 'Ciftci';
+    $providerUserId = 'mock_google_' . hash('sha256', $email);
 } else {
     // Exchange code → access_token via POST
     $postData = http_build_query([
