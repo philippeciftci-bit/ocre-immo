@@ -489,6 +489,22 @@ switch ($action) {
             'payment_plan' => $payment_plan, 'received_payments' => $received_payments,
         ];
         audit_log((int)$user['id'], 'clients', $id, $audit_before ? 'UPDATE' : 'INSERT', $audit_before, $audit_after);
+        // M_OCRE_V19_COLLAB — hook auto-version (graceful) : log diff champs flat sur UPDATE
+        if ($audit_before) {
+            @require_once __DIR__ . '/lib/collab.php';
+            if (function_exists('collab_log_version')) {
+                $tenantSlugV = $user['slug'] ?? ($_SERVER['HTTP_X_TENANT_SLUG'] ?? '');
+                if ($tenantSlugV) {
+                    foreach ($audit_after as $kV => $newValV) {
+                        if ($kV === 'id') continue;
+                        $oldValV = $audit_before[$kV] ?? null;
+                        if (json_encode($oldValV) !== json_encode($newValV)) {
+                            try { @collab_log_version($tenantSlugV, $id, (int)$user['id'], $kV, $oldValV, $newValV); } catch (Throwable $e) {}
+                        }
+                    }
+                }
+            }
+        }
         // M116c — emit webhook event (graceful, ne bloque jamais flow metier)
         require_once __DIR__ . '/lib/webhook_emit.php';
         $eventPayload = [
