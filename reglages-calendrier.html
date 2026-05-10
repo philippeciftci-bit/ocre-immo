@@ -61,6 +61,16 @@
       <p style="margin-top:12px;color:var(--brown-mute);font-size:12px">⚠ Régénérer un nouveau token révoque l'ancien (le calendrier abonné cessera de se mettre à jour).</p>
     </div>
   </div>
+
+  <!-- M118d — Section Google Calendar 2-way sync OAuth -->
+  <div class="card" id="google-card">
+    <h2>🔗 Google Calendar (sync 2-sens)</h2>
+    <p style="font-size:13.5px;color:var(--brown-soft)">Synchronisation bidirectionnelle automatique : tes RDV Ocre apparaissent dans Google Calendar et inversement. Mise à jour temps réel sans intervention.</p>
+    <div id="google-status" style="margin:12px 0;padding:10px 14px;border-radius:8px;background:var(--cream-2);font-size:13px;color:var(--brown-soft)">Chargement statut Google…</div>
+    <div id="google-actions" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div id="google-feedback" class="feedback" role="status" aria-live="polite"></div>
+    <p class="instructions" style="margin-top:12px">Si la connexion expire (token révoqué Google côté), reclique <strong>Connecter Google Calendar</strong>. Le worker push/pull tourne automatiquement toutes les 15 min, mais tu peux forcer un sync immédiat ci-dessus.</p>
+  </div>
 </div>
 
 <script>
@@ -101,6 +111,45 @@
 
   $('gen-btn').addEventListener('click', generate);
   loadCurrent();
+
+  // M118d — Google Calendar 2-way sync UI
+  function showGoogleFeedback(kind, msg) { const fb = $('google-feedback'); fb.className = 'feedback show ' + kind; fb.textContent = msg; }
+  async function loadGoogleStatus() {
+    try {
+      const r = await fetch('/api/calendar/token.php?action=google_status', { credentials: 'include' });
+      const d = await r.json();
+      const st = $('google-status'); const act = $('google-actions');
+      if (d.ok && d.connected) {
+        st.innerHTML = '✅ Connecté à <strong>' + (d.email || 'Google') + '</strong> · sync auto toutes les 15 min · dernière sync ' + (d.last_sync_at || 'jamais');
+        st.style.background = 'var(--green-soft)'; st.style.color = 'var(--green)';
+        act.innerHTML = '<button class="btn btn-primary" id="sync-now-btn" type="button">🔄 Forcer sync immédiat</button><button class="btn btn-ghost" id="disconnect-btn" type="button">Déconnecter Google Calendar</button>';
+        $('sync-now-btn').onclick = syncNow; $('disconnect-btn').onclick = disconnect;
+      } else {
+        st.innerHTML = 'Non connecté. Branche ton compte Google pour sync 2-sens automatique.';
+        act.innerHTML = '<a class="btn btn-primary" href="/api/calendar/google_oauth_init.php">🔗 Connecter Google Calendar</a>';
+      }
+    } catch (e) { $('google-status').textContent = '⚠ Statut indisponible (réseau)'; }
+  }
+  async function syncNow() {
+    try {
+      $('sync-now-btn').disabled = true; $('sync-now-btn').textContent = 'Sync en cours…';
+      const r = await fetch('/api/calendar/google_sync_now.php', { method: 'POST', credentials: 'include' });
+      const d = await r.json();
+      if (d.ok) showGoogleFeedback('success', 'Sync forcé OK · ' + (d.output_lines || 0) + ' évts traités');
+      else showGoogleFeedback('error', 'Erreur : ' + (d.error || 'inconnue'));
+    } catch (e) { showGoogleFeedback('error', 'Erreur réseau'); }
+    finally { setTimeout(loadGoogleStatus, 800); }
+  }
+  async function disconnect() {
+    if (!confirm('Déconnecter Google Calendar ? La sync 2-sens cessera (les évts déjà sync restent).')) return;
+    try {
+      const r = await fetch('/api/calendar/google_disconnect.php', { method: 'POST', credentials: 'include' });
+      const d = await r.json();
+      if (d.ok) { showGoogleFeedback('success', 'Google Calendar déconnecté.'); loadGoogleStatus(); }
+      else showGoogleFeedback('error', 'Erreur : ' + (d.error || 'inconnue'));
+    } catch (e) { showGoogleFeedback('error', 'Erreur réseau'); }
+  }
+  loadGoogleStatus();
 })();
 </script>
 </body>
