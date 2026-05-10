@@ -3,12 +3,23 @@
  * M_OCRE_HOME_VISUELLE — Refonte radicale home en HUB outils gratuits visuel.
  * Style Airbnb/Notion/Apple inspired. Zero paragraphe >3 lignes. Photos Unsplash CDN.
  * Rejette M102 textuel (9 sections paragraphes B2B SaaS).
- *
- * Photos via Unsplash CDN direct (libre droits + resize query params, pas de download).
- * Backup ancien front-page.php : front-page.php.bak.M102-pre-M_OCRE_HOME_VISUELLE
+ * M_OCRE_PWA_UNIFIE — meta PWA + apple-touch-icon + register sw.js dans cette page.
  */
 get_header();
 ?>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3D2818">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ocre">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(){});
+  });
+}
+</script>
 
 <style>
 :root {
