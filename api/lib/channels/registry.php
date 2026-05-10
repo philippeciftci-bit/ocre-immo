@@ -8,6 +8,8 @@ require_once __DIR__ . '/seloger.php';
 require_once __DIR__ . '/bienici.php';
 require_once __DIR__ . '/idealista.php';
 require_once __DIR__ . '/apartments_com.php';
+require_once __DIR__ . '/avito_ma.php';
+require_once __DIR__ . '/mubawab.php';
 
 function channel_driver(string $name): ?ChannelDriver {
     switch ($name) {
@@ -16,7 +18,8 @@ function channel_driver(string $name): ?ChannelDriver {
         case 'bienici': return new BienIciDriver();
         case 'idealista': return new IdealistaDriver();
         case 'apartments_com': return new ApartmentsComDriver();
-        // M106: avito_ma, mubawab
+        case 'avito_ma': return new AvitoMaDriver();
+        case 'mubawab': return new MubawabDriver();
         default: return null;
     }
 }
@@ -28,8 +31,8 @@ function channel_available_portals(): array {
         ['name' => 'bienici', 'display' => "Bien'ici", 'logo_color' => '#1c2c5b', 'region' => 'France', 'flag' => '🇫🇷', 'currency' => 'EUR', 'status_v' => 'active', 'sub_mission' => 'M104'],
         ['name' => 'idealista', 'display' => 'Idealista', 'logo_color' => '#ab2222', 'region' => 'Espagne', 'flag' => '🇪🇸', 'currency' => 'EUR', 'status_v' => 'active', 'sub_mission' => 'M105'],
         ['name' => 'apartments_com', 'display' => 'Apartments.com', 'logo_color' => '#2c5e1a', 'region' => 'États-Unis', 'flag' => '🇺🇸', 'currency' => 'USD', 'status_v' => 'active', 'sub_mission' => 'M105'],
-        ['name' => 'avito_ma', 'display' => 'Avito.ma', 'logo_color' => '#fab50a', 'region' => 'Maroc', 'flag' => '🇲🇦', 'currency' => 'MAD', 'status_v' => 'soon', 'sub_mission' => 'M106'],
-        ['name' => 'mubawab', 'display' => 'Mubawab', 'logo_color' => '#00a651', 'region' => 'Maroc', 'flag' => '🇲🇦', 'currency' => 'MAD', 'status_v' => 'soon', 'sub_mission' => 'M106'],
+        ['name' => 'avito_ma', 'display' => 'Avito.ma', 'logo_color' => '#fab50a', 'region' => 'Maroc', 'flag' => '🇲🇦', 'currency' => 'MAD', 'status_v' => 'active', 'sub_mission' => 'M106'],
+        ['name' => 'mubawab', 'display' => 'Mubawab', 'logo_color' => '#00a651', 'region' => 'MA · TN · DZ', 'flag' => '🇲🇦🇹🇳🇩🇿', 'currency' => 'MAD/TND/DZD', 'status_v' => 'active', 'sub_mission' => 'M106'],
     ];
 }
 
@@ -157,6 +160,7 @@ function channel_dossier_to_listing(array $dossier): array {
         'bedrooms' => $dossier['nb_chambres'] ?? $dossier['bedrooms'] ?? null,
         'bathrooms' => $dossier['bathrooms'] ?? null,
         'surface_sqft' => $dossier['surface_sqft'] ?? null,
+        'country_code' => $dossier['country_code'] ?? $dossier['pays_bien'] ?? null,
         'photos' => $photos,
         'location' => [
             'city' => $dossier['ville'] ?? '',

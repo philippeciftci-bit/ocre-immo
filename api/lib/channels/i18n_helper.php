@@ -43,9 +43,38 @@ class ChannelI18n {
         'm2' => ['en' => 'sqm', 'es' => 'm²'],
         // transactions
         'à vendre' => ['en' => 'for sale', 'es' => 'en venta'],
-        'à louer' => ['en' => 'for rent', 'es' => 'en alquiler'],
-        'vendeur' => ['en' => 'sale', 'es' => 'venta'],
-        'bailleur' => ['en' => 'rent', 'es' => 'alquiler'],
+        'à louer' => ['en' => 'for rent', 'es' => 'en alquiler', 'ar' => 'للإيجار'],
+        'vendeur' => ['en' => 'sale', 'es' => 'venta', 'ar' => 'للبيع'],
+        'bailleur' => ['en' => 'rent', 'es' => 'alquiler', 'ar' => 'للإيجار'],
+    ];
+
+    // M106 — Mapping AR (Maghreb) en complement de KEYWORDS (15 termes-cles).
+    private const KEYWORDS_AR = [
+        'appartement' => 'شقة',
+        'villa' => 'فيلا',
+        'maison' => 'دار',
+        'riad' => 'رياض',
+        'studio' => 'استوديو',
+        'duplex' => 'دوبلكس',
+        'jardin' => 'حديقة',
+        'piscine' => 'مسبح',
+        'terrasse' => 'شرفة',
+        'balcon' => 'شرفة صغيرة',
+        'parking' => 'موقف سيارات',
+        'garage' => 'مرآب',
+        'chambre' => 'غرفة',
+        'chambres' => 'غرف',
+        'salle de bain' => 'حمام',
+        'salle de bains' => 'حمامات',
+        'pièces' => 'غرف',
+        'pieces' => 'غرف',
+        'à louer' => 'للإيجار',
+        'à vendre' => 'للبيع',
+        'centre-ville' => 'وسط المدينة',
+        'medina' => 'المدينة العتيقة',
+        'climatisation' => 'مكيف',
+        'meublé' => 'مفروش',
+        'ascenseur' => 'مصعد',
     ];
 
     // Type bien (ocre) → enum portail Idealista.
@@ -77,6 +106,34 @@ class ChannelI18n {
         'townhouse' => 'townhouse',
     ];
 
+    // M106 — Avito.ma : enum portail (avec accents FR cote consumer).
+    private const PROPERTY_TYPE_AVITO_MA = [
+        'apartment' => 'appartement',
+        'house' => 'maison',
+        'villa' => 'villa',
+        'riad' => 'riad',
+        'studio' => 'appartement',
+        'duplex' => 'appartement',
+        'land' => 'terrain',
+        'commercial' => 'local commercial',
+        'office' => 'bureau',
+    ];
+
+    // M106 — Mubawab : enum EN cote API (affichage user FR/AR cote portail).
+    private const PROPERTY_TYPE_MUBAWAB = [
+        'apartment' => 'apartment',
+        'house' => 'house',
+        'villa' => 'villa',
+        'riad' => 'riad',
+        'studio' => 'apartment',
+        'duplex' => 'apartment',
+        'land' => 'land',
+        'commercial' => 'commercial',
+        'office' => 'office',
+        'building' => 'building',
+        'farm' => 'farm',
+    ];
+
     // Taux de change statique (a rafraichir quotidiennement en V2 via cron + API ECB/Fixer).
     // Source : valeurs proches du marche reel mai 2026.
     private const RATES_TO_EUR = [
@@ -100,24 +157,29 @@ class ChannelI18n {
         if ($from === $to || empty($text)) {
             return ['translated' => $text, 'partial' => false];
         }
-        // Si on traduit DEPUIS le francais (ce qu'on fait quasi-tjs vu qu'Ocre cible francophone)
-        // on fait un str_ireplace des keywords ; sinon retourne tel quel + flag partial.
         if ($from !== 'fr') {
             return ['translated' => $text, 'partial' => true];
         }
-        if (!in_array($to, ['en', 'es'])) {
+        if (!in_array($to, ['en', 'es', 'ar'])) {
             return ['translated' => $text, 'partial' => true];
         }
         $out = $text;
         $found = 0;
-        foreach (self::KEYWORDS as $fr => $tr) {
-            if (!isset($tr[$to])) continue;
-            // Word-boundary case-insensitive replace
-            $count = 0;
-            $out = preg_replace('/\b' . preg_quote($fr, '/') . '\b/iu', $tr[$to], $out, -1, $count);
-            $found += $count;
+        if ($to === 'ar') {
+            // M106 — mapping AR via KEYWORDS_AR
+            foreach (self::KEYWORDS_AR as $fr => $ar) {
+                $count = 0;
+                $out = preg_replace('/\b' . preg_quote($fr, '/') . '\b/iu', $ar, $out, -1, $count);
+                $found += $count;
+            }
+        } else {
+            foreach (self::KEYWORDS as $fr => $tr) {
+                if (!isset($tr[$to])) continue;
+                $count = 0;
+                $out = preg_replace('/\b' . preg_quote($fr, '/') . '\b/iu', $tr[$to], $out, -1, $count);
+                $found += $count;
+            }
         }
-        // Heuristique : si tres peu de termes traduits sur un long texte, partial=true
         $words = max(1, str_word_count($text));
         $coverage = $found / $words;
         $partial = $coverage < 0.10;
@@ -131,6 +193,12 @@ class ChannelI18n {
         }
         if ($channel === 'apartments_com') {
             return self::PROPERTY_TYPE_APARTMENTS[$key] ?? 'apartment';
+        }
+        if ($channel === 'avito_ma') {
+            return self::PROPERTY_TYPE_AVITO_MA[$key] ?? 'autre';
+        }
+        if ($channel === 'mubawab') {
+            return self::PROPERTY_TYPE_MUBAWAB[$key] ?? 'other';
         }
         return $ocreType;
     }
