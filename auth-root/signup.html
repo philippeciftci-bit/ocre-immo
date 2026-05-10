@@ -12,178 +12,310 @@
 :root { --cream:#FAF6F1; --brown:#3D2818; --brown-soft:#6B5642; --brown-mute:#998877; --ocre-dark:#8B5E3C; --gold:#D4A256; --gold-bright:#E8B95E; --line:#E5DAC6; }
 *,*::before,*::after { box-sizing: border-box; }
 html, body { margin:0; padding:0; height:100%; }
-body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--cream); color: var(--brown); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-.card { width: 100%; max-width: 440px; background: #fff; border-radius: 18px; padding: 36px 30px 30px; box-shadow: 0 4px 28px rgba(139, 111, 58, 0.10); border: 1px solid var(--line); }
-.brand { text-align: center; margin-bottom: 22px; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--cream); color: var(--brown); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+.card { width: 100%; max-width: 460px; background: #fff; border-radius: 18px; padding: 36px 30px 30px; box-shadow: 0 4px 28px rgba(139, 111, 58, 0.10); border: 1px solid var(--line); }
+.brand { text-align: center; margin-bottom: 18px; }
 .brand-mark { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600; font-size: 38px; color: var(--ocre-dark); letter-spacing: -0.02em; }
 .brand-mark span { color: var(--gold); }
 h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600; font-size: 28px; text-align: center; margin: 0 0 6px; color: var(--brown); letter-spacing: -0.01em; }
-.sub { text-align: center; font-size: 13.5px; color: var(--brown-soft); margin-bottom: 28px; }
-.sso { display: flex; flex-direction: column; gap: 11px; }
-.btn-sso { display: flex; align-items: center; justify-content: center; gap: 10px; height: 48px; border-radius: 10px; font-size: 14.5px; font-weight: 600; cursor: pointer; border: 1px solid transparent; font-family: inherit; transition: all .15s; text-decoration: none; }
-.btn-sso:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
-.btn-google { background: #fff; color: #1F1F1F; border-color: #DADCE0; }
-.btn-apple { background: #000; color: #fff; }
-.btn-facebook { background: #1877F2; color: #fff; }
-.btn-sso svg { flex-shrink: 0; }
-.sep { display: flex; align-items: center; gap: 14px; margin: 22px 0 18px; color: var(--brown-mute); font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; }
-.sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-.btn-email { display: block; text-align: center; padding: 12px; background: none; border: none; color: var(--ocre-dark); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; }
-.btn-email:hover { color: var(--brown); }
+.sub { text-align: center; font-size: 13.5px; color: var(--brown-soft); margin-bottom: 22px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field label { font-size: 11.5px; color: var(--brown-soft); font-weight: 500; letter-spacing: 0.04em; }
+.field input { padding: 13px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; color: var(--brown); background: #FCFAF7; }
+.field input:focus { outline: none; border-color: var(--ocre-dark); background: #fff; }
+.field input:disabled { opacity: 0.6; background: #F4ECDF; }
+
+.btn-submit { width: 100%; padding: 14px; background: var(--ocre-dark); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .2s ease; }
+.btn-submit:hover:not(.btn-disabled):not(:disabled) { background: var(--brown); transform: translateY(-1px); }
+.btn-submit:disabled { opacity: 0.5; cursor: wait; transform: none; }
+.btn-submit.btn-disabled { background: #C8C8C8 !important; color: #888 !important; opacity: 0.6; cursor: not-allowed; pointer-events: none; transform: none; }
+
+.feedback { margin-top: 10px; padding: 9px 13px; border-radius: 8px; font-size: 12.5px; display: none; }
+.feedback.show-fb { display: block; }
+.feedback.error { background: #FDECEA; color: #C62828; }
+.feedback.info { background: #E8F4F8; color: #0277BD; }
+
+.email-error { font-size: 11.5px; color: #C62828; margin-top: 4px; display: none; }
+.email-error.show { display: block; }
+
+/* Phone country picker (PhoneInput M86 country-aware) */
+.phone-input.is-phone-valid { background: #E8F5E9 !important; border-color: #4CAF50 !important; transition: all .2s ease; }
+.phone-input.is-phone-invalid { border-color: #E57373; background: #FFF5F5; }
+.country-wrap { position: relative; }
+.country-btn { width: 100%; padding: 13px 30px 13px 14px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; background: #FCFAF7; color: var(--brown); cursor: pointer; text-align: left; appearance: none; display: flex; align-items: center; gap: 8px; }
+.country-btn::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--brown-mute); pointer-events: none; }
+.country-flag { font-size: 18px; line-height: 1; }
+.country-code { font-weight: 600; font-size: 13px; }
+.country-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid var(--line); border-radius: 10px; max-height: 280px; overflow-y: auto; z-index: 10; box-shadow: 0 12px 28px rgba(0,0,0,0.12); display: none; }
+.country-dropdown.cd-open { display: block; }
+.country-search { width: 100%; padding: 10px 12px; border: none; border-bottom: 1px solid var(--line); font-size: 13px; font-family: inherit; background: #FCFAF7; outline: none; position: sticky; top: 0; }
+.country-item { padding: 9px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
+.country-item:hover { background: #FBF1E4; }
+.country-item .ci-name { flex: 1; color: var(--brown); }
+.country-item .ci-code { color: var(--brown-mute); font-weight: 500; font-size: 12.5px; }
+.country-divider { padding: 6px 14px; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brown-mute); background: #F4ECDF; font-weight: 600; }
+
+/* Accordéon registration */
+.accordion { max-height: 0; overflow: hidden; transition: max-height .4s cubic-bezier(.2,.7,.2,1); }
+.accordion.open { max-height: 800px; }
+.accordion-inner { padding-top: 14px; border-top: 1px solid var(--line); margin-top: 14px; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.tel-row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; align-items: end; }
+.cgu { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 12px; font-size: 11.5px; color: var(--brown-soft); line-height: 1.4; }
+.cgu input { margin-top: 2px; accent-color: var(--ocre-dark); }
+.cgu a { color: var(--ocre-dark); text-decoration: underline; }
+
 .foot-link { text-align: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--brown-mute); }
 .foot-link a { color: var(--ocre-dark); text-decoration: none; font-weight: 600; }
 .foot-link a:hover { color: var(--brown); }
 
-/* Form (écran 2) */
-.form-grid { display: grid; gap: 12px; margin-bottom: 14px; }
-.form-grid .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.field { display: flex; flex-direction: column; gap: 4px; }
-.field label { font-size: 11.5px; color: var(--brown-soft); font-weight: 500; letter-spacing: 0.04em; }
-.field input { padding: 12px 13px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: inherit; color: var(--brown); background: #FCFAF7; transition: border-color .15s; }
-.field input:focus { outline: none; border-color: var(--ocre-dark); background: #fff; }
-.cgu { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 14px; font-size: 12px; color: var(--brown-soft); }
-.cgu input { margin-top: 2px; accent-color: var(--ocre-dark); }
-.cgu a { color: var(--ocre-dark); text-decoration: underline; }
-.btn-submit { width: 100%; padding: 15px; background: var(--ocre-dark); color: #fff; border: none; border-radius: 10px; font-size: 14.5px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; }
-.btn-submit:hover { background: var(--brown); transform: translateY(-1px); }
-.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.btn-back { display: block; text-align: center; padding: 10px; background: none; border: none; color: var(--brown-mute); font-size: 12.5px; cursor: pointer; font-family: inherit; margin-top: 6px; }
-
-/* Confirmation (écran 3) */
-.confirm-icon { font-size: 48px; text-align: center; margin: 8px 0 18px; animation: hv-bounce 1.6s ease-in-out infinite; }
-@keyframes hv-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-.confirm-email { background: #FBF7F0; border: 1px solid var(--line); padding: 12px 16px; border-radius: 10px; text-align: center; font-size: 13.5px; color: var(--brown); margin: 14px 0; word-break: break-all; }
-.resend { text-align: center; font-size: 12.5px; color: var(--brown-mute); margin: 18px 0 8px; }
-.resend a { color: var(--ocre-dark); font-weight: 600; text-decoration: none; cursor: pointer; }
-.resend a.disabled { color: var(--brown-mute); cursor: wait; }
-.feedback { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none; }
-.feedback.show { display: block; }
-.feedback.error { background: #FDECEA; color: #C62828; }
-.hidden { display: none !important; }
+.toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); background: #2D7A3E; color: #fff; padding: 16px 26px; border-radius: 14px; font-size: 14.5px; font-weight: 600; box-shadow: 0 12px 40px rgba(45,122,62,0.4); opacity: 0; pointer-events: none; transition: all .25s cubic-bezier(.2,.7,.2,1); z-index: 9999; display: flex; align-items: center; gap: 10px; }
+.toast.toast-show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 </style>
 </head>
 <body>
 <div class="card">
   <div class="brand"><div class="brand-mark">Oc<span>re</span></div></div>
 
-  <!-- Écran 1 — Choix méthode -->
-  <div id="screen-1">
-    <h1>Crée ton compte Oi Agent</h1>
-    <div class="sub">Gratuit · 1 minute</div>
-    <div class="sso">
-      <a href="/api/oauth/google/init.php" class="btn-sso btn-google">
-        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
-        Continuer avec Google
-      </a>
-      <a href="/api/oauth/apple/init.php" class="btn-sso btn-apple">
-        <svg width="18" height="18" viewBox="0 0 384 512" fill="#fff"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
-        Continuer avec Apple
-      </a>
-      <a href="/api/oauth/facebook/init.php" class="btn-sso btn-facebook">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M22.675 0H1.325C.593 0 0 .593 0 1.325v21.351C0 23.407.593 24 1.325 24H12.82v-9.294H9.692V11.25h3.128V8.564c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.464.099 2.795.143v3.24h-1.918c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.456h-3.12V24h6.116c.73 0 1.323-.593 1.323-1.325V1.325C24 .593 23.407 0 22.675 0z"/></svg>
-        Continuer avec Facebook
-      </a>
+  <h1>Crée ton compte</h1>
+  <div class="sub">Gratuit · 1 minute · zéro mot de passe</div>
+
+  <form id="signup-form" onsubmit="return signupSubmit(event)" autocomplete="on">
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autocomplete="email" placeholder="ton@email.com" autofocus>
+      <div class="email-error" id="email-error">Format email invalide</div>
     </div>
-    <div class="sep">ou</div>
-    <button type="button" class="btn-email" onclick="showScreen(2)">✉ Continuer avec mon email</button>
-    <div class="foot-link">Tu as déjà un compte ? <a href="/login.html">Connexion →</a></div>
-  </div>
 
-  <!-- Écran 2 — Form email -->
-  <div id="screen-2" class="hidden">
-    <h1>Crée ton compte</h1>
-    <div class="sub">Magic link envoyé par email · pas de mot de passe</div>
-    <form id="signup-form" onsubmit="return submitSignup(event)">
-      <div class="form-grid">
+    <div class="accordion" id="accordion" aria-hidden="true">
+      <div class="accordion-inner">
         <div class="row-2">
-          <div class="field"><label for="prenom">Prénom</label><input id="prenom" name="prenom" type="text" required autocomplete="given-name"></div>
-          <div class="field"><label for="nom">Nom</label><input id="nom" name="nom" type="text" required autocomplete="family-name"></div>
+          <div class="field"><label for="prenom">Prénom *</label><input type="text" id="prenom" autocomplete="given-name"></div>
+          <div class="field"><label for="nom">Nom *</label><input type="text" id="nom" autocomplete="family-name"></div>
         </div>
-        <div class="field"><label for="societe">Société (optionnel)</label><input id="societe" name="societe" type="text" autocomplete="organization"></div>
-        <div class="row-2">
-          <div class="field"><label for="phone">Téléphone pro</label><input id="phone" name="phone" type="tel" required autocomplete="tel" placeholder="+33 6 12 34 56 78"></div>
-          <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="email"></div>
+        <div class="field"><label for="societe">Société (facultatif)</label><input type="text" id="societe" autocomplete="organization" placeholder="Ton agence (facultatif)"></div>
+        <div class="tel-row">
+          <div class="field country-wrap">
+            <label>Pays</label>
+            <button type="button" class="country-btn" id="country-btn" aria-haspopup="listbox" aria-expanded="false">
+              <span class="country-flag" id="cf">🇫🇷</span>
+              <span class="country-code" id="cc">+33</span>
+            </button>
+            <div class="country-dropdown" id="country-dropdown" role="listbox">
+              <input type="text" class="country-search" id="country-search" placeholder="Recherche pays…">
+              <div id="country-list"></div>
+            </div>
+            <input type="hidden" id="country-code" name="country_code" value="FR">
+            <input type="hidden" id="country-prefix" value="+33">
+          </div>
+          <div class="field">
+            <label for="phone">Téléphone *</label>
+            <input type="tel" id="phone" name="phone" class="phone-input" autocomplete="tel" placeholder="6 12 34 56 78">
+          </div>
         </div>
-        <label class="cgu"><input type="checkbox" id="cgu" required> J'accepte les <a href="https://ocre.immo/mentions-legales/" target="_blank">CGU</a> et la <a href="https://ocre.immo/confidentialite/" target="_blank">politique de confidentialité</a></label>
+        <label class="cgu"><input type="checkbox" id="cgu"> J'accepte les <a href="https://ocre.immo/mentions-legales/" target="_blank">CGU</a> et la <a href="https://ocre.immo/confidentialite/" target="_blank">politique de confidentialité</a></label>
       </div>
-      <button type="submit" class="btn-submit" id="btn-submit">Recevoir mon lien →</button>
-      <button type="button" class="btn-back" onclick="showScreen(1)">← Retour aux options</button>
-      <div id="form-feedback" class="feedback error"></div>
-    </form>
-  </div>
+    </div>
 
-  <!-- Écran 3 — Confirmation -->
-  <div id="screen-3" class="hidden">
-    <div class="confirm-icon">✉</div>
-    <h1>Lien magique envoyé !</h1>
-    <div class="confirm-email" id="confirm-email-display">À : —</div>
-    <div class="sub" style="margin-bottom: 0">Clique sur le lien dans l'email pour entrer dans Oi Agent.</div>
-    <div class="resend">Tu n'as pas reçu ? <a id="resend-link" onclick="resendLink()">Renvoyer dans 30s</a></div>
-    <button type="button" class="btn-back" onclick="showScreen(2)">← Modifier mon email</button>
-  </div>
+    <button type="submit" class="btn-submit" id="submit">Continuer</button>
+    <div id="feedback" class="feedback"></div>
+  </form>
+
+  <div class="foot-link">Tu as déjà un compte ? <a href="/login.html">Connexion →</a></div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toast-msg">Lien envoyé, vérifie ton email</span>
 </div>
 
 <script>
+// M_OCRE_AUTH_ALIGN_V4 — alignement EXACT sur popup vitrine V4_CORRECTIF (magic-link only, 4 règles M86)
+var SIGNUP_STATE = 'initial';
+
+// 21 pays supportés avec règles E.164 (cohérent Oi Agent app M86 + popup V4_CORRECTIF)
+var COUNTRIES = [
+  { code:'FR', name:'France',         flag:'🇫🇷', prefix:'+33',  length:9,  startsWith:['6','7','1','2','3','4','5','9'], priority:true },
+  { code:'MA', name:'Maroc',          flag:'🇲🇦', prefix:'+212', length:9,  startsWith:['5','6','7'],                     priority:true },
+  { code:'BE', name:'Belgique',       flag:'🇧🇪', prefix:'+32',  length:9,  startsWith:['4','2','3','9'],                 priority:true },
+  { code:'CH', name:'Suisse',         flag:'🇨🇭', prefix:'+41',  length:9,  startsWith:['7','2','3','4','5','6','8'],     priority:true },
+  { code:'ES', name:'Espagne',        flag:'🇪🇸', prefix:'+34',  length:9,  startsWith:['6','7','9'],                     priority:true },
+  { code:'IT', name:'Italie',         flag:'🇮🇹', prefix:'+39',  length:10,                                                priority:true },
+  { code:'DE', name:'Allemagne',      flag:'🇩🇪', prefix:'+49',  length:11,                                                priority:true },
+  { code:'PT', name:'Portugal',       flag:'🇵🇹', prefix:'+351', length:9,                                                 priority:true },
+  { code:'GB', name:'Royaume-Uni',    flag:'🇬🇧', prefix:'+44',  length:10,                                                priority:true },
+  { code:'US', name:'États-Unis',     flag:'🇺🇸', prefix:'+1',   length:10,                                                priority:true },
+  { code:'CA', name:'Canada',         flag:'🇨🇦', prefix:'+1',   length:10,                                                priority:true },
+  { code:'NL', name:'Pays-Bas',       flag:'🇳🇱', prefix:'+31',  length:9 },
+  { code:'TN', name:'Tunisie',        flag:'🇹🇳', prefix:'+216', length:8 },
+  { code:'DZ', name:'Algérie',        flag:'🇩🇿', prefix:'+213', length:9 },
+  { code:'LU', name:'Luxembourg',     flag:'🇱🇺', prefix:'+352', length:9 },
+  { code:'AE', name:'Émirats arabes', flag:'🇦🇪', prefix:'+971', length:9 },
+  { code:'SA', name:'Arabie saoudite',flag:'🇸🇦', prefix:'+966', length:9 },
+  { code:'TR', name:'Turquie',        flag:'🇹🇷', prefix:'+90',  length:10 },
+  { code:'IE', name:'Irlande',        flag:'🇮🇪', prefix:'+353', length:9 },
+  { code:'AT', name:'Autriche',       flag:'🇦🇹', prefix:'+43',  length:11 },
+  { code:'GR', name:'Grèce',          flag:'🇬🇷', prefix:'+30',  length:10 },
+];
+
 function $(id) { return document.getElementById(id); }
-function showScreen(n) {
-  for (var i=1; i<=3; i++) $('screen-'+i).classList.toggle('hidden', i!==n);
+function validatePhoneE164(rawPhone, countryCode) {
+  if (!rawPhone || !countryCode) return false;
+  var digits = rawPhone.replace(/\D/g, '');
+  if (digits.length > 0 && digits[0] === '0') digits = digits.substring(1);
+  var rule = COUNTRIES.find(function(c){ return c.code === countryCode; });
+  if (!rule) return digits.length >= 8 && digits.length <= 15;
+  if (digits.length !== rule.length) return false;
+  if (rule.startsWith && !rule.startsWith.some(function(s){ return digits.startsWith(s); })) return false;
+  return true;
 }
-async function submitSignup(e) {
+function renderCountryList(filter) {
+  filter = (filter || '').toLowerCase().trim();
+  var list = $('country-list'); list.innerHTML = '';
+  var prio = COUNTRIES.filter(function(c){ return c.priority && (!filter || c.name.toLowerCase().indexOf(filter) !== -1 || c.code.toLowerCase().indexOf(filter) !== -1); });
+  var rest = COUNTRIES.filter(function(c){ return !c.priority && (!filter || c.name.toLowerCase().indexOf(filter) !== -1 || c.code.toLowerCase().indexOf(filter) !== -1); }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+  function appendItem(c) {
+    var item = document.createElement('div'); item.className = 'country-item';
+    item.innerHTML = '<span class="country-flag">' + c.flag + '</span><span class="ci-name">' + c.name + '</span><span class="ci-code">' + c.prefix + '</span>';
+    item.addEventListener('click', function(){ selectCountry(c); });
+    list.appendChild(item);
+  }
+  if (!filter && prio.length) {
+    var div = document.createElement('div'); div.className = 'country-divider'; div.textContent = 'Pays prioritaires'; list.appendChild(div);
+    prio.forEach(appendItem);
+    var div2 = document.createElement('div'); div2.className = 'country-divider'; div2.textContent = 'Tous les pays'; list.appendChild(div2);
+    rest.forEach(appendItem);
+  } else { prio.forEach(appendItem); rest.forEach(appendItem); }
+}
+function selectCountry(c) {
+  $('cf').textContent = c.flag; $('cc').textContent = c.prefix;
+  $('country-code').value = c.code; $('country-prefix').value = c.prefix;
+  $('country-dropdown').classList.remove('cd-open');
+  $('country-btn').setAttribute('aria-expanded', 'false');
+  validateForm();
+}
+function validateForm() {
+  if (SIGNUP_STATE !== 'form_open') return;
+  var prenom = ($('prenom').value || '').trim();
+  var nom = ($('nom').value || '').trim();
+  var phone = ($('phone').value || '').trim();
+  var country = $('country-code').value;
+  var cgu = $('cgu').checked;
+  var phoneValid = validatePhoneE164(phone, country);
+  var phoneEl = $('phone');
+  phoneEl.classList.remove('is-phone-valid', 'is-phone-invalid');
+  if (phoneValid) phoneEl.classList.add('is-phone-valid');
+  else if (phone.replace(/\D/g, '').length > 4) phoneEl.classList.add('is-phone-invalid');
+  var btn = $('submit');
+  var allValid = prenom.length >= 2 && nom.length >= 2 && phoneValid && cgu;
+  btn.classList.toggle('btn-disabled', !allValid);
+}
+function emailBlur() {
+  if (SIGNUP_STATE !== 'initial') return;
+  var email = $('email').value.trim().toLowerCase();
+  var errEl = $('email-error');
+  errEl.classList.remove('show');
+  if (!email) return;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { errEl.textContent = 'Email invalide'; errEl.classList.add('show'); }
+}
+function showToast(msg, kind) {
+  var t = $('toast'); $('toast-msg').textContent = msg;
+  t.style.background = (kind === 'error') ? '#C62828' : '#2D7A3E';
+  t.classList.add('toast-show');
+  setTimeout(function(){ t.classList.remove('toast-show'); }, 2200);
+}
+
+async function signupSubmit(e) {
   e.preventDefault();
-  var btn = $('btn-submit'); btn.disabled = true; btn.textContent = '⏳ Envoi…';
-  var fb = $('form-feedback'); fb.className = 'feedback error';
-  var payload = {
-    email: $('email').value.trim(),
-    first_name: $('prenom').value.trim(),
-    last_name: $('nom').value.trim(),
-    societe: $('societe').value.trim(),
-    phone: $('phone').value.trim(),
-    cgu_accepted: $('cgu').checked,
-  };
+  var btn = $('submit'); btn.disabled = true;
+  var fb = $('feedback'); fb.classList.remove('show-fb', 'error', 'info');
+  var emailEl = $('email');
+  var email = emailEl.value.trim().toLowerCase();
+  var qs = new URLSearchParams(location.search);
+  var app = (qs.get('app') || 'agent').replace(/[^a-z]/g, '');
+
+  if (SIGNUP_STATE === 'initial') {
+    btn.textContent = '⏳ Vérification…';
+    try {
+      var r = await fetch('/api/email-check.php', {
+        method: 'POST', credentials: 'include',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ email: email, app: app }),
+      });
+      var d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'check failed');
+      if (d.existing) {
+        showToast('✓ Bon retour ' + (d.first_name || '') + ' !', 'success');
+        setTimeout(function(){ window.location.href = d.redirect_url; }, 600);
+        return false;
+      }
+      SIGNUP_STATE = 'form_open';
+      emailEl.disabled = true;
+      var acc = $('accordion'); acc.classList.add('open'); acc.setAttribute('aria-hidden', 'false');
+      btn.disabled = false; btn.textContent = 'Recevoir mon lien';
+      btn.classList.add('btn-disabled');
+      validateForm();
+      setTimeout(function(){ $('prenom').focus(); }, 350);
+      return false;
+    } catch (err) {
+      fb.textContent = 'Erreur : ' + err.message; fb.classList.add('show-fb', 'error');
+      btn.disabled = false; btn.textContent = 'Continuer';
+      return false;
+    }
+  }
+
+  var prenom = $('prenom').value.trim();
+  var nom = $('nom').value.trim();
+  var phone = $('phone').value.trim();
+  var indicatif = $('country-prefix').value;
+  var country = $('country-code').value;
+  var cgu = $('cgu').checked;
+  if (!prenom || prenom.length < 2 || !nom || nom.length < 2 || !validatePhoneE164(phone, country) || !cgu) {
+    fb.textContent = '⚠ Tous les champs requis doivent être remplis valides + CGU cochée.'; fb.classList.add('show-fb', 'error');
+    btn.disabled = false; btn.textContent = 'Recevoir mon lien';
+    return false;
+  }
+  btn.textContent = '⏳ Envoi…';
   try {
-    var r = await fetch('/api/magic-link/request.php', {
+    var r2 = await fetch('/api/magic-link/request.php', {
       method: 'POST', credentials: 'include',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        email: email, first_name: prenom, last_name: nom,
+        societe: $('societe').value.trim(),
+        phone: indicatif + ' ' + phone,
+        cgu_accepted: true, target_app: app,
+      }),
     });
-    var d = await r.json();
-    if (d.ok) {
-      $('confirm-email-display').textContent = 'À : ' + payload.email;
-      showScreen(3);
-      startResendCountdown();
-    } else {
-      fb.textContent = 'Erreur : ' + (d.error || 'inconnue');
-      fb.classList.add('show');
-    }
+    var d2 = await r2.json();
+    if (d2.ok) showToast('✓ Lien envoyé, vérifie ton email');
+    else { fb.textContent = 'Erreur : ' + (d2.error || 'inconnue'); fb.classList.add('show-fb', 'error'); btn.disabled = false; btn.textContent = 'Recevoir mon lien'; }
   } catch (err) {
-    fb.textContent = 'Erreur réseau : ' + err.message;
-    fb.classList.add('show');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Recevoir mon lien →';
+    fb.textContent = 'Erreur réseau : ' + err.message; fb.classList.add('show-fb', 'error');
+    btn.disabled = false; btn.textContent = 'Recevoir mon lien';
   }
   return false;
 }
-var resendTimer = null;
-function startResendCountdown() {
-  var link = $('resend-link'); var sec = 30;
-  link.classList.add('disabled');
-  link.textContent = 'Renvoyer dans ' + sec + 's';
-  if (resendTimer) clearInterval(resendTimer);
-  resendTimer = setInterval(function() {
-    sec--;
-    if (sec <= 0) {
-      clearInterval(resendTimer);
-      link.classList.remove('disabled');
-      link.textContent = 'Renvoyer le lien';
-    } else {
-      link.textContent = 'Renvoyer dans ' + sec + 's';
-    }
-  }, 1000);
+
+function initForm() {
+  renderCountryList('');
+  $('country-btn').addEventListener('click', function(e){
+    e.stopPropagation();
+    var dd = $('country-dropdown');
+    var open = dd.classList.toggle('cd-open');
+    $('country-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) setTimeout(function(){ $('country-search').focus(); }, 50);
+  });
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('.country-wrap')) $('country-dropdown').classList.remove('cd-open');
+  });
+  $('country-search').addEventListener('input', function(){ renderCountryList(this.value); });
+  ['prenom','nom','phone'].forEach(function(id){ $(id).addEventListener('input', validateForm); });
+  $('cgu').addEventListener('change', validateForm);
+  $('email').addEventListener('blur', emailBlur);
 }
-async function resendLink() {
-  if ($('resend-link').classList.contains('disabled')) return;
-  await submitSignup({preventDefault:function(){}});
-}
+if (document.readyState !== 'loading') initForm(); else document.addEventListener('DOMContentLoaded', initForm);
 </script>
 </body>
 </html>
