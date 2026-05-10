@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#3D2818">
+<title>Calendrier · Ocre Immo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --cream:#FAF6F1; --cream-2:#F4ECDF; --brown:#3D2818; --brown-soft:#6B5642; --brown-mute:#998877; --ocre-dark:#8B5E3C; --gold:#D4A256; --green:#2D7A3E; --green-soft:#E8F2EA; --line:#E5DAC6; }
+  *,*::before,*::after { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter',sans-serif; background:var(--cream); color:var(--brown); line-height:1.55; padding:16px; }
+  .container { max-width:560px; margin:0 auto; }
+  header { display:flex; align-items:center; gap:10px; padding:6px 0 14px; border-bottom:1px solid var(--line); margin-bottom:24px; }
+  .back { background:none; border:1px solid var(--line); color:var(--brown); width:36px; height:36px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  h1 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:26px; margin:0; }
+  h2 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:20px; margin:0 0 12px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:16px; }
+  .btn { padding:13px 22px; border-radius:10px; font-size:14px; font-weight:600; border:none; cursor:pointer; font-family:inherit; text-align:center; width:100%; }
+  .btn-primary { background:var(--ocre-dark); color:#fff; }
+  .btn-primary:hover { background:var(--brown); }
+  .btn-ghost { background:transparent; border:1px solid var(--line); color:var(--brown); }
+  .url-display { background:var(--cream-2); padding:12px; border-radius:8px; font-size:11.5px; word-break:break-all; font-family:monospace; margin:10px 0; color:var(--brown-soft); }
+  .copy-btn { padding:6px 12px; background:var(--ocre-dark); color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; }
+  .instructions { font-size:13px; color:var(--brown-soft); margin-top:12px; line-height:1.6; }
+  .instructions code { background:var(--cream-2); padding:2px 6px; border-radius:4px; font-size:12px; color:var(--ocre-dark); }
+  .feedback { margin-top:14px; padding:10px 14px; border-radius:8px; font-size:13px; display:none; }
+  .feedback.show { display:block; }
+  .feedback.success { background:var(--green-soft); color:var(--green); }
+  .feedback.error { background:#FDECEA; color:#C62828; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <button class="back" onclick="history.length>1?history.back():(location.href='/')" aria-label="Retour">←</button>
+    <h1>Synchroniser le calendrier</h1>
+  </header>
+
+  <div class="card">
+    <h2>📥 Export ponctuel</h2>
+    <p style="font-size:13.5px;color:var(--brown-soft)">Télécharge un fichier .ics avec tes RDV des 90 prochains jours, à importer manuellement dans n'importe quel calendrier.</p>
+    <a class="btn btn-primary" href="/api/calendar/export.php" download>📥 Télécharger fichier .ics</a>
+  </div>
+
+  <div class="card">
+    <h2>🔄 Abonnement automatique</h2>
+    <p style="font-size:13.5px;color:var(--brown-soft)">Génère une URL signée à abonner depuis Google Calendar / Outlook / Apple Calendar. Tes RDV se synchronisent automatiquement (refresh par les services calendrier toutes les 1-2h).</p>
+    <div id="token-zone">
+      <button class="btn btn-primary" id="gen-btn" type="button">🔑 Générer un lien d'abonnement</button>
+    </div>
+    <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+    <div class="instructions">
+      <p><strong>Comment ajouter à Google Calendar</strong></p>
+      <ul>
+        <li>Ouvre Google Calendar (calendar.google.com)</li>
+        <li>Sidebar gauche → "Autres agendas" → <code>+</code> → "À partir d'une URL"</li>
+        <li>Colle l'URL ci-dessus → "Ajouter l'agenda"</li>
+      </ul>
+      <p><strong>Outlook / Apple Calendar</strong> : "Add calendar" → "Subscribe from web" → coller l'URL.</p>
+      <p style="margin-top:12px;color:var(--brown-mute);font-size:12px">⚠ Régénérer un nouveau token révoque l'ancien (le calendrier abonné cessera de se mettre à jour).</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const $ = id => document.getElementById(id);
+  function showFeedback(kind, msg) { const fb = $('feedback'); fb.className = 'feedback show ' + kind; fb.textContent = msg; }
+
+  async function loadCurrent() {
+    try {
+      const r = await fetch('/api/calendar/token.php', { credentials: 'include' });
+      const d = await r.json();
+      if (d.ok && d.has_token) renderToken(d.feed_url);
+    } catch (e) {}
+  }
+
+  function renderToken(url) {
+    $('token-zone').innerHTML = `
+      <div class="url-display" data-testid="feed-url">${url}</div>
+      <button class="copy-btn" onclick="copyUrl()">📋 Copier l'URL</button>
+      <button class="btn btn-ghost" id="regen-btn" type="button" style="margin-top:14px;">Régénérer (révoque l'ancien)</button>
+    `;
+    $('regen-btn').addEventListener('click', generate);
+  }
+
+  window.copyUrl = function() {
+    const t = document.querySelector('[data-testid="feed-url"]').textContent;
+    navigator.clipboard.writeText(t).then(() => showFeedback('success', 'URL copiée dans le presse-papier.'));
+  };
+
+  async function generate() {
+    try {
+      const r = await fetch('/api/calendar/token.php', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const d = await r.json();
+      if (d.ok && d.feed_url) { renderToken(d.feed_url); showFeedback('success', 'Nouveau lien généré. Ajoute-le à ton calendrier.'); }
+      else { showFeedback('error', 'Erreur : ' + (d.error || 'inconnue')); }
+    } catch (e) { showFeedback('error', 'Erreur réseau'); }
+  }
+
+  $('gen-btn').addEventListener('click', generate);
+  loadCurrent();
+})();
+</script>
+</body>
+</html>
