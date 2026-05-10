@@ -282,9 +282,9 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--
 <section class="hv-gold">
   <h2>100% gratuit. Pour toujours ?</h2>
   <p>Profite tant qu'on le décide encore.</p>
-  <a href="https://auth.ocre.immo/signup" class="hv-cta">Créer mon compte
+  <button type="button" class="hv-cta" onclick="ocreSignupOpen()" style="border:none;cursor:pointer;font-family:inherit">Créer mon compte
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-  </a>
+  </button>
 </section>
 
 <footer class="hv-footer">
@@ -302,8 +302,13 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--
   document.querySelectorAll('.hv-reveal').forEach(function(el){ obs.observe(el); });
   document.querySelectorAll('.hv-tile').forEach(function(el, i){ el.style.transitionDelay = (i * 80) + 'ms'; obs.observe(el); });
 })();
+window.OCRE_SIGNUP_APP = 'agent';
 </script>
 
-<?php wp_footer(); ?>
+<?php
+// M_OCRE_PATCH_OUTILS_RICHES — popup signup overlay shared depuis home aussi
+include get_stylesheet_directory() . '/parts/signup-popup.php';
+wp_footer();
+?>
 </body>
 </html>
