@@ -86,7 +86,16 @@ case 'upload': {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     );
     $stmt->execute([$clientId, $uid, $category, $cleanName, $relPath, $mime, (int) $f['size'], $uid]);
-    jsonOk(['id' => (int) db()->lastInsertId(), 'file_name' => $cleanName]);
+    $newDocId = (int) db()->lastInsertId();
+    // M116d — emit webhook event document.signed (graceful) si category indique document signe (contrat/mandat/compromis)
+    if (in_array($category, ['contrat', 'mandat', 'compromis', 'signed', 'signature'], true)) {
+        @require_once __DIR__ . '/lib/webhook_emit.php';
+        if (function_exists('emit_event')) {
+            $tenantSlugW = $_SERVER['HTTP_X_TENANT_SLUG'] ?? (preg_match('/^([a-z0-9-]+)\.ocre\.immo$/', $_SERVER['HTTP_HOST'] ?? '', $mh) ? $mh[1] : '');
+            if ($tenantSlugW) emit_event($tenantSlugW, 'document.signed', ['document_id' => $newDocId, 'client_id' => $clientId, 'category' => $category, 'tenant_user_id' => $uid]);
+        }
+    }
+    jsonOk(['id' => $newDocId, 'file_name' => $cleanName]);
 }
 
 case 'delete': {

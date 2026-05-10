@@ -154,6 +154,16 @@ case 'classify': {
     // M/2026/05/09/43 — M89 : push 'proposal' aux co-owners du match si statut 'pertinent'
     // (agent A pousse une proposition à ses partenaires WSc pour suite commerciale).
     if ($newStatus === 'pertinent') {
+        // M116d — emit webhook events match.detected + proposal.received (graceful, ne bloque pas push notify)
+        @require_once __DIR__ . '/lib/webhook_emit.php';
+        if (function_exists('emit_event')) {
+            $tenantSlugW = $_SERVER['HTTP_X_TENANT_SLUG'] ?? (preg_match('/^([a-z0-9-]+)\.ocre\.immo$/', $_SERVER['HTTP_HOST'] ?? '', $mh) ? $mh[1] : '');
+            if ($tenantSlugW) {
+                $payloadW = ['match_id' => $id, 'score_pct' => (int)($m['score_pct'] ?? 0), 'tenant_user_id' => $uid];
+                emit_event($tenantSlugW, 'match.detected', $payloadW);
+                emit_event($tenantSlugW, 'proposal.received', $payloadW);
+            }
+        }
         @require_once __DIR__ . '/lib/push_notify.php';
         if (function_exists('ocre_push_notify')) {
             $owners = is_array($m['owner_user_ids'] ?? null) ? $m['owner_user_ids'] : [];
