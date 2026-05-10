@@ -1,0 +1,73 @@
+# M_GLITCHTIP_INSTALL — GlitchTip auto-hébergé Docker Compose
+# Source officielle : https://glitchtip.com/documentation/install
+# Déploiement : copier dans /opt/glitchtip/docker-compose.yml + remplir .env + docker compose up -d
+# Prérequis : Docker + Docker Compose installés (apt install docker.io docker-compose-plugin)
+
+services:
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    volumes:
+      - glitchtip_pg_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+      POSTGRES_DB: glitchtip
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d glitchtip"]
+      interval: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  web:
+    image: glitchtip/glitchtip:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: "postgres://postgres:@postgres:5432/glitchtip"
+      SECRET_KEY: "${SECRET_KEY}"
+      PORT: 8000
+      EMAIL_URL: "smtps://noreply%40ocre.immo:${OVH_SMTP_PWD}@ssl0.ovh.net:465"
+      GLITCHTIP_DOMAIN: "https://glitchtip.46-225-215-148.sslip.io"
+      DEFAULT_FROM_EMAIL: "noreply@ocre.immo"
+      CELERY_WORKER_AUTOSCALE: "1,3"
+      ENABLE_OBSERVABILITY_API: "true"
+
+  worker:
+    image: glitchtip/glitchtip:latest
+    restart: unless-stopped
+    command: ./bin/run-celery-with-beat.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: "postgres://postgres:@postgres:5432/glitchtip"
+      SECRET_KEY: "${SECRET_KEY}"
+      EMAIL_URL: "smtps://noreply%40ocre.immo:${OVH_SMTP_PWD}@ssl0.ovh.net:465"
+      GLITCHTIP_DOMAIN: "https://glitchtip.46-225-215-148.sslip.io"
+      DEFAULT_FROM_EMAIL: "noreply@ocre.immo"
+      CELERY_WORKER_AUTOSCALE: "1,3"
+
+  migrate:
+    image: glitchtip/glitchtip:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: "./manage.py migrate"
+    environment:
+      DATABASE_URL: "postgres://postgres:@postgres:5432/glitchtip"
+      SECRET_KEY: "${SECRET_KEY}"
+    restart: "no"
+
+volumes:
+  glitchtip_pg_data:
