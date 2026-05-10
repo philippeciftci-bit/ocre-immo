@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>M_OI_AGENT_MAQUETTES · 20 variantes pour validation Philippe</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500;1,600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--cream:#FAF6F1;--cream-2:#F4ECDF;--brown:#3D2818;--brown-soft:#6B5642;--brown-mute:#998877;--ocre:#C9A961;--ocre-dark:#8B5E3C;--gold:#D4A256;--gold-bright:#E8B95E;--line:#E5DAC6;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',system-ui,sans-serif;background:#1A1611;color:#E5DAC6;min-height:100vh;line-height:1.5;}
+.head{padding:34px 24px 22px;background:linear-gradient(180deg,#0F0C08 0%,#1A1611 100%);border-bottom:1px solid #2C2820;text-align:center;}
+.head h1{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:42px;color:var(--gold-bright);letter-spacing:-0.01em;margin-bottom:8px;}
+.head .sub{color:var(--brown-mute);font-size:13.5px;letter-spacing:0.04em;}
+.head .meta{margin-top:14px;font-size:12px;color:var(--brown-soft);}
+.layout{display:grid;grid-template-columns:1fr 320px;min-height:100vh;}
+@media (max-width:980px){.layout{grid-template-columns:1fr;} .sidebar{display:none;}}
+.main{padding:30px 24px 80px;}
+.panel{margin-bottom:60px;}
+.panel-head{margin-bottom:24px;}
+.panel-head h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:32px;color:var(--gold-bright);margin-bottom:6px;}
+.panel-head p{color:var(--brown-mute);font-size:13.5px;}
+.grid-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px;}
+.grid-heroes{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:24px;}
+.var-wrap{position:relative;cursor:pointer;}
+.var-tile{width:100%;aspect-ratio:390/500;border-radius:14px;overflow:hidden;position:relative;background:#222;transition:transform .25s,box-shadow .25s;}
+.var-hero{width:100%;aspect-ratio:390/800;border-radius:18px;overflow:hidden;position:relative;background:#222;transition:transform .25s,box-shadow .25s;border:6px solid #2C2820;}
+.var-wrap:hover .var-tile,.var-wrap:hover .var-hero{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.5);}
+.var-wrap.selected .var-tile,.var-wrap.selected .var-hero{outline:3px solid var(--gold-bright);}
+.var-label{margin-top:10px;display:flex;justify-content:space-between;align-items:center;}
+.var-label .vnum{font-weight:700;color:var(--gold-bright);font-size:14px;}
+.var-label .vname{color:var(--brown-mute);font-size:11.5px;font-style:italic;}
+.choose-btn{position:fixed;bottom:24px;right:24px;background:var(--gold-bright);color:var(--brown);padding:14px 24px;border-radius:999px;border:none;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;box-shadow:0 12px 30px rgba(212,162,86,0.4);z-index:100;display:none;}
+.choose-btn.show{display:block;animation:pop .3s;}
+@keyframes pop{from{transform:scale(0.8);opacity:0;}to{transform:scale(1);opacity:1;}}
+.sidebar{background:#0F0C08;border-left:1px solid #2C2820;padding:30px 22px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar h3{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:24px;color:var(--gold-bright);margin-bottom:14px;}
+.sidebar .desc{font-size:13px;color:var(--brown-mute);line-height:1.55;}
+.sidebar .desc strong{color:#E5DAC6;}
+.sidebar .empty{color:var(--brown-soft);font-style:italic;font-size:12.5px;}
+
+/* === TUILES V1-V10 === */
+/* V1 Photo + Overlay sombre intense */
+.t1{background:url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80') center/cover;}
+.t1::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.1) 30%,rgba(0,0,0,0.85) 100%);}
+.t1 .lbl{position:absolute;left:18px;bottom:16px;right:18px;color:#fff;z-index:1;}
+.t1 .lbl h4{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:30px;line-height:1;margin-bottom:6px;color:var(--gold-bright);}
+.t1 .lbl p{font-size:11.5px;color:#fff;font-weight:600;margin-bottom:8px;}
+.t1 .lbl span{color:var(--gold-bright);font-size:11px;font-weight:600;}
+
+/* V2 Stat Wow */
+.t2{background:url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80') center/cover;}
+.t2::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(61,40,24,0.85) 0%,rgba(61,40,24,0.4) 60%,rgba(0,0,0,0.7) 100%);}
+.t2 .lbl{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#fff;z-index:1;padding:18px;}
+.t2 .lbl .big{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:60px;line-height:1;color:var(--gold-bright);}
+.t2 .lbl .mid{font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#fff;margin:8px 0 16px;font-weight:600;}
+.t2 .lbl .small{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:18px;color:#fff;}
+
+/* V3 Avant/Après split */
+.t3{display:grid;grid-template-rows:1fr 1fr;}
+.t3 .av{background:url('https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=600&q=80') center/cover;position:relative;}
+.t3 .av::after{content:'AVANT';position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;letter-spacing:0.15em;padding:3px 8px;border-radius:4px;font-weight:700;}
+.t3 .av p{position:absolute;bottom:8px;left:8px;right:8px;color:#fff;font-size:10.5px;text-shadow:0 2px 6px rgba(0,0,0,0.8);}
+.t3 .av{filter:grayscale(0.6) brightness(0.7);}
+.t3 .ap{background:url('https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&w=600&q=80') center/cover;position:relative;}
+.t3 .ap::after{content:'APRÈS Oi Agent';position:absolute;top:8px;left:8px;background:var(--gold-bright);color:var(--brown);font-size:9px;letter-spacing:0.12em;padding:3px 8px;border-radius:4px;font-weight:700;}
+.t3 .ap p{position:absolute;bottom:8px;left:8px;right:8px;color:#fff;font-size:10.5px;font-weight:600;text-shadow:0 2px 6px rgba(0,0,0,0.8);}
+
+/* V4 Témoignage portrait */
+.t4{background:url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80') center/cover;}
+.t4::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.05) 30%,rgba(0,0,0,0.9) 100%);}
+.t4 .lbl{position:absolute;left:18px;bottom:16px;right:18px;color:#fff;z-index:1;}
+.t4 .lbl q{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:18px;line-height:1.2;display:block;margin-bottom:10px;}
+.t4 .lbl cite{display:block;font-size:11px;font-style:normal;color:var(--gold-bright);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+.t4 .lbl .logo{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:14px;color:var(--gold-bright);}
+
+/* V5 Animated Lottie discret (CSS keyframes simulant) */
+.t5{background:linear-gradient(135deg,#3D2818 0%,#1A1611 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
+.t5 .icon{width:90px;height:90px;border-radius:50%;background:var(--gold-bright);display:flex;align-items:center;justify-content:center;font-size:44px;animation:t5pulse 3s ease-in-out infinite;margin-bottom:18px;}
+@keyframes t5pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);box-shadow:0 0 40px rgba(232,185,94,0.5);}}
+.t5 h4{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:28px;color:var(--gold-bright);}
+.t5 p{font-style:italic;color:#E5DAC6;font-size:13px;margin-top:8px;}
+
+/* V6 Carte concept points lumineux */
+.t6{background:url('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=600&q=80') center/cover;}
+.t6::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,12,8,0.8) 0%,rgba(15,12,8,0.5) 50%,rgba(0,0,0,0.85) 100%);}
+.t6 .dots{position:absolute;inset:0;z-index:1;}
+.t6 .dot{position:absolute;width:10px;height:10px;background:var(--gold-bright);border-radius:50%;box-shadow:0 0 16px var(--gold-bright);animation:t6blink 2.4s ease-in-out infinite;}
+.t6 .dot:nth-child(1){top:32%;left:25%;animation-delay:0s;}
+.t6 .dot:nth-child(2){top:60%;left:55%;animation-delay:0.6s;}
+.t6 .dot:nth-child(3){top:42%;left:70%;animation-delay:1.2s;}
+@keyframes t6blink{0%,100%{opacity:0.3;}50%{opacity:1;}}
+.t6 .lbl{position:absolute;left:18px;bottom:16px;right:18px;color:#fff;z-index:2;}
+.t6 .lbl h4{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:26px;color:var(--gold-bright);margin-bottom:6px;}
+.t6 .lbl p{font-size:11.5px;font-weight:500;}
+
+/* V7 Mockup iPhone */
+.t7{background:linear-gradient(135deg,var(--cream-2) 0%,#fff 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px 16px 0;color:var(--brown);}
+.t7 h4{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:24px;color:var(--ocre-dark);margin-bottom:4px;}
+.t7 p{font-size:11px;color:var(--brown-soft);font-style:italic;margin-bottom:14px;}
+.t7 .phone{width:130px;height:240px;border-radius:22px;background:url('https://images.unsplash.com/photo-1551836022-deb4988cc6c0?auto=format&fit=crop&w=400&q=80') center/cover;border:5px solid #1A1611;box-shadow:0 12px 30px rgba(60,40,20,0.25);position:relative;}
+.t7 .phone::after{content:'Match 96%';position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.95);color:var(--brown);font-size:9px;font-weight:700;padding:4px 10px;border-radius:8px;}
+
+/* V8 Émotion pure */
+.t8{background:url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=600&q=80') center/cover;}
+.t8::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.4) 0%,rgba(0,0,0,0.85) 100%);}
+.t8 .lbl{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#fff;z-index:1;padding:22px;}
+.t8 .lbl .big{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:90px;line-height:0.9;color:var(--gold-bright);text-shadow:0 4px 30px rgba(0,0,0,0.5);}
+.t8 .lbl .sub{margin-top:16px;font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;}
+
+/* V9 Process en 3 étapes verticales */
+.t9{background:#fff;display:flex;flex-direction:column;}
+.t9 .head9{padding:14px 16px;background:var(--cream-2);}
+.t9 .head9 h4{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:22px;color:var(--ocre-dark);}
+.t9 .step{flex:1;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--line);background-size:cover;background-position:center;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,0.7);font-size:12px;font-weight:600;position:relative;}
+.t9 .step:last-child{border-bottom:none;}
+.t9 .step::before{content:attr(data-n);width:26px;height:26px;border-radius:50%;background:var(--gold-bright);color:var(--brown);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.t9 .step.s1{background-image:linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)),url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=400&q=80');}
+.t9 .step.s2{background-image:linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)),url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=400&q=80');}
+.t9 .step.s3{background-image:linear-gradient(rgba(0,0,0,0.4),rgba(0,0,0,0.4)),url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=400&q=80');}
+
+/* V10 8 profils métier grille */
+.t10{background:linear-gradient(135deg,var(--cream) 0%,#fff 100%);display:flex;flex-direction:column;padding:18px 16px;color:var(--brown);}
+.t10 h4{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:22px;color:var(--ocre-dark);margin-bottom:4px;}
+.t10 p{font-size:10.5px;color:var(--brown-soft);font-style:italic;margin-bottom:12px;}
+.t10 .profils{flex:1;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(4,1fr);gap:6px;}
+.t10 .profils div{background:var(--cream-2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--brown-soft);text-align:center;padding:4px;border:1px solid var(--line);}
+
+/* === HEROES H1-H10 === */
+/* H1 Apple style pure */
+.h1{background:url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=900&q=80') center/cover;}
+.h1::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.55) 100%);}
+.h1 .body{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff;padding:24px;z-index:1;}
+.h1 .body h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:64px;line-height:1;color:var(--gold-bright);text-shadow:0 4px 20px rgba(0,0,0,0.5);margin-bottom:14px;}
+.h1 .body p{font-size:14px;color:#fff;font-style:italic;margin-bottom:24px;}
+.h1 .cta{padding:13px 24px;background:var(--gold-bright);color:var(--brown);border-radius:999px;font-weight:700;font-size:13px;}
+
+/* H2 Linear gradient + texte ligne par ligne */
+.h2{background:radial-gradient(ellipse at top right,#3D2818 0%,#1A1611 70%);}
+.h2 .body{position:absolute;inset:0;padding:40px 24px;color:#fff;display:flex;flex-direction:column;justify-content:center;}
+.h2 .body .line{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:36px;line-height:1.1;color:var(--gold-bright);opacity:0;animation:h2line 1s ease-out forwards;}
+.h2 .body .line:nth-child(1){animation-delay:0s;}
+.h2 .body .line:nth-child(2){animation-delay:0.4s;color:#fff;font-style:normal;font-weight:600;font-family:'Inter',sans-serif;font-size:14px;margin-top:14px;}
+.h2 .body .line:nth-child(3){animation-delay:0.8s;color:var(--brown-mute);font-family:'Inter',sans-serif;font-size:12px;margin-top:6px;font-style:normal;font-weight:400;}
+@keyframes h2line{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
+.h2 .cta{margin-top:24px;padding:13px 24px;background:var(--gold-bright);color:var(--brown);border-radius:999px;font-weight:700;font-size:13px;display:inline-block;align-self:flex-start;opacity:0;animation:h2line 1s 1.2s ease-out forwards;}
+
+/* H3 Notion split */
+.h3{background:var(--cream);display:flex;flex-direction:column;}
+.h3 .top{flex:1;padding:30px 22px;color:var(--brown);}
+.h3 .top h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:38px;line-height:1.05;color:var(--ocre-dark);margin-bottom:12px;}
+.h3 .top ul{list-style:none;font-size:12px;color:var(--brown-soft);}
+.h3 .top ul li{padding:5px 0;display:flex;align-items:flex-start;gap:7px;}
+.h3 .top ul li::before{content:'✓';color:var(--gold);font-weight:700;}
+.h3 .top .cta{margin-top:14px;display:inline-block;padding:12px 22px;background:var(--ocre-dark);color:#fff;border-radius:999px;font-weight:600;font-size:12px;}
+.h3 .bot{flex:0.8;background:url('https://images.unsplash.com/photo-1551836022-deb4988cc6c0?auto=format&fit=crop&w=600&q=80') center/cover;border-top:1px solid var(--line);}
+
+/* H4 Stripe diagram animé */
+.h4{background:linear-gradient(180deg,#1A1611 0%,#0F0C08 100%);}
+.h4 .body{position:absolute;inset:0;padding:30px 22px;color:#fff;display:flex;flex-direction:column;justify-content:center;}
+.h4 .body h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:38px;color:var(--gold-bright);margin-bottom:24px;line-height:1.05;}
+.h4 .diag{display:flex;align-items:center;justify-content:space-around;gap:8px;margin:16px 0 24px;}
+.h4 .diag .node{width:50px;height:50px;border-radius:50%;background:var(--cream-2);color:var(--brown);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;text-align:center;animation:h4pulse 2s ease-in-out infinite;}
+.h4 .diag .arrow{flex:1;height:2px;background:linear-gradient(90deg,var(--gold) 0%,var(--gold-bright) 100%);position:relative;animation:h4flow 2s ease-in-out infinite;}
+@keyframes h4pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+@keyframes h4flow{0%{opacity:0.4;}50%{opacity:1;}100%{opacity:0.4;}}
+.h4 .body .cta{padding:13px 22px;background:var(--gold-bright);color:var(--brown);border-radius:999px;font-weight:700;font-size:13px;align-self:flex-start;}
+
+/* H5 Airbnb photo XL */
+.h5{background:url('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80') center/cover;}
+.h5::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.2) 0%,rgba(0,0,0,0.4) 100%);}
+.h5 .body{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;text-align:center;color:#fff;padding:0 24px 60px;z-index:1;}
+.h5 .body h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:54px;color:var(--gold-bright);text-shadow:0 4px 20px rgba(0,0,0,0.6);margin-bottom:14px;}
+.h5 .body p{font-size:13px;font-style:italic;margin-bottom:22px;}
+.h5 .cta{padding:13px 24px;background:#fff;color:var(--brown);border-radius:999px;font-weight:700;font-size:13px;}
+
+/* H6 Figma showcase 3 mini écrans */
+.h6{background:linear-gradient(135deg,var(--cream) 0%,var(--cream-2) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;color:var(--brown);}
+.h6 h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:34px;color:var(--ocre-dark);text-align:center;margin-bottom:6px;}
+.h6 p{font-size:12px;color:var(--brown-soft);font-style:italic;text-align:center;margin-bottom:22px;}
+.h6 .screens{position:relative;width:100%;height:280px;display:flex;justify-content:center;align-items:center;}
+.h6 .screens .scr{position:absolute;width:120px;height:230px;border-radius:14px;background-size:cover;background-position:center;border:5px solid #1A1611;box-shadow:0 16px 40px rgba(60,40,20,0.3);transition:transform .4s;}
+.h6 .screens .scr:nth-child(1){transform:translateX(-70px) rotate(-8deg);background-image:url('https://images.unsplash.com/photo-1551836022-deb4988cc6c0?auto=format&fit=crop&w=400&q=80');z-index:1;}
+.h6 .screens .scr:nth-child(2){transform:translateY(-10px) scale(1.05);background-image:url('https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=400&q=80');z-index:3;}
+.h6 .screens .scr:nth-child(3){transform:translateX(70px) rotate(8deg);background-image:url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=400&q=80');z-index:1;}
+.h6 .cta{margin-top:20px;padding:13px 22px;background:var(--ocre-dark);color:#fff;border-radius:999px;font-weight:600;font-size:13px;}
+
+/* H7 Stat headline */
+.h7{background:url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80') center/cover;}
+.h7::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,12,8,0.85) 0%,rgba(15,12,8,0.6) 100%);}
+.h7 .body{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;text-align:center;padding:30px 22px;color:#fff;z-index:1;}
+.h7 .body .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:30px;}
+.h7 .body .stat div{display:flex;flex-direction:column;}
+.h7 .body .stat .num{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:42px;color:var(--gold-bright);line-height:1;}
+.h7 .body .stat .lab{font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--brown-mute);margin-top:4px;}
+.h7 .body h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:24px;margin-bottom:16px;}
+.h7 .cta{padding:12px 22px;background:var(--gold-bright);color:var(--brown);border-radius:999px;font-weight:700;font-size:13px;align-self:center;}
+
+/* H8 Dual témoignage */
+.h8{background:#1A1611;display:grid;grid-template-rows:1fr 1fr;gap:6px;}
+.h8 .t{position:relative;background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:18px;color:#fff;}
+.h8 .t::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.05) 30%,rgba(0,0,0,0.85) 100%);}
+.h8 .t1{background-image:url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80');}
+.h8 .t2{background-image:url('https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=600&q=80');}
+.h8 .t .q{position:relative;z-index:1;}
+.h8 .t q{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:16px;display:block;margin-bottom:5px;}
+.h8 .t cite{font-size:10px;font-style:normal;color:var(--gold-bright);letter-spacing:0.08em;text-transform:uppercase;}
+
+/* H9 Process timeline 4 étapes */
+.h9{background:linear-gradient(180deg,var(--cream) 0%,#fff 100%);display:flex;flex-direction:column;padding:30px 20px;color:var(--brown);}
+.h9 h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:32px;color:var(--ocre-dark);text-align:center;margin-bottom:24px;}
+.h9 .timeline{flex:1;display:flex;flex-direction:column;justify-content:space-around;}
+.h9 .step{display:flex;align-items:center;gap:12px;}
+.h9 .step .n{width:36px;height:36px;border-radius:50%;background:var(--gold-bright);color:var(--brown);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.h9 .step .txt{font-size:13px;color:var(--brown);font-weight:600;}
+.h9 .step .txt small{display:block;color:var(--brown-soft);font-size:11px;font-weight:400;margin-top:2px;}
+.h9 .cta{margin-top:18px;padding:13px;background:var(--ocre-dark);color:#fff;border-radius:10px;font-weight:600;font-size:13px;text-align:center;}
+
+/* H10 Vidéo loop background */
+.h10{background:url('https://images.unsplash.com/photo-1551836022-deb4988cc6c0?auto=format&fit=crop&w=900&q=80') center/cover;}
+.h10::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.7) 100%);animation:h10pan 8s linear infinite alternate;}
+@keyframes h10pan{from{background-position:0 0;}to{background-position:100% 100%;}}
+.h10 .ind{position:absolute;top:14px;right:14px;background:rgba(232,185,94,0.95);color:var(--brown);padding:4px 10px;border-radius:999px;font-size:9px;font-weight:700;letter-spacing:0.08em;display:flex;align-items:center;gap:5px;z-index:2;}
+.h10 .ind::before{content:'';width:6px;height:6px;background:var(--brown);border-radius:50%;animation:h10rec 1.4s ease-in-out infinite;}
+@keyframes h10rec{0%,100%{opacity:0.3;}50%{opacity:1;}}
+.h10 .body{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:0 22px 60px;color:#fff;z-index:1;}
+.h10 .body h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:50px;color:var(--gold-bright);text-shadow:0 4px 20px rgba(0,0,0,0.6);margin-bottom:14px;line-height:1;}
+.h10 .body p{font-size:13px;font-style:italic;margin-bottom:22px;}
+.h10 .cta{padding:13px 24px;background:var(--gold-bright);color:var(--brown);border-radius:999px;font-weight:700;font-size:13px;align-self:flex-start;}
+</style>
+</head>
+<body>
+<div class="head">
+  <h1>M_OI_AGENT_MAQUETTES — 20 variantes</h1>
+  <div class="sub">10 tuiles home + 10 hero pages /oi-agent · validation Philippe avant implémentation</div>
+  <div class="meta">Mission M/2026/05/10/55 · 2026-05-10 · tap variante = sélection · tap encore = description longue sidebar</div>
+</div>
+
+<div class="layout">
+<div class="main">
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Panneau 1 — 10 variantes TUILE HOME</h2>
+    <p>Tuile mobile 390×500 réaliste · cohérent grid home ocre.immo · différencier visuellement chaque outil dès le 1er coup d'œil</p>
+  </div>
+  <div class="grid-tiles">
+    <div class="var-wrap" data-v="T1" data-desc="Photo plein cadre + dark overlay 60% · texte XXL Cormorant blanc bottom-left · phrase percutante gold · CTA texte. Direction : éditorial dramatique. Public : agents séniors qui aiment l'image forte."><div class="var-tile t1"><div class="lbl"><h4>Oi Agent</h4><p>Le matching qui ne dort jamais.</p><span>Découvrir →</span></div></div><div class="var-label"><span class="vnum">T1</span><span class="vname">Photo + Overlay Sombre</span></div></div>
+    <div class="var-wrap" data-v="T2" data-desc="Stat XXL Cormorant gold centré · sub label majuscule · sous-titre Cormorant. Direction : data-driven impressionnant. Public : agents pragmatiques qui aiment les chiffres."><div class="var-tile t2"><div class="lbl"><div class="big">500</div><div class="mid">DOSSIERS MATCHÉS</div><div class="small">Oi Agent · CRM</div></div></div><div class="var-label"><span class="vnum">T2</span><span class="vname">Stat Wow</span></div></div>
+    <div class="var-wrap" data-v="T3" data-desc="Split horizontal AVANT (gris+terne) / APRÈS (couleur+éclatant) avec badges. Direction : transformation visible immédiatement. Public : agents frustrés du statu quo."><div class="var-tile t3"><div class="av"><p>50 dossiers cachés au fond du tiroir</p></div><div class="ap"><p>Matchings instantanés, dossiers vivants</p></div></div><div class="var-label"><span class="vnum">T3</span><span class="vname">Avant/Après Split</span></div></div>
+    <div class="var-wrap" data-v="T4" data-desc="Portrait agent réel + citation overlay 1 phrase + cite + small logo Oi Agent. Direction : preuve sociale humaine. Public : nouveaux qui doutent."><div class="var-tile t4"><div class="lbl"><q>Mes dossiers matchent en 6h.</q><cite>Karim — Marrakech</cite><span class="logo">Oi Agent</span></div></div><div class="var-label"><span class="vnum">T4</span><span class="vname">Témoignage Photo</span></div></div>
+    <div class="var-wrap" data-v="T5" data-desc="Icône grande pulse animation 3sec + Cormorant nom + tagline italic. Direction : minimaliste élégant. Public : amateurs de design Apple/Notion."><div class="var-tile t5"><div class="icon">🔑</div><h4>Oi Agent</h4><p>Le matching qui ne dort jamais.</p></div><div class="var-label"><span class="vnum">T5</span><span class="vname">Lottie Discret</span></div></div>
+    <div class="var-wrap" data-v="T6" data-desc="Photo carte Maroc/France + 3 points lumineux gold qui blinkent (matching anonymisé visualisé) + nom + tagline. Direction : conceptuelle réseau. Public : agents multi-pays."><div class="var-tile t6"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div class="lbl"><h4>Oi Agent</h4><p>Maroc · France · Espagne · Italie</p></div></div><div class="var-label"><span class="vnum">T6</span><span class="vname">Carte Concept</span></div></div>
+    <div class="var-wrap" data-v="T7" data-desc="Mockup iPhone réaliste centré + screenshot match 96% + nom Cormorant + tagline italic. Direction : produit montré. Public : agents qui veulent voir ce qu'ils utiliseront."><div class="var-tile t7"><h4>Oi Agent</h4><p>Vois tes dossiers comme jamais</p><div class="phone"></div></div><div class="var-label"><span class="vnum">T7</span><span class="vname">Mockup iPhone</span></div></div>
+    <div class="var-wrap" data-v="T8" data-desc="1 mot percutant XXL Cormorant gold + sous-titre majuscule. Direction : émotionnel pur. Public : agents qui veulent du sens."><div class="var-tile t8"><div class="lbl"><div class="big">Enfin.</div><div class="sub">Oi Agent · CRM matching</div></div></div><div class="var-label"><span class="vnum">T8</span><span class="vname">Émotion Pure</span></div></div>
+    <div class="var-wrap" data-v="T9" data-desc="Header nom + 3 étapes verticales bandeau (photo + numéro + verbe). Direction : pédagogique. Public : agents prudents qui veulent comprendre avant."><div class="var-tile t9"><div class="head9"><h4>Oi Agent</h4></div><div class="step s1" data-n="1">Tu uploades</div><div class="step s2" data-n="2">Tu pacts</div><div class="step s3" data-n="3">Tu matches</div></div><div class="var-label"><span class="vnum">T9</span><span class="vname">Process 3 étapes</span></div></div>
+    <div class="var-wrap" data-v="T10" data-desc="Header nom + grille 2x4 des 8 profils métiers Section III. Direction : couverture exhaustive démontrée. Public : agents qui doutent que l'outil colle à leur métier."><div class="var-tile t10"><h4>Oi Agent</h4><p>Pour les 8 profils immo</p><div class="profils"><div>Acheteur</div><div>Vendeur</div><div>Bailleur</div><div>Locataire</div><div>Investisseur</div><div>Marchand</div><div>Promoteur</div><div>Curieux</div></div></div><div class="var-label"><span class="vnum">T10</span><span class="vname">8 Profils Métier</span></div></div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Panneau 2 — 10 variantes HERO PAGE /oi-agent</h2>
+    <p>Viewport mobile 390×800 simulé · hero plein écran 1ère section · répondre en 5 sec : C'est quoi ? À qui ? Pourquoi ?</p>
+  </div>
+  <div class="grid-heroes">
+    <div class="var-wrap" data-v="H1" data-desc="Photo plein cadre + Cormorant XXL gold + tagline italic + CTA rond gold. Direction : Apple iPhone product page. Public : amateurs minimalisme premium."><div class="var-hero h1"><div class="body"><h2>Oi Agent</h2><p>Le matching anonymisé entre confrères pactés.</p><div class="cta">Commencer (gratuit)</div></div></div><div class="var-label"><span class="vnum">H1</span><span class="vname">Apple Style Pure</span></div></div>
+    <div class="var-wrap" data-v="H2" data-desc="Background gradient radial + 3 lignes de texte qui apparaissent séquentielles (animation fade-up 400ms stagger) + CTA. Direction : Linear/Notion narrative. Public : amateurs storytelling."><div class="var-hero h2"><div class="body"><div class="line">Le matching qui dort jamais.</div><div class="line">Tu uploades tes dossiers, l'algo croise avec tes confrères pactés.</div><div class="line">Tu reçois un match en 6h, anonymisé. Tu valides ou non.</div><div class="cta">Commencer (gratuit)</div></div></div><div class="var-label"><span class="vnum">H2</span><span class="vname">Linear Narrative</span></div></div>
+    <div class="var-wrap" data-v="H3" data-desc="Top texte (titre + 3 bullets cochées + CTA) / Bottom photo Marrakech. Direction : Notion product page split. Public : agents pressés qui veulent tout voir d'un coup."><div class="var-hero h3"><div class="top"><h2>Oi Agent</h2><ul><li>Dossiers anonymisés bout-à-bout</li><li>Pacts confrères bilatéraux</li><li>Matching auto multi-pays</li></ul><div class="cta">Commencer →</div></div><div class="bot"></div></div><div class="var-label"><span class="vnum">H3</span><span class="vname">Notion Split</span></div></div>
+    <div class="var-wrap" data-v="H4" data-desc="Background sombre + diagramme animé matching (3 nodes avec arrows pulse) + titre + CTA. Direction : Stripe Atlas/Tax product page. Public : agents qui veulent comprendre la magie."><div class="var-hero h4"><div class="body"><h2>Le matching, simplifié.</h2><div class="diag"><div class="node">Tes dossiers</div><div class="arrow"></div><div class="node">Algo</div><div class="arrow"></div><div class="node">Confrères</div></div><div class="cta">Commencer (gratuit)</div></div></div><div class="var-label"><span class="vnum">H4</span><span class="vname">Stripe Diagramme</span></div></div>
+    <div class="var-wrap" data-v="H5" data-desc="Photo villa Marrakech full + texte centré bottom + CTA blanc rond. Direction : Airbnb hero photo XL. Public : amateurs visuels grand public."><div class="var-hero h5"><div class="body"><h2>Oi Agent</h2><p>Vos dossiers. Vos clients. Vos matchs.</p><div class="cta">Commencer (gratuit)</div></div></div><div class="var-label"><span class="vnum">H5</span><span class="vname">Airbnb Photo XL</span></div></div>
+    <div class="var-wrap" data-v="H6" data-desc="3 mini écrans iPhone overlapping (rotated -8°/0°/+8°) + titre + tagline + CTA. Direction : Figma Config showcase. Public : amateurs design produit."><div class="var-hero h6"><h2>Oi Agent</h2><p>Tout dans ton CRM, en 1 minute.</p><div class="screens"><div class="scr"></div><div class="scr"></div><div class="scr"></div></div><div class="cta">Commencer →</div></div><div class="var-label"><span class="vnum">H6</span><span class="vname">Figma 3 Écrans</span></div></div>
+    <div class="var-wrap" data-v="H7" data-desc="3 stats grosse Cormorant + sous-titre + CTA. Direction : impact chiffres. Public : agents data-driven."><div class="var-hero h7"><div class="body"><div class="stat"><div><span class="num">12</span><span class="lab">Agents</span></div><div><span class="num">500</span><span class="lab">Dossiers</span></div><div><span class="num">6h</span><span class="lab">Matching</span></div></div><h2>Oi Agent</h2><div class="cta">Commencer (gratuit)</div></div></div><div class="var-label"><span class="vnum">H7</span><span class="vname">Stat Headline</span></div></div>
+    <div class="var-wrap" data-v="H8" data-desc="2 photos agents témoins en split horizontal (haut + bas) avec citation + cite chacune. Direction : preuve sociale double. Public : agents qui doutent."><div class="var-hero h8"><div class="t t1"><div class="q"><q>Mes dossiers matchent en 6h.</q><cite>Karim · Marrakech</cite></div></div><div class="t t2"><div class="q"><q>2h gagnées chaque jour.</q><cite>Inès · Casablanca</cite></div></div></div><div class="var-label"><span class="vnum">H8</span><span class="vname">Dual Témoignage</span></div></div>
+    <div class="var-wrap" data-v="H9" data-desc="Timeline horizontale 4 étapes numérotées (signup → upload → pact → match) + CTA bas. Direction : pédagogique process. Public : agents qui veulent voir le chemin."><div class="var-hero h9"><h2>Comment ça marche</h2><div class="timeline"><div class="step"><div class="n">1</div><div class="txt">Signup<small>Email · 30 sec</small></div></div><div class="step"><div class="n">2</div><div class="txt">Upload<small>Tes dossiers en photos</small></div></div><div class="step"><div class="n">3</div><div class="txt">Pact<small>Avec tes confrères</small></div></div><div class="step"><div class="n">4</div><div class="txt">Match<small>En 6h max</small></div></div></div><div class="cta">Commencer maintenant</div></div><div class="var-label"><span class="vnum">H9</span><span class="vname">Process Timeline</span></div></div>
+    <div class="var-wrap" data-v="H10" data-desc="Photo background avec animation pan continu (simule vidéo loop) + indicateur LIVE blink + texte bottom + CTA. Direction : vidéo immersive. Public : amateurs cinéma/Apple keynote."><div class="var-hero h10"><div class="ind">LIVE</div><div class="body"><h2>Oi Agent</h2><p>Vois tes matchs arriver en temps réel.</p><div class="cta">Commencer (gratuit)</div></div></div><div class="var-label"><span class="vnum">H10</span><span class="vname">Vidéo Loop</span></div></div>
+  </div>
+</section>
+
+</div>
+
+<aside class="sidebar" id="sidebar">
+  <h3>📋 Sélection</h3>
+  <div class="desc empty" id="sidebar-empty">Tap une variante pour voir sa description détaillée ici.</div>
+  <div class="desc" id="sidebar-content" style="display:none"></div>
+</aside>
+</div>
+
+<button class="choose-btn" id="choose-btn">📤 Choisir cette variante : <span id="chosen-v">—</span></button>
+
+<script>
+let selected = null;
+const choose = document.getElementById('choose-btn');
+const chosenV = document.getElementById('chosen-v');
+const sbE = document.getElementById('sidebar-empty');
+const sbC = document.getElementById('sidebar-content');
+
+document.querySelectorAll('.var-wrap').forEach(w => {
+  w.addEventListener('click', () => {
+    document.querySelectorAll('.var-wrap').forEach(x => x.classList.remove('selected'));
+    w.classList.add('selected');
+    selected = w.dataset.v;
+    chosenV.textContent = selected;
+    choose.classList.add('show');
+    sbE.style.display = 'none';
+    sbC.style.display = 'block';
+    sbC.innerHTML = '<strong>' + selected + ' — ' + w.querySelector('.vname').textContent + '</strong><br><br>' + w.dataset.desc;
+  });
+});
+
+choose.addEventListener('click', () => {
+  navigator.clipboard.writeText(selected).then(() => {
+    choose.textContent = '✓ Copié : ' + selected;
+    setTimeout(() => { choose.innerHTML = '📤 Choisir cette variante : <span id="chosen-v">' + selected + '</span>'; }, 1800);
+  }).catch(() => {});
+});
+</script>
+</body>
+</html>
