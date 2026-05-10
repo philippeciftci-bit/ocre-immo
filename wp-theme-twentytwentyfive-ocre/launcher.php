@@ -24,7 +24,7 @@ $first_name = (string)($payload['first_name'] ?? '');
 // Catalogue 6 outils (synchronisé front-page.php)
 $tools = [
     'agent'   => ['name'=>'Agent',     'icon'=>'🏠', 'color'=>'#8B5E3C', 'url'=>'https://app.ocre.immo/oi-agent'],
-    'demande' => ['name'=>'Recherche', 'icon'=>'🔍', 'color'=>'#6B5642', 'url'=>'https://app.ocre.immo/oi-demande'],
+    'demande' => ['name'=>'Recherche', 'icon'=>'🔍', 'color'=>'#6B5642', 'url'=>'https://app.ocre.immo/oi-recherche'],
     'scan'    => ['name'=>'Scan',      'icon'=>'📷', 'color'=>'#998877', 'url'=>'https://app.ocre.immo/oi-scan'],
     'book'    => ['name'=>'Voyage',    'icon'=>'✈️', 'color'=>'#C9A961', 'url'=>'https://app.ocre.immo/oi-book'],
     'capture' => ['name'=>'Capture',   'icon'=>'📄', 'color'=>'#D4A256', 'url'=>'https://app.ocre.immo/oi-capture'],

@@ -273,11 +273,11 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--
       <div class="hv-tile-badge">Gratuit</div>
       <div class="hv-tile-label"><div class="hv-name">Oi Book</div><div class="hv-desc">Mon voyage, mon planning</div></div>
     </a>
-    <a href="/oi-demande" class="hv-tile">
+    <a href="/oi-recherche" class="hv-tile">
       <div class="hv-tile-img" style="background-image:url('https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&w=900&q=80')"></div>
       <div class="hv-tile-overlay"></div>
       <div class="hv-tile-badge">Gratuit</div>
-      <div class="hv-tile-label"><div class="hv-name">Oi Demande</div><div class="hv-desc">Trouve ton bien rêvé</div></div>
+      <div class="hv-tile-label"><div class="hv-name">Oi Recherche</div><div class="hv-desc">Trouve ton bien rêvé</div></div>
     </a>
     <a href="/oi-capture" class="hv-tile">
       <div class="hv-tile-img" style="background-image:url('https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=900&q=80')"></div>
@@ -300,7 +300,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--
     <div class="hv-demo-card"><div class="hv-demo-card-img" style="background-image:url('https://images.unsplash.com/photo-1551836022-deb4988cc6c0?auto=format&fit=crop&w=600&q=80')"></div><div class="hv-demo-card-cap">Oi Agent · création dossier</div></div>
     <div class="hv-demo-card"><div class="hv-demo-card-img" style="background-image:url('https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=600&q=80')"></div><div class="hv-demo-card-cap">Oi Scan · diagnostic photo</div></div>
     <div class="hv-demo-card"><div class="hv-demo-card-img" style="background-image:url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80')"></div><div class="hv-demo-card-cap">Oi Book · planning voyage</div></div>
-    <div class="hv-demo-card"><div class="hv-demo-card-img" style="background-image:url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80')"></div><div class="hv-demo-card-cap">Oi Demande · matching</div></div>
+    <div class="hv-demo-card"><div class="hv-demo-card-img" style="background-image:url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80')"></div><div class="hv-demo-card-cap">Oi Recherche · matching</div></div>
     <div class="hv-demo-card"><div class="hv-demo-card-img" style="background-image:url('https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=600&q=80')"></div><div class="hv-demo-card-cap">Oi Estimer · résultat</div></div>
   </div>
 </section>
@@ -357,7 +357,7 @@ window.OCRE_SIGNUP_APP = 'agent';
     if (history.replaceState) history.replaceState({}, '', location.pathname);
     // Auto-redirect vers app cible apres 1.5s
     // M_OAUTH_BOUCLE_FIX — destination = app cible OI sur app.ocre.immo (pas racine + sous-domaines pas tous deployes)
-    var appUrls = { agent:'https://app.ocre.immo/oi-agent', scan:'https://app.ocre.immo/oi-scan', book:'https://app.ocre.immo/oi-book', demande:'https://app.ocre.immo/oi-demande', capture:'https://app.ocre.immo/oi-capture', estimer:'https://app.ocre.immo/oi-estimer' };
+    var appUrls = { agent:'https://app.ocre.immo/oi-agent', scan:'https://app.ocre.immo/oi-scan', book:'https://app.ocre.immo/oi-book', demande:'https://app.ocre.immo/oi-recherche', capture:'https://app.ocre.immo/oi-capture', estimer:'https://app.ocre.immo/oi-estimer' };
     var dest = appUrls[app] || appUrls.agent;
     setTimeout(function(){ location.href = dest; }, 1500);
   } else if (qs.get('error')) {

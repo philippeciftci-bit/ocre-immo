@@ -78,7 +78,7 @@ $appUrls = [
     'agent' => 'https://app.ocre.immo/oi-agent',
     'scan' => 'https://app.ocre.immo/oi-scan',
     'book' => 'https://app.ocre.immo/oi-book',
-    'demande' => 'https://app.ocre.immo/oi-demande',
+    'demande' => 'https://app.ocre.immo/oi-recherche',
     'capture' => 'https://app.ocre.immo/oi-capture',
     'estimer' => 'https://app.ocre.immo/oi-estimer',
 ];

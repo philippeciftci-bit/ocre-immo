@@ -3,7 +3,7 @@
  * Template Name: Outil Ocre (M_OCRE_HOME_VISUELLE + M_OCRE_PATCH_OUTILS_RICHES)
  *
  * 6 sections riches par page outil + popup signup overlay shared (pas de navigation).
- * Utilisation : créer page WordPress avec slug oi-agent/oi-scan/oi-book/oi-demande/oi-capture/oi-estimer
+ * Utilisation : créer page WordPress avec slug oi-agent/oi-scan/oi-book/oi-recherche/oi-capture/oi-estimer
  * et assigner ce template. Le slug détermine automatiquement le contenu.
  */
 get_header();
@@ -34,7 +34,7 @@ $tools = [
       ['icon'=>'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=600&q=80','title'=>'Notifs RDV iPhone'],
       ['icon'=>'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80','title'=>'Partage planning agent'],
   ], 'testimonial'=>['photo'=>'https://images.unsplash.com/photo-1542361345-89e58247f2d5?auto=format&fit=crop&w=2400&q=80','text'=>"« 8 visites en 2 jours, organisées par Oi Book. »",'cite'=>'— Sophie, investisseuse Paris']],
-  'oi-demande' => ['name'=>'Oi Demande', 'tagline'=>'Trouve ton bien rêvé',      'photo'=>'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&w=2400&q=80', 'cta_app'=>'demande', 'feats'=>[
+  'oi-recherche' => ['name'=>'Oi Recherche', 'tagline'=>'Trouve ton bien rêvé',      'photo'=>'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&w=2400&q=80', 'cta_app'=>'recherche', 'feats'=>[
       ['icon'=>'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80','title'=>'Brief en 2 minutes'],
       ['icon'=>'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=600&q=80','title'=>'Match agents pertinents'],
       ['icon'=>'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?auto=format&fit=crop&w=600&q=80','title'=>'Anonymat préservé'],
