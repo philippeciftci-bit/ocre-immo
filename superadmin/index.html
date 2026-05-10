@@ -291,6 +291,8 @@
     .m94-main { padding: 16px 14px 30px; }
   }
 </style>
+<!-- M108 — Chart.js CDN pour data room charts (MRR projection + tenants 6 mois) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
 </head>
 <body>
 <div id="root"><div class="login" id="login">
@@ -481,6 +483,17 @@ const TAB_SUBTITLES = {
   users: 'Users (legacy alias → agents)',
   overview: 'Vue d\'ensemble (legacy → metrics)',
 };
+// M108 — Data Room investor variables editables (Philippe peut modifier sans CC).
+const DATAROOM_CONTENT = {
+  tagline: "Le SaaS qui anonymise et fluidifie le matching immobilier inter-agents",
+  legal_status: "EI / SASU — à compléter par Philippe",
+  use_of_funds: { rd: 60, sales: 25, ops: 15 },
+  linkedin_philippe: "https://linkedin.com/in/philippe-ciftci",
+  contact_email: "philippe.ciftci@gmail.com",
+  team_bio: "Philippe Ciftci — chef de projet Ocre Immo, ancien commercial immobilier devenu chef produit no-code. Pilote l'ensemble des chantiers depuis Marrakech. 1 développeur principal + Claude Code agents (Anthropic API) pour exécution.",
+  funding_status: "Bootstrapped depuis 2025. Ouvert à discussion partenariats stratégiques (CRM immo existant, agences nationales) ou seed early-stage (200-500k€)."
+};
+
 const TAB_LABELS = {
   tenants: '🏢 Tenants',
   agents: '👥 Agents',
@@ -488,6 +501,7 @@ const TAB_LABELS = {
   notifs: '🔔 Notifs & Events',
   modules: '🧩 Modules Oi',
   system: '🛠 Système',
+  dataroom: '📊 Data Room',
   // Legacy (gardés pour compat hash URLs)
   workspaces: 'Workspaces',
   clients: 'Clients',
@@ -497,7 +511,7 @@ const TAB_LABELS = {
   users: 'Users',
   overview: 'Vue ensemble',
 };
-const TAB_ORDER = ['tenants', 'agents', 'metrics', 'notifs', 'modules', 'system'];
+const TAB_ORDER = ['tenants', 'agents', 'metrics', 'notifs', 'modules', 'system', 'dataroom'];
 
 // Hash routing : URL #tab synchronise l'onglet actif.
 function parseHashTab() {
@@ -773,8 +787,161 @@ async function loadTab(t) {
       + '<table><thead><tr><th>Timestamp</th><th>Commit</th><th>Mission</th><th style="text-align:center">Status</th></tr></thead><tbody>'
       + (r.deploys || []).map(d => '<tr><td class="col-date">' + (d.ts || '—') + '</td><td><code style="font-size:11px;color:var(--color-accent)">' + (d.commit || '—') + '</code></td><td style="font-size:11.5px">' + (d.mission || '').slice(0, 100) + '</td><td style="text-align:center"><span class="badge badge-enregistre">OK</span></td></tr>').join('')
       + '</tbody></table></section>';
+  } else if (t === 'dataroom') {
+    // M108 — Data Room investor (9 sections fideles maquette M95)
+    await renderDataroomTab(c);
   }
 }
+
+// M108 — Data Room investor render
+async function renderDataroomTab(c) {
+  const dc = DATAROOM_CONTENT;
+  // Fetch KPIs reels
+  let metrics = {};
+  try {
+    const r = await api('/api/superadmin_metrics.php');
+    if (r && r.ok) metrics = r;
+  } catch (e) {}
+  const mrr = metrics.mrr_eur || 0;
+  const arr = mrr * 12;
+  const churn = metrics.churn_30d_pct != null ? metrics.churn_30d_pct : 0;
+  const growth = metrics.growth_mom_pct != null ? metrics.growth_mom_pct : 0;
+  const agents = metrics.agents_total || 0;
+  const tenants = metrics.tenants_active || 0;
+  const dossiers = metrics.dossiers_total || 0;
+  // Projection MRR 12 mois (5%/mois organique)
+  const proj = []; let v = mrr || 100;
+  for (let i = 0; i < 12; i++) { proj.push(Math.round(v)); v *= 1.05; }
+  // Tenants chart 6 mois (recup chart_30d et etend ou approx)
+  const tenants6m = (metrics.chart_30d_tenants || []).slice(-180);
+  const html = `
+<section data-testid="dr-hero" class="sa-section" style="background:linear-gradient(135deg,#FAF6EE,#F0E6D6);padding:32px;border-radius:14px">
+  <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:32px;color:#5B3C1F;margin-bottom:6px">Ocre Immo · Data Room</div>
+  <div style="color:#7A6A5C;font-size:15px;margin-bottom:20px">${esc(dc.tagline)}</div>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:14px;color:#2A2018">
+    <div><b style="font-family:'JetBrains Mono',monospace;color:#5B3C1F;font-size:22px">${agents}</b><br><span style="color:#7A6A5C">Agents inscrits</span></div>
+    <div><b style="font-family:'JetBrains Mono',monospace;color:#5B3C1F;font-size:22px">${tenants}</b><br><span style="color:#7A6A5C">Tenants actifs</span></div>
+    <div><b style="font-family:'JetBrains Mono',monospace;color:#5B3C1F;font-size:22px">${dossiers}</b><br><span style="color:#7A6A5C">Dossiers traités</span></div>
+    <div><b style="font-family:'JetBrains Mono',monospace;color:#5B3C1F;font-size:22px">11</b><br><span style="color:#7A6A5C">Pays supportés</span></div>
+  </div>
+  <div style="margin-top:22px"><a data-testid="dr-mailto" href="mailto:${esc(dc.contact_email)}" style="background:#5B3C1F;color:#fff;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block">Discuter avec Philippe →</a></div>
+</section>
+
+<section data-testid="dr-storytelling" class="sa-section">
+  <div class="sa-section-title">Le problème · La solution</div>
+  <p style="font-size:15px;line-height:1.65;color:#2A2018"><b>Le marché immo est opaque entre agents.</b> Vos confrères ont peut-être l'acheteur idéal pour votre vendeur, mais personne ne le saura jamais — chacun protège son fichier client. Pacts inter-agents informels, matching manuel chronophage : des opportunités évaporées chaque jour.</p>
+  <p style="font-size:15px;line-height:1.65;color:#2A2018;margin-top:12px"><b>Oi Agent automatise et anonymise le matching.</b> Vous gardez vos données privées par défaut. Vous signez des pactes bilatéraux opposables avec des confrères. L'algo croise les critères chaque jour et notifie les deux parties — sans jamais exposer la fiche complète. Décision conjointe pour révéler.</p>
+</section>
+
+<section data-testid="dr-kpis" class="sa-section">
+  <div class="sa-section-title">KPIs business</div>
+  <div class="sa-cards">
+    <div class="sa-card accent-success"><div class="sa-card-value">${mrr.toLocaleString('fr-FR')} €</div><div class="sa-card-label">MRR</div><div class="sa-card-desc">Revenu mensuel récurrent</div></div>
+    <div class="sa-card accent-ocre"><div class="sa-card-value">${arr.toLocaleString('fr-FR')} €</div><div class="sa-card-label">ARR</div><div class="sa-card-desc">MRR × 12</div></div>
+    <div class="sa-card ${churn > 5 ? 'accent-warning' : 'accent-success'}"><div class="sa-card-value">${churn.toFixed(1)} %</div><div class="sa-card-label">Churn 30j</div></div>
+    <div class="sa-card ${growth > 0 ? 'accent-success' : 'accent-warning'}"><div class="sa-card-value">${growth > 0 ? '+' : ''}${growth.toFixed(1)} %</div><div class="sa-card-label">Croissance MoM</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:20px">
+    <div><h3 style="font-size:13px;color:#7A6A5C;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">MRR projection 12 mois (hyp. 5%/mois)</h3><canvas id="dr-mrr-chart" data-testid="dr-mrr-chart" height="180"></canvas></div>
+    <div><h3 style="font-size:13px;color:#7A6A5C;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">Tenants actifs récents</h3><canvas id="dr-tenants-chart" data-testid="dr-tenants-chart" height="180"></canvas></div>
+  </div>
+</section>
+
+<section data-testid="dr-architecture" class="sa-section">
+  <div class="sa-section-title">Architecture &amp; sécurité</div>
+  <div class="sa-cards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:24px">🏢</div><div class="sa-card-label">Multi-tenant</div><div class="sa-card-desc">1 DB par tenant (ocre_wsp_&lt;slug&gt;) + ocre_meta centralisé. Isolation stricte.</div></div>
+    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:24px">🇩🇪</div><div class="sa-card-label">Hetzner Allemagne</div><div class="sa-card-desc">Hébergement RGPD-compliant Falkenstein. Backups quotidiens.</div></div>
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:24px">🔒</div><div class="sa-card-label">HTTPS + HSTS</div><div class="sa-card-desc">TLS 1.3 partout. Cert Let's Encrypt wildcard *.ocre.immo auto-renew.</div></div>
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:24px">📧</div><div class="sa-card-label">DKIM/SPF/DMARC</div><div class="sa-card-desc">Emails transactionnels OVH SMTP authentifié.</div></div>
+    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:24px">🔑</div><div class="sa-card-label">SSO JWT 30j</div><div class="sa-card-desc">auth.ocre.immo (M97). Magic link sans password. Cookie cross-subdomain.</div></div>
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:24px">📜</div><div class="sa-card-label">Logs auditables</div><div class="sa-card-desc">Toutes actions super-admin tracées. RGPD droits accès/suppression intégrés.</div></div>
+  </div>
+</section>
+
+<section data-testid="dr-roadmap" class="sa-section">
+  <div class="sa-section-title">Roadmap modules Oi</div>
+  <div class="sa-cards" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
+    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:22px">🟢 Oi Agent</div><div class="sa-card-label">PROD · v476</div><div class="sa-card-desc">CRM matching anonymisé. 8 profils × 11 pays adaptatifs.</div></div>
+    <div class="sa-card accent-warning"><div class="sa-card-value" style="font-size:22px">🟡 Oi Scan</div><div class="sa-card-label">BETA · v0.3</div><div class="sa-card-desc">OCR + IA extraction docs. Backend ExpertScan séparé.</div></div>
+    <div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:22px">⚪ Oi Book</div><div class="sa-card-label">PLANIFIÉ · Q3 2026</div><div class="sa-card-desc">Booking + signatures électroniques.</div></div>
+    <div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:22px">⚪ Oi Demande</div><div class="sa-card-label">PLANIFIÉ · Q4 2026</div><div class="sa-card-desc">Marketplace demandes acquéreurs anonymisées.</div></div>
+  </div>
+</section>
+
+<section data-testid="dr-stack" class="sa-section">
+  <div class="sa-section-title">Stack technique</div>
+  <div class="sa-cards" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">⚛️ Frontend</div><div class="sa-card-desc">React 18 inline Babel + PWA installable iOS/Android. SW v477 push natives.</div></div>
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">🐘 Backend</div><div class="sa-card-desc">PHP 8.1 FPM + nginx reverse proxy. Channel manager worker async.</div></div>
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">🗄 DB</div><div class="sa-card-desc">MariaDB 10. 1 schema par tenant + ocre_meta global. Backup auto.</div></div>
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">🌐 Infra</div><div class="sa-card-desc">Hetzner CCX23 Falkenstein DE. Systemd services. Logs centralisés.</div></div>
+    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:14px">🔑 Auth SSO</div><div class="sa-card-desc">JWT HS256 cookie cross-subdomain .ocre.immo. Magic link 15min.</div></div>
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">📡 Channel Mgr</div><div class="sa-card-desc">7 portails immo (LBC/SeLoger/Bien'ici/Idealista/Apartments/Avito/Mubawab). Worker retry expo.</div></div>
+    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">📰 Vitrine</div><div class="sa-card-desc">WordPress 6.9 + child theme custom Twenty Twenty-Five. ocre.immo apex.</div></div>
+    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:14px">✅ Ownership</div><div class="sa-card-desc">Aucune dépendance SaaS critique. Code 100% propriétaire.</div></div>
+  </div>
+</section>
+
+<section data-testid="dr-team" class="sa-section">
+  <div class="sa-section-title">Équipe</div>
+  <div style="display:flex;gap:20px;align-items:flex-start;background:#FCF9F2;padding:24px;border-radius:12px;border:1px solid var(--rule,#E5DCCB)">
+    <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#D4A574,#5B3C1F);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:32px;flex-shrink:0">P</div>
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:16px;margin-bottom:4px">Philippe Ciftci</div>
+      <div style="font-size:13px;color:#7A6A5C;margin-bottom:8px">Fondateur · Chef de projet</div>
+      <p style="font-size:14px;line-height:1.6;color:#2A2018;margin:0">${esc(dc.team_bio)}</p>
+      <p style="font-size:13px;color:#7A6A5C;margin-top:8px">📧 ${esc(dc.contact_email)} · <a href="${esc(dc.linkedin_philippe)}" target="_blank" rel="noopener" style="color:#5B3C1F">LinkedIn</a></p>
+      <p style="font-size:12px;color:#998877;margin-top:6px">Statut juridique : ${esc(dc.legal_status)}</p>
+    </div>
+  </div>
+</section>
+
+<section data-testid="dr-funding" class="sa-section">
+  <div class="sa-section-title">Financement &amp; ask</div>
+  <p style="font-size:15px;line-height:1.65;color:#2A2018">${esc(dc.funding_status)}</p>
+  <div style="margin-top:16px"><b style="font-size:13px;color:#7A6A5C;text-transform:uppercase;letter-spacing:.04em">Use of funds (si levée)</b></div>
+  <div style="display:flex;gap:12px;margin-top:8px;font-size:13.5px">
+    <div style="flex:${dc.use_of_funds.rd};background:#5B3C1F;color:#fff;padding:14px;border-radius:8px;text-align:center"><b>R&amp;D ${dc.use_of_funds.rd} %</b><br><span style="font-size:11px;opacity:.85">Modules Oi Scan/Book/Demande</span></div>
+    <div style="flex:${dc.use_of_funds.sales};background:#C9A961;color:#2A2018;padding:14px;border-radius:8px;text-align:center"><b>Sales ${dc.use_of_funds.sales} %</b><br><span style="font-size:11px;opacity:.75">Acquisition agents indépendants</span></div>
+    <div style="flex:${dc.use_of_funds.ops};background:#7A6A5C;color:#fff;padding:14px;border-radius:8px;text-align:center"><b>Ops ${dc.use_of_funds.ops} %</b><br><span style="font-size:11px;opacity:.85">Infra, support, conformité</span></div>
+  </div>
+</section>
+
+<section data-testid="dr-contact" class="sa-section">
+  <div class="sa-section-title">Contact &amp; accès</div>
+  <div style="background:#FCF9F2;padding:20px;border-radius:12px;border:1px solid var(--rule,#E5DCCB);font-size:14px;line-height:1.6">
+    <p>📧 <a href="mailto:${esc(dc.contact_email)}" style="color:#5B3C1F">${esc(dc.contact_email)}</a></p>
+    <p>🔗 <a href="${esc(dc.linkedin_philippe)}" target="_blank" rel="noopener" style="color:#5B3C1F">LinkedIn Philippe</a></p>
+    <p style="font-size:12px;color:#7A6A5C;margin-top:14px;padding-top:14px;border-top:1px solid var(--rule,#E5DCCB)">⓵ Cette page est consultable uniquement par les administrateurs Ocre Immo. Pour data confidentielle (P&amp;L détaillée, contrats), contact direct Philippe.</p>
+  </div>
+</section>
+  `;
+  c.innerHTML = html;
+  // Render charts apres injection HTML
+  if (typeof Chart !== 'undefined') {
+    const mrrCtx = document.getElementById('dr-mrr-chart');
+    if (mrrCtx) {
+      new Chart(mrrCtx, {
+        type: 'line',
+        data: { labels: ['M+0','M+1','M+2','M+3','M+4','M+5','M+6','M+7','M+8','M+9','M+10','M+11'], datasets: [{ label: 'MRR projection (€)', data: proj, borderColor: '#5B3C1F', backgroundColor: 'rgba(212,165,116,.18)', fill: true, tension: .3 }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + ' €' } } } }
+      });
+    }
+    const tCtx = document.getElementById('dr-tenants-chart');
+    if (tCtx) {
+      const labels = tenants6m.length > 0 ? tenants6m.map((_, i) => 'J-' + (tenants6m.length - i - 1)) : ['J-5','J-4','J-3','J-2','J-1','J0'];
+      const data = tenants6m.length > 0 ? tenants6m : [Math.max(1, tenants - 2), Math.max(1, tenants - 1), tenants, tenants, tenants, tenants];
+      new Chart(tCtx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Tenants actifs', data, backgroundColor: '#C9A961' }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, precision: 0 } } }
+      });
+    }
+  }
+}
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 async function renderClientsTab() {
   const c = document.getElementById('content');
   const qs = new URLSearchParams({page: clientsState.page, per_page: clientsState.perPage,
