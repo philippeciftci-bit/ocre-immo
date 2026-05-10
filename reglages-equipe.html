@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#3D2818">
+<title>Équipe · Ocre Immo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --cream:#FAF6F1; --cream-2:#F4ECDF; --brown:#3D2818; --brown-soft:#6B5642; --brown-mute:#998877; --ocre-dark:#8B5E3C; --gold:#D4A256; --green:#2D7A3E; --green-soft:#E8F2EA; --line:#E5DAC6; --red:#C62828; --red-soft:#FDECEA; }
+  *,*::before,*::after { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter',sans-serif; background:var(--cream); color:var(--brown); line-height:1.55; padding:16px; }
+  .container { max-width:560px; margin:0 auto; }
+  header { display:flex; align-items:center; gap:10px; padding:6px 0 14px; border-bottom:1px solid var(--line); margin-bottom:24px; }
+  .back { background:none; border:1px solid var(--line); color:var(--brown); width:36px; height:36px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  h1 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:26px; margin:0; }
+  .meta { color:var(--brown-mute); font-size:12px; margin:2px 0 0; }
+  .member { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:10px; display:flex; align-items:center; gap:12px; }
+  .avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--gold),var(--ocre-dark)); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:18px; flex-shrink:0; }
+  .member-info { flex:1; min-width:0; }
+  .member-email { font-weight:600; font-size:14px; color:var(--brown); }
+  .member-meta { font-size:11.5px; color:var(--brown-mute); margin-top:2px; }
+  .role-badge { font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:.04em; }
+  .role-badge.owner { background:rgba(212,162,86,.18); color:#8B5E3C; }
+  .role-badge.manager { background:var(--green-soft); color:var(--green); }
+  .role-badge.collaborator { background:var(--cream-2); color:var(--brown-soft); }
+  .role-badge.viewer { background:#ECE3F4; color:#5e35b1; }
+  .role-badge.pending { background:#FFEFD9; color:#B15A00; }
+  .btn { padding:12px 20px; border-radius:10px; font-size:14px; font-weight:600; border:none; cursor:pointer; font-family:inherit; }
+  .btn-primary { background:var(--ocre-dark); color:#fff; width:100%; margin-bottom:14px; }
+  .btn-primary:hover { background:var(--brown); }
+  .feedback { margin-top:14px; padding:10px 14px; border-radius:8px; font-size:13px; display:none; }
+  .feedback.show { display:block; }
+  .feedback.success { background:var(--green-soft); color:var(--green); }
+  .feedback.error { background:var(--red-soft); color:var(--red); }
+  dialog.modal { border:none; border-radius:16px; padding:24px; width:92vw; max-width:380px; box-shadow:0 12px 48px rgba(0,0,0,.18); }
+  dialog.modal::backdrop { background:rgba(42,32,23,.5); }
+  .modal h2 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:22px; margin:0 0 12px; }
+  .modal label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; margin-top:12px; }
+  .modal input, .modal select { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:14px; font-family:inherit; }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+  .modal-actions .btn { width:auto; margin:0; padding:10px 18px; }
+  .btn-ghost { background:transparent; border:1px solid var(--line); color:var(--brown); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <button class="back" onclick="history.length>1?history.back():(location.href='/')" aria-label="Retour">←</button>
+    <div><h1>Équipe</h1><p class="meta" id="meta">Chargement…</p></div>
+  </header>
+  <button class="btn btn-primary" id="invite-btn" type="button" hidden>+ Inviter un membre</button>
+  <div id="members" data-testid="members"></div>
+  <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+</div>
+
+<dialog id="invite-modal" class="modal">
+  <h2>Inviter un membre</h2>
+  <label for="invite-email">Email</label>
+  <input type="email" id="invite-email" placeholder="confrère@example.com">
+  <label for="invite-role">Rôle</label>
+  <select id="invite-role">
+    <option value="manager">Manager (gestion dossiers + pacts)</option>
+    <option value="collaborator" selected>Collaborateur (ses propres dossiers)</option>
+    <option value="viewer">Lecteur (lecture seule)</option>
+  </select>
+  <div class="modal-actions">
+    <button class="btn btn-ghost" id="invite-cancel" type="button">Annuler</button>
+    <button class="btn btn-primary" id="invite-send" type="button" style="width:auto;margin:0;padding:10px 18px">Envoyer invitation</button>
+  </div>
+</dialog>
+
+<script>
+(function() {
+  const $ = id => document.getElementById(id);
+  let myRole = 'collaborator';
+
+  async function load() {
+    try {
+      const r = await fetch('/api/team/list.php', { credentials: 'include' });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      myRole = d.my_role;
+      $('meta').textContent = 'Tenant ' + d.tenant + ' · vous : ' + myRole;
+      $('invite-btn').hidden = !['owner', 'manager'].includes(myRole);
+      $('members').innerHTML = d.members.map(m => `
+        <div class="member" data-id="${m.id}">
+          <div class="avatar">${(m.email||'?').charAt(0).toUpperCase()}</div>
+          <div class="member-info">
+            <div class="member-email">${esc(m.email)}</div>
+            <div class="member-meta">${m.joined_at ? 'Rejoint ' + (m.joined_at||'').slice(0,10) : (m.status === 'expired' ? 'Invitation expirée' : 'Invitation en attente')}</div>
+          </div>
+          <span class="role-badge ${m.status === 'pending' ? 'pending' : m.role}">${m.status === 'pending' ? 'EN ATTENTE' : m.role.toUpperCase()}</span>
+          ${myRole === 'owner' && m.role !== 'owner' && m.joined_at ? '<button class="btn btn-ghost" style="margin-left:8px;padding:6px 10px;font-size:11px" onclick="removeMember(' + m.id + ')">×</button>' : ''}
+        </div>
+      `).join('') || '<p style="color:var(--brown-mute)">Aucun membre.</p>';
+    } catch (e) {
+      $('members').innerHTML = '<p style="color:var(--red)">Erreur : ' + esc(e.message) + '</p>';
+    }
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function showFeedback(kind, msg) { const fb = $('feedback'); fb.className = 'feedback show ' + kind; fb.textContent = msg; }
+
+  $('invite-btn').addEventListener('click', () => $('invite-modal').showModal());
+  $('invite-cancel').addEventListener('click', () => $('invite-modal').close());
+  $('invite-send').addEventListener('click', async () => {
+    const email = $('invite-email').value.trim();
+    const role = $('invite-role').value;
+    if (!email) return;
+    try {
+      const r = await fetch('/api/team/invite.php', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, role }) });
+      const d = await r.json();
+      if (d.ok) {
+        showFeedback('success', 'Invitation envoyée à ' + email + '. URL magic : ' + d.invite_url);
+        $('invite-modal').close();
+        load();
+      } else {
+        showFeedback('error', 'Erreur : ' + (d.error || 'inconnue'));
+      }
+    } catch (e) { showFeedback('error', 'Erreur réseau'); }
+  });
+
+  window.removeMember = async function(memberId) {
+    if (!confirm('Retirer ce membre de l\'équipe ?')) return;
+    try {
+      const r = await fetch('/api/team/remove.php', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ member_id: memberId }) });
+      const d = await r.json();
+      if (d.ok) { showFeedback('success', 'Membre retiré.'); load(); }
+      else { showFeedback('error', 'Erreur : ' + (d.error || 'inconnue')); }
+    } catch (e) { showFeedback('error', 'Erreur réseau'); }
+  };
+
+  load();
+})();
+</script>
+</body>
+</html>
