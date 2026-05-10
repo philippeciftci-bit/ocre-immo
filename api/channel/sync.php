@@ -4,11 +4,13 @@
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../_session.php';
+require_once __DIR__ . '/../lib/permissions.php';
 require_once __DIR__ . '/../lib/channels/registry.php';
 
 setCorsHeaders();
 $user = getCurrentUserDualMode();
 if (!$user || !empty($user['_no_tenant_user']) || !empty($user['_tenant_mismatch'])) jsonError('Non authentifie', 401);
+requireRole(['owner', 'manager', 'collaborator'], $user);
 $tenant = $user['slug'];
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') jsonError('method', 405);

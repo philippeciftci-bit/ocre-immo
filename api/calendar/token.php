@@ -3,10 +3,12 @@
 // GET : retourne URL feed actuelle (si stocke en DB) ou null
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../_session.php';
+require_once __DIR__ . '/../lib/permissions.php';
 require_once __DIR__ . '/_lib.php';
 setCorsHeaders();
 $user = getCurrentUserDualMode();
 if (!$user || !empty($user['_no_tenant_user']) || !empty($user['_tenant_mismatch'])) jsonError('Non authentifie', 401);
+requireRole(['owner', 'manager', 'collaborator'], $user);
 $tenant = $user['slug']; $userId = (int) $user['user_id'];
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {

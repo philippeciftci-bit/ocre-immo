@@ -7,6 +7,7 @@ require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../_session.php';
 require_once __DIR__ . '/../lib/channels/registry.php';
 require_once __DIR__ . '/../lib/billing_channel.php';
+require_once __DIR__ . '/../lib/permissions.php';
 
 setCorsHeaders();
 $user = getCurrentUserDualMode();
@@ -15,6 +16,7 @@ if (!$user || !empty($user['_no_tenant_user']) || !empty($user['_tenant_mismatch
 }
 $tenant = $user['slug'] ?? null;
 if (!$tenant) jsonError('Tenant requis', 400);
+requireRole(['owner', 'manager', 'collaborator'], $user);
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') jsonError('method', 405);
 

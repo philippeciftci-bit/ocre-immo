@@ -2,10 +2,12 @@
 // M116 — GET /api/webhooks/list.php
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../_session.php';
+require_once __DIR__ . '/../lib/permissions.php';
 require_once __DIR__ . '/../lib/webhook_dispatcher.php';
 setCorsHeaders();
 $user = getCurrentUserDualMode();
 if (!$user || !empty($user['_no_tenant_user']) || !empty($user['_tenant_mismatch'])) jsonError('Non authentifie', 401);
+requireRole(['owner', 'manager'], $user);
 $tenant = $user['slug'];
 wh_ensure_schema();
 $st = wh_meta_pdo()->prepare("SELECT id, url, events, active, created_at, last_triggered_at, consecutive_failures FROM webhooks WHERE tenant_slug=? ORDER BY created_at DESC");

@@ -13,6 +13,8 @@ if (!$user || !empty($user['_no_tenant_user']) || !empty($user['_tenant_mismatch
     echo json_encode(['ok' => false, 'error' => 'Non authentifie']);
     exit;
 }
+require_once __DIR__ . '/../lib/permissions.php';
+requireRole(['owner', 'manager', 'collaborator', 'viewer'], $user);
 $tenant = $user['slug'];
 if (!$tenant) {
     http_response_code(400);
