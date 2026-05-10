@@ -159,7 +159,7 @@ function auth_cors_allow(): void {
 function auth_set_cookies(string $jwt, string $refresh): void {
     // M_OCRE_AGENT_SIGNUP_V1 — JWT cookie 30j (was 1h) cohérent UX Notion/Linear/Booking.
     $jwtOpts = [
-        'expires' => time() + 30 * 86400,
+        'expires' => time() + 365 * 86400, // M_OCRE_PARCOURS_V4 1 an quasi indefini
         'path' => '/',
         'domain' => '.ocre.immo',
         'secure' => true,
@@ -167,7 +167,7 @@ function auth_set_cookies(string $jwt, string $refresh): void {
         'samesite' => 'Lax',
     ];
     $refOpts = [
-        'expires' => time() + 30 * 86400,
+        'expires' => time() + 365 * 86400, // M_OCRE_PARCOURS_V4 1 an quasi indefini
         'path' => '/',
         'domain' => '.ocre.immo',
         'secure' => true,

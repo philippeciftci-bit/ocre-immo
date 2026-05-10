@@ -4,8 +4,13 @@
 
 require_once __DIR__ . '/../../lib/auth_db.php';
 require_once __DIR__ . '/../../lib/jwt.php';
+require_once __DIR__ . '/../../lib/user_modules.php';
+
+// M_OCRE_PARCOURS_V4 — mode magic link configurable
+const MAGIC_LINK_MODE = 'indefinite'; // 'single_use' | 'limited_24h' | 'limited_30d' | 'indefinite'
 
 auth_ensure_schema();
+um_ensure_schema();
 
 $token = $_GET['token'] ?? '';
 if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
@@ -14,11 +19,13 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
 }
 
 $db = auth_db();
-$st = $db->prepare(
-    "SELECT id, user_id FROM auth_magic_tokens
-     WHERE token = ? AND expires_at > NOW() AND used_at IS NULL
-     LIMIT 1"
-);
+// M_OCRE_PARCOURS_V4 — selon MAGIC_LINK_MODE filter expires_at + used_at
+$tokenSql = "SELECT id, user_id FROM auth_magic_tokens WHERE token = ?";
+if (MAGIC_LINK_MODE === 'single_use') $tokenSql .= " AND used_at IS NULL AND expires_at > NOW()";
+elseif (MAGIC_LINK_MODE === 'limited_24h' || MAGIC_LINK_MODE === 'limited_30d') $tokenSql .= " AND expires_at > NOW()";
+// indefinite : pas de filtre exp/used → token réutilisable indéfiniment
+$tokenSql .= " LIMIT 1";
+$st = $db->prepare($tokenSql);
 $st->execute([$token]);
 $row = $st->fetch();
 if (!$row) {
@@ -30,15 +37,19 @@ $userId = (int) $row['user_id'];
 
 $db->beginTransaction();
 try {
-    $up = $db->prepare("UPDATE auth_magic_tokens SET used_at = NOW() WHERE id = ? AND used_at IS NULL");
-    $up->execute([$row['id']]);
-    if ($up->rowCount() !== 1) {
-        $db->rollBack();
-        header('Location: /error.html?reason=token_invalid');
-        exit;
+    // En mode indefinite : ne pas marquer used_at (réutilisable)
+    if (MAGIC_LINK_MODE !== 'indefinite') {
+        $up = $db->prepare("UPDATE auth_magic_tokens SET used_at = NOW() WHERE id = ? AND used_at IS NULL");
+        $up->execute([$row['id']]);
+        if (MAGIC_LINK_MODE === 'single_use' && $up->rowCount() !== 1) {
+            $db->rollBack();
+            header('Location: /error.html?reason=token_invalid');
+            exit;
+        }
     }
 
-    $jwt = jwt_encode($userId);
+    // JWT 1 an cette phase V4 (vs 30j avant)
+    $jwt = jwt_encode($userId, 365 * 86400);
     $refresh = bin2hex(random_bytes(32));
     $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 256);
     $ip = auth_client_ip();
@@ -62,14 +73,17 @@ try {
 auth_set_cookies($jwt['token'], $refresh);
 // M_OCRE_PATCH_OUTILS_RICHES — redirect vers app cible si param ?app=<slug> fourni
 $appTarget = preg_replace('/[^a-z]/', '', strtolower((string)($_GET['app'] ?? '')));
+// M_OCRE_PARCOURS_V4 — toutes les apps via app.ocre.immo/oi-<slug> (sous-domaines pas tous deployes)
 $appUrls = [
-    'agent' => 'https://app.ocre.immo/',
-    'scan' => 'https://scan.ocre.immo/',
-    'book' => 'https://book.ocre.immo/',
-    'demande' => 'https://demande.ocre.immo/',
-    'capture' => 'https://capture.ocre.immo/',
-    'estimer' => 'https://estimer.ocre.immo/',
+    'agent' => 'https://app.ocre.immo/oi-agent',
+    'scan' => 'https://app.ocre.immo/oi-scan',
+    'book' => 'https://app.ocre.immo/oi-book',
+    'demande' => 'https://app.ocre.immo/oi-demande',
+    'capture' => 'https://app.ocre.immo/oi-capture',
+    'estimer' => 'https://app.ocre.immo/oi-estimer',
 ];
-$dest = $appUrls[$appTarget] ?? 'https://app.ocre.immo/';
+$dest = $appUrls[$appTarget] ?? 'https://app.ocre.immo/oi-agent';
+// Activation auto module pour user (premier login outil = activation)
+if ($appTarget) um_activate($userId, $appTarget);
 header('Location: ' . $dest);
 exit;
