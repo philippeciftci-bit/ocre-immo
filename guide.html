@@ -31,6 +31,9 @@
   .callout { background:var(--cream-2); border-left:3px solid var(--ocre); padding:12px 16px; border-radius:6px; margin:14px 0; font-size:14px; }
   .callout.tip { border-left-color:var(--green); background:var(--green-soft); }
   .screenshot-placeholder { background:linear-gradient(135deg,var(--cream-2),#fff); border:1px dashed var(--line); border-radius:10px; padding:32px; text-align:center; color:var(--brown-mute); font-size:13px; margin:18px 0; font-family:'Inter',sans-serif; font-style:italic; }
+  .screenshot { margin:18px 0; }
+  .screenshot img { max-width:280px; width:100%; border:1px solid var(--line); border-radius:12px; display:block; margin:0 auto; box-shadow:0 4px 16px rgba(60,40,20,.08); }
+  .screenshot figcaption { text-align:center; font-size:12px; color:var(--brown-mute); margin-top:8px; font-style:italic; }
   code { font-family:'Inter',monospace; background:var(--cream-2); padding:2px 6px; border-radius:4px; font-size:13px; color:var(--ocre-dark); }
   .pdf-cta { background:var(--ocre-dark); color:#fff; padding:14px 22px; border-radius:10px; text-decoration:none; font-weight:600; display:inline-block; margin:14px 0; }
   .pdf-cta:hover { background:var(--brown); }
@@ -73,7 +76,7 @@
 
     <h2 id="ch2"><span class="num">2.</span> Premier login</h2>
     <p>Va sur <code>https://auth.ocre.immo</code>. Tape ton email professionnel. Tu reçois un lien magique par email (15 min de validité). Clique → tu es connecté à ton hub Ocre. <strong>Pas de mot de passe à retenir</strong>.</p>
-    <div class="screenshot-placeholder">📸 Capture : Page login auth.ocre.immo · email input + bouton "Recevoir un lien magique"</div>
+    <figure class="screenshot"><img src="/assets/guide/ch2-1-login.png" alt="Page login auth.ocre.immo" loading="lazy"><figcaption>Page login auth.ocre.immo · email + magic link</figcaption></figure>
     <p>Depuis le hub, tape la card <strong>Oi Agent</strong> pour entrer dans l'app de ton tenant (ex: <code>ton-agence.ocre.immo</code>).</p>
 
     <h2 id="ch3"><span class="num">3.</span> Compléter ton profil</h2>
@@ -104,12 +107,13 @@
       <li>Si tu valides, le confrère reçoit la même proposition. Si lui aussi valide, vos fiches complètes sont échangées</li>
       <li>Vous prenez ensuite contact directement pour la suite (visite, négociation, signature)</li>
     </ul>
-    <div class="screenshot-placeholder">📸 Capture : Modal Match · score 87% · aperçu anonymisé · CTA Accepter</div>
+    <figure class="screenshot"><img src="/assets/guide/ch7-1-dashboard.png" alt="Tableau de bord agent" loading="lazy"><figcaption>Tableau de bord agent (KPIs personnels + chart activité 30 jours)</figcaption></figure>
 
     <h2 id="ch8"><span class="num">8.</span> Diffusion sur les portails (Channel Premium)</h2>
     <p>Channel Premium (99 €/mois HT en plus du Pro 49 €) te permet de syndiquer un dossier vers <strong>7 portails immobiliers</strong> en 1 clic : LeBonCoin Pro, SeLoger, Bien'ici, Idealista (Espagne), Apartments.com (US), Avito.ma, Mubawab.</p>
     <p>Activation : Réglages → Abonnement → Activer Channel Premium. Puis dans le détail dossier → onglet Diffusion → toggle ON/OFF par portail → tap Publier.</p>
-    <div class="screenshot-placeholder">📸 Capture : Onglet Diffusion · 7 portails toggle · badge statut Publié vert</div>
+    <figure class="screenshot"><img src="/assets/guide/ch8-1-diffusion.png" alt="Onglet Diffusion 7 portails" loading="lazy"><figcaption>Onglet Diffusion · 7 portails immobiliers · toggles + statuts colorés</figcaption></figure>
+    <figure class="screenshot"><img src="/assets/guide/ch8-2-abonnement.png" alt="Réglages Abonnement" loading="lazy"><figcaption>Réglages Abonnement · Pro 49€ + Channel Premium 99€</figcaption></figure>
     <p>Les statuts se mettent à jour automatiquement (publié, en attente modération, refusé). Tu peux modifier le dossier → l'app re-syncronise sur tous les portails actifs.</p>
 
     <h2 id="ch9"><span class="num">9.</span> Réglages &amp; Notifications PWA</h2>
