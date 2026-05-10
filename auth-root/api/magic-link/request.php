@@ -77,9 +77,15 @@ try {
         . '</div></body></html>';
     $text = "Ton lien Ocre · Oi " . ucfirst($targetApp) . "\n\nLien magique (15 min) : $url\n\nSi tu n'as pas demande ce lien, ignore cet email.\n— Ocre Immo";
 
-    @email_send($email, 'Ton lien Ocre · Oi ' . ucfirst($targetApp), $html, $text);
+    // M_OCRE_MAGIC_LINK_DIAG — logging fichier traçabilité OVH SMTP envois magic link
+    $logFile = '/var/log/ocre-magic-link.log';
+    @touch($logFile); @chmod($logFile, 0664);
+    $emailOk = @email_send($email, 'Ton lien Ocre · Oi ' . ucfirst($targetApp), $html, $text);
+    $logLine = '[' . date('c') . '] to=' . $email . ' app=' . $targetApp . ' user_id=' . $userId . ' token_id_short=' . substr($token, 0, 12) . ' email_send=' . ($emailOk ? 'TRUE' : 'FALSE') . ' ip=' . $ip . "\n";
+    @file_put_contents($logFile, $logLine, FILE_APPEND);
 } catch (Throwable $e) {
     error_log('magic_request: ' . $e->getMessage());
+    @file_put_contents('/var/log/ocre-magic-link.log', '[' . date('c') . '] EXCEPTION email=' . $email . ' err=' . $e->getMessage() . "\n", FILE_APPEND);
 }
 
 auth_send_json(['ok' => true, 'message' => 'Email envoyé']);
