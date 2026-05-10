@@ -96,7 +96,7 @@
             <div class="osp-field"><label for="osp-prenom">Prénom *</label><input type="text" id="osp-prenom" autocomplete="given-name"></div>
             <div class="osp-field"><label for="osp-nom">Nom *</label><input type="text" id="osp-nom" autocomplete="family-name"></div>
           </div>
-          <div class="osp-field"><label for="osp-societe">Société (facultatif)</label><input type="text" id="osp-societe" autocomplete="organization" placeholder="Ton agence (facultatif)"></div>
+          <div class="osp-field"><label for="osp-societe">Société (facultatif)</label><input type="text" id="osp-societe" autocomplete="organization" placeholder="Ton entreprise (facultatif)"></div>
           <div class="osp-tel-row">
             <div class="osp-field osp-country-wrap">
               <label>Pays</label>

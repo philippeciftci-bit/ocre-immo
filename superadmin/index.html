@@ -468,7 +468,7 @@ let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '',
 //   Les anciens onglets pending/clients/sessions/audit deviennent des sous-vues drill-down accessibles
 //   depuis les 6 onglets principaux (route hash conservé pour compat URLs sauvegardées).
 const TAB_SUBTITLES = {
-  tenants: 'Workspaces & comptes agents · vue cross-tenant',
+  tenants: 'Utilisateurs (workspaces) · vue cross-utilisateur',
   agents: 'Tous les agents · activité & pacts cross-workspace',
   metrics: 'KPIs business · MRR / ARR / churn / conversion',
   notifs: 'Logs PWA push (M88-M89) & audit super-admin',
@@ -703,7 +703,7 @@ async function loadTab(t) {
       + '</div></section>'
       + '<section class="sa-section">'
       + '<div class="sa-section-title">Top tenants par activité</div>'
-      + '<table><thead><tr><th>Tenant</th><th style="text-align:center">Dossiers</th><th style="text-align:center">Matchings</th></tr></thead><tbody>'
+      + '<table><thead><tr><th>Utilisateur</th><th style="text-align:center">Dossiers</th><th style="text-align:center">Matchings</th></tr></thead><tbody>'
       + (r.top_tenants || []).map(x => '<tr><td><b>' + (x.slug || '—') + '</b></td><td style="text-align:center">' + (x.dossiers || 0) + '</td><td style="text-align:center">' + (x.matchings || 0) + '</td></tr>').join('')
       + '</tbody></table></section>'
       // M94 — Chart 30j SVG + Heatmap 7×24
@@ -770,7 +770,7 @@ async function loadTab(t) {
         + '<div class="sa-card accent-success"><div class="sa-card-value" style="font-size:24px">🟢 Oi Agent</div><div class="sa-card-label">PROD · v476</div><div class="sa-card-desc">CRM agents immobiliers multi-tenant. Section III adaptative profil×pays (M77-M82). PWA push (M88-M89).</div></div>'
         + '<div class="sa-card accent-warning"><div class="sa-card-value" style="font-size:24px">🟡 Oi Scan</div><div class="sa-card-label">BETA · v0.3</div><div class="sa-card-desc">OCR + extraction structurée documents (mandats/factures/ID). Backend ExpertScan séparé.</div></div>'
         + '<div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:24px">⚪ Oi Book</div><div class="sa-card-label">PLANIFIÉ · Q3 2026</div><div class="sa-card-desc">Booking visites + signatures électroniques.</div></div>'
-        + '<div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:24px">⚪ Oi Demande</div><div class="sa-card-label">PLANIFIÉ · Q4 2026</div><div class="sa-card-desc">Marketplace de demandes acquéreurs anonymisées matchées sur biens des tenants.</div></div>'
+        + '<div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:24px">⚪ Oi Recherche</div><div class="sa-card-label">PLANIFIÉ · Q4 2026</div><div class="sa-card-desc">Marketplace de demandes acquéreurs anonymisées matchées sur biens des tenants.</div></div>'
       + '</div></section>';
   } else if (t === 'system') {
     const r = await api('/api/superadmin_system.php');
@@ -829,7 +829,7 @@ async function renderMaintenanceTab(c) {
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">'
 
     + '<div style="background:#FEF3C7;border:2px solid #F59E0B;border-radius:10px;padding:18px">'
-      + '<div style="font-weight:700;font-size:15px;color:#92400E;margin-bottom:8px">Niveau 1 — Tenant unique 🟡</div>'
+      + '<div style="font-weight:700;font-size:15px;color:#92400E;margin-bottom:8px">Niveau 1 — Utilisateur unique 🟡</div>'
       + '<div style="font-size:12.5px;color:#78350F;line-height:1.5;margin-bottom:14px">DROP DATABASE <code>ocre_wsp_&lt;slug&gt;</code> uniquement. Conserve auth_users + abonnements + sessions des autres tenants. Le plus sûr.</div>'
       + '<input type="text" id="maint-tenant-slug" placeholder="slug tenant (ex: exbat-tat-ad7d)" style="width:100%;padding:8px 10px;border:1px solid #E5DDC8;border-radius:6px;margin-bottom:10px;font-family:inherit;font-size:13px">'
       + '<button class="reset-btn" style="width:100%" onclick="maintReset(1)">Reset niveau 1</button>'
@@ -1016,7 +1016,7 @@ async function renderDataroomTab(c) {
     <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:22px">🟢 Oi Agent</div><div class="sa-card-label">PROD · v476</div><div class="sa-card-desc">CRM matching anonymisé. 8 profils × 11 pays adaptatifs.</div></div>
     <div class="sa-card accent-warning"><div class="sa-card-value" style="font-size:22px">🟡 Oi Scan</div><div class="sa-card-label">BETA · v0.3</div><div class="sa-card-desc">OCR + IA extraction docs. Backend ExpertScan séparé.</div></div>
     <div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:22px">⚪ Oi Book</div><div class="sa-card-label">PLANIFIÉ · Q3 2026</div><div class="sa-card-desc">Booking + signatures électroniques.</div></div>
-    <div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:22px">⚪ Oi Demande</div><div class="sa-card-label">PLANIFIÉ · Q4 2026</div><div class="sa-card-desc">Marketplace demandes acquéreurs anonymisées.</div></div>
+    <div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:22px">⚪ Oi Recherche</div><div class="sa-card-label">PLANIFIÉ · Q4 2026</div><div class="sa-card-desc">Marketplace demandes acquéreurs anonymisées.</div></div>
   </div>
 </section>
 
@@ -1326,7 +1326,7 @@ const PROFILE_BADGE = {
   restreint: {emoji:'🟠', label:'Restreint', bg:'#C46A4F', fg:'#fff'},
 };
 const PROFILE_OPTIONS = ['super_admin','admin','diamant','standard','restreint'];
-const MODULE_LABEL = {app:'Oi Agent', scan:'Oi Scan', book:'Oi Book', demande:'Oi Demande', dashboard:'Dashboard', superadmin:'Super-admin'};
+const MODULE_LABEL = {app:'Oi Agent', scan:'Oi Scan', book:'Oi Book', demande:'Oi Recherche', dashboard:'Dashboard', superadmin:'Super-admin'};
 const MODULE_BADGE = (m) => `<span style="display:inline-block;padding:1px 6px;margin:1px;border-radius:4px;font-size:10px;background:#F4EEE6;color:#6B4429;font-weight:600">${escHtml(MODULE_LABEL[m] || m)}</span>`;
 function fmtRelTime(iso) {
   if (!iso) return '—';
