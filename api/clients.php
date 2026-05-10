@@ -489,6 +489,22 @@ switch ($action) {
             'payment_plan' => $payment_plan, 'received_payments' => $received_payments,
         ];
         audit_log((int)$user['id'], 'clients', $id, $audit_before ? 'UPDATE' : 'INSERT', $audit_before, $audit_after);
+        // M116c — emit webhook event (graceful, ne bloque jamais flow metier)
+        require_once __DIR__ . '/lib/webhook_emit.php';
+        $eventPayload = [
+            'dossier_id' => $id, 'profil' => $projet, 'is_draft' => (bool)$is_draft,
+            'is_archived' => (bool)$archived, 'prenom' => $prenom, 'nom' => $nom,
+            'tenant_user_id' => (int)$user['id'],
+        ];
+        $tenantSlug = $user['slug'] ?? ($_SERVER['HTTP_X_TENANT_SLUG'] ?? '');
+        if ($tenantSlug) {
+            if (!$audit_before) {
+                emit_event($tenantSlug, 'dossier.created', $eventPayload);
+            } else {
+                emit_event($tenantSlug, 'dossier.updated', $eventPayload);
+                if ($archived && empty($audit_before['archived'])) emit_event($tenantSlug, 'dossier.archived', $eventPayload);
+            }
+        }
         // V17.5 Phase 2c : enqueue sync Google Sheet si user sync_enabled. V18.17 : skip si staged.
         if (!$wasStaged) enqueueSync((int)$user['id'], $id, 'upsert');
         // M/2026/04/29/7 — quota check pour création (audit_before === null) sur dossiers actifs.
@@ -558,6 +574,10 @@ switch ($action) {
         if (!$ok) jsonError('Introuvable ou déjà supprimé', 404);
         logAction((int)$user['id'], 'client_soft_delete', "id=$id");
         enqueueSync((int)$user['id'], $id, 'delete');
+        // M116c — emit webhook event dossier.deleted (graceful)
+        require_once __DIR__ . '/lib/webhook_emit.php';
+        $tenantSlug = $user['slug'] ?? ($_SERVER['HTTP_X_TENANT_SLUG'] ?? '');
+        if ($tenantSlug) emit_event($tenantSlug, 'dossier.deleted', ['dossier_id' => $id, 'tenant_user_id' => (int)$user['id']]);
         jsonOk(['deleted' => $id, 'soft' => true]);
     }
 
