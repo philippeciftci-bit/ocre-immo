@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#3D2818">
+<title>Guide démarrage Oi Agent · Ocre Immo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --cream:#FAF6F1; --cream-2:#F4ECDF; --brown:#3D2818; --brown-soft:#6B5642; --brown-mute:#998877; --ocre:#B87333; --ocre-dark:#8B5E3C; --gold:#D4A256; --green:#2D7A3E; --green-soft:#E8F2EA; --line:#E5DAC6; }
+  *,*::before,*::after { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter',sans-serif; background:var(--cream); color:var(--brown); line-height:1.65; font-size:15px; }
+  .layout { display:grid; grid-template-columns:240px 1fr; max-width:1180px; margin:0 auto; min-height:100vh; }
+  @media (max-width: 900px) { .layout { grid-template-columns:1fr; } aside { display:none; } }
+  aside { background:#fff; border-right:1px solid var(--line); padding:24px 16px; position:sticky; top:0; max-height:100vh; overflow-y:auto; }
+  aside .logo { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:22px; margin-bottom:18px; color:var(--ocre-dark); }
+  aside ul { list-style:none; padding:0; margin:0; }
+  aside li { padding:7px 0; font-size:13.5px; }
+  aside a { color:var(--brown-soft); text-decoration:none; display:block; padding:6px 8px; border-radius:6px; }
+  aside a:hover { background:var(--cream-2); color:var(--ocre-dark); }
+  main { padding:36px 32px 60px; max-width:780px; }
+  @media (max-width: 600px) { main { padding:24px 16px; } }
+  h1 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:36px; line-height:1.15; margin:0 0 8px; color:var(--brown); }
+  h1 + .lead { color:var(--brown-soft); font-size:16px; margin-bottom:32px; }
+  h2 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:28px; margin-top:48px; margin-bottom:14px; color:var(--brown); }
+  h2 .num { color:var(--ocre); margin-right:6px; font-style:normal; }
+  h3 { font-size:16px; font-weight:600; margin-top:24px; margin-bottom:8px; color:var(--brown); }
+  p { margin:8px 0 14px; }
+  ul.tight, ol.tight { margin:8px 0 14px; padding-left:22px; }
+  ul.tight li, ol.tight li { margin:4px 0; }
+  .callout { background:var(--cream-2); border-left:3px solid var(--ocre); padding:12px 16px; border-radius:6px; margin:14px 0; font-size:14px; }
+  .callout.tip { border-left-color:var(--green); background:var(--green-soft); }
+  .screenshot-placeholder { background:linear-gradient(135deg,var(--cream-2),#fff); border:1px dashed var(--line); border-radius:10px; padding:32px; text-align:center; color:var(--brown-mute); font-size:13px; margin:18px 0; font-family:'Inter',sans-serif; font-style:italic; }
+  code { font-family:'Inter',monospace; background:var(--cream-2); padding:2px 6px; border-radius:4px; font-size:13px; color:var(--ocre-dark); }
+  .pdf-cta { background:var(--ocre-dark); color:#fff; padding:14px 22px; border-radius:10px; text-decoration:none; font-weight:600; display:inline-block; margin:14px 0; }
+  .pdf-cta:hover { background:var(--brown); }
+  hr { border:0; border-top:1px solid var(--line); margin:36px 0; }
+  @media print {
+    aside { display:none; }
+    main { max-width:none; padding:0; }
+    .pdf-cta { display:none; }
+    h2 { page-break-before:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="logo">Ocre · Guide</div>
+    <ul>
+      <li><a href="#ch1">1. Bienvenue</a></li>
+      <li><a href="#ch2">2. Premier login</a></li>
+      <li><a href="#ch3">3. Profil</a></li>
+      <li><a href="#ch4">4. Premier dossier</a></li>
+      <li><a href="#ch5">5. Photos &amp; docs</a></li>
+      <li><a href="#ch6">6. Pacts inter-agents</a></li>
+      <li><a href="#ch7">7. Matching auto</a></li>
+      <li><a href="#ch8">8. Channel Premium</a></li>
+      <li><a href="#ch9">9. Réglages PWA</a></li>
+      <li><a href="#ch10">10. Aide &amp; support</a></li>
+    </ul>
+  </aside>
+
+  <main>
+    <h1>Guide démarrage Oi Agent</h1>
+    <p class="lead">Apprends à utiliser Ocre Immo de A à Z en 15 minutes. Ce guide t'accompagne du premier login jusqu'à la diffusion d'un dossier sur 7 portails immobiliers.</p>
+    <a class="pdf-cta" href="/assets/guide-oi-agent.pdf" download>📥 Télécharger ce guide en PDF</a>
+
+    <h2 id="ch1"><span class="num">1.</span> Bienvenue sur Oi Agent</h2>
+    <p>Oi Agent est le module CRM de la suite <strong>Ocre Immo</strong>. Sa philosophie : <em>permettre aux agents indépendants de collaborer sans révéler leurs dossiers</em>. Tu gardes la main sur tes clients, et tu multiplies tes opportunités via le matching automatique entre confrères pactés.</p>
+    <p>Ce guide couvre 10 chapitres pour te rendre autonome en 15 minutes.</p>
+    <div class="callout tip">💡 <strong>Astuce</strong> : tu peux installer Oi Agent comme une vraie app sur ton iPhone/Android. Voir chapitre 9.</div>
+
+    <h2 id="ch2"><span class="num">2.</span> Premier login</h2>
+    <p>Va sur <code>https://auth.ocre.immo</code>. Tape ton email professionnel. Tu reçois un lien magique par email (15 min de validité). Clique → tu es connecté à ton hub Ocre. <strong>Pas de mot de passe à retenir</strong>.</p>
+    <div class="screenshot-placeholder">📸 Capture : Page login auth.ocre.immo · email input + bouton "Recevoir un lien magique"</div>
+    <p>Depuis le hub, tape la card <strong>Oi Agent</strong> pour entrer dans l'app de ton tenant (ex: <code>ton-agence.ocre.immo</code>).</p>
+
+    <h2 id="ch3"><span class="num">3.</span> Compléter ton profil</h2>
+    <p>En haut à droite, tape l'icône Réglages. Renseigne : prénom, nom, téléphone, photo agence (optionnel). Ces infos apparaîtront sur tes propositions vers les confrères.</p>
+    <div class="screenshot-placeholder">📸 Capture : Réglages → Profil agent · champs prénom/nom/tél/photo</div>
+
+    <h2 id="ch4"><span class="num">4.</span> Créer ton premier dossier</h2>
+    <p>Sur l'accueil, tape le bouton <strong>+ Nouveau</strong> en bas à droite. Choisis le profil : Acheteur, Vendeur, Bailleur, Locataire, Investisseur, Marchand de biens, Promoteur, ou Curieux.</p>
+    <p>L'app affiche la <strong>Section III adaptative</strong> : les champs financiers s'ajustent selon ton profil et ton pays. Exemple : un Vendeur en France verra "Prix vendeur TTC + Honoraires FAI", un Acheteur au Maroc verra "Budget min/max" en MAD.</p>
+    <div class="screenshot-placeholder">📸 Capture : Création dossier · 8 profils en pills · Section III dynamique</div>
+    <div class="callout">⚠ Les champs marqués obligatoires sont nécessaires pour activer le matching. Les champs facultatifs améliorent la qualité du match.</div>
+
+    <h2 id="ch5"><span class="num">5.</span> Photos &amp; documents</h2>
+    <p>Dans le détail du dossier, tape l'onglet Photos. Tu peux uploader jusqu'à 30 photos (format JPG/PNG/WebP, max 10 Mo chacune). Drag-drop pour réorganiser, tap pour zoom plein écran.</p>
+    <div class="screenshot-placeholder">📸 Capture : Stage Photos · grille 5 photos · drag-drop réorder</div>
+    <p>Pour les documents (mandat, dossier financier, diagnostics) : onglet Documents → upload PDF/image. Les documents sont privés par défaut, partagés uniquement avec tes confrères pactés sur action explicite.</p>
+
+    <h2 id="ch6"><span class="num">6.</span> Inviter un confrère et signer un pacte</h2>
+    <p>Le <strong>pacte</strong> est l'accord bilatéral entre toi et un confrère. Modalités : partage de commission (50/50, 60/40…), périmètre géographique, types de profils inclus, durée. Tracé, signé en ligne, opposable.</p>
+    <p>Onglet Pacts → tape "+ Inviter un confrère" → entre son email Ocre. Il reçoit une notification, accepte ou décline. Une fois signé, vos dossiers entrent dans le pool de matching commun.</p>
+    <div class="screenshot-placeholder">📸 Capture : Pact form · email confrère + slider partage commission + périmètre</div>
+
+    <h2 id="ch7"><span class="num">7.</span> Le matching automatique</h2>
+    <p>Chaque jour, l'algo croise les critères de tes dossiers avec ceux des confrères pactés. Quand un croisement est détecté (score ≥ 85%) :</p>
+    <ul class="tight">
+      <li>Tu reçois une <strong>notification PWA push</strong> sur ton iPhone : "Match Acheteur 4P Marrakech 2.4M MAD ↔ ton Vendeur Riad Médina 1.8M"</li>
+      <li>Tu vois un aperçu anonymisé sur l'app (pas le nom du client confrère)</li>
+      <li>Si tu valides, le confrère reçoit la même proposition. Si lui aussi valide, vos fiches complètes sont échangées</li>
+      <li>Vous prenez ensuite contact directement pour la suite (visite, négociation, signature)</li>
+    </ul>
+    <div class="screenshot-placeholder">📸 Capture : Modal Match · score 87% · aperçu anonymisé · CTA Accepter</div>
+
+    <h2 id="ch8"><span class="num">8.</span> Diffusion sur les portails (Channel Premium)</h2>
+    <p>Channel Premium (99 €/mois HT en plus du Pro 49 €) te permet de syndiquer un dossier vers <strong>7 portails immobiliers</strong> en 1 clic : LeBonCoin Pro, SeLoger, Bien'ici, Idealista (Espagne), Apartments.com (US), Avito.ma, Mubawab.</p>
+    <p>Activation : Réglages → Abonnement → Activer Channel Premium. Puis dans le détail dossier → onglet Diffusion → toggle ON/OFF par portail → tap Publier.</p>
+    <div class="screenshot-placeholder">📸 Capture : Onglet Diffusion · 7 portails toggle · badge statut Publié vert</div>
+    <p>Les statuts se mettent à jour automatiquement (publié, en attente modération, refusé). Tu peux modifier le dossier → l'app re-syncronise sur tous les portails actifs.</p>
+
+    <h2 id="ch9"><span class="num">9.</span> Réglages &amp; Notifications PWA</h2>
+    <p>Pour installer Oi Agent comme une vraie app native :</p>
+    <ul class="tight">
+      <li><strong>iPhone</strong> (Safari iOS 16.4+) : tape l'icône Partager → "Sur l'écran d'accueil"</li>
+      <li><strong>Android</strong> (Chrome) : menu ⋮ → "Installer l'application"</li>
+    </ul>
+    <p>Dans Réglages → Notifications, active les push pour recevoir les matches/propositions/messages directement sur ton téléphone, même app fermée.</p>
+    <div class="callout tip">💡 Les notifications PWA fonctionnent sur iOS 16.4+ exclusivement. Sur Android, tous les Chrome récents.</div>
+
+    <h2 id="ch10"><span class="num">10.</span> Aide &amp; support</h2>
+    <p>3 canaux pour obtenir de l'aide :</p>
+    <ul class="tight">
+      <li><strong>FAQ in-app</strong> : Aide → 6 catégories thématiques avec articles pratiques</li>
+      <li><strong>Email</strong> : <a href="mailto:support@ocre.immo">support@ocre.immo</a> (réponse &lt; 2h jours ouvrés)</li>
+      <li><strong>Documentation développeur</strong> : pour intégrer un webhook ou exporter des données, voir Réglages → Intégrations</li>
+    </ul>
+
+    <hr>
+    <p style="color:var(--brown-mute);font-size:13px;text-align:center">Guide v1.0 · M117 · 2026-05-10 · <a href="/assets/guide-oi-agent.pdf" style="color:var(--ocre-dark)">Télécharger PDF</a></p>
+  </main>
+</div>
+</body>
+</html>
