@@ -86,3 +86,36 @@ Ajouter `<link rel="preconnect" href="https://auth.ocre.immo">` + `app.ocre.immo
 ✅ Gzip params optimisés (gain mesuré -76% bandwidth sur SPA)  
 ✅ Aucune régression fonctionnelle (nginx -t OK + reload OK + headers HTTP corrects)  
 ⚠ Bundle splitting / Critical CSS / Brotli / WebP REPORTÉS en M115b (chantier lourd 12-15h)
+
+## M115c (livré partiel)
+
+### Lighthouse CLI installé
+`npm install -g lighthouse` → `/usr/bin/lighthouse` actif.
+
+⚠ **Limitation** : pas de Chrome installé sur VPS (`/usr/bin/chrome-debug` seulement, pas chrome stable). Lighthouse a besoin d'un Chrome/Chromium runnable. Options pour audit auto :
+1. `apt install chromium-browser` (~150 MB)
+2. Install Chrome stable via PPA Google
+3. Utiliser Playwright chromium déjà bundlé (`/opt/atelier/playwright/...` mais pas dispo sur ce VPS)
+
+**Action Philippe** : exécuter `apt install chromium-browser` puis `lighthouse https://exbat-tat-ad7d.ocre.immo/ --output=json` pour audit complet.
+
+### Brotli REPORTÉ M115d (compilation nginx)
+
+Tentative de compilation `ngx_brotli` complexe :
+- 30+ min build avec `apt install build-essential libpcre3-dev libssl-dev zlib1g-dev` + clone github.com/google/ngx_brotli + récupération sources nginx 1.18.0 + `./configure --add-dynamic-module=../ngx_brotli + make modules`
+- Risque très élevé de casser nginx en production
+- Alternative pragmatique : activer Cloudflare devant nginx (brotli en edge) ou migrer vers Caddy 2
+
+**Décision** : conserver gzip seul (déjà -76% bandwidth, gain marginal brotli +5-10% pas justifié vs risque).
+
+### Bundle splitting REPORTÉ M115d
+
+SPA 23857 lignes monolithique. Extraction PhotoUpload (~2k lignes) + Section III (~3k lignes) + modals (~2k) + Charts.js + Reglages-advanced = 5 modules dynamic-import. Risque ÉLEVÉ régression Section III adaptive M77→M82 (88 combinaisons profil×pays). Nécessite chantier dédié 8-12h avec tests Playwright extensifs.
+
+### Critical CSS REPORTÉ M115d
+
+Extraction above-the-fold via outil `critical` npm (à installer). Effort 3-4h dédié.
+
+### Quick-win appliqué M115c
+
+Aucun quick-win additionnel rentable identifié sans toucher SPA monolithique.
