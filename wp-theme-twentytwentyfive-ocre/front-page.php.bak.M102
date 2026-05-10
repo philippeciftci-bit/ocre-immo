@@ -1,0 +1,234 @@
+<?php
+/**
+ * Template front-page : vitrine M102 fidele maquette M101.
+ * Reproduit les 9 sections en HTML/PHP direct (pas de patterns pour fiabilite max).
+ * Editable cote admin : remplacer les textes via Customizer ou patterns ulterieurs.
+ */
+get_header();
+?>
+
+<nav class="ocre-nav" aria-label="Navigation principale">
+  <div class="ocre-container ocre-nav-inner">
+    <a href="<?php echo esc_url(home_url('/')); ?>#hero" class="ocre-logo">
+      <span class="ocre-logo-mark">O</span> Ocre
+    </a>
+    <div class="ocre-nav-links">
+      <a href="#solution">Comment ça marche</a>
+      <a href="#modules">Modules</a>
+      <a href="#features">Fonctionnalités</a>
+      <a href="#pricing">Tarif</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://auth.ocre.immo/" class="ocre-nav-cta">Essayer Oi Agent</a>
+    </div>
+  </div>
+</nav>
+
+<!-- 1. HERO -->
+<section class="ocre-hero" id="hero">
+  <div class="ocre-container ocre-hero-grid">
+    <div class="ocre-reveal">
+      <span class="ocre-tagline-pill">Le SaaS du matching inter-agents</span>
+      <h1>Faites collaborer vos confrères <em>sans révéler vos dossiers</em>.</h1>
+      <p class="ocre-hero-sub">Ocre Immo anonymise et automatise le matching immobilier entre agents pactés. Gardez la main sur vos clients, multipliez vos opportunités.</p>
+      <div class="ocre-cta-row">
+        <a href="https://auth.ocre.immo/" class="ocre-btn ocre-btn-primary">Essayer Oi Agent · 14 j gratuits →</a>
+        <a href="#demo" class="ocre-btn ocre-btn-ghost">▶ Voir une démo</a>
+      </div>
+    </div>
+    <div class="ocre-hero-mock ocre-reveal">
+      <div class="ocre-mock-bar">
+        <span class="ocre-dot"></span><span class="ocre-dot"></span><span class="ocre-dot"></span>
+        <div class="ocre-url">https://app.ocre.immo</div>
+      </div>
+      <div class="ocre-mock-app">
+        <div class="ocre-mock-row">
+          <div class="ocre-mock-left">
+            <span class="ocre-mock-icon">🏠</span>
+            <div><b>Acheteur · 4P · Marrakech</b><br><span style="color:var(--ocre-brown-mute);font-size:11px">Budget 2.4M MAD · jardin · piscine</span></div>
+          </div>
+          <span class="ocre-mock-badge match">3 MATCHS</span>
+        </div>
+        <div class="ocre-mock-row">
+          <div class="ocre-mock-left">
+            <span class="ocre-mock-icon green">📐</span>
+            <div><b>Vendeur · Riad médina</b><br><span style="color:var(--ocre-brown-mute);font-size:11px">Prix 1.8M MAD · 220m² · vue Atlas</span></div>
+          </div>
+          <span class="ocre-mock-badge">Anonyme</span>
+        </div>
+        <div class="ocre-mock-row">
+          <div class="ocre-mock-left">
+            <span class="ocre-mock-icon purple">🤝</span>
+            <div><b>Pacte avec Agence Atlas</b><br><span style="color:var(--ocre-brown-mute);font-size:11px">12 dossiers partagés · 50/50</span></div>
+          </div>
+          <span class="ocre-mock-badge">ACTIF</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. PROBLEME -->
+<section class="ocre-section ocre-section-alt" id="probleme">
+  <div class="ocre-container">
+    <div class="ocre-section-header ocre-reveal">
+      <span class="ocre-eyebrow">Le constat</span>
+      <h2>Le marché immo est <em>opaque</em> entre agents</h2>
+      <p>Trop de dossiers dorment dans des CRM cloisonnés. Vos confrères ont peut-être l'acheteur idéal pour votre vendeur, mais personne ne le saura jamais.</p>
+    </div>
+    <div class="ocre-pains">
+      <div class="ocre-pain ocre-reveal"><span class="ocre-pain-icon">🔒</span><h3>Dossiers cachés entre agents</h3><p>Chacun protège son fichier client. Résultat : un acheteur cherche pendant 6 mois alors que le bien parfait est à 2 km dans un autre CRM.</p></div>
+      <div class="ocre-pain ocre-reveal"><span class="ocre-pain-icon">📞</span><h3>Pacts informels et oraux</h3><p>Les accords inter-agents tiennent sur du WhatsApp et de la confiance. Aucune trace, aucune commission claire, conflits inévitables.</p></div>
+      <div class="ocre-pain ocre-reveal"><span class="ocre-pain-icon">⏱️</span><h3>Matching manuel chronophage</h3><p>Vous épluchez les annonces concurrentes à la main. Chaque jour, des matchs vous échappent — et avec eux, votre commission.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. SOLUTION -->
+<section class="ocre-section" id="solution">
+  <div class="ocre-container">
+    <div class="ocre-section-header ocre-reveal">
+      <span class="ocre-eyebrow">La solution</span>
+      <h2>Oi Agent : le matching <em>automatisé</em> entre confrères pactés</h2>
+      <p>Vous gardez vos données. Vos confrères gardent les leurs. Notre algo trouve les croisements et alerte les deux parties — sans jamais exposer la fiche complète.</p>
+    </div>
+    <div class="ocre-steps">
+      <div class="ocre-step ocre-reveal"><span class="ocre-step-num">1</span><h3>Vous saisissez vos dossiers</h3><p>Acheteurs, vendeurs, bailleurs, locataires, investisseurs, marchands de biens, promoteurs, curieux. 8 profils métier, fiches privées par défaut.</p><div class="ocre-step-visual">📥 dossier_privé.json</div></div>
+      <div class="ocre-step ocre-reveal"><span class="ocre-step-num">2</span><h3>Vous signez des pactes</h3><p>Pacte bilatéral avec un confrère de confiance : modalité de partage de commission, périmètre géographique, durée. Tracé, signé, opposable.</p><div class="ocre-step-visual">🤝 pacte_50/50.signed</div></div>
+      <div class="ocre-step ocre-reveal"><span class="ocre-step-num">3</span><h3>Le matching tourne chaque jour</h3><p>L'algo croise les critères. Un match = notification push aux 2 agents avec aperçu anonymisé. Décision conjointe pour révéler la fiche complète.</p><div class="ocre-step-visual">⚡ match → 🔔 push</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. MODULES -->
+<section class="ocre-section ocre-section-alt" id="modules">
+  <div class="ocre-container">
+    <div class="ocre-section-header ocre-reveal">
+      <span class="ocre-eyebrow">La suite Oi</span>
+      <h2>Une suite complète <em>pour votre activité</em></h2>
+      <p>Ocre Immo couvre l'intégralité du métier d'agent immobilier indépendant ou en agence. Modules ouverts progressivement, accès par abonnement unique.</p>
+    </div>
+    <div class="ocre-modules">
+      <div class="ocre-module"><span class="ocre-module-icon">🏠</span><span class="ocre-badge active">Actif</span><h3>Oi Agent</h3><p>CRM matching anonymisé entre confrères pactés. Multi-profils, multi-pays, multi-devises.</p></div>
+      <div class="ocre-module"><span class="ocre-module-icon">📐</span><span class="ocre-badge soon">Bientôt</span><h3>Oi Scan</h3><p>Diagnostic bâtiment + relevé métré IA depuis photos. Pré-fiche technique en 30 sec.</p></div>
+      <div class="ocre-module locked"><span class="ocre-module-icon">📚</span><span class="ocre-badge q3">Q3 2026</span><h3>Oi Book</h3><p>Gestion locative complète : bail, quittance, état des lieux signé PWA, comptabilité.</p></div>
+      <div class="ocre-module locked"><span class="ocre-module-icon">🔔</span><span class="ocre-badge q4">Q4 2026</span><h3>Oi Demande</h3><p>Captation FAI digitalisée. Demande mandant en 5 min, signature électronique intégrée.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. FEATURES -->
+<section class="ocre-section" id="features">
+  <div class="ocre-container">
+    <div class="ocre-section-header ocre-reveal">
+      <span class="ocre-eyebrow">Fonctionnalités</span>
+      <h2>Tout ce dont un agent immo <em>a besoin</em></h2>
+      <p>Conçu avec et pour des agents indépendants en France et au Maghreb. Ergonomie mobile-first, performance native, zéro friction.</p>
+    </div>
+    <div class="ocre-features">
+      <div class="ocre-feature ocre-reveal"><span class="ocre-feature-icon">⚡</span><h4>Matching automatique anonymisé</h4><p>Algo croise critères + budget + zone. Aperçu sans dévoiler le client. Révélation sur accord mutuel.</p></div>
+      <div class="ocre-feature ocre-reveal"><span class="ocre-feature-icon">💱</span><h4>Multi-devises</h4><p>12 devises supportées (MAD, EUR, USD, GBP, CHF, CAD, AED, TND, DZD, XOF, SAR, JPY). Conversion live AFNOR.</p></div>
+      <div class="ocre-feature ocre-reveal"><span class="ocre-feature-icon">🌍</span><h4>Multi-pays</h4><p>11 zones géo (FR, MA, ES, IT, BE, PT, DE, NL, TN, DZ, World). Wording, validations et drapeaux conditionnels par pays.</p></div>
+      <div class="ocre-feature ocre-reveal"><span class="ocre-feature-icon">📱</span><h4>PWA iOS &amp; Android</h4><p>Installation 1 clic, notifications push natives iOS 16.4+. Fonctionne hors-ligne sur les écrans clés.</p></div>
+      <div class="ocre-feature ocre-reveal"><span class="ocre-feature-icon">👥</span><h4>8 profils métier</h4><p>Acheteur · Vendeur · Bailleur · Locataire · Investisseur · Marchand de biens · Promoteur · Curieux. Champs adaptés à chacun.</p></div>
+      <div class="ocre-feature ocre-reveal"><span class="ocre-feature-icon">🧮</span><h4>Section III adaptative</h4><p>Champs financiers conditionnels selon profil × pays : prix vendeur HT/TTC, FAI, honoraires, taxes, jusqu'à 88 combinaisons.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. PRICING -->
+<section class="ocre-section ocre-section-alt" id="pricing">
+  <div class="ocre-container">
+    <div class="ocre-section-header ocre-reveal">
+      <span class="ocre-eyebrow">Tarif</span>
+      <h2>Une seule offre, <em>tout inclus</em></h2>
+      <p>Pas de palier limitant, pas de surprise. Une formule unique adaptée aux agents indépendants comme aux petites agences.</p>
+    </div>
+    <div class="ocre-pricing-card ocre-reveal">
+      <h3>Ocre Pro</h3>
+      <p style="color:var(--ocre-brown-mute);font-size:14px;margin-bottom:0">Tout Oi Agent + futurs modules inclus</p>
+      <div class="ocre-price">
+        <span class="ocre-price-amount">49</span><span class="ocre-price-unit">€/mois</span>
+        <span class="ocre-price-ht">par agent · HT · facturé mensuellement</span>
+      </div>
+      <ul class="ocre-features-list">
+        <li>Dossiers illimités, profils illimités</li>
+        <li>Pactes inter-agents illimités</li>
+        <li>Matching quotidien automatique</li>
+        <li>PWA iOS/Android avec push natives</li>
+        <li>Multi-devises &amp; multi-pays</li>
+        <li>Support email réponse &lt;2h jours ouvrés</li>
+        <li>Mises à jour continues, futurs modules inclus</li>
+      </ul>
+      <a href="https://auth.ocre.immo/" class="ocre-btn ocre-btn-primary">Commencer mon essai 14 jours</a>
+      <p class="ocre-pricing-mention">Sans engagement · Résiliable à tout moment · CB ou prélèvement SEPA</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7. TEMOIGNAGES -->
+<section class="ocre-section" id="temoignages">
+  <div class="ocre-container">
+    <div class="ocre-section-header ocre-reveal">
+      <span class="ocre-eyebrow">Ils utilisent Ocre</span>
+      <h2>La parole à <em>nos premiers utilisateurs</em></h2>
+      <p>Quelques retours d'agents qui pilotent leur activité avec Oi Agent. Témoignages représentatifs (les vrais arrivent, on prend notre temps).</p>
+    </div>
+    <div class="ocre-testimonials">
+      <div class="ocre-testi ocre-reveal"><p class="ocre-testi-quote">Avant Ocre, je perdais des heures à éplucher les annonces des confrères. Maintenant le match arrive sur mon iPhone. Sur 4 mois, j'ai signé 3 ventes croisées que j'aurais ratées.</p><div class="ocre-testi-author"><span class="ocre-avatar">A</span><div class="ocre-testi-meta"><div class="ocre-testi-name">Anaïs L.</div><div class="ocre-testi-role">Agent indépendante · Marrakech</div></div></div></div>
+      <div class="ocre-testi ocre-reveal"><p class="ocre-testi-quote">Le pacte signé en ligne avec mon confrère d'Agadir a clôs 10 ans de bricole sur WhatsApp. On voit qui apporte quoi, qui touche combien. Plus de friction.</p><div class="ocre-testi-author"><span class="ocre-avatar">K</span><div class="ocre-testi-meta"><div class="ocre-testi-name">Karim B.</div><div class="ocre-testi-role">Agence Atlas · Casablanca</div></div></div></div>
+      <div class="ocre-testi ocre-reveal"><p class="ocre-testi-quote">L'app est pensée pour iPhone, pas pour un Excel. Section adaptée à chaque profil, devises auto, je l'ai installée en 30 secondes et c'était fluide.</p><div class="ocre-testi-author"><span class="ocre-avatar">P</span><div class="ocre-testi-meta"><div class="ocre-testi-name">Pauline M.</div><div class="ocre-testi-role">Agent indépendante · Lyon</div></div></div></div>
+    </div>
+    <div class="ocre-logos ocre-reveal">
+      <span class="ocre-logo-ph">Agence Atlas</span>
+      <span class="ocre-logo-ph">Riad &amp; Co</span>
+      <span class="ocre-logo-ph">Maghreb Estate</span>
+      <span class="ocre-logo-ph">Belle Demeure</span>
+      <span class="ocre-logo-ph">L'Indépendante</span>
+    </div>
+  </div>
+</section>
+
+<!-- 8. FAQ -->
+<section class="ocre-section ocre-section-alt" id="faq">
+  <div class="ocre-container">
+    <div class="ocre-section-header ocre-reveal">
+      <span class="ocre-eyebrow">Vos questions</span>
+      <h2>Questions <em>fréquentes</em></h2>
+      <p>Si vous ne trouvez pas votre réponse, écrivez-nous : <a href="mailto:support@ocre.immo">support@ocre.immo</a> (réponse &lt;2h jours ouvrés).</p>
+    </div>
+    <div class="ocre-faq-list">
+      <details class="ocre-faq-item" open><summary>Qu'est-ce que le matching anonymisé ?</summary><div class="ocre-answer">L'algo croise les critères de vos dossiers (budget, zone, surface, profil) avec ceux des confrères pactés, sans jamais révéler le nom du client ni les coordonnées. Si un croisement existe, vous recevez une notification avec un aperçu (« Acheteur, 4P, Marrakech, 2.4M MAD »). La fiche complète n'est échangée qu'avec accord mutuel.</div></details>
+      <details class="ocre-faq-item"><summary>Comment fonctionnent les pactes inter-agents ?</summary><div class="ocre-answer">Un pacte est un accord bilatéral signé en ligne entre 2 agents : modalité de partage de commission (50/50, 60/40…), périmètre géographique, types de profils inclus, durée. Une fois signé, vos dossiers entrent dans le pool de matching commun avec ce confrère. Vous pouvez signer autant de pactes que vous voulez, individuellement.</div></details>
+      <details class="ocre-faq-item"><summary>Mes données sont-elles sécurisées ?</summary><div class="ocre-answer">Oui. Hébergement Hetzner (Allemagne), TLS 1.3 partout, cookies HttpOnly Secure SameSite, mots de passe → magic link sans mot de passe (auth SSO JWT HS256). Vos dossiers sont privés par défaut, l'accès aux fiches concurrentes est cryptographiquement gated par les pactes signés. Conforme RGPD, droits d'accès et suppression intégrés au compte.</div></details>
+      <details class="ocre-faq-item"><summary>Sur quelles plateformes Oi Agent fonctionne-t-il ?</summary><div class="ocre-answer">PWA installable sur iOS 16.4+ (Safari) et Android (Chrome) avec notifications push natives. Egalement utilisable sur tout navigateur desktop moderne (Chrome, Safari, Firefox, Edge). Pas d'app store, pas d'install lourde, pas de mise à jour à gérer.</div></details>
+      <details class="ocre-faq-item"><summary>Puis-je tester sans m'engager ?</summary><div class="ocre-answer">Oui. 14 jours gratuits, sans CB requise au démarrage. Vous accédez à toutes les fonctionnalités Pro. À J+14 vous décidez de continuer (CB ou SEPA) ou de ne pas activer — votre compte se gèle, vos données sont conservées 90 jours puis supprimées si vous ne réactivez pas.</div></details>
+      <details class="ocre-faq-item"><summary>Comment changer ou annuler mon abonnement ?</summary><div class="ocre-answer">Depuis Réglages → Abonnement. Vous pouvez résilier en 1 clic à tout moment, prend effet à la fin du mois en cours. Aucun engagement, pas de pénalité. Les futurs modules (Oi Scan, Oi Book, Oi Demande) seront inclus dans votre abonnement Pro existant — pas de surcoût.</div></details>
+      <details class="ocre-faq-item"><summary>Avez-vous une intégration avec mon CRM existant ?</summary><div class="ocre-answer">Pas en natif aujourd'hui. Une API d'import CSV est dispo pour migrer vos contacts. Si la demande émerge, on évaluera des connecteurs vers les CRM courants du marché (Hektor, Apimo, Adapt'Immo). Demandez-nous.</div></details>
+      <details class="ocre-faq-item"><summary>Dans quels pays Ocre Immo est-il disponible ?</summary><div class="ocre-answer">11 zones supportées avec wording et validations adaptés : France, Maroc, Espagne, Italie, Belgique, Portugal, Allemagne, Pays-Bas, Tunisie, Algérie, et un mode « Monde » générique. Multi-devises (12 devises) avec conversion live. Le marché Maghreb (notamment Marrakech) est notre cœur de cible historique.</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- 9. FOOTER -->
+<footer class="ocre-footer">
+  <div class="ocre-container">
+    <div class="ocre-footer-grid">
+      <div class="ocre-footer-brand">
+        <a href="<?php echo esc_url(home_url('/')); ?>#hero" class="ocre-logo"><span class="ocre-logo-mark">O</span> Ocre</a>
+        <p>Le SaaS qui anonymise et fluidifie le matching immobilier entre agents pactés. France &amp; Maghreb, mobile-first.</p>
+      </div>
+      <div><h4>Produit</h4><ul><li><a href="#modules">Modules Oi</a></li><li><a href="#pricing">Tarif</a></li><li><a href="#faq">FAQ</a></li><li><a href="#features">Fonctionnalités</a></li></ul></div>
+      <div><h4>Entreprise</h4><ul><li><a href="#">À propos</a></li><li><a href="#">Blog</a></li><li><a href="mailto:contact@ocre.immo">Contact</a></li><li><a href="#">Partenaires</a></li></ul></div>
+      <div><h4>Légal</h4><ul><li><a href="/cgu/">CGU</a></li><li><a href="/politique-confidentialite/">Confidentialité</a></li><li><a href="/mentions-legales/">Mentions légales</a></li></ul></div>
+      <div><h4>Contact</h4><ul><li><a href="mailto:support@ocre.immo">support@ocre.immo</a></li><li><a href="https://auth.ocre.immo/">Accès agent</a></li></ul></div>
+    </div>
+    <div class="ocre-footer-bottom">
+      <span>© 2026 Ocre Immo · Fait à Marrakech &amp; en France ❤️</span>
+      <span>v1.0 · M102 WordPress</span>
+    </div>
+  </div>
+</footer>
+
+<?php wp_footer(); ?>
+</body>
+</html>
