@@ -52,15 +52,15 @@ function oauth_ensure_extended_schema(): void {
             "ALTER TABLE auth_users ADD COLUMN phone_country_code CHAR(2) NULL",
             "ALTER TABLE auth_users ADD COLUMN cgu_accepted_at DATETIME NULL",
         ];
-        foreach ($cols as $sql) { try { auth_pdo()->exec($sql); } catch (Throwable $e) {} }
-        try { auth_pdo()->exec("CREATE INDEX idx_oauth ON auth_users (oauth_provider, oauth_provider_user_id)"); } catch (Throwable $e) {}
+        foreach ($cols as $sql) { try { auth_db()->exec($sql); } catch (Throwable $e) {} }
+        try { auth_db()->exec("CREATE INDEX idx_oauth ON auth_users (oauth_provider, oauth_provider_user_id)"); } catch (Throwable $e) {}
     } catch (Throwable $e) {}
     $done = true;
 }
 
 function oauth_upsert_user(string $provider, string $providerUserId, string $email, string $firstName = '', string $lastName = ''): int {
     oauth_ensure_extended_schema();
-    $pdo = auth_pdo();
+    $pdo = auth_db();
     // Lookup existant via provider + provider_user_id ou email
     $st = $pdo->prepare("SELECT id FROM auth_users WHERE (oauth_provider = ? AND oauth_provider_user_id = ?) OR email = ? LIMIT 1");
     $st->execute([$provider, $providerUserId, $email]);
@@ -75,16 +75,17 @@ function oauth_upsert_user(string $provider, string $providerUserId, string $ema
     return (int) $pdo->lastInsertId();
 }
 
-function oauth_complete_login(int $userId, string $email): void {
-    // JWT 30j + refresh 30j + cookies + redirect app.ocre.immo
-    $jwtPayload = ['sub' => $userId, 'email' => $email, 'iat' => time(), 'exp' => time() + 30 * 86400];
-    $jwt = jwt_encode($jwtPayload);
+function oauth_complete_login(int $userId, string $email, string $provider = 'oauth'): void {
+    // JWT 30j (signature jwt_encode(int $sub, int $ttl) retourne array)
+    $jwt = jwt_encode($userId, 30 * 86400);
     $refresh = bin2hex(random_bytes(32));
-    // Save refresh
+    // Save refresh (table peut s'appeler differemment selon schema, swallow si absent)
     try {
-        auth_pdo()->prepare("INSERT INTO auth_refresh_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))")->execute([$userId, hash('sha256', $refresh)]);
-    } catch (Throwable $e) { /* table may differ, swallow */ }
-    auth_set_cookies($jwt, $refresh);
-    header('Location: https://app.ocre.immo/?_oauth_login=1');
+        auth_db()->prepare("INSERT INTO auth_refresh_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))")->execute([$userId, hash('sha256', $refresh)]);
+    } catch (Throwable $e) { /* swallow */ }
+    auth_set_cookies($jwt['token'], $refresh);
+    // M_OAUTH_DIAGNOSTIC_FIX — redirect home ocre.immo avec ?login=success&app=<slug> pour toast
+    $appTarget = isset($_COOKIE['oauth_app_target']) ? preg_replace('/[^a-z]/', '', strtolower($_COOKIE['oauth_app_target'])) : 'agent';
+    header('Location: https://ocre.immo/?login=success&app=' . urlencode($appTarget) . '&via=' . urlencode($provider));
     exit;
 }

@@ -40,4 +40,4 @@ if ($env['_mock']) {
 }
 
 $uid = oauth_upsert_user('google', $providerUserId, $email, $firstName, $lastName);
-oauth_complete_login($uid, $email);
+oauth_complete_login($uid, $email, 'google');

@@ -303,6 +303,35 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--
   document.querySelectorAll('.hv-tile').forEach(function(el, i){ el.style.transitionDelay = (i * 80) + 'ms'; obs.observe(el); });
 })();
 window.OCRE_SIGNUP_APP = 'agent';
+// M_OAUTH_DIAGNOSTIC_FIX — détection ?login=success&app=<slug> post-OAuth callback : toast vert + auto-redirect app
+(function(){
+  var qs = new URLSearchParams(location.search);
+  if (qs.get('login') === 'success') {
+    var app = (qs.get('app') || 'agent').replace(/[^a-z]/g, '');
+    var via = (qs.get('via') || 'oauth').replace(/[^a-z_]/g, '');
+    // Toast vert
+    var toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);background:#2D7A3E;color:#fff;padding:18px 30px;border-radius:14px;font-size:15px;font-weight:600;box-shadow:0 12px 40px rgba(45,122,62,0.45);z-index:99999;opacity:0;transition:all 0.3s cubic-bezier(.2,.7,.2,1);font-family:Inter,-apple-system,sans-serif;display:flex;align-items:center;gap:10px';
+    toast.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>✓ Bienvenue ! Tu es connecté.</span>';
+    document.body.appendChild(toast);
+    requestAnimationFrame(function(){ toast.style.opacity = '1'; toast.style.transform = 'translate(-50%,-50%) scale(1)'; });
+    // Cleanup URL (retire query string)
+    if (history.replaceState) history.replaceState({}, '', location.pathname);
+    // Auto-redirect vers app cible apres 1.5s
+    var appUrls = { agent:'https://app.ocre.immo/', scan:'https://scan.ocre.immo/', book:'https://book.ocre.immo/', demande:'https://demande.ocre.immo/', capture:'https://capture.ocre.immo/', estimer:'https://estimer.ocre.immo/' };
+    var dest = appUrls[app] || appUrls.agent;
+    setTimeout(function(){ location.href = dest; }, 1500);
+  } else if (qs.get('error')) {
+    var err = (qs.get('error') || '').replace(/[^a-z_]/g, '');
+    var msg = err === 'cancelled' ? 'Connexion annulée.' : 'Erreur OAuth : ' + err;
+    var toastE = document.createElement('div');
+    toastE.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#C62828;color:#fff;padding:16px 26px;border-radius:14px;font-size:14px;font-weight:600;box-shadow:0 12px 40px rgba(198,40,40,0.4);z-index:99999;font-family:Inter,sans-serif';
+    toastE.textContent = '✗ ' + msg;
+    document.body.appendChild(toastE);
+    if (history.replaceState) history.replaceState({}, '', location.pathname);
+    setTimeout(function(){ toastE.remove(); }, 3000);
+  }
+})();
 </script>
 
 <?php

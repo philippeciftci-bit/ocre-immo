@@ -3,9 +3,12 @@
 require_once __DIR__ . '/../_lib.php';
 $env = oauth_load_env('google');
 $state = oauth_state_set('google');
+// M_OAUTH_DIAGNOSTIC_FIX — capture target app cible via ?app=<slug> dans cookie pour redirect post-login
+$appTarget = preg_replace('/[^a-z]/', '', strtolower((string)($_GET['app'] ?? 'agent')));
+setcookie('oauth_app_target', $appTarget, ['expires'=>time()+600,'path'=>'/','domain'=>'.ocre.immo','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);
 if ($env['_mock']) {
-    // Mode mock : redirect direct callback avec fake code
-    header('Location: ' . oauth_redirect_uri('google') . '?code=MOCK_CODE&state=' . $state);
+    // Mode mock : redirect vers page consent fake locale (style Google)
+    header('Location: /api/oauth/mock/consent.php?provider=google&state=' . $state);
     exit;
 }
 $params = http_build_query([
