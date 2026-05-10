@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dossier Ocre Immo · Viewer offline</title>
+<style>
+  :root { --cream:#FAF6F1; --cream-2:#F4ECDF; --brown:#3D2818; --brown-soft:#6B5642; --brown-mute:#998877; --ocre-dark:#8B5E3C; --gold:#D4A256; --green:#2D7A3E; --line:#E5DAC6; }
+  *,*::before,*::after { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,'Segoe UI',sans-serif; background:var(--cream); color:var(--brown); line-height:1.55; padding:24px 16px; }
+  .container { max-width:760px; margin:0 auto; }
+  header.head { display:flex; align-items:center; gap:12px; padding:14px 0 18px; border-bottom:1px solid var(--line); margin-bottom:24px; }
+  header.head .logo { width:42px; height:42px; border-radius:50%; background:var(--ocre-dark); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:20px; }
+  h1 { font-size:24px; margin:0; font-weight:600; color:var(--brown); }
+  h2 { font-size:18px; margin:24px 0 10px; font-weight:600; color:var(--ocre-dark); border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .meta { color:var(--brown-mute); font-size:13px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .row { display:flex; gap:14px; margin:6px 0; font-size:14px; }
+  .row .k { color:var(--brown-mute); min-width:170px; }
+  .row .v { color:var(--brown); font-weight:500; flex:1; }
+  .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; margin-top:12px; }
+  .gallery img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; cursor:pointer; transition:transform .12s; }
+  .gallery img:hover { transform:scale(1.02); }
+  .lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:99; align-items:center; justify-content:center; cursor:pointer; padding:30px; }
+  .lightbox.show { display:flex; }
+  .lightbox img { max-width:100%; max-height:100%; border-radius:8px; }
+  footer { text-align:center; padding:20px 0 10px; color:var(--brown-mute); font-size:12px; border-top:1px solid var(--line); margin-top:30px; }
+  footer a { color:var(--ocre-dark); text-decoration:none; }
+  .badge { display:inline-block; padding:3px 8px; border-radius:6px; background:var(--cream-2); color:var(--brown-soft); font-size:11px; font-weight:600; margin-left:6px; }
+  .empty { padding:30px 18px; text-align:center; color:var(--brown-mute); }
+  .err { padding:30px 18px; background:#FDECEA; color:#C62828; border-radius:10px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="head">
+    <div class="logo">O</div>
+    <div>
+      <h1 id="dossier-title">Chargement…</h1>
+      <div class="meta" id="dossier-meta"></div>
+    </div>
+  </header>
+
+  <div id="content"><div class="empty">Chargement des données…</div></div>
+
+  <footer>Généré par <strong>Ocre Immo</strong> · <a href="https://ocre.immo" target="_blank">ocre.immo</a> · Viewer standalone offline</footer>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('show')"><img id="lightbox-img" alt=""></div>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function fmt(v){ if(v===null||v===undefined||v==='') return '—'; return String(v); }
+  function row(k,v){ return '<div class="row"><div class="k">'+k+'</div><div class="v">'+fmt(v)+'</div></div>'; }
+  function openLightbox(src){ $('lightbox-img').src=src; $('lightbox').classList.add('show'); }
+  window.openLightbox = openLightbox;
+
+  fetch('data.json').then(r=>r.json()).then(d=>{
+    var data = d.data || {};
+    var profil = d.projet || data.profil || data.projet || 'Dossier';
+    var title = (data.nom||data.client_nom||'') + ' ' + (data.prenom||data.client_prenom||'');
+    title = title.trim() || 'Dossier #' + (d.dossier_id_source || '');
+    $('dossier-title').textContent = title;
+    var meta = profil;
+    if (data.ville) meta += ' · ' + data.ville;
+    if (data.pays) meta += ' (' + data.pays + ')';
+    if (d._stats) meta += ' · ' + (d._stats.photos||0) + ' photos';
+    if (d.export_options) {
+      if (d.export_options.anonymize_client) meta += ' <span class="badge">Anonymisé</span>';
+      if (d.export_options.hide_price) meta += ' <span class="badge">Prix masqué</span>';
+    }
+    $('dossier-meta').innerHTML = meta;
+
+    var html = '';
+    html += '<div class="card"><h2>Identité client</h2>';
+    html += row('Profil', profil);
+    html += row('Nom', data.nom || data.client_nom);
+    html += row('Prénom', data.prenom || data.client_prenom);
+    html += row('Email', data.email || data.client_email);
+    html += row('Téléphone', data.tel || data.telephone || data.client_phone);
+    if (data.societe_nom) html += row('Société', data.societe_nom);
+    html += '</div>';
+
+    html += '<div class="card"><h2>Bien / Recherche</h2>';
+    html += row('Type bien', data.type_bien);
+    html += row('Ville', data.ville);
+    html += row('Pays', data.pays);
+    html += row('Quartier', data.quartier);
+    html += row('Surface habitable', data.surface_hab ? data.surface_hab + ' m²' : '');
+    html += row('Surface terrain', data.surface_terrain ? data.surface_terrain + ' m²' : '');
+    html += row('Pièces', data.pieces);
+    html += row('Chambres', data.chambres);
+    html += row('Étage', data.etage);
+    html += row('Année construction', data.annee_construction);
+    html += row('État', data.etat);
+    if (data.equipements) html += row('Équipements', Array.isArray(data.equipements) ? data.equipements.join(', ') : data.equipements);
+    html += '</div>';
+
+    html += '<div class="card"><h2>Section III · Financier</h2>';
+    html += row('Prix vendeur', data.prix_vendeur || data.prix_affiche || data.prix);
+    html += row('Honoraires FAI', data.honoraires_fai || data.honoraires);
+    html += row('Budget min', data.budget_min);
+    html += row('Budget max', data.budget_max);
+    html += row('Loyer min', data.loyer_min);
+    html += row('Loyer max', data.loyer_max);
+    html += row('Loyer demandé', data.loyer_demande);
+    html += row('Apport', data.apport);
+    html += row('Mensualité max', data.mensualite_max);
+    html += '</div>';
+
+    html += '<div class="card"><h2>Notes & complémentaire</h2>';
+    html += row('Description', data.description || data.notes);
+    html += row('Origine contact', data.origine_contact);
+    html += row('Date de création', d.export_date);
+    html += '</div>';
+
+    if (d.photos && d.photos.length) {
+      html += '<div class="card"><h2>Photos (' + d.photos.length + ')</h2>';
+      html += '<div class="gallery">';
+      d.photos.forEach(function(p){ html += '<img src="'+p+'" alt="" loading="lazy" onclick="openLightbox(this.src)">'; });
+      html += '</div></div>';
+    }
+    if (d.documents && d.documents.length) {
+      html += '<div class="card"><h2>Documents (' + d.documents.length + ')</h2>';
+      html += '<ul style="margin:8px 0;padding-left:20px;font-size:14px">';
+      d.documents.forEach(function(f){ html += '<li><a href="'+f+'" download style="color:var(--ocre-dark)">'+f.split('/').pop()+'</a></li>'; });
+      html += '</ul></div>';
+    }
+
+    $('content').innerHTML = html;
+  }).catch(function(e){
+    $('content').innerHTML = '<div class="err">⚠ Erreur chargement data.json — ouvre ce fichier depuis le ZIP extrait, pas directement depuis le ZIP compressé. Détail : ' + e.message + '</div>';
+  });
+})();
+</script>
+</body>
+</html>
