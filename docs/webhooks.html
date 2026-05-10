@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Webhooks · Documentation développeur · Ocre Immo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --cream:#FAF6F1; --cream-2:#F4ECDF; --brown:#3D2818; --brown-soft:#6B5642; --brown-mute:#998877; --ocre-dark:#8B5E3C; --green:#2D7A3E; --green-soft:#E8F2EA; --line:#E5DAC6; }
+  *,*::before,*::after { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter',sans-serif; background:var(--cream); color:var(--brown); line-height:1.65; font-size:15px; }
+  .container { max-width:840px; margin:0 auto; padding:24px; }
+  h1 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:36px; margin:0 0 8px; }
+  h2 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:26px; margin-top:36px; margin-bottom:12px; color:var(--brown); }
+  h3 { font-size:15px; font-weight:600; margin-top:24px; margin-bottom:8px; color:var(--ocre-dark); }
+  p { margin:8px 0 14px; color:var(--brown-soft); }
+  code { font-family:'JetBrains Mono',monospace; background:var(--cream-2); padding:2px 6px; border-radius:4px; font-size:13px; color:var(--ocre-dark); }
+  pre { background:#2a2017; color:#e5dac6; padding:14px 16px; border-radius:8px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:12.5px; line-height:1.5; margin:12px 0; }
+  pre code { background:none; padding:0; color:inherit; }
+  .lead { font-size:17px; color:var(--brown-soft); margin-bottom:24px; }
+  .event-card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px; margin:12px 0; }
+  .event-card h3 { margin:0 0 6px; }
+  .event-card .desc { font-size:13.5px; color:var(--brown-soft); margin:6px 0 10px; }
+  .badge { font-size:10px; font-weight:700; padding:3px 8px; border-radius:5px; background:var(--green-soft); color:var(--green); text-transform:uppercase; letter-spacing:.04em; margin-left:8px; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:14px; }
+  th { text-align:left; padding:10px 12px; background:var(--cream-2); border-bottom:2px solid var(--line); font-weight:600; color:var(--brown); }
+  td { padding:10px 12px; border-bottom:1px solid var(--line); color:var(--brown-soft); }
+  ul.tight { padding-left:22px; margin:8px 0; }
+  ul.tight li { margin:4px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Documentation Webhooks Ocre Immo</h1>
+  <p class="lead">Intègre Ocre Immo à ton CRM, Zapier, Notion ou Google Sheets via webhooks. POST JSON signés HMAC-SHA256 envoyés en temps réel quand des events se produisent dans ton tenant.</p>
+
+  <h2>Configuration</h2>
+  <p>Dans Oi Agent : <strong>Réglages → Intégrations</strong> → <em>+ Nouveau webhook</em> → entre l'URL de ton endpoint + sélectionne les events à recevoir → tu obtiens un secret one-shot à conserver.</p>
+
+  <h2>Structure du payload</h2>
+  <pre><code>{
+  "event": "dossier.created",
+  "timestamp": 1714944000,
+  "data": {
+    "dossier_id": 123,
+    "type": "vente",
+    "profil": "vendeur",
+    "ville": "Marrakech",
+    "pays": "MA",
+    "prix": 1800000,
+    "devise": "MAD",
+    "created_by": { "user_id": 5, "email": "agent@example.com" }
+  }
+}</code></pre>
+
+  <h2>Headers HTTP envoyés</h2>
+  <table>
+    <tr><th>Header</th><th>Description</th></tr>
+    <tr><td><code>Content-Type</code></td><td>application/json</td></tr>
+    <tr><td><code>User-Agent</code></td><td>OcreImmo-Webhook/1.0</td></tr>
+    <tr><td><code>X-Ocre-Event</code></td><td>Type d'event (ex: <code>dossier.created</code>)</td></tr>
+    <tr><td><code>X-Ocre-Signature</code></td><td><code>sha256=&lt;hmac_sha256_hex(payload, secret)&gt;</code></td></tr>
+    <tr><td><code>X-Ocre-Timestamp</code></td><td>Unix timestamp UTC</td></tr>
+  </table>
+
+  <h2>13 events supportés</h2>
+  <div class="event-card"><h3>dossier.created<span class="badge">stable</span></h3><div class="desc">Quand un nouveau dossier est créé (statut brouillon ou enregistré).</div></div>
+  <div class="event-card"><h3>dossier.updated<span class="badge">stable</span></h3><div class="desc">Quand un dossier existant est modifié (champs métier, photos, etc.).</div></div>
+  <div class="event-card"><h3>dossier.deleted<span class="badge">stable</span></h3><div class="desc">Quand un dossier est supprimé définitivement.</div></div>
+  <div class="event-card"><h3>dossier.archived<span class="badge">stable</span></h3><div class="desc">Quand un dossier passe en statut archivé.</div></div>
+  <div class="event-card"><h3>dossier.sold<span class="badge">stable</span></h3><div class="desc">Quand un dossier vente est marqué comme vendu.</div></div>
+  <div class="event-card"><h3>dossier.rented<span class="badge">stable</span></h3><div class="desc">Quand un dossier location est marqué comme loué.</div></div>
+  <div class="event-card"><h3>pact.created<span class="badge">stable</span></h3><div class="desc">Quand un pact inter-agents est signé.</div></div>
+  <div class="event-card"><h3>pact.deleted<span class="badge">stable</span></h3><div class="desc">Quand un pact est résilié.</div></div>
+  <div class="event-card"><h3>proposal.received<span class="badge">stable</span></h3><div class="desc">Quand une proposition de match arrive d'un confrère.</div></div>
+  <div class="event-card"><h3>proposal.accepted<span class="badge">stable</span></h3><div class="desc">Quand une proposition est acceptée par les 2 parties (révélation fiches).</div></div>
+  <div class="event-card"><h3>proposal.rejected<span class="badge">stable</span></h3><div class="desc">Quand une proposition est rejetée par l'une des parties.</div></div>
+  <div class="event-card"><h3>match.detected<span class="badge">stable</span></h3><div class="desc">Quand l'algo détecte un match avec score ≥ 85% entre 2 dossiers pactés.</div></div>
+  <div class="event-card"><h3>document.signed<span class="badge">stable</span></h3><div class="desc">Quand un document (mandat, proposition, etc.) est signé électroniquement.</div></div>
+
+  <h2>Vérification de la signature</h2>
+  <p>Recompose la signature côté serveur avec ton secret pour vérifier l'authenticité du POST. Compare avec <code>X-Ocre-Signature</code> en time-constant (utilise <code>hmac.compare_digest</code> ou équivalent).</p>
+
+  <h3>Node.js</h3>
+  <pre><code>const crypto = require('crypto');
+function verify(rawBody, signature, secret) {
+  const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}</code></pre>
+
+  <h3>Python</h3>
+  <pre><code>import hmac, hashlib
+def verify(raw_body: bytes, signature: str, secret: str) -> bool:
+    expected = 'sha256=' + hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)</code></pre>
+
+  <h3>PHP</h3>
+  <pre><code>function verify(string $rawBody, string $signature, string $secret): bool {
+    $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
+    return hash_equals($expected, $signature);
+}</code></pre>
+
+  <h2>Retry policy</h2>
+  <ul class="tight">
+    <li><strong>Timeout</strong> : 5s par requête</li>
+    <li><strong>Retries</strong> : exponentiel <code>1m → 5m → 15m → 1h → 6h → 24h</code> max 6 essais</li>
+    <li><strong>Auto-disable</strong> : après 5 échecs consécutifs, le webhook est désactivé automatiquement et l'agent reçoit une notif PWA push</li>
+    <li><strong>Réactivation</strong> : depuis Réglages → Intégrations, tape "Réactiver" sur le webhook désactivé (le compteur de failures repart à 0)</li>
+  </ul>
+
+  <h2>Limitations</h2>
+  <ul class="tight">
+    <li>Payload max <strong>256 KB</strong> par event</li>
+    <li>HTTPS uniquement (HTTP rejeté à la création)</li>
+    <li>Max <strong>10 webhooks par tenant</strong></li>
+    <li>Rate limit : <strong>100 events/heure/webhook</strong></li>
+  </ul>
+
+  <h2>FAQ</h2>
+  <h3>Comment tester un webhook avant production ?</h3>
+  <p>Utilise <a href="https://webhook.site" target="_blank" rel="noopener">webhook.site</a> ou <a href="https://requestbin.com" target="_blank" rel="noopener">requestbin.com</a> pour générer une URL temporaire qui affiche les payloads reçus.</p>
+  <h3>Comment intégrer Zapier ?</h3>
+  <p>Crée un Zap → trigger "Catch Webhook" → copie l'URL → utilise-la comme webhook URL dans Ocre.</p>
+  <h3>Comment intégrer Notion ?</h3>
+  <p>Via Zapier ou Make.com (intégration native Notion + webhooks input). Ou direct API Notion via un middleware custom (Cloudflare Workers, AWS Lambda).</p>
+
+  <p style="text-align:center;margin-top:48px;color:var(--brown-mute);font-size:13px">Documentation v1.0 · M116b · Pour questions : <a href="mailto:dev@ocre.immo" style="color:var(--ocre-dark)">dev@ocre.immo</a></p>
+</div>
+</body>
+</html>
