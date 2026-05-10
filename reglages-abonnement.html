@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3D2818">
+<title>Abonnement · Ocre Immo</title>
+<link rel="icon" href="/favicon/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:#FAF6F1; --cream-2:#F4ECDF; --brown:#3D2818; --brown-soft:#6B5642; --brown-mute:#998877;
+    --ocre:#B87333; --ocre-dark:#8B5E3C; --gold:#D4A256;
+    --green:#2D7A3E; --green-soft:#E8F2EA;
+    --red:#C62828; --red-soft:#FDECEA;
+    --line:#E5DAC6;
+  }
+  *,*::before,*::after { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter',sans-serif; background:var(--cream); color:var(--brown); padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); line-height:1.55; }
+  .container { max-width:560px; margin:0 auto; padding:16px; }
+  header { display:flex; align-items:center; gap:10px; padding:6px 0 14px; border-bottom:1px solid var(--line); margin-bottom:24px; }
+  .back { background:none; border:1px solid var(--line); color:var(--brown); width:36px; height:36px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  h1 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:26px; margin:0; }
+  .meta { color:var(--brown-mute); font-size:12px; margin:2px 0 0; }
+
+  .plan-card {
+    background:#fff; border:1px solid var(--line); border-radius:14px;
+    padding:22px 20px; margin-bottom:16px; position:relative;
+  }
+  .plan-card.active { border-color:var(--green); background:linear-gradient(135deg,#fff,var(--green-soft)); }
+  .plan-card.featured { border:2px solid var(--gold); }
+  .plan-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+  .plan-name { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:24px; line-height:1.1; }
+  .plan-price { font-size:14px; color:var(--brown-soft); margin-top:4px; }
+  .plan-price strong { color:var(--brown); font-size:20px; font-weight:700; }
+  .plan-badge { font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:.04em; flex-shrink:0; }
+  .plan-badge.active { background:var(--green-soft); color:var(--green); }
+  .plan-badge.inactive { background:var(--cream-2); color:var(--brown-mute); }
+  .plan-badge.canceling { background:var(--red-soft); color:var(--red); }
+  .plan-features { padding:0; margin:14px 0; list-style:none; }
+  .plan-features li { padding:5px 0; font-size:14px; color:var(--brown); display:flex; gap:8px; align-items:flex-start; }
+  .plan-features li::before { content:'✓'; color:var(--green); font-weight:700; flex-shrink:0; }
+  .plan-meta-line { font-size:13px; color:var(--brown-soft); margin-top:8px; }
+  .plan-meta-line b { color:var(--brown); }
+
+  .btn { padding:13px 20px; border-radius:10px; font-size:14px; font-weight:600; border:none; cursor:pointer; text-align:center; font-family:inherit; transition:background .15s; width:100%; margin-top:14px; }
+  .btn-primary { background:var(--ocre-dark); color:#fff; }
+  .btn-primary:hover { background:var(--brown); }
+  .btn-primary:disabled { background:var(--brown-mute); cursor:not-allowed; }
+  .btn-ghost { background:transparent; color:var(--brown); border:1px solid var(--line); }
+  .btn-ghost:hover { border-color:var(--ocre-dark); color:var(--ocre-dark); }
+  .btn-danger { background:transparent; color:var(--red); border:1px solid var(--red-soft); }
+  .btn-danger:hover { background:var(--red-soft); }
+
+  .invoices { margin-top:32px; }
+  .invoices h2 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:20px; margin:0 0 12px; }
+  .invoice-row { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); font-size:13.5px; gap:8px; }
+  .invoice-row:last-child { border-bottom:none; }
+  .invoice-status.paid { color:var(--green); font-weight:600; }
+  .invoice-status.failed { color:var(--red); font-weight:600; }
+
+  .stripe-mention { text-align:center; font-size:12px; color:var(--brown-mute); margin-top:24px; padding:12px; background:var(--cream-2); border-radius:8px; }
+
+  .feedback { margin-top:14px; padding:10px 14px; border-radius:8px; font-size:13px; display:none; }
+  .feedback.show { display:block; }
+  .feedback.success { background:var(--green-soft); color:var(--green); }
+  .feedback.error { background:var(--red-soft); color:var(--red); }
+
+  .loader { text-align:center; padding:40px; color:var(--brown-mute); }
+  .spinner { width:24px; height:24px; border-radius:50%; border:3px solid var(--cream-2); border-top-color:var(--ocre-dark); animation:spin .8s linear infinite; display:inline-block; margin-right:8px; vertical-align:middle; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  dialog.modal { border:none; border-radius:16px; padding:24px; width:92vw; max-width:380px; box-shadow:0 12px 48px rgba(0,0,0,.18); }
+  dialog.modal::backdrop { background:rgba(42,32,23,.5); backdrop-filter:blur(2px); }
+  dialog.modal h2 { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600; font-size:22px; margin:0 0 12px; }
+  dialog.modal p { font-size:14px; color:var(--brown-soft); }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+  .modal-actions .btn { width:auto; margin-top:0; padding:10px 18px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <button class="back" onclick="history.length>1?history.back():(location.href='/')" aria-label="Retour">←</button>
+    <div>
+      <h1>Abonnement</h1>
+      <p class="meta" id="status-meta">Chargement…</p>
+    </div>
+  </header>
+
+  <div id="loader" class="loader"><span class="spinner"></span> Chargement de votre abonnement…</div>
+
+  <div id="content" hidden>
+    <!-- Plan Pro -->
+    <div class="plan-card active" data-testid="plan-pro">
+      <div class="plan-head">
+        <div>
+          <div class="plan-name">Ocre Pro</div>
+          <div class="plan-price"><strong>49 €</strong> / mois HT · par agent</div>
+        </div>
+        <span class="plan-badge active">Actif</span>
+      </div>
+      <ul class="plan-features">
+        <li>Dossiers illimités, profils illimités</li>
+        <li>Pactes inter-agents illimités</li>
+        <li>Matching quotidien automatique</li>
+        <li>PWA iOS/Android avec push natives</li>
+        <li>Multi-devises &amp; multi-pays</li>
+      </ul>
+    </div>
+
+    <!-- Plan Channel Premium -->
+    <div class="plan-card featured" id="plan-channel" data-testid="plan-channel">
+      <div class="plan-head">
+        <div>
+          <div class="plan-name">Channel Premium</div>
+          <div class="plan-price"><strong>99 €</strong> / mois HT · pack tout-inclus</div>
+        </div>
+        <span class="plan-badge inactive" id="channel-badge">Inactif</span>
+      </div>
+      <ul class="plan-features">
+        <li>7 portails immobiliers (LeBonCoin, SeLoger, Bien'ici, Idealista, Apartments.com, Avito.ma, Mubawab)</li>
+        <li>Mise à jour automatique des publications quand vous modifiez un dossier</li>
+        <li>Suppression auto sur tous les portails à la vente/location</li>
+        <li>Multi-devise + multi-langue (auto FR→EN/ES/AR)</li>
+        <li>Worker async avec retry automatique en cas d'échec API</li>
+      </ul>
+      <div class="plan-meta-line" id="channel-meta-line"></div>
+      <button class="btn btn-primary" id="cta-channel" type="button">Activer Channel Premium · 99 € / mois HT</button>
+      <button class="btn btn-danger" id="cta-cancel" type="button" hidden>Annuler Channel Premium</button>
+      <button class="btn btn-ghost" id="cta-resume" type="button" hidden>Reprendre l'abonnement</button>
+    </div>
+
+    <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+
+    <section class="invoices" id="invoices-section" hidden>
+      <h2>Factures récentes</h2>
+      <div id="invoices-list"></div>
+    </section>
+
+    <p class="stripe-mention">🔒 Paiement sécurisé par Stripe · Sans engagement · Résiliable à tout moment</p>
+  </div>
+</div>
+
+<dialog id="confirmModal" class="modal">
+  <h2>Annuler Channel Premium ?</h2>
+  <p>Vos publications sur les portails resteront actives jusqu'à la fin de la période en cours, puis seront supprimées automatiquement. Vous pouvez réactiver à tout moment.</p>
+  <div class="modal-actions">
+    <button class="btn btn-ghost" id="confirm-no" type="button">Non, garder</button>
+    <button class="btn btn-danger" id="confirm-yes" type="button">Oui, annuler</button>
+  </div>
+</dialog>
+
+<script>
+(function() {
+  const $ = (id) => document.getElementById(id);
+  let state = null;
+
+  async function load() {
+    try {
+      const r = await fetch('/api/billing/status.php', { credentials: 'include' });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'load failed');
+      state = d;
+      render();
+      $('loader').hidden = true;
+      $('content').hidden = false;
+    } catch (e) {
+      $('loader').textContent = 'Erreur : ' + e.message;
+    }
+  }
+
+  function fmtDate(s) {
+    if (!s) return '';
+    const d = new Date(s.replace(' ', 'T') + 'Z');
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  function fmtAmount(a) { return a == null ? '' : Number(a).toFixed(2).replace('.', ',') + ' €'; }
+
+  function render() {
+    const ch = state.plans.channel_premium;
+    const sub = state.subscription;
+    const badge = $('channel-badge');
+    const meta = $('channel-meta-line');
+    const ctaSub = $('cta-channel');
+    const ctaCancel = $('cta-cancel');
+    const ctaResume = $('cta-resume');
+
+    if (ch.active) {
+      badge.textContent = sub && sub.cancel_at_period_end ? 'Annulation programmée' : 'Actif';
+      badge.className = 'plan-badge ' + (sub && sub.cancel_at_period_end ? 'canceling' : 'active');
+      meta.innerHTML = sub && sub.cancel_at_period_end
+        ? `Prend fin le <b>${fmtDate(ch.until)}</b>. Réactivez pour continuer la diffusion.`
+        : `Prochaine échéance le <b>${fmtDate(ch.until)}</b>.`;
+      ctaSub.hidden = true;
+      if (sub && sub.cancel_at_period_end) {
+        ctaCancel.hidden = true;
+        ctaResume.hidden = false;
+      } else {
+        ctaCancel.hidden = false;
+        ctaResume.hidden = true;
+      }
+    } else {
+      badge.textContent = 'Inactif';
+      badge.className = 'plan-badge inactive';
+      meta.textContent = ch.reason_inactive === 'features_expired' ? 'Période expirée. Réactivez pour reprendre la diffusion.' : 'Activez pour publier sur les 7 portails immobiliers.';
+      ctaSub.hidden = false;
+      ctaCancel.hidden = true;
+      ctaResume.hidden = true;
+    }
+
+    if (state.invoices && state.invoices.length > 0) {
+      $('invoices-section').hidden = false;
+      $('invoices-list').innerHTML = state.invoices.map(inv => `
+        <div class="invoice-row">
+          <div>
+            <div><b>${esc(inv.stripe_invoice_id || ('Facture #' + inv.id))}</b></div>
+            <div style="color:var(--brown-mute);font-size:12px">${fmtDate(inv.paid_at || inv.created_at)}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="invoice-status ${inv.status}">${inv.status === 'paid' ? '✓ Payée' : inv.status === 'failed' ? '✗ Échec' : inv.status}</div>
+            <div style="color:var(--brown-mute);font-size:13px">${fmtAmount(inv.amount_eur)}</div>
+          </div>
+          ${inv.pdf_url ? `<a href="${esc(inv.pdf_url)}" target="_blank" rel="noopener" class="btn btn-ghost" style="width:auto;padding:8px 14px;margin-top:0;font-size:12px">PDF</a>` : ''}
+        </div>
+      `).join('');
+    }
+  }
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function showFeedback(kind, msg) { const fb = $('feedback'); fb.className = 'feedback show ' + kind; fb.textContent = msg; }
+
+  $('cta-channel').addEventListener('click', async () => {
+    $('cta-channel').disabled = true;
+    $('cta-channel').textContent = 'Préparation…';
+    try {
+      const r = await fetch('/api/billing/subscribe.php', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'channel_premium' }),
+      });
+      const d = await r.json();
+      if (d.ok && d.checkout_url) {
+        window.location.href = d.checkout_url;
+      } else {
+        showFeedback('error', 'Erreur : ' + (d.error || 'inconnue'));
+        $('cta-channel').disabled = false;
+        $('cta-channel').textContent = 'Activer Channel Premium · 99 € / mois HT';
+      }
+    } catch (e) {
+      showFeedback('error', 'Erreur réseau : ' + e.message);
+      $('cta-channel').disabled = false;
+      $('cta-channel').textContent = 'Activer Channel Premium · 99 € / mois HT';
+    }
+  });
+
+  $('cta-cancel').addEventListener('click', () => $('confirmModal').showModal());
+  $('confirm-no').addEventListener('click', () => $('confirmModal').close());
+  $('confirm-yes').addEventListener('click', async () => {
+    $('confirmModal').close();
+    try {
+      const r = await fetch('/api/billing/cancel.php', { method: 'POST', credentials: 'include' });
+      const d = await r.json();
+      if (d.ok) {
+        showFeedback('success', 'Annulation programmée. Channel actif jusqu\'à la fin de la période.');
+        load();
+      } else {
+        showFeedback('error', 'Erreur : ' + (d.error || 'inconnue'));
+      }
+    } catch (e) { showFeedback('error', 'Erreur réseau'); }
+  });
+  $('cta-resume').addEventListener('click', async () => {
+    try {
+      const r = await fetch('/api/billing/resume.php', { method: 'POST', credentials: 'include' });
+      const d = await r.json();
+      if (d.ok) { showFeedback('success', 'Abonnement repris.'); load(); }
+      else { showFeedback('error', 'Erreur : ' + (d.error || 'inconnue')); }
+    } catch (e) { showFeedback('error', 'Erreur réseau'); }
+  });
+
+  // Auto-refresh si retour de checkout success
+  if (location.search.includes('success=1')) {
+    showFeedback('success', 'Paiement validé ! Activation en cours…');
+    setTimeout(load, 1500);
+  } else {
+    load();
+  }
+})();
+</script>
+</body>
+</html>

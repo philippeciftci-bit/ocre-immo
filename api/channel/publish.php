@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../_session.php';
 require_once __DIR__ . '/../lib/channels/registry.php';
+require_once __DIR__ . '/../lib/billing_channel.php';
 
 setCorsHeaders();
 $user = getCurrentUserDualMode();
@@ -16,6 +17,21 @@ $tenant = $user['slug'] ?? null;
 if (!$tenant) jsonError('Tenant requis', 400);
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') jsonError('method', 405);
+
+// M107 — Verification abonnement Channel Premium avant push queue.
+$canPub = bch_channel_can_publish($tenant);
+if (!$canPub['can_publish']) {
+    http_response_code(402);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'ok' => false,
+        'error' => 'channel_premium_required',
+        'reason' => $canPub['reason'],
+        'message' => 'Channel Premium requis pour syndiquer sur les portails. Activez pour 99€/mois HT.',
+        'upgrade_url' => '/reglages-abonnement.html',
+    ]);
+    exit;
+}
 
 channel_ensure_schema();
 
