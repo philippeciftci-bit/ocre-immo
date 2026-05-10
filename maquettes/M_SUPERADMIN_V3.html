@@ -169,52 +169,60 @@ table tr:last-child td{border-bottom:none;}
 .set-row .meta .desc{font-size:11.5px;color:var(--text-mute);margin-top:2px;}
 .set-input{background:var(--bg-3);border:1px solid var(--line);color:var(--text);font-size:12.5px;padding:6px 10px;border-radius:5px;font-family:inherit;width:240px;}
 
-/* ============== M_RESPONSIVE_GLOBAL_COMPACT — Mobile compact iPhone 13 (≤768px) ============== */
+/* ============== M_RESPONSIVE_GLOBAL_COMPACT + M_RESPONSIVE_DENSITY_FIX compactage extrême Linear/Notion (≤768px) ============== */
 @media (max-width: 768px) {
   .app{display:block;}
-  .hamburger{display:inline-flex;}
-  .sidebar{position:fixed;top:0;left:0;width:75%;max-width:290px;height:100vh;z-index:100;transform:translateX(-100%);transition:transform .25s cubic-bezier(.2,.7,.2,1);box-shadow:2px 0 18px rgba(0,0,0,0.4);padding:14px 10px;}
+  .hamburger{display:inline-flex;width:34px;height:34px;font-size:17px;margin-right:6px;}
+  /* M_DENSITY_FIX : drawer 240px FIXE au lieu de 75% écran (était 290px max) */
+  .sidebar{position:fixed;top:0;left:0;width:240px;max-width:240px;height:100vh;z-index:100;transform:translateX(-100%);transition:transform .25s cubic-bezier(.2,.7,.2,1);box-shadow:2px 0 18px rgba(0,0,0,0.4);padding:10px 8px;gap:1px;}
   .sidebar.open{transform:translateX(0);}
-  .sb-brand{padding:4px 10px 12px;}
-  .sb-brand .name{font-size:18px;}
-  .sb-brand .role{font-size:9px;}
-  .sb-item{padding:8px 10px;font-size:13px;line-height:1.3;min-height:38px;}
-  .sb-item .ic{font-size:14px;width:18px;}
-  .sb-foot{padding:10px;font-size:10px;}
-  .head{padding:10px 14px;}
+  /* M_DENSITY_FIX : header drawer compact 12px (était 20px+) + separateur fin 1px */
+  .sb-brand{padding:6px 10px 10px;margin-bottom:6px;border-bottom:1px solid var(--line);}
+  .sb-brand .name{font-size:17px;line-height:1.0;}
+  .sb-brand .role{font-size:9px;margin-top:2px;}
+  /* M_DENSITY_FIX : item drawer 32px hauteur + padding 7px 12px + font 13px + icon 16px + gap 8px */
+  .sb-item{padding:7px 12px;font-size:13px;line-height:1.3;min-height:32px;gap:8px;border-radius:5px;}
+  .sb-item .ic{font-size:14px;width:16px;}
+  .sb-foot{padding:8px 10px;font-size:9.5px;line-height:1.4;margin-top:8px;border-top:1px solid var(--line);}
+  /* M_DENSITY_FIX : header principal 50px max + padding 10px 12px */
+  .head{padding:8px 12px;min-height:50px;}
   .head .crumb{font-size:13px;}
-  .head .actions{gap:6px;}
+  .head .actions{gap:5px;}
   .head .search{display:none;}
-  .head .search-btn{display:inline-flex;width:32px;height:32px;border-radius:6px;background:var(--bg-3);border:1px solid var(--line);color:var(--text-mute);cursor:pointer;align-items:center;justify-content:center;font-size:14px;}
-  .head .ic-btn{width:32px;height:32px;font-size:13px;}
-  .head .av{width:30px;height:30px;font-size:12px;}
-  .content{padding:14px;}
-  .sec-title{font-size:16px;}
-  .sec-sub{font-size:12px;margin-bottom:14px;}
-  /* Stats : 2 cols mobile compact */
-  .stats{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
-  .stat-card{padding:11px 12px;}
-  .stat-card .label{font-size:10px;margin-bottom:4px;}
-  .stat-card .value{font-size:22px;}
-  .stat-card .delta{font-size:10px;}
-  /* Subtabs scroll horizontal */
-  .subtabs{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .subtab{padding:7px 11px;font-size:12px;}
-  /* Tableau → card-list mobile */
+  .head .search-btn{display:inline-flex;width:30px;height:30px;border-radius:5px;background:var(--bg-3);border:1px solid var(--line);color:var(--text-mute);cursor:pointer;align-items:center;justify-content:center;font-size:13px;}
+  .head .ic-btn{width:30px;height:30px;font-size:12px;border-radius:5px;}
+  .head .av{width:28px;height:28px;font-size:12px;}
+  /* M_DENSITY_FIX : contenu padding 12px + sec-title 16px margin-bottom 4px + sec-sub 12px margin-bottom 12px */
+  .content{padding:12px;}
+  .sec-title{font-size:16px;margin-bottom:4px;line-height:1.2;}
+  .sec-sub{font-size:12px;margin-bottom:12px;line-height:1.3;}
+  /* M_DENSITY_FIX : stats 2 cols + gap 8px + card max 80px hauteur + padding 8px + label tracking 0.04em */
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px;}
+  .stat-card{padding:8px 10px;border-radius:6px;}
+  .stat-card .label{font-size:9.5px;margin-bottom:3px;letter-spacing:0.04em;line-height:1.1;}
+  .stat-card .value{font-size:24px;line-height:1.0;}
+  .stat-card .delta{font-size:9.5px;margin-top:3px;line-height:1.1;}
+  /* M_DENSITY_FIX : subtabs padding 6px 10px + font 13px + icon 14px */
+  .subtabs{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px;}
+  .subtab{padding:6px 10px;font-size:13px;line-height:1.3;}
+  /* M_DENSITY_FIX : tableau → card-list compact 10px padding + 6px gap entre cards + nom 14px + email 12px */
   .tbl-wrap{border-radius:6px;}
-  .tbl-head{padding:10px 12px;flex-direction:column;align-items:flex-start;gap:8px;}
-  .tbl-head h3{font-size:13px;}
-  .tbl-head .filters{flex-wrap:wrap;width:100%;}
-  .tbl-head select{flex:1;font-size:11.5px;padding:5px 8px;}
+  .tbl-head{padding:8px 10px;flex-direction:column;align-items:flex-start;gap:6px;}
+  .tbl-head h3{font-size:13px;line-height:1.2;}
+  .tbl-head .filters{flex-wrap:wrap;width:100%;gap:6px;}
+  .tbl-head select{flex:1;font-size:11.5px;padding:4px 8px;}
   table thead{display:none;}
   table, table tbody{display:block;width:100%;}
-  table tr{display:block;border-bottom:1px solid var(--line-soft);padding:10px 12px;}
-  table tr:hover{background:transparent;}
-  table td{display:flex;justify-content:space-between;border:none;padding:3px 0;font-size:12px;}
-  table td::before{content:attr(data-lbl);color:var(--text-soft);font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;flex-shrink:0;margin-right:10px;}
-  table td.col-actions{justify-content:flex-end;padding-top:8px;}
+  table tr{display:block;border-bottom:none;padding:10px;margin:0 6px 6px;background:var(--bg-3);border-radius:6px;border:1px solid var(--line-soft);}
+  table tr:first-child{margin-top:6px;}
+  table tr:hover{background:var(--bg-3);}
+  table td{display:flex;justify-content:space-between;border:none;padding:2px 0;font-size:12px;line-height:1.3;}
+  table td::before{content:attr(data-lbl);color:var(--text-soft);font-size:10px;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;flex-shrink:0;margin-right:8px;}
+  table td b{font-size:14px;line-height:1.2;}
+  table td .badge{padding:2px 6px;font-size:9.5px;}
+  table td.col-actions{justify-content:flex-end;padding-top:6px;gap:4px;flex-wrap:wrap;}
   table td.col-actions::before{display:none;}
-  .act-btn{padding:5px 10px;font-size:11px;min-height:32px;}
+  .act-btn{padding:5px 9px;font-size:11px;min-height:30px;}
   /* Card grid Finance/Maintenance : 1 col mobile */
   .card-grid{grid-template-columns:1fr;gap:10px;margin-bottom:18px;}
   .fin-card{padding:14px;}
@@ -246,10 +254,21 @@ table tr:last-child td{border-bottom:none;}
   .set-input{width:100%;font-size:12px;}
   .set-row{flex-direction:column;align-items:stretch;gap:8px;}
 }
+/* M_DENSITY_FIX : iPhone SE compactage encore plus extrême */
 @media (max-width: 380px) {
-  .stats{grid-template-columns:1fr;}
-  .head{padding:8px 12px;}
-  .content{padding:12px 10px;}
+  .stats{grid-template-columns:1fr;gap:6px;}
+  .stat-card{padding:7px 9px;}
+  .stat-card .value{font-size:22px;}
+  .head{padding:6px 10px;min-height:46px;}
+  .head .av{display:none;}
+  .head .ic-btn{width:28px;height:28px;}
+  .content{padding:10px;}
+  .sec-title{font-size:15px;}
+  .sec-sub{font-size:11.5px;margin-bottom:10px;}
+  .sidebar{width:220px;max-width:220px;}
+  .sb-item{padding:6px 10px;min-height:30px;font-size:12.5px;}
+  table tr{padding:9px;margin:0 4px 5px;}
+  .subtab{padding:5px 9px;font-size:12.5px;}
 }
 </style>
 </head>
