@@ -61,6 +61,10 @@ $tools = [
 ];
 $t = $tools[$slug] ?? $tools['oi-agent'];
 $other_tools = array_filter($tools, function($k) use ($slug) { return $k !== $slug; }, ARRAY_FILTER_USE_KEY);
+// M_OAUTH_BOUCLE_FIX — détection cookie ocre_jwt + adapter CTAs si connecté
+require_once get_stylesheet_directory() . '/parts/auth-helper.php';
+$is_logged_in = ocre_is_logged_in();
+$app_url = 'https://app.ocre.immo/' . $slug;
 ?>
 
 <style>
@@ -152,9 +156,15 @@ body { font-family: 'Inter', system-ui, sans-serif; color: var(--brown); backgro
   <div class="op-hero-inner">
     <h1><?php echo esc_html($t['name']); ?></h1>
     <div class="op-tag"><?php echo esc_html($t['tagline']); ?></div>
-    <button type="button" class="op-cta" data-signup-trigger="<?php echo esc_attr($t['cta_app']); ?>" onclick="if(window.ocreSignupOpen){ocreSignupOpen();}return false;">Commencer (gratuit)
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-    </button>
+    <?php if ($is_logged_in): ?>
+      <a href="<?php echo esc_url($app_url); ?>" class="op-cta">Ouvrir <?php echo esc_html($t['name']); ?> →
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    <?php else: ?>
+      <button type="button" class="op-cta" data-signup-trigger="<?php echo esc_attr($t['cta_app']); ?>" onclick="if(window.ocreSignupOpen){ocreSignupOpen();}return false;">Commencer (gratuit)
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    <?php endif; ?>
   </div>
   <div class="op-scroll-indicator" aria-hidden="true">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13l5 5 5-5M7 6l5 5 5-5"/></svg>
@@ -199,10 +209,16 @@ body { font-family: 'Inter', system-ui, sans-serif; color: var(--brown); backgro
 <!-- SECTION 5 — CTA final -->
 <section class="op-cta-final">
   <h2>Prêt à utiliser <?php echo esc_html($t['name']); ?> ?</h2>
-  <p>Inscription en 30 secondes, sans carte bancaire.</p>
-  <button type="button" class="op-cta" onclick="ocreSignupOpen()">Commencer gratuit · 1 minute
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-  </button>
+  <p><?php echo $is_logged_in ? "Tu es déjà connecté · accès direct à l'app." : "Inscription en 30 secondes, sans carte bancaire."; ?></p>
+  <?php if ($is_logged_in): ?>
+    <a href="<?php echo esc_url($app_url); ?>" class="op-cta">Ouvrir <?php echo esc_html($t['name']); ?> →
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  <?php else: ?>
+    <button type="button" class="op-cta" data-signup-trigger="<?php echo esc_attr($t['cta_app']); ?>" onclick="if(window.ocreSignupOpen){ocreSignupOpen();}return false;">Commencer gratuit · 1 minute
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  <?php endif; ?>
 </section>
 
 <!-- SECTION 6 — Cross-sell 5 autres outils -->

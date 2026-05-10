@@ -6,6 +6,9 @@
  * M_OCRE_PWA_UNIFIE — meta PWA + apple-touch-icon + register sw.js dans cette page.
  */
 get_header();
+// M_OAUTH_BOUCLE_FIX — détection cookie ocre_jwt + bandeau connecté + CTA bandeau gold adapté
+require_once get_stylesheet_directory() . '/parts/auth-helper.php';
+$ocre_logged_in = ocre_is_logged_in();
 ?>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#3D2818">
@@ -201,9 +204,36 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--
 .hv-footer a { color: rgba(255,255,255,0.7); text-decoration: none; margin: 0 8px; }
 .hv-footer a:hover { color: var(--gold-bright); }
 
+/* M_OAUTH_BOUCLE_FIX — bandeau connecté discret 32px */
+.hv-connected-bar { background: linear-gradient(135deg, var(--ocre-dark) 0%, var(--brown) 100%); color: var(--cream); padding: 8px 24px; text-align: center; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 36px; }
+.hv-connected-bar strong { color: var(--gold-bright); font-weight: 600; }
+.hv-connected-bar a { color: var(--cream); text-decoration: none; padding: 4px 12px; border: 1px solid rgba(232,185,94,0.4); border-radius: 999px; font-size: 12.5px; font-weight: 600; transition: all .15s; }
+.hv-connected-bar a:hover { background: var(--gold-bright); color: var(--brown); border-color: var(--gold-bright); }
+.hv-connected-bar .logout { border: none; color: rgba(255,255,255,0.5); font-size: 11.5px; }
+.hv-connected-bar .logout:hover { background: transparent; color: var(--cream); border: none; }
+
 .hv-reveal { opacity: 0; transform: translateY(30px); transition: opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1); }
 .hv-reveal.hv-on { opacity: 1; transform: translateY(0); }
 </style>
+
+<?php if ($ocre_logged_in): ?>
+<div class="hv-connected-bar" id="hv-connected-bar">
+  <span>Bonjour <strong id="hv-conn-name">·</strong></span>
+  <a href="#tools">Mes outils →</a>
+  <a href="https://auth.ocre.immo/api/logout.php" class="logout">Se déconnecter</a>
+</div>
+<script>
+// Recupere first_name via /api/me asynchrone (JWT claims minimaux cote vitrine)
+(function(){
+  fetch('https://auth.ocre.immo/api/me.php', { credentials: 'include' })
+    .then(function(r){ return r.json(); }).then(function(d){
+      if (d && d.ok && (d.first_name || d.email)) {
+        document.getElementById('hv-conn-name').textContent = d.first_name || d.email.split('@')[0];
+      }
+    }).catch(function(){});
+})();
+</script>
+<?php endif; ?>
 
 <section class="hv-hero" id="hero">
   <div class="hv-hero-inner">
@@ -280,11 +310,19 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--
 </section>
 
 <section class="hv-gold">
-  <h2>100% gratuit. Pour toujours ?</h2>
-  <p>Profite tant qu'on le décide encore.</p>
-  <button type="button" class="hv-cta" data-signup-trigger="agent" onclick="if(window.ocreSignupOpen){ocreSignupOpen();}return false;" style="border:none;cursor:pointer;font-family:inherit">Créer mon compte
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-  </button>
+  <?php if ($ocre_logged_in): ?>
+    <h2>Tu es déjà connecté</h2>
+    <p>Choisis ton outil ci-dessus.</p>
+    <a href="https://app.ocre.immo/oi-agent" class="hv-cta">Ouvrir Oi Agent →
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  <?php else: ?>
+    <h2>100% gratuit. Pour toujours ?</h2>
+    <p>Profite tant qu'on le décide encore.</p>
+    <button type="button" class="hv-cta" data-signup-trigger="agent" onclick="if(window.ocreSignupOpen){ocreSignupOpen();}return false;" style="border:none;cursor:pointer;font-family:inherit">Créer mon compte
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  <?php endif; ?>
 </section>
 
 <footer class="hv-footer">
@@ -318,7 +356,8 @@ window.OCRE_SIGNUP_APP = 'agent';
     // Cleanup URL (retire query string)
     if (history.replaceState) history.replaceState({}, '', location.pathname);
     // Auto-redirect vers app cible apres 1.5s
-    var appUrls = { agent:'https://app.ocre.immo/', scan:'https://scan.ocre.immo/', book:'https://book.ocre.immo/', demande:'https://demande.ocre.immo/', capture:'https://capture.ocre.immo/', estimer:'https://estimer.ocre.immo/' };
+    // M_OAUTH_BOUCLE_FIX — destination = app cible OI sur app.ocre.immo (pas racine + sous-domaines pas tous deployes)
+    var appUrls = { agent:'https://app.ocre.immo/oi-agent', scan:'https://app.ocre.immo/oi-scan', book:'https://app.ocre.immo/oi-book', demande:'https://app.ocre.immo/oi-demande', capture:'https://app.ocre.immo/oi-capture', estimer:'https://app.ocre.immo/oi-estimer' };
     var dest = appUrls[app] || appUrls.agent;
     setTimeout(function(){ location.href = dest; }, 1500);
   } else if (qs.get('error')) {

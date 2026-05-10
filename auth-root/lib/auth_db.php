@@ -136,6 +136,9 @@ function auth_cors_allow(): void {
         'https://scan.ocre.immo',
         'https://book.ocre.immo',
         'https://demande.ocre.immo',
+        // M_OAUTH_BOUCLE_FIX — vitrine apex pour bandeau connecté fetch /api/me.php
+        'https://ocre.immo',
+        'https://www.ocre.immo',
     ];
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
     // Aussi : tenant slugs <slug>.ocre.immo (Oi Agent multi-tenant M99)
