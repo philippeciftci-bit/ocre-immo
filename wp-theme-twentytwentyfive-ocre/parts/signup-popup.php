@@ -160,4 +160,18 @@ async function ocreSignupSubmit(e) {
 document.addEventListener('keydown', function(e){
   if (e.key === 'Escape' && document.getElementById('osp-overlay').classList.contains('osp-show')) ocreSignupClose();
 });
+// M_OI_AGENT_CTA_FIX — Event delegation pour [data-signup-trigger] et [data-signup-close]
+// Plus robuste que onclick inline (compatible CSP strict + WP security plugins qui strippent onclick)
+document.addEventListener('click', function(e) {
+  var trigger = e.target.closest('[data-signup-trigger]');
+  if (trigger) {
+    e.preventDefault();
+    var app = trigger.getAttribute('data-signup-trigger');
+    if (app && app !== '1' && app !== 'true') window.OCRE_SIGNUP_APP = app;
+    ocreSignupOpen();
+    return;
+  }
+  var closer = e.target.closest('[data-signup-close]');
+  if (closer) { e.preventDefault(); ocreSignupClose(); }
+});
 </script>
