@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>M_OI_AGENT_MAQUETTES_V2 · 6 directions cohérentes — validation Philippe</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#FAF6F1;--cream-2:#F4ECDF;--cream-3:#EDE3D0;
+  --ink:#1F1814;--ink-soft:#3D2818;--brown:#3D2818;--brown-soft:#6B5642;--brown-mute:#998877;
+  --ocre:#C9A961;--ocre-dark:#8B5E3C;--gold:#D4A256;--gold-bright:#E8B95E;
+  --line:#E5DAC6;--line-soft:#F0E8DA;
+  --kraft:#D8C9A8;--kraft-dark:#B5A077;--encre:#3A2A18;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans','Inter',system-ui,sans-serif;background:#15110D;color:var(--cream);min-height:100vh;line-height:1.55;}
+
+.head{padding:36px 28px 26px;background:linear-gradient(180deg,#0B0907 0%,#15110D 100%);border-bottom:1px solid #2A2218;}
+.head-inner{max-width:1280px;margin:0 auto;}
+.head .badge{display:inline-block;font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:10px;}
+.head h1{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:42px;color:var(--cream);letter-spacing:-0.01em;line-height:1.05;margin-bottom:14px;}
+.head p{color:var(--brown-mute);font-size:14px;max-width:780px;line-height:1.7;}
+.head p strong{color:var(--cream);font-weight:600;}
+.head .meta{margin-top:18px;font-size:11.5px;color:var(--brown-soft);letter-spacing:0.04em;}
+
+.layout{display:grid;grid-template-columns:1fr 320px;max-width:1600px;margin:0 auto;}
+@media (max-width:1080px){.layout{grid-template-columns:1fr;} .sidebar{position:relative;height:auto;border-left:none;border-top:1px solid #2A2218;}}
+.main{padding:32px 28px 100px;}
+
+.panel{margin-bottom:80px;}
+.panel-head{margin-bottom:30px;border-bottom:1px solid #2A2218;padding-bottom:18px;}
+.panel-head .pre{font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--gold-bright);font-weight:600;margin-bottom:6px;}
+.panel-head h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:34px;color:var(--cream);letter-spacing:-0.01em;}
+.panel-head p{color:var(--brown-mute);font-size:13.5px;margin-top:4px;}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:30px;}
+@media (max-width:920px){.grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:620px){.grid{grid-template-columns:1fr;}}
+
+.var{cursor:pointer;}
+.var-tile,.var-hero{position:relative;border-radius:16px;overflow:hidden;background:#1A1611;transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s;}
+.var-tile{width:100%;aspect-ratio:360/450;}
+.var-hero{width:100%;aspect-ratio:390/800;border:6px solid #1F1814;border-radius:22px;box-shadow:0 16px 40px -8px rgba(0,0,0,0.4);}
+.var:hover .var-tile,.var:hover .var-hero{transform:translateY(-5px);box-shadow:0 22px 50px -8px rgba(0,0,0,0.5);}
+.var.selected .var-tile,.var.selected .var-hero{outline:3px solid var(--gold-bright);outline-offset:4px;}
+
+.lab{margin-top:14px;}
+.lab .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+.lab .vc{font-weight:700;color:var(--gold-bright);font-size:13.5px;letter-spacing:0.05em;}
+.lab .vname{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;color:var(--cream);font-size:18px;}
+.lab .concept{color:var(--brown-mute);font-size:11.5px;font-style:italic;line-height:1.5;}
+
+.choose-btn{position:fixed;bottom:24px;right:24px;background:var(--gold-bright);color:var(--ink);padding:14px 26px;border-radius:999px;border:none;font-weight:700;cursor:pointer;font-family:inherit;font-size:13.5px;box-shadow:0 12px 30px rgba(212,162,86,0.35);z-index:100;display:none;}
+.choose-btn.show{display:block;animation:pop .3s;}
+@keyframes pop{from{transform:scale(0.8);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+.sidebar{background:#0B0907;border-left:1px solid #2A2218;padding:34px 24px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar h3{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:24px;color:var(--gold-bright);margin-bottom:16px;}
+.sb-empty{color:var(--brown-soft);font-style:italic;font-size:12.5px;line-height:1.7;}
+.sb-content{display:none;}
+.sb-content h4{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:22px;color:var(--cream);margin-bottom:6px;}
+.sb-content .sub{color:var(--gold-bright);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;margin-bottom:14px;}
+.sb-content .desc{color:var(--brown-mute);font-size:13px;line-height:1.7;margin-bottom:14px;}
+.sb-content .desc strong{color:var(--cream);font-weight:600;}
+.sb-content .refs{color:var(--brown-soft);font-size:11.5px;font-style:italic;border-top:1px solid #2A2218;padding-top:12px;margin-top:14px;}
+
+/* ======================================================================
+   DIRECTION A — Le nœud humain
+   Photo : poignée main / signature / clés vintage. Lumière chaude.
+   ====================================================================== */
+.tA{background:url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=900&q=80') center/cover;}
+.tA::after{content:'';position:absolute;inset:0;background:linear-gradient(165deg,rgba(31,24,20,0) 30%,rgba(31,24,20,0.78) 100%);}
+.tA .body{position:absolute;left:24px;right:24px;bottom:22px;color:var(--cream);z-index:1;}
+.tA .body .micro{font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:8px;font-weight:600;}
+.tA .body h3{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:26px;line-height:1.15;margin-bottom:8px;}
+.tA .body .name{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:var(--gold-bright);letter-spacing:0.04em;border-top:1px solid rgba(232,185,94,0.4);padding-top:8px;display:inline-block;}
+
+/* Hero A : photo full + texte minimal bas-gauche Cormorant italic blanc */
+.hA{background:url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=900&q=80') center/cover;}
+.hA::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.15) 50%,rgba(0,0,0,0.7) 100%);}
+.hA .body{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;padding:0 24px 50px;color:#fff;}
+.hA .body .pre{font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold-bright);font-weight:600;margin-bottom:14px;}
+.hA .body h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:32px;line-height:1.15;margin-bottom:6px;text-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.hA .body .brand{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:48px;color:var(--gold-bright);line-height:1;margin-bottom:14px;text-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.hA .body .sub{font-size:12.5px;color:rgba(255,255,255,0.85);font-style:italic;margin-bottom:24px;}
+.hA .cta{align-self:flex-start;padding:13px 24px;background:var(--gold-bright);color:var(--ink);border-radius:999px;font-weight:700;font-size:13px;letter-spacing:0.02em;}
+
+/* ======================================================================
+   DIRECTION B — La géographie cachée
+   Carte stylisée papier kraft + points lumineux animés (SVG inline)
+   ====================================================================== */
+.tB{background:linear-gradient(135deg,#E8DAB8 0%,var(--kraft) 100%);position:relative;overflow:hidden;}
+.tB svg.map{position:absolute;inset:0;width:100%;height:100%;opacity:0.65;}
+.tB .body{position:absolute;left:22px;right:22px;bottom:20px;color:var(--encre);z-index:2;}
+.tB .body .micro{font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ocre-dark);margin-bottom:8px;font-weight:700;}
+.tB .body h3{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:24px;line-height:1.15;margin-bottom:8px;color:var(--encre);}
+.tB .body .name{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:var(--ocre-dark);letter-spacing:0.04em;border-top:1px solid rgba(139,94,60,0.4);padding-top:8px;display:inline-block;}
+.dot{fill:var(--ocre-dark);}
+.dot-pulse{animation:dotPulse 2.4s ease-in-out infinite;transform-origin:center;transform-box:fill-box;}
+.dot-pulse:nth-child(2){animation-delay:0.6s;}
+.dot-pulse:nth-child(3){animation-delay:1.2s;}
+.dot-pulse:nth-child(4){animation-delay:1.8s;}
+@keyframes dotPulse{0%,100%{opacity:0.4;transform:scale(1);}50%{opacity:1;transform:scale(1.4);}}
+.line-gold{stroke:var(--gold);stroke-width:0.8;fill:none;opacity:0.35;stroke-dasharray:3,3;animation:lineFade 4s ease-in-out infinite;}
+@keyframes lineFade{0%,100%{opacity:0.2;}50%{opacity:0.55;}}
+
+.hB{background:linear-gradient(135deg,#E8DAB8 0%,var(--kraft) 100%);}
+.hB svg.map{position:absolute;inset:0;width:100%;height:100%;opacity:0.55;}
+.hB .body{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 28px;color:var(--encre);}
+.hB .body .pre{font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ocre-dark);font-weight:700;margin-bottom:18px;}
+.hB .body h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:26px;line-height:1.25;color:var(--encre);margin-bottom:18px;max-width:300px;}
+.hB .body .brand{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:32px;color:var(--ocre-dark);line-height:1;margin-bottom:24px;}
+.hB .cta{padding:13px 24px;background:var(--encre);color:var(--cream);border-radius:999px;font-weight:600;font-size:12.5px;letter-spacing:0.04em;}
+
+/* ======================================================================
+   DIRECTION C — L'intérieur intime
+   Villa Marrakech, lumière dorée fin d'après-midi
+   ====================================================================== */
+.tC{background:url('https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&w=900&q=80') center/cover;}
+.tC::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(247,217,165,0.05) 30%,rgba(31,24,20,0.7) 100%);}
+.tC .body{position:absolute;left:22px;right:22px;bottom:22px;color:#fff;z-index:1;}
+.tC .body .micro{font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:8px;font-weight:600;}
+.tC .body h3{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:25px;line-height:1.15;margin-bottom:8px;text-shadow:0 2px 10px rgba(0,0,0,0.4);}
+.tC .body .name{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:var(--gold-bright);border-top:1px solid rgba(232,185,94,0.5);padding-top:8px;display:inline-block;}
+
+.hC{background:url('https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&w=900&q=80') center/cover;}
+.hC::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,12,8,0.55) 0%,rgba(15,12,8,0.05) 35%,rgba(15,12,8,0.7) 100%);}
+.hC .body{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:space-between;padding:42px 26px 50px;color:#fff;text-align:center;}
+.hC .body .top h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:22px;line-height:1.3;margin-bottom:6px;text-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.hC .body .top .ln2{color:rgba(255,255,255,0.78);font-size:13px;font-style:italic;line-height:1.5;}
+.hC .body .top .ln3{margin-top:12px;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:18px;color:var(--gold-bright);}
+.hC .body .bot{display:flex;flex-direction:column;align-items:center;gap:14px;}
+.hC .body .bot .brand{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:36px;color:var(--gold-bright);line-height:1;}
+.hC .cta{padding:13px 26px;background:var(--gold-bright);color:var(--ink);border-radius:999px;font-weight:700;font-size:13px;}
+
+/* ======================================================================
+   DIRECTION D — L'archive vivante
+   Composition dossiers/café/stylo. Métier traditionnel digitalisé sans dénaturer
+   ====================================================================== */
+.tD{background:url('https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=900&q=80') center/cover;}
+.tD::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(31,24,20,0) 30%,rgba(31,24,20,0.55) 70%,rgba(31,24,20,0.85) 100%);}
+.tD .body{position:absolute;left:22px;right:22px;bottom:22px;color:#fff;z-index:1;}
+.tD .body .micro{font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold-bright);margin-bottom:8px;font-weight:600;}
+.tD .body h3{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:25px;line-height:1.15;margin-bottom:8px;}
+.tD .body .name{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:var(--gold-bright);border-top:1px solid rgba(232,185,94,0.5);padding-top:8px;display:inline-block;}
+
+.hD{background:url('https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=900&q=80') center/cover;}
+.hD::after{content:'';position:absolute;inset:0;background:linear-gradient(265deg,rgba(0,0,0,0) 40%,rgba(15,12,8,0.85) 100%);}
+.hD .body{position:absolute;inset:0;z-index:1;display:flex;align-items:center;padding:30px 26px;color:#fff;}
+.hD .body .stack{margin-left:auto;max-width:60%;text-align:right;}
+.hD .body .stack .pre{font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold-bright);font-weight:600;margin-bottom:14px;}
+.hD .body .stack .ln1{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:21px;line-height:1.25;margin-bottom:8px;}
+.hD .body .stack .ln2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:21px;line-height:1.25;color:var(--cream);margin-bottom:8px;}
+.hD .body .stack .ln3{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:21px;color:var(--gold-bright);margin-bottom:22px;}
+.hD .body .stack .brand{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:26px;color:var(--gold-bright);margin-bottom:18px;line-height:1;}
+.hD .cta{padding:12px 22px;background:var(--gold-bright);color:var(--ink);border-radius:999px;font-weight:700;font-size:12.5px;display:inline-block;}
+
+/* ======================================================================
+   DIRECTION E — Le matching abstrait éditorial
+   SVG illustration : 2 silhouettes reliées par fil d'or via bien stylisé
+   ====================================================================== */
+.tE{background:var(--cream);display:flex;flex-direction:column;}
+.tE .canvas{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--cream) 0%,#fff 100%);border-bottom:1px solid var(--line);overflow:hidden;}
+.tE .canvas svg{width:80%;max-width:200px;height:auto;}
+.tE .body{padding:18px 22px 22px;color:var(--ink);}
+.tE .body .micro{font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--ocre-dark);margin-bottom:6px;font-weight:700;}
+.tE .body h3{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:22px;line-height:1.2;color:var(--ink);}
+.tE .body .name{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:12px;color:var(--brown-mute);margin-top:8px;letter-spacing:0.04em;display:block;}
+
+.hE{background:var(--cream);display:flex;flex-direction:column;}
+.hE .canvas{flex:1;position:relative;display:flex;align-items:center;justify-content:center;padding:40px;}
+.hE .canvas svg{width:100%;max-width:280px;height:auto;}
+.hE .body{padding:30px 26px 36px;color:var(--ink);text-align:center;border-top:1px solid var(--line);background:#fff;}
+.hE .body .pre{font-size:11px;letter-spacing:0.32em;text-transform:uppercase;color:var(--ocre-dark);font-weight:700;margin-bottom:14px;}
+.hE .body h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:22px;line-height:1.3;color:var(--ink);margin-bottom:22px;max-width:300px;margin-left:auto;margin-right:auto;}
+.hE .cta{padding:11px 22px;background:transparent;color:var(--ocre-dark);border:1px solid var(--ocre-dark);border-radius:999px;font-weight:600;font-size:12px;letter-spacing:0.04em;display:inline-block;}
+.silh{fill:none;stroke:var(--ink);stroke-width:1.5;}
+.thread{stroke:var(--gold);stroke-width:1.5;fill:none;stroke-dasharray:200;stroke-dashoffset:200;animation:thread 4s ease-in-out infinite;}
+@keyframes thread{0%{stroke-dashoffset:200;}50%{stroke-dashoffset:0;opacity:1;}100%{stroke-dashoffset:-200;opacity:0.3;}}
+
+/* ======================================================================
+   DIRECTION F — Le silence du off-market
+   Nature morte clés sur dossier cuir, espace vide
+   ====================================================================== */
+.tF{background:url('https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80') center/cover;background-color:#F5EFE3;}
+.tF::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(245,239,227,0.5) 0%,rgba(245,239,227,0.15) 60%,rgba(31,24,20,0.5) 100%);}
+.tF .body{position:absolute;left:22px;right:22px;bottom:22px;color:var(--ink);z-index:1;text-align:right;}
+.tF .body .micro{font-size:10px;letter-spacing:0.32em;text-transform:uppercase;color:var(--ocre-dark);margin-bottom:8px;font-weight:700;}
+.tF .body h3{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:22px;line-height:1.2;color:var(--ink);margin-bottom:6px;}
+.tF .body .name{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:13px;color:var(--ocre-dark);border-top:1px solid rgba(139,94,60,0.4);padding-top:8px;display:inline-block;letter-spacing:0.04em;}
+
+.hF{background:url('https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=900&q=80') center/cover;background-color:#F5EFE3;}
+.hF::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(245,239,227,0.4) 0%,rgba(245,239,227,0) 30%,rgba(31,24,20,0.6) 100%);}
+.hF .body{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;padding:0 26px 50px;color:#fff;text-align:right;}
+.hF .body .pre{font-size:10px;letter-spacing:0.32em;text-transform:uppercase;color:var(--gold-bright);font-weight:700;margin-bottom:14px;}
+.hF .body h2{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500;font-size:30px;line-height:1.15;margin-bottom:6px;text-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.hF .body .ln2{font-size:13px;color:rgba(255,255,255,0.82);font-style:italic;margin-bottom:18px;}
+.hF .body .brand{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:34px;color:var(--gold-bright);line-height:1;margin-bottom:22px;}
+.hF .cta{align-self:flex-end;padding:11px 22px;background:rgba(255,255,255,0.95);color:var(--ink);border-radius:999px;font-weight:700;font-size:12.5px;letter-spacing:0.04em;}
+</style>
+</head>
+<body>
+
+<header class="head">
+  <div class="head-inner">
+    <div class="badge">Mission M/2026/05/10/56 · 2026-05-10</div>
+    <h1>Oi Agent — 6 directions visuelles cohérentes</h1>
+    <p>
+      <strong>Le problème.</strong> Un agent passe sa vie à chercher : 30 coups de fil pour savoir qui a quoi.
+      Les biens dorment dans les tiroirs par peur du concurrent.
+      <strong>La solution.</strong> Oi Agent ouvre un cercle privé entre confrères pactés. L'algo croise les critères anonymisés.
+      Un match → notif aux 2 agents → ils décident de dévoiler ou pas.
+      <strong>Ce qui est nouveau.</strong> Les portails (SeLoger, Bien'ici) sont publics frontaux. 60% du métier est <em>off-market</em>.
+      Oi Agent éclaire cette zone, entre confrères, avec consentement bilatéral.
+    </p>
+    <div class="meta">Ton : Sotheby's Realty · Knight Frank · Marc Foujols. Cabana / Architectural Digest. Photographie, pas illustration vectorielle.</div>
+  </div>
+</header>
+
+<div class="layout">
+<div class="main">
+
+<!-- ======================== PANNEAU 1 ======================== -->
+<section class="panel">
+  <div class="panel-head">
+    <div class="pre">Panneau 1</div>
+    <h2>Tuile Home — 6 directions × 1 variante</h2>
+    <p>360 × 450px · cohérent grid home ocre.immo · cliquer pour voir la direction détaillée à droite</p>
+  </div>
+  <div class="grid">
+
+    <!-- V_A Tuile : Le nœud humain -->
+    <div class="var" data-v="V_A" data-panel="tuile" data-name="Le nœud humain"
+      data-desc="Photo de mains qui se serrent ou de signature de pacte sur bureau patiné. Lumière chaude fin d'après-midi. Évoque la <strong>poignée de main entre confrères</strong>, le pacte bilatéral signé qui ouvre l'échange. Zéro tech visible. Le photo lui-même est l'argument."
+      data-refs="Réf : Architectural Digest portrait broker · Sotheby's brokers page · The New Yorker editorial photo">
+      <div class="var-tile tA">
+        <div class="body">
+          <div class="micro">Oi Agent · Pacte confrères</div>
+          <h3>Le pacte qui réveille tes dossiers.</h3>
+          <div class="name">Découvrir →</div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">V_A</span><span class="vname">Le nœud humain</span></div><div class="concept">Photo poignée main · pacte bilatéral · zéro tech</div></div>
+    </div>
+
+    <!-- V_B Tuile : La géographie cachée -->
+    <div class="var" data-v="V_B" data-panel="tuile" data-name="La géographie cachée"
+      data-desc="Carte stylisée Marrakech vue du dessus en mode carnet de voyage : papier kraft, dessin à l'encre brune, nœuds reliés par fils dorés ténus. <strong>Animation : 4 points lumineux qui pulsent doucement</strong>. Évoque le <strong>réseau invisible entre agents d'une même ville</strong>. Tons sépia/ocre/encre brune."
+      data-refs="Réf : Saint-Exupéry carnets de pilote · Aesop store maps · Atlas Obscura editorial">
+      <div class="var-tile tB">
+        <svg class="map" viewBox="0 0 360 450" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <pattern id="grid-kraftA" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#B5A077" stroke-width="0.3" opacity="0.25"/>
+            </pattern>
+          </defs>
+          <rect width="360" height="450" fill="url(#grid-kraftA)"/>
+          <!-- Lignes simulant rues principales Marrakech -->
+          <path d="M 30 80 Q 130 100 240 130 T 340 200" class="line-gold"/>
+          <path d="M 60 220 Q 150 200 240 240 T 330 320" class="line-gold"/>
+          <path d="M 90 350 Q 200 320 280 360" class="line-gold"/>
+          <!-- 4 points lumineux qui pulsent -->
+          <circle cx="100" cy="120" r="5" class="dot dot-pulse"/>
+          <circle cx="220" cy="180" r="5" class="dot dot-pulse"/>
+          <circle cx="160" cy="280" r="5" class="dot dot-pulse"/>
+          <circle cx="280" cy="340" r="5" class="dot dot-pulse"/>
+        </svg>
+        <div class="body">
+          <div class="micro">Marrakech · Casablanca · Paris</div>
+          <h3>Connecte tes biens aux clients de tes confrères.</h3>
+          <div class="name">Voir le réseau →</div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">V_B</span><span class="vname">La géographie cachée</span></div><div class="concept">Carte papier kraft · 4 points pulsent · réseau invisible</div></div>
+    </div>
+
+    <!-- V_C Tuile : L'intérieur intime -->
+    <div class="var" data-v="V_C" data-panel="tuile" data-name="L'intérieur intime"
+      data-desc="Photo intérieur villa Marrakech vide, lumière dorée fin d'après-midi qui traverse une porte ouverte vers la terrasse. Tapis berbère, bougie, vue. Évoque le <strong>bien qui attend son client</strong>. Raconte l'<strong>OBJET</strong> du métier (l'immobilier physique) plutôt que l'outil tech."
+      data-refs="Réf : Cabana magazine interiors · Christie's Realty editorials · The World of Interiors">
+      <div class="var-tile tC">
+        <div class="body">
+          <div class="micro">Marrakech · Hivernage · 4 mois d'attente</div>
+          <h3>Tes biens méritent les bons regards.</h3>
+          <div class="name">Oi Agent →</div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">V_C</span><span class="vname">L'intérieur intime</span></div><div class="concept">Villa Marrakech lumière dorée · objet du métier</div></div>
+    </div>
+
+    <!-- V_D Tuile : L'archive vivante -->
+    <div class="var" data-v="V_D" data-panel="tuile" data-name="L'archive vivante"
+      data-desc="Composition stylée vue du dessus : pile de dossiers cartonnés patinés, post-it manuscrits, tasse café, stylo plume, agenda en cuir, lunettes. <strong>Évoque le métier traditionnel d'agent qui travaille à l'ancienne</strong>. Oi Agent vient digitaliser sans dénaturer ce rituel."
+      data-refs="Réf : Kinfolk magazine still life · Marc Foujols salon vues · Mr Porter journal">
+      <div class="var-tile tD">
+        <div class="body">
+          <div class="micro">Tiroir d'agent · 47 dossiers</div>
+          <h3>Ton tiroir vaut de l'or.</h3>
+          <div class="name">Activer mon tiroir →</div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">V_D</span><span class="vname">L'archive vivante</span></div><div class="concept">Bureau dossiers café cuir · métier traditionnel</div></div>
+    </div>
+
+    <!-- V_E Tuile : Le matching abstrait éditorial -->
+    <div class="var" data-v="V_E" data-panel="tuile" data-name="Le matching abstrait éditorial"
+      data-desc="Illustration éditoriale style The New York Times Opinion : <strong>2 silhouettes d'agents reliées par un fil d'or qui passe par un bien stylisé</strong> (porte ouverte avec cyprès derrière). Trait épuré encre noire + or, fond crème. <strong>Animation : le fil d'or se trace puis s'efface</strong>. Pas tech bro flat illustration ni 3D blender."
+      data-refs="Réf : NYTimes Opinion illustrations · Le Monde série littéraire · The Atlantic op-ed">
+      <div class="var-tile tE">
+        <div class="canvas">
+          <svg viewBox="0 0 200 140">
+            <!-- Silhouette gauche (agent 1) -->
+            <circle cx="32" cy="55" r="9" class="silh"/>
+            <path d="M 22 75 Q 22 95 32 100 L 32 115 M 32 100 Q 42 95 42 75 Z" class="silh"/>
+            <!-- Bien stylisé centre (porte + cyprès) -->
+            <path d="M 88 70 L 88 110 L 112 110 L 112 70 L 100 60 Z" class="silh"/>
+            <line x1="100" y1="80" x2="100" y2="110" class="silh"/>
+            <path d="M 125 60 Q 130 80 125 110 Q 132 90 130 60 Q 130 50 125 60 Z" class="silh" style="stroke-width:1"/>
+            <!-- Silhouette droite (agent 2) -->
+            <circle cx="168" cy="55" r="9" class="silh"/>
+            <path d="M 158 75 Q 158 95 168 100 L 168 115 M 168 100 Q 178 95 178 75 Z" class="silh"/>
+            <!-- Fil d'or animé qui les relie via le bien -->
+            <path d="M 41 60 Q 70 30 100 65 Q 130 30 159 60" class="thread"/>
+          </svg>
+        </div>
+        <div class="body">
+          <div class="micro">Oi Agent · Cercle privé</div>
+          <h3>Le réseau silencieux des agents qui se font confiance.</h3>
+          <span class="name">Découvrir le pacte</span>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">V_E</span><span class="vname">Le matching éditorial</span></div><div class="concept">Illustration éditoriale · fil d'or · 2 silhouettes</div></div>
+    </div>
+
+    <!-- V_F Tuile : Le silence du off-market -->
+    <div class="var" data-v="V_F" data-panel="tuile" data-name="Le silence du off-market"
+      data-desc="Photo épurée nature morte hollandaise : trousseau de clés posé sur un dossier fermé en cuir patiné, sur bureau noyer. <strong>Beaucoup d'espace vide blanc cassé</strong>. Lumière oblique. Évoque les <strong>biens qui dorment</strong> dans les tiroirs des agents prudents."
+      data-refs="Réf : Aesop product photography · Mr Porter journal still life · vermeer light">
+      <div class="var-tile tF">
+        <div class="body">
+          <div class="micro">Off-market · 60%</div>
+          <h3>Off-market. Entre confrères. En toute discrétion.</h3>
+          <div class="name">Rejoindre →</div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">V_F</span><span class="vname">Le silence du off-market</span></div><div class="concept">Nature morte clés cuir · espace vide · biens qui dorment</div></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ======================== PANNEAU 2 ======================== -->
+<section class="panel">
+  <div class="panel-head">
+    <div class="pre">Panneau 2</div>
+    <h2>Hero Page /oi-agent — 6 directions × 1 variante</h2>
+    <p>390 × 800px viewport mobile · hero plein écran · répondre 3 questions en 5 sec : C'est quoi ? À qui ? Pourquoi ?</p>
+  </div>
+  <div class="grid">
+
+    <!-- H_A : Le nœud humain -->
+    <div class="var" data-v="H_A" data-panel="hero" data-name="Le nœud humain"
+      data-desc="Photo plein écran mains qui signent un pacte sur papier, lumière chaude. Texte minimal bottom-left Cormorant italic blanc + drop-shadow subtle. CTA rond gold."
+      data-refs="Réf : Apple iPhone hero plein écran émotion · Sotheby's editorial">
+      <div class="var-hero hA">
+        <div class="body">
+          <div class="pre">OI AGENT · CABINET D'AGENTS</div>
+          <h2>Tes dossiers méritent un confrère.</h2>
+          <div class="brand">Oi Agent</div>
+          <div class="sub">L'outil de matching anonymisé entre agents pactés.</div>
+          <div class="cta">Commencer →</div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">H_A</span><span class="vname">Le nœud humain</span></div><div class="concept">Photo plein écran mains · texte minimal Cormorant blanc</div></div>
+    </div>
+
+    <!-- H_B : La géographie cachée -->
+    <div class="var" data-v="H_B" data-panel="hero" data-name="La géographie cachée"
+      data-desc="Background carte stylisée encre/papier kraft + 6 points lumineux gold qui s'illuminent en boucle douce. Texte centré sobre Cormorant. CTA encre."
+      data-refs="Réf : Saint-Exupéry · Atlas Obscura · National Geographic editorial maps">
+      <div class="var-hero hB">
+        <svg class="map" viewBox="0 0 390 800" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <pattern id="grid-kraftB" width="50" height="50" patternUnits="userSpaceOnUse">
+              <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#B5A077" stroke-width="0.4" opacity="0.3"/>
+            </pattern>
+          </defs>
+          <rect width="390" height="800" fill="url(#grid-kraftB)"/>
+          <!-- Rues stylisées -->
+          <path d="M 30 100 Q 150 130 280 170 T 360 280" class="line-gold"/>
+          <path d="M 50 280 Q 180 250 290 310 T 350 450" class="line-gold"/>
+          <path d="M 70 460 Q 200 430 320 500" class="line-gold"/>
+          <path d="M 90 580 Q 220 550 340 640" class="line-gold"/>
+          <path d="M 110 700 Q 250 670 360 750" class="line-gold"/>
+          <!-- 6 points pulsent -->
+          <circle cx="120" cy="160" r="6" class="dot dot-pulse"/>
+          <circle cx="240" cy="220" r="6" class="dot dot-pulse"/>
+          <circle cx="180" cy="380" r="6" class="dot dot-pulse"/>
+          <circle cx="290" cy="490" r="6" class="dot dot-pulse"/>
+          <circle cx="200" cy="610" r="6" class="dot dot-pulse"/>
+          <circle cx="310" cy="720" r="6" class="dot dot-pulse"/>
+        </svg>
+        <div class="body">
+          <div class="pre">Le réseau invisible</div>
+          <h2>Quelque part entre tes confrères et toi, dorment des dizaines de matchs parfaits.</h2>
+          <div class="brand">Oi Agent les révèle.</div>
+          <div class="cta">Découvrir le réseau →</div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">H_B</span><span class="vname">La géographie cachée</span></div><div class="concept">Carte papier kraft · 6 points lumineux · texte centré sobre</div></div>
+    </div>
+
+    <!-- H_C : L'intérieur intime -->
+    <div class="var" data-v="H_C" data-panel="hero" data-name="L'intérieur intime"
+      data-desc="Photo plein écran villa Marrakech lumière dorée fin d'après-midi. 3 lignes texte centrées top, brand + CTA bottom. Émotionnel + concret."
+      data-refs="Réf : Cabana magazine · Sotheby's Realty Marrakech · Architectural Digest">
+      <div class="var-hero hC">
+        <div class="body">
+          <div class="top">
+            <h2>Cette villa attend depuis 4 mois.</h2>
+            <div class="ln2">Quelque part, un client la cherche depuis 3.</div>
+            <div class="ln3">Oi Agent les fait se rencontrer.</div>
+          </div>
+          <div class="bot">
+            <div class="brand">Oi Agent</div>
+            <div class="cta">Commencer (gratuit)</div>
+          </div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">H_C</span><span class="vname">L'intérieur intime</span></div><div class="concept">Villa Marrakech dorée · 3 lignes top + brand bottom</div></div>
+    </div>
+
+    <!-- H_D : L'archive vivante -->
+    <div class="var" data-v="H_D" data-panel="hero" data-name="L'archive vivante"
+      data-desc="Photo plein écran composition dossiers/café/stylo. Texte 3 lignes alignés à droite, brand sub, CTA rond. Sobre, papier."
+      data-refs="Réf : Mr Porter journal · Kinfolk · Le Monde Magazine M">
+      <div class="var-hero hD">
+        <div class="body">
+          <div class="stack">
+            <div class="pre">Activer mon tiroir</div>
+            <div class="ln1">Tes meilleurs clients sont dans ton tiroir.</div>
+            <div class="ln2">Tes meilleurs biens aussi.</div>
+            <div class="ln3">Oi Agent les sort de l'ombre.</div>
+            <div class="brand">Oi Agent</div>
+            <div class="cta">Activer mon tiroir →</div>
+          </div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">H_D</span><span class="vname">L'archive vivante</span></div><div class="concept">Bureau papier · 3 lignes droite · activer tiroir</div></div>
+    </div>
+
+    <!-- H_E : Le matching abstrait éditorial -->
+    <div class="var" data-v="H_E" data-panel="hero" data-name="Le matching abstrait éditorial"
+      data-desc="Background crème + grande illustration centrale fil d'or animé qui se trace entre 2 silhouettes via un bien stylisé. Texte format newspaper opinion : sub-headline tracking ouvert + tagline + CTA discret."
+      data-refs="Réf : NYTimes Opinion illustration · The Atlantic op-ed · Le Monde Editor">
+      <div class="var-hero hE">
+        <div class="canvas">
+          <svg viewBox="0 0 280 200">
+            <!-- Silhouette gauche -->
+            <circle cx="50" cy="80" r="14" class="silh"/>
+            <path d="M 32 110 Q 32 140 50 150 L 50 175 M 50 150 Q 68 140 68 110 Z" class="silh"/>
+            <!-- Bien stylisé centre : maison + cyprès -->
+            <path d="M 122 100 L 122 170 L 158 170 L 158 100 L 140 85 Z" class="silh"/>
+            <line x1="140" y1="120" x2="140" y2="170" class="silh"/>
+            <rect x="128" y="115" width="10" height="15" class="silh"/>
+            <rect x="142" y="115" width="10" height="15" class="silh"/>
+            <!-- Cyprès -->
+            <path d="M 180 90 Q 188 130 180 170 Q 196 145 192 100 Q 192 85 180 90 Z" class="silh" style="stroke-width:1"/>
+            <!-- Silhouette droite -->
+            <circle cx="240" cy="80" r="14" class="silh"/>
+            <path d="M 222 110 Q 222 140 240 150 L 240 175 M 240 150 Q 258 140 258 110 Z" class="silh"/>
+            <!-- Fil d'or qui relie via le bien -->
+            <path d="M 64 90 Q 100 50 140 95 Q 180 50 226 90" class="thread" style="stroke-width:2;stroke-dasharray:300;stroke-dashoffset:300;animation-duration:5s;"/>
+          </svg>
+        </div>
+        <div class="body">
+          <div class="pre">OI AGENT</div>
+          <h2>Le matching anonyme entre agents qui se font confiance.</h2>
+          <div class="cta">Demander à entrer</div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">H_E</span><span class="vname">Le matching éditorial</span></div><div class="concept">SVG fil d'or animé · texte newspaper opinion sobre</div></div>
+    </div>
+
+    <!-- H_F : Le silence du off-market -->
+    <div class="var" data-v="H_F" data-panel="hero" data-name="Le silence du off-market"
+      data-desc="Photo épurée trousseau de clés sur dossier cuir, beaucoup d'espace vide blanc cassé. Texte minimal bottom-right. Stat 60% explicite. CTA blanc."
+      data-refs="Réf : Aesop · vermeer · Mr Porter still life · Hodinkee">
+      <div class="var-hero hF">
+        <div class="body">
+          <div class="pre">Off-market · entre confrères</div>
+          <h2>60% des transactions immo sont off-market.</h2>
+          <div class="ln2">Oi Agent te donne accès aux 60%.</div>
+          <div class="brand">Oi Agent</div>
+          <div class="cta">Rejoindre →</div>
+        </div>
+      </div>
+      <div class="lab"><div class="row"><span class="vc">H_F</span><span class="vname">Le silence du off-market</span></div><div class="concept">Nature morte clés · espace vide · stat 60% bottom-right</div></div>
+    </div>
+
+  </div>
+</section>
+
+</div>
+
+<aside class="sidebar">
+  <h3>📋 Direction sélectionnée</h3>
+  <div class="sb-empty" id="sb-empty">Cliquer sur une variante (tuile ou hero) pour voir la direction visuelle complète : intention, ton de marque, références.</div>
+  <div class="sb-content" id="sb-content">
+    <h4 id="sb-name">—</h4>
+    <div class="sub" id="sb-vc">—</div>
+    <div class="desc" id="sb-desc">—</div>
+    <div class="refs" id="sb-refs">—</div>
+  </div>
+</aside>
+</div>
+
+<button class="choose-btn" id="choose-btn">📤 Choisir cette direction : <span id="chosen">—</span></button>
+
+<script>
+let selected = null;
+const choose = document.getElementById('choose-btn');
+const chosen = document.getElementById('chosen');
+const sbE = document.getElementById('sb-empty');
+const sbC = document.getElementById('sb-content');
+
+document.querySelectorAll('.var').forEach(v => {
+  v.addEventListener('click', () => {
+    document.querySelectorAll('.var').forEach(x => x.classList.remove('selected'));
+    v.classList.add('selected');
+    selected = v.dataset.v;
+    chosen.textContent = selected;
+    choose.classList.add('show');
+    sbE.style.display = 'none';
+    sbC.style.display = 'block';
+    document.getElementById('sb-name').textContent = v.dataset.name;
+    document.getElementById('sb-vc').textContent = v.dataset.v + ' · ' + v.dataset.panel;
+    document.getElementById('sb-desc').innerHTML = v.dataset.desc;
+    document.getElementById('sb-refs').textContent = v.dataset.refs;
+    if (window.innerWidth <= 1080) v.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+});
+
+choose.addEventListener('click', () => {
+  if (!selected) return;
+  navigator.clipboard.writeText(selected).then(() => {
+    const orig = choose.innerHTML;
+    choose.textContent = '✓ Copié : ' + selected;
+    setTimeout(() => { choose.innerHTML = orig; }, 1800);
+  }).catch(() => {});
+});
+</script>
+</body>
+</html>
