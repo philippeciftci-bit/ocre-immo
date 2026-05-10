@@ -245,9 +245,21 @@ async function signupSubmit(e) {
       });
       var d = await r.json();
       if (!r.ok) throw new Error(d.error || 'check failed');
-      if (d.existing) {
+      if (d.existing && d.redirect_url) {
+        // M_OCRE_AUTH_EMAIL_CHECK_FIX — redirect immediat (setTimeout 600ms causait UX confusion : Philippe voyait "Crée ton compte" rester)
         showToast('✓ Bon retour ' + (d.first_name || '') + ' !', 'success');
-        setTimeout(function(){ window.location.href = d.redirect_url; }, 600);
+        // Disable form pour eviter double-submit pendant transition
+        emailEl.disabled = true; btn.textContent = '⏳ Connexion…';
+        // Redirect immediat avec fallback location.replace si href echoue
+        try { window.location.href = d.redirect_url; }
+        catch(e) { window.location.replace(d.redirect_url); }
+        // Fallback de derniere chance : meta refresh via injection si JS bloque navigation
+        setTimeout(function(){
+          if (window.location.href.indexOf('/oi-') === -1) {
+            // Si encore sur signup.html apres 1.5s, force navigation via link click
+            var a = document.createElement('a'); a.href = d.redirect_url; a.target = '_self'; document.body.appendChild(a); a.click();
+          }
+        }, 1500);
         return false;
       }
       SIGNUP_STATE = 'form_open';
