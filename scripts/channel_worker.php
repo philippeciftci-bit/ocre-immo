@@ -93,6 +93,12 @@ function process_one_job(PDO $db, string $workerId): bool {
         return true;
     }
     $listing = $dossier ? channel_dossier_to_listing($dossier) : [];
+    // M105 — enrich listing avec metadata tenant/dossier/locale pour drivers internationaux.
+    if ($listing) {
+        $listing['_tenant_slug'] = $mapping['tenant_slug'];
+        $listing['_dossier_id'] = (int) $mapping['dossier_id'];
+        $listing['locale'] = $listing['locale'] ?? 'fr';
+    }
 
     // Validate
     if (in_array($job['job_type'], ['publish', 'update'])) {

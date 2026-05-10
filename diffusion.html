@@ -102,6 +102,9 @@
   details.error-detail summary::before { content:'▸ '; }
   details.error-detail[open] summary::before { content:'▾ '; }
   details.error-detail .err-text { font-size:11px; color:var(--brown-soft); padding:6px 0; line-height:1.5; }
+  .portal-flag { display:inline-block; margin-right:2px; font-size:13px; }
+  .portal-currency { color:var(--brown-mute); font-size:11px; font-weight:500; margin-left:4px; }
+  .portal-warn { font-size:10.5px; color:var(--orange); margin-top:3px; line-height:1.3; }
 </style>
 </head>
 <body>
@@ -209,15 +212,19 @@
       const row = document.createElement('div');
       row.className = 'portal' + (isActiveSub ? '' : ' locked');
       row.setAttribute('data-channel', p.name);
+      // M105 : warning traduction si dossier non-locale du portail
+      const localeWarn = (p.name === 'idealista') ? '⚠ Traduction auto-FR→ES partielle' :
+                         (p.name === 'apartments_com') ? '⚠ Auto-translation FR→EN + USD conversion' : '';
       row.innerHTML = `
         <div class="portal-logo" style="background:${p.logo_color}; color:${p.logo_color === '#fab50a' ? '#2a2017' : '#fff'};">${p.display.charAt(0)}</div>
         <div class="portal-info">
-          <div class="portal-name">${esc(p.display)}</div>
+          <div class="portal-name">${p.flag ? `<span class="portal-flag">${p.flag}</span> ` : ''}${esc(p.display)} <span class="portal-currency">· ${esc(p.currency || '')}</span></div>
           <div class="portal-meta">${esc(metaLine(p, m))}</div>
+          ${isActiveSub && localeWarn && status !== 'published' ? `<div class="portal-warn">${esc(localeWarn)}</div>` : ''}
           ${m.error_message ? `<details class="error-detail"><summary>Voir l'erreur</summary><div class="err-text">${esc(m.error_message)}</div></details>` : ''}
         </div>
         <span class="portal-status ${status}">${statusLabel(status)}</span>
-        <div class="toggle${isToggleOn(p, m) ? ' on' : ''}${isActiveSub ? '' : ' locked'}" data-channel="${p.name}" role="switch" aria-checked="${isToggleOn(p, m)}"></div>
+        <div class="toggle${isToggleOn(p, m) ? ' on' : ''}${isActiveSub ? '' : ' locked'}" data-channel="${p.name}" role="switch" aria-checked="${isToggleOn(p, m)}" title="${esc(p.region || '')} · ${esc(p.currency || '')}"></div>
       `;
       list.appendChild(row);
     });
