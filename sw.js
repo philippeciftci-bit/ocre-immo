@@ -2,7 +2,7 @@
 // Conversion depuis killswitch v474 : on garde le SW REGISTERED (plus d'unregister à activate)
 // pour permettre la réception des push notifications PWA. Tous les fetchs restent en network-first
 // (pas de cache offline business — fallback minimal pour mode=navigate uniquement).
-const SW_VERSION = 'ocre-sw-v477.0-sso-bandeau';
+const SW_VERSION = 'ocre-sw-v478.0-m110-decommission-photosgalleryv28';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
