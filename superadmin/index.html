@@ -474,6 +474,7 @@ const TAB_SUBTITLES = {
   notifs: 'Logs PWA push (M88-M89) & audit super-admin',
   modules: 'Catalogue Oi · Agent / Scan / Book / Demande',
   system: 'Santé serveur Hetzner · backups · deploys',
+  maintenance: '⚠️ Backup auto · reset par périmètre · restore (M_SUPERADMIN_RESET)',
   // Routes legacy conservées (drill-down) :
   workspaces: 'Workspaces (legacy alias → tenants)',
   clients: 'Clients inscrits · drill-down',
@@ -502,6 +503,7 @@ const TAB_LABELS = {
   modules: '🧩 Modules Oi',
   system: '🛠 Système',
   dataroom: '📊 Data Room',
+  maintenance: '⚠️ Maintenance',
   // Legacy (gardés pour compat hash URLs)
   workspaces: 'Workspaces',
   clients: 'Clients',
@@ -511,7 +513,7 @@ const TAB_LABELS = {
   users: 'Users',
   overview: 'Vue ensemble',
 };
-const TAB_ORDER = ['tenants', 'agents', 'metrics', 'notifs', 'modules', 'system', 'dataroom'];
+const TAB_ORDER = ['tenants', 'agents', 'metrics', 'notifs', 'modules', 'system', 'dataroom', 'maintenance'];
 
 // Hash routing : URL #tab synchronise l'onglet actif.
 function parseHashTab() {
@@ -790,7 +792,106 @@ async function loadTab(t) {
   } else if (t === 'dataroom') {
     // M108 — Data Room investor (9 sections fideles maquette M95)
     await renderDataroomTab(c);
+  } else if (t === 'maintenance') {
+    // M_SUPERADMIN_RESET — onglet Maintenance (backup auto + reset 3 niveaux + restore)
+    await renderMaintenanceTab(c);
   }
+}
+
+// M_SUPERADMIN_RESET — Maintenance tab : backup + reset par perimetre + restore
+async function renderMaintenanceTab(c) {
+  c.innerHTML = '<div style="padding:20px;color:var(--color-text-muted)">Chargement liste backups…</div>';
+  let backups = [];
+  try {
+    const r = await api('/api/superadmin/maintenance.php?action=backups_list');
+    if (r && r.ok) backups = r.backups || [];
+  } catch (e) {}
+  const fmtSize = b => b > 1048576 ? (b/1048576).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB';
+  c.innerHTML =
+    '<section class="sa-section">'
+    + '<div class="sa-section-title">📦 Backups DB (5 derniers)</div>'
+    + '<button class="reset-btn" style="background:#2D7A3E;margin-bottom:12px" onclick="maintBackupCreate()">📦 Backup manuel maintenant</button>'
+    + (backups.length === 0
+        ? '<div style="padding:20px;color:var(--color-text-muted);text-align:center">Aucun backup pour le moment.</div>'
+        : '<table><thead><tr><th>Fichier</th><th>Type</th><th>Taille</th><th>Date</th><th style="text-align:right">Actions</th></tr></thead><tbody>'
+          + backups.slice(0,5).map(b =>
+              '<tr><td><code style="font-size:11px">' + b.file + '</code></td>'
+              + '<td><span class="badge badge-enregistre">' + b.type + '</span></td>'
+              + '<td>' + fmtSize(b.size) + '</td>'
+              + '<td class="col-date">' + new Date(b.mtime*1000).toLocaleString('fr-FR') + '</td>'
+              + '<td style="text-align:right"><button class="reset-btn" style="background:#B85B0F;font-size:11px;padding:5px 10px" onclick="maintRestore(\'' + b.file + '\')">♻️ Restaurer</button></td></tr>'
+            ).join('')
+          + '</tbody></table>')
+    + '</section>'
+
+    + '<section class="sa-section" style="margin-top:30px">'
+    + '<div class="sa-section-title">⚠️ Reset par périmètre (3 niveaux)</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">'
+
+    + '<div style="background:#FEF3C7;border:2px solid #F59E0B;border-radius:10px;padding:18px">'
+      + '<div style="font-weight:700;font-size:15px;color:#92400E;margin-bottom:8px">Niveau 1 — Tenant unique 🟡</div>'
+      + '<div style="font-size:12.5px;color:#78350F;line-height:1.5;margin-bottom:14px">DROP DATABASE <code>ocre_wsp_&lt;slug&gt;</code> uniquement. Conserve auth_users + abonnements + sessions des autres tenants. Le plus sûr.</div>'
+      + '<input type="text" id="maint-tenant-slug" placeholder="slug tenant (ex: exbat-tat-ad7d)" style="width:100%;padding:8px 10px;border:1px solid #E5DDC8;border-radius:6px;margin-bottom:10px;font-family:inherit;font-size:13px">'
+      + '<button class="reset-btn" style="width:100%" onclick="maintReset(1)">Reset niveau 1</button>'
+    + '</div>'
+
+    + '<div style="background:#FED7AA;border:2px solid #EA580C;border-radius:10px;padding:18px">'
+      + '<div style="font-weight:700;font-size:15px;color:#9A3412;margin-bottom:8px">Niveau 2 — Complet sauf super_admin 🟠</div>'
+      + '<div style="font-size:12.5px;color:#7C2D12;line-height:1.5;margin-bottom:14px">DROP TOUTES <code>ocre_wsp_*</code> + TRUNCATE app tables meta. Conserve uniquement super_admin + feature_flags + settings + audit_logs. Re-login Philippe direct.</div>'
+      + '<button class="reset-btn" style="width:100%;background:#EA580C" onclick="maintReset(2)">Reset niveau 2</button>'
+    + '</div>'
+
+    + '<div style="background:#FEE2E2;border:2px solid #DC2626;border-radius:10px;padding:18px">'
+      + '<div style="font-weight:700;font-size:15px;color:#7F1D1D;margin-bottom:8px">Niveau 3 — Factory wipe ⛔</div>'
+      + '<div style="font-size:12.5px;color:#7F1D1D;line-height:1.5;margin-bottom:14px">DROP DATABASE meta + tous tenants + super_admin. <strong>BLOQUÉ via web</strong>. Doit s\'exécuter en SSH manuel via <code>/opt/ocre-app/scripts/factory-wipe.sh</code> après lecture runbook.</div>'
+      + '<button class="reset-btn" style="width:100%;background:#DC2626;opacity:0.5;cursor:not-allowed" disabled>⛔ SSH-only (interdit web)</button>'
+    + '</div>'
+
+    + '</div></section>'
+
+    + '<section class="sa-section" style="margin-top:30px">'
+    + '<div class="sa-section-title">📋 Audit logs maintenance (20 derniers)</div>'
+    + '<div id="maint-audit-list" style="font-size:12px;color:var(--color-text-muted);padding:10px">Audit logs disponibles dans <code>/var/log/ocre-superadmin-maintenance.log</code> + table <code>audit_logs</code> action LIKE \'maintenance.%\'.</div>'
+    + '</section>';
+}
+
+async function maintBackupCreate() {
+  if (!confirm('Lancer un backup manuel maintenant ? (mysqldump --all-databases ~10-30s)')) return;
+  try {
+    const r = await api('/api/superadmin/maintenance.php?action=backup_create', { method:'POST', body: JSON.stringify({type:'manual'}) });
+    if (r && r.ok) { alert('✅ Backup créé : ' + r.file_path + ' (' + Math.round(r.size_bytes/1024) + ' KB, ' + r.duration_ms + ' ms)'); goToTab('maintenance'); }
+    else alert('⚠️ Erreur backup : ' + (r && r.error || 'inconnue'));
+  } catch (e) { alert('⚠️ Erreur réseau : ' + e.message); }
+}
+
+async function maintRestore(file) {
+  const word = prompt('⚠️ RESTORE va écraser la DB actuelle.\nUn backup pre-restore sera fait automatiquement.\n\nTapez RESTORE pour confirmer :');
+  if (word !== 'RESTORE') { alert('Restore annulé.'); return; }
+  try {
+    const r = await api('/api/superadmin/maintenance.php?action=restore', { method:'POST', body: JSON.stringify({backup_file: file, confirmation_word: 'RESTORE'}) });
+    if (r && r.ok) alert('✅ Restore OK (' + r.duration_ms + ' ms). Pre-restore backup : ' + r.pre_restore_backup);
+    else alert('⚠️ Erreur restore : ' + (r && r.error || 'inconnue'));
+  } catch (e) { alert('⚠️ Erreur réseau : ' + e.message); }
+}
+
+async function maintReset(level) {
+  const slugInput = level === 1 ? document.getElementById('maint-tenant-slug') : null;
+  const slug = slugInput ? slugInput.value.trim() : null;
+  if (level === 1 && !slug) { alert('⚠️ Saisis le slug du tenant à reset.'); return; }
+  const desc = {
+    1: 'NIVEAU 1 — Reset tenant ' + slug + '\n\nDROP DATABASE ocre_wsp_' + slug + '\nConserve auth_users + abonnements + sessions',
+    2: 'NIVEAU 2 — Reset complet\n\nDROP TOUTES ocre_wsp_*\nTRUNCATE toutes tables app meta\nConserve UNIQUEMENT : super_admin, feature_flags, settings, audit_logs',
+  }[level];
+  const word = prompt('⚠️ ' + desc + '\n\nUn backup automatique sera fait AVANT le reset.\n\nTapez RESET pour confirmer :');
+  if (word !== 'RESET') { alert('Reset annulé.'); return; }
+  try {
+    const body = { level, confirmation_word: 'RESET' };
+    if (level === 1) body.tenant_slug = slug;
+    const r = await api('/api/superadmin/maintenance.php?action=reset_with_backup', { method:'POST', body: JSON.stringify(body) });
+    if (r && r.ok) alert('✅ Reset niveau ' + level + ' OK\nBackup : ' + r.backup_file + '\nDBs droppées : ' + (r.dbs_dropped||0) + '\nTables truncated : ' + (r.tables_truncated||0) + '\nDurée : ' + r.duration_ms + ' ms');
+    else alert('⚠️ Erreur reset : ' + (r && r.error || 'inconnue'));
+    goToTab('maintenance');
+  } catch (e) { alert('⚠️ Erreur réseau : ' + e.message); }
 }
 
 // M108 — Data Room investor render
