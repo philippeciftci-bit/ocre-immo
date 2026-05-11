@@ -43,7 +43,9 @@ test('1) Popup s\'ouvre sur ocre.immo au clic CTA', async ({ page }) => {
 });
 
 test('2) Cas B — email connu → message "Lien envoyé" + AMD #2 fade form + auto-close 4s', async ({ page }) => {
-  // M/2026/05/11/40 BUG#2 : popup ne reste plus figee avec cooldown, fade + auto-close comme cas C succes.
+  // M/2026/05/11/43 — Force last_login_at de Philippe a NOW-25h pour sortir de la fenetre TTL 24h
+  // et garantir le cas B (la nouvelle conception M/43 fait que le cas A est base sur TTL DB).
+  execSync(`mariadb ocre_meta -e "UPDATE auth_users SET last_login_at = DATE_SUB(NOW(), INTERVAL 25 HOUR), last_magic_link_consumed_at = DATE_SUB(NOW(), INTERVAL 25 HOUR) WHERE email='philippe.ciftci@gmail.com'"`);
   await page.goto('https://ocre.immo/');
   await page.evaluate(() => window.ocreSignupOpen({ app: 'agent' }));
   await page.waitForSelector('#oal-overlay.oal-show', { timeout: 5000 });
@@ -66,9 +68,8 @@ test('2) Cas B — email connu → message "Lien envoyé" + AMD #2 fade form + a
 });
 
 test('2bis) BUG#3 — encoding email UTF-8 + formatTtlHuman accents corrects', async ({ request }) => {
-  // POST login.php pour Philippe existant, recupere derniere entry magic_tokens.
-  // On verifie indirectement via le log /var/log/ocre-magic-link.log que l'envoi a eu lieu,
-  // et qu'aucun caractere "acces" (sans accent) n'est present dans le code source des emails.
+  // M/2026/05/11/43 — force TTL expire pour declencher cas B (envoi mail) plutot que direct.
+  execSync(`mariadb ocre_meta -e "UPDATE auth_users SET last_login_at = DATE_SUB(NOW(), INTERVAL 25 HOUR), last_magic_link_consumed_at = DATE_SUB(NOW(), INTERVAL 25 HOUR) WHERE email='philippe.ciftci@gmail.com'"`);
   const r = await request.post('https://auth.ocre.immo/api/login.php', {
     headers: { 'Content-Type': 'application/json', 'Origin': 'https://ocre.immo' },
     data: { email: 'philippe.ciftci@gmail.com', app: 'agent' },

@@ -70,8 +70,9 @@ test('2) Cas A end-to-end : user existant + session valide → action=direct (PA
   await ctx.close();
 });
 
-test('3) Cas B encore fonctionnel : email connu sans session → action=link_sent', async ({ browser }) => {
-  // Pas de cookies preservés : context neuf
+test('3) Cas B encore fonctionnel : email connu TTL expire → action=link_sent', async ({ browser }) => {
+  // M/2026/05/11/43 — force TTL expire pour declencher cas B (la nouvelle conception M/43 base cas A sur TTL DB).
+  execSync(`mariadb ocre_meta -e "UPDATE auth_users SET last_login_at = DATE_SUB(NOW(), INTERVAL 25 HOUR), last_magic_link_consumed_at = DATE_SUB(NOW(), INTERVAL 25 HOUR) WHERE email='philippe.ciftci@gmail.com'"`);
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   await page.goto('https://ocre.immo/');

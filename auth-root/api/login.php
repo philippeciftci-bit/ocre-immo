@@ -36,13 +36,11 @@ $app = preg_replace('/[^a-z]/', '', strtolower((string)($body['app'] ?? 'agent')
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) auth_send_json(['ok'=>false,'error'=>'email_invalid'], 400);
 
 // Lookup user
-$st = auth_db()->prepare("SELECT id, email, magic_link_ttl_hours FROM auth_users WHERE email = ? LIMIT 1");
+$st = auth_db()->prepare("SELECT id, email, magic_link_ttl_hours, last_login_at, last_magic_link_consumed_at FROM auth_users WHERE email = ? LIMIT 1");
 $st->execute([$email]);
 $user = $st->fetch(PDO::FETCH_ASSOC);
 
 // CAS C — user inconnu → signup required (frontend deploie un accordeon avec champs prenom/nom/tel/cgu/rgpd).
-// Le frontend POST ensuite vers /api/magic-link/request.php avec le full profile.
-// On fournit le fallback redirect_url pour les clients qui ne savent pas faire l'accordeon (compat).
 if (!$user) {
     auth_send_json([
         'ok' => true,
@@ -54,23 +52,37 @@ if (!$user) {
 $userId = (int) $user['id'];
 $ttlHours = max(1, (int) ($user['magic_link_ttl_hours'] ?? 24));
 
-// CAS A — cookie ocre_jwt valide + session NON revoked + slug tenant existe → direct
-$jwtCookie = $_COOKIE['ocre_jwt'] ?? '';
-$hasValidSession = false;
-if ($jwtCookie) {
-    $r = jwt_decode($jwtCookie, true);
-    if ($r['ok'] && (int)$r['claims']['sub'] === $userId) {
-        $jti = $r['claims']['jti'];
-        $sst = auth_db()->prepare("SELECT 1 FROM auth_sessions WHERE jti = ? AND user_id = ? AND revoked_at IS NULL AND expires_at > NOW() LIMIT 1");
-        $sst->execute([$jti, $userId]);
-        if ($sst->fetch()) $hasValidSession = true;
-    }
-}
+// M/2026/05/11/43 — CAS A base sur TTL DB (PAS sur cookie navigateur, fix Safari iPad ITP).
+// Critere : max(last_login_at, last_magic_link_consumed_at) dans la fenetre [now - ttl_hours, now].
+// Si OUI : re-pose cookies SSO (au cas ou navigateur les avait perdus) + retourne direct.
+// Si NON ou jamais : fallback cas B (envoi nouveau magic link).
+$lastA = $user['last_login_at'] ? strtotime($user['last_login_at']) : 0;
+$lastB = $user['last_magic_link_consumed_at'] ? strtotime($user['last_magic_link_consumed_at']) : 0;
+$lastAccess = max($lastA, $lastB);
+$ttlSeconds = $ttlHours * 3600;
+$withinTtl = $lastAccess > 0 && (time() - $lastAccess) < $ttlSeconds;
 
-if ($hasValidSession) {
-    // M/2026/05/11/40 BUG#1 — Cas A : session valide. Verifie tenant (slug dans users + DB ocre_wsp_<slug>).
-    // Si user existe sans slug (legacy avant M/37 amd#2 provisioning auto), provisionne inline pour ne pas
-    // tomber en cas B (faux mail envoye). Reuse lib partagee auth_provision_tenant.
+if ($withinTtl) {
+    // M/2026/05/11/43 — CAS A par TTL DB : user a un acces recent dans la fenetre TTL.
+    // (1) Recree session SSO inline : nouveau JWT + auth_sessions row + pose cookies (au cas ou
+    //     navigateur les avait perdus ou bloques par ITP). UPDATE last_login_at NOW().
+    // (2) Resolve slug tenant (cherche dans users legacy + provision inline si manquant).
+    // (3) Retourne action=direct avec redirect_url tenant.
+    try {
+        // (1) Recree session SSO
+        $jwt = jwt_encode($userId, 365 * 86400);
+        $refresh = bin2hex(random_bytes(32));
+        $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 256);
+        try {
+            auth_db()->prepare(
+                "INSERT INTO auth_sessions (user_id, jti, refresh_token, expires_at, user_agent, ip)
+                 VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 YEAR), ?, ?)"
+            )->execute([$userId, $jwt['jti'], $refresh, $ua, $ip]);
+            auth_db()->prepare("UPDATE auth_users SET last_login_at = NOW() WHERE id = ?")->execute([$userId]);
+        } catch (Throwable $e) { /* swallow */ }
+        auth_set_cookies($jwt['token'], $refresh);
+    } catch (Throwable $e) { @error_log('[login cas A sso recreate] ' . $e->getMessage()); }
+
     try {
         $env = parse_ini_file('/root/.secrets/ocre-db.env', false, INI_SCANNER_RAW);
         $pdoMeta = new PDO('mysql:host=' . ($env['DB_HOST'] ?? '127.0.0.1') . ';dbname=ocre_meta;charset=utf8mb4',
@@ -95,7 +107,7 @@ if ($hasValidSession) {
                     auth_send_json([
                         'ok' => true,
                         'action' => 'direct',
-                        'redirect_url' => 'https://' . $slug . '.ocre.immo/?_s=' . urlencode($prov['sso_token']) . '&source=login',
+                        'redirect_url' => 'https://' . $slug . '.ocre.immo/?_s=' . urlencode($prov['sso_token']) . '&source=ttl_login',
                     ]);
                 }
             }
@@ -104,7 +116,7 @@ if ($hasValidSession) {
             auth_send_json([
                 'ok' => true,
                 'action' => 'direct',
-                'redirect_url' => 'https://' . $slug . '.ocre.immo/?source=login',
+                'redirect_url' => 'https://' . $slug . '.ocre.immo/?source=ttl_login',
             ]);
         }
     } catch (Throwable $e) { @error_log('[login cas A] ' . $e->getMessage()); }

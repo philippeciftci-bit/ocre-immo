@@ -60,7 +60,9 @@ try {
     );
     $ins->execute([$userId, $jwt['jti'], $refresh, $ua, $ip]);
 
-    $db->prepare("UPDATE auth_users SET last_login_at = NOW() WHERE id = ?")->execute([$userId]);
+    // M/2026/05/11/43 — stamp aussi last_magic_link_consumed_at pour le check TTL cas A par DB
+    // (sert au login.php a determiner si le user est dans la fenetre TTL sans dependre du cookie navigateur).
+    $db->prepare("UPDATE auth_users SET last_login_at = NOW(), last_magic_link_consumed_at = NOW() WHERE id = ?")->execute([$userId]);
 
     $db->commit();
 } catch (Exception $e) {
