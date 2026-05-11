@@ -22938,7 +22938,18 @@ function FormView(props) {
           })()}
           <div style={{display:'flex', gap:'var(--space-6px)', marginBottom:'var(--space-3)'}}>
             {['Particulier', 'Société'].map(t => (
-              <button key={t} onClick={() => { setProfilType(t); commit('profil_type', t); }}
+              <button key={t} onClick={() => {
+                /* M/2026/05/12/3 — Recopie prenom/nom au toggle Particulier<->Societe (no-ecrase).
+                   set() declenche l'auto-save existant. N'ecrase JAMAIS un champ destination deja rempli. */
+                if (t === 'Société') {
+                  if (!d.representant_prenom && d.prenom) set('representant_prenom', d.prenom);
+                  if (!d.representant_nom && d.nom) set('representant_nom', d.nom);
+                } else if (t === 'Particulier') {
+                  if (!d.prenom && d.representant_prenom) set('prenom', d.representant_prenom);
+                  if (!d.nom && d.representant_nom) set('nom', d.representant_nom);
+                }
+                setProfilType(t); commit('profil_type', t);
+              }}
                 style={{flex:1, padding:'7px 10px', borderRadius:8, border:'1.5px solid ' + (profilType === t ? 'var(--color-accent)' : 'var(--color-border-subtle)'),
                         background: profilType === t ? 'var(--color-bg-tint-hover)' : 'var(--color-bg-input)', color: profilType === t ? 'var(--color-accent)' : 'var(--color-text-muted)',
                         fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>{t}</button>
