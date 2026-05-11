@@ -73,19 +73,31 @@ try {
 auth_set_cookies($jwt['token'], $refresh);
 // M_OCRE_PATCH_OUTILS_RICHES — redirect vers app cible si param ?app=<slug> fourni
 $appTarget = preg_replace('/[^a-z]/', '', strtolower((string)($_GET['app'] ?? '')));
-// M/2026/05/11/35 — M_SIGNUP_DIRECT : redirect direct vers le sous-domaine dedie de l'app
-// (PWA installable) au lieu du hub intermediaire app.ocre.immo. Param ?activated=1 declenche
-// le prompt PWA install. Fallback hub pour les apps sans sous-domaine dedie.
-$appUrls = [
-    'agent'   => 'https://agent.ocre.immo/?activated=1',
-    'scan'    => 'https://app.ocre.immo/oi-scan',     // sous-domaine pas deploye
-    'book'    => 'https://app.ocre.immo/oi-book',
-    'demande' => 'https://app.ocre.immo/oi-recherche',
-    'capture' => 'https://app.ocre.immo/oi-capture',
-    'estimer' => 'https://app.ocre.immo/oi-estimer',
-];
-$dest = $appUrls[$appTarget] ?? 'https://agent.ocre.immo/?activated=1';
-// Activation auto module pour user (premier login outil = activation)
 if ($appTarget) um_activate($userId, $appTarget);
+
+// M/2026/05/11/37 AMENDEMENT #2 — redirect direct vers la SPA tenant (skip splash agent.ocre.immo).
+// Provisioning auto inline via lib partagee + sso_token dans l'URL pour SSO cross-subdomain.
+$dest = null;
+if ($appTarget === 'agent' || $appTarget === '') {
+    require_once __DIR__ . '/../../lib/provision.php';
+    $prov = auth_provision_tenant($userId, 'agent');
+    if (!empty($prov['ok']) && !empty($prov['slug']) && !empty($prov['sso_token'])) {
+        $dest = $prov['tenant_url'] . '?_s=' . urlencode($prov['sso_token']) . '&activated=1';
+    } else {
+        // Fallback : si provisioning fail, agent.ocre.immo router gere l'erreur proprement (retry).
+        @error_log('[validate] provision failed user_id=' . $userId . ' detail=' . json_encode($prov));
+        $dest = 'https://agent.ocre.immo/?activated=1';
+    }
+} else {
+    // Apps sans sous-domaine dedie : fallback hub legacy.
+    $appUrls = [
+        'scan'    => 'https://app.ocre.immo/oi-scan',
+        'book'    => 'https://app.ocre.immo/oi-book',
+        'demande' => 'https://app.ocre.immo/oi-recherche',
+        'capture' => 'https://app.ocre.immo/oi-capture',
+        'estimer' => 'https://app.ocre.immo/oi-estimer',
+    ];
+    $dest = $appUrls[$appTarget] ?? 'https://agent.ocre.immo/?activated=1';
+}
 header('Location: ' . $dest);
 exit;

@@ -80,6 +80,40 @@ test('3) Cas C — email inconnu → accordéon s\'ouvre (champs prenom/nom/tel/
   await page.screenshot({ path: path.join(OUT_DIR, '03-cas-C-accordeon.png'), fullPage: true });
 });
 
+test('4b) AMENDEMENT #2 — fade form + auto-close 4s apres succes cas C', async ({ page }) => {
+  const newEmail = 'e2e-mft-fade-' + Date.now() + '@ocre.test';
+  cleanupEmail(newEmail);
+  await page.goto('https://ocre.immo/');
+  await page.evaluate(() => window.ocreSignupOpen({ app: 'agent' }));
+  await page.waitForSelector('#oal-overlay.oal-show');
+  await page.fill('#oal-email', newEmail);
+  await page.click('#oal-submit');
+  await page.waitForFunction(() => document.getElementById('oal-extra').classList.contains('oal-extra-open'));
+  await page.fill('#oal-prenom', 'Fade');
+  await page.fill('#oal-nom', 'Test');
+  await page.fill('#oal-tel', '612345678');
+  await page.check('#oal-cgu');
+  await page.check('#oal-rgpd');
+  await page.click('#oal-submit');
+  // Attend succes
+  await page.waitForFunction(() => {
+    const m = document.getElementById('oal-msg');
+    return m && m.classList.contains('oal-success');
+  }, { timeout: 10000 });
+  // Verifie titre change en "Compte créé !"
+  const title = await page.textContent('#oal-title');
+  expect(title).toBe('Compte créé !');
+  // Form en train de fade : height = 0px ou opacity = 0
+  await page.waitForTimeout(400);
+  const formStyle = await page.locator('#oal-form').evaluate(el => ({ h: el.style.height, op: el.style.opacity }));
+  expect(formStyle.h).toBe('0px');
+  // Popup encore visible (toast vert visible)
+  await expect(page.locator('#oal-msg.oal-success')).toBeVisible();
+  // Auto-close apres 4s : popup retire .oal-show
+  await page.waitForFunction(() => !document.getElementById('oal-overlay').classList.contains('oal-show'), { timeout: 6000 });
+  cleanupEmail(newEmail);
+});
+
 test('4) Cas C — submit complet accordéon créé user + magic link', async ({ page }) => {
   const newEmail = 'e2e-mft-fullsignup-' + Date.now() + '@ocre.test';
   cleanupEmail(newEmail);
