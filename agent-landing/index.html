@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oi Agent — CRM immobilier professionnel</title>
+<meta name="description" content="Oi Agent — CRM matching pour agents immobiliers. Un produit Ocre.">
+<meta name="theme-color" content="#8B5E3C">
+<link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
+<link rel="apple-touch-icon" href="/favicon/apple-touch-icon-180x180.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Oi Agent">
+<link rel="apple-touch-startup-image" href="/favicon/apple-touch-icon-180x180.png" media="(device-width: 390px) and (device-height: 844px)">
+<link rel="apple-touch-startup-image" href="/favicon/apple-touch-icon-180x180.png" media="(device-width: 414px) and (device-height: 896px)">
+<link rel="stylesheet" href="/styles/tokens.css">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', system-ui, -apple-system, sans-serif; background: var(--color-bg-page); color: #2A1810; min-height: 100vh; display: flex; flex-direction: column; }
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+  .wordmark { display: flex; align-items: baseline; gap: 6px; margin-bottom: 14px; }
+  .wordmark .oi { font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 64px; color: var(--color-accent); line-height: 1; }
+  .wordmark .agent { font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 32px; letter-spacing: 1px; color: #2A1810; line-height: 1; }
+  .tagline { font-size: 16px; color: #5A4E3D; max-width: 480px; margin-bottom: 28px; line-height: 1.5; }
+  .greeting { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600; font-size: 22px; color: var(--color-accent); margin-bottom: 18px; }
+  .ctas { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
+  .btn { display: inline-block; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-family: inherit; font-weight: 600; font-size: 15px; cursor: pointer; transition: transform 100ms ease, box-shadow 150ms ease; border: none; text-align: center; }
+  .btn-primary { background: linear-gradient(135deg, #8B5E3C, #A06B45); color: #fff; box-shadow: 0 2px 6px rgba(139, 94, 60, .25); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(139, 94, 60, .35); }
+  .btn-secondary { background: #fff; color: var(--color-accent); border: 1.5px solid #C9B79A; }
+  .btn-secondary:hover { background: var(--color-bg-page); }
+  .btn-ghost { background: transparent; color: #6B5E4A; border: none; font-size: 13px; padding: 8px; }
+  .btn-ghost:hover { color: var(--color-accent); text-decoration: underline; }
+  .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid #E5DDC8; border-top-color: #8B5E3C; animation: spin .8s linear infinite; margin: 16px auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer { padding: 20px; text-align: center; font-size: 12px; color: var(--color-text-muted); border-top: 1px solid rgba(74, 44, 30, .08); }
+  footer a { color: var(--color-accent); text-decoration: none; font-weight: 600; }
+  footer a:hover { text-decoration: underline; }
+  @media (max-width: 480px) {
+    .wordmark .oi { font-size: 52px; }
+    .wordmark .agent { font-size: 26px; }
+    .tagline { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+  <main>
+    <div class="wordmark">
+      <span class="oi">Oi</span><span class="agent">Agent</span>
+    </div>
+    <p class="tagline">Le CRM matching pour agents immobiliers professionnels.</p>
+
+    <!-- Etat 1 : check session en cours -->
+    <div id="state-loading"><div class="spinner" aria-hidden="true"></div></div>
+
+    <!-- Etat 2 : connecté (cookie ocre_jwt valide) -->
+    <div id="state-logged" hidden>
+      <p class="greeting">Bonjour, <span id="user-name">agent</span>.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="https://signup.ocre.immo/inscription/" id="cta-activate">Activer Oi Agent</a>
+        <button class="btn btn-ghost" id="cta-logout">Se déconnecter</button>
+      </div>
+    </div>
+
+    <!-- Etat 3 : non connecté -->
+    <div id="state-anon" hidden>
+      <div class="ctas">
+        <a class="btn btn-primary" href="/login">Se connecter</a>
+        <a class="btn btn-secondary" href="https://signup.ocre.immo/inscription/">Devenir agent</a>
+      </div>
+    </div>
+  </main>
+  <footer>
+    Un produit <a href="https://ocre.immo">Ocre</a>
+  </footer>
+
+<!-- M/2026/05/11/19 — SSO cross-subdomain : detect ocre_jwt session, no more email+password legacy. -->
+<script>
+(function(){
+  var stateLoading = document.getElementById('state-loading');
+  var stateLogged = document.getElementById('state-logged');
+  var stateAnon = document.getElementById('state-anon');
+  function show(el){
+    stateLoading.setAttribute('hidden','');
+    stateLogged.setAttribute('hidden','');
+    stateAnon.setAttribute('hidden','');
+    el.removeAttribute('hidden');
+  }
+  // Bypass si retour explicite logout ou ?landing=1 (forcer affichage anon)
+  if (location.search.indexOf('logout') !== -1 || location.search.indexOf('landing') !== -1) {
+    show(stateAnon); return;
+  }
+  // Safety net 2s : si réseau bloque, fallback anon
+  var safety = setTimeout(function(){ show(stateAnon); }, 2000);
+  fetch('https://auth.ocre.immo/api/me.php', { credentials: 'include', mode: 'cors', cache: 'no-store' })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      clearTimeout(safety);
+      if (d && d.ok && d.user) {
+        var name = d.user.first_name || (d.user.email ? d.user.email.split('@')[0] : 'agent');
+        document.getElementById('user-name').textContent = name;
+        var cta = document.getElementById('cta-activate');
+        if (d.user.email) cta.href = 'https://signup.ocre.immo/inscription/?email=' + encodeURIComponent(d.user.email);
+        document.getElementById('cta-logout').addEventListener('click', function(){
+          fetch('https://auth.ocre.immo/api/logout.php', { method:'POST', credentials:'include', mode:'cors' })
+            .finally(function(){ location.replace('/?logout=1'); });
+        });
+        show(stateLogged);
+      } else {
+        show(stateAnon);
+      }
+    })
+    .catch(function(){ clearTimeout(safety); show(stateAnon); });
+})();
+</script>
+
+<!-- M/2026/05/11/35 — M_SIGNUP_DIRECT : PWA install prompt + SW minimal. -->
+<style>
+  .pwa-prompt { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(140%); width: calc(100% - 32px); max-width: 380px; background: #fff; border: 1px solid #E5DDC8; border-radius: 14px; box-shadow: 0 12px 36px rgba(60,40,20,0.18); padding: 16px 18px 14px; z-index: 9999; transition: transform .3s ease-out; font-family: 'DM Sans', system-ui, sans-serif; }
+  .pwa-prompt.show { transform: translateX(-50%) translateY(0); }
+  .pwa-prompt-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .pwa-prompt-ico { width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg,#8B5E3C,#A06B45); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 20px; font-style: italic; flex-shrink: 0; }
+  .pwa-prompt-title { font-weight: 600; font-size: 14px; color: #2A1810; line-height: 1.2; }
+  .pwa-prompt-sub { font-size: 12px; color: #6B5642; line-height: 1.4; margin: 4px 0 12px; }
+  .pwa-prompt-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .pwa-btn { padding: 8px 14px; border-radius: 8px; font-family: inherit; font-weight: 600; font-size: 13px; border: 1px solid transparent; cursor: pointer; }
+  .pwa-btn-primary { background: #8B5E3C; color: #fff; }
+  .pwa-btn-ghost { background: transparent; color: #6B5642; border-color: #E5DDC8; }
+  .pwa-ios-steps { font-size: 12px; color: #6B5642; margin: 6px 0 10px; line-height: 1.5; }
+  .pwa-ios-steps b { color: #2A1810; }
+</style>
+<div id="pwa-prompt" class="pwa-prompt" hidden role="dialog" aria-labelledby="pwa-prompt-title">
+  <div class="pwa-prompt-head">
+    <span class="pwa-prompt-ico">Oi</span>
+    <span id="pwa-prompt-title" class="pwa-prompt-title">Installer Oi Agent sur l'écran d'accueil</span>
+  </div>
+  <div id="pwa-prompt-body">
+    <p class="pwa-prompt-sub">Accède à Oi Agent comme une vraie app, sans navigateur, depuis ton écran d'accueil.</p>
+    <div class="pwa-prompt-actions">
+      <button class="pwa-btn pwa-btn-ghost" id="pwa-dismiss">Plus tard</button>
+      <button class="pwa-btn pwa-btn-primary" id="pwa-install">Installer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// M/2026/05/11/35 — PWA install prompt (iOS Safari custom + Android/Desktop beforeinstallprompt).
+(function(){
+  var DISMISS_KEY = 'oi-agent-pwa-dismissed';
+  var TRIGGER_DELAY_MS = 2000;
+  var qs = new URLSearchParams(location.search);
+  var activated = qs.get('activated') === '1';
+  var prompt = document.getElementById('pwa-prompt');
+  var promptBody = document.getElementById('pwa-prompt-body');
+  var deferredPrompt = null;
+
+  // PWA deja installee ? (mode standalone) → skip
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+  if (localStorage.getItem(DISMISS_KEY)) return;
+
+  function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
+  function showPrompt() { prompt.hidden = false; setTimeout(function(){ prompt.classList.add('show'); }, 50); }
+  function hidePrompt() { prompt.classList.remove('show'); setTimeout(function(){ prompt.hidden = true; }, 320); }
+  function dismiss() { localStorage.setItem(DISMISS_KEY, Date.now()); hidePrompt(); }
+
+  document.getElementById('pwa-dismiss').addEventListener('click', dismiss);
+
+  // Android / Desktop : beforeinstallprompt
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('pwa-install').onclick = function() {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(){ dismiss(); deferredPrompt = null; });
+    };
+    if (activated) setTimeout(showPrompt, TRIGGER_DELAY_MS);
+  });
+
+  // iOS Safari : pas d'API native → popup custom avec instructions visuelles
+  if (isIOS() && activated) {
+    promptBody.innerHTML = `<div class="pwa-ios-steps">
+      Tape sur <b>⎙ Partager</b> en bas, puis choisis <b>« Sur l'écran d'accueil »</b>.
+    </div>
+    <div class="pwa-prompt-actions">
+      <button class="pwa-btn pwa-btn-primary" id="pwa-dismiss-ios">J'ai compris</button>
+    </div>`;
+    document.getElementById('pwa-dismiss-ios').addEventListener('click', dismiss);
+    setTimeout(showPrompt, TRIGGER_DELAY_MS);
+  }
+
+  // Service Worker minimal pour rendre l'app installable (Chrome/Edge requirement).
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  }
+})();
+</script>
+</body>
+</html>

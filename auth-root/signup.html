@@ -80,6 +80,7 @@ h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font
 
   <h1>Crée ton compte</h1>
   <div class="sub">Gratuit · 1 minute · zéro mot de passe</div>
+  <div class="sub" id="app-sub" style="font-size:13px;margin-top:-2px;color:var(--ocre-dark);font-weight:600" hidden>Pour <span id="app-sub-name">Oi Agent</span></div>
 
   <form id="signup-form" onsubmit="return signupSubmit(event)" autocomplete="on">
     <div class="field">
@@ -312,6 +313,17 @@ async function signupSubmit(e) {
   }
   return false;
 }
+
+// M/2026/05/11/35 — Affichage subtitle "Pour Oi <App>" selon ?app=
+function applyAppSubtitle() {
+  var APPS = { agent: 'Oi Agent', scan: 'Oi Scan', book: 'Oi Book', demande: 'Oi Demande', capture: 'Oi Capture', estimer: 'Oi Estimer' };
+  var qs = new URLSearchParams(location.search);
+  var app = (qs.get('app') || '').toLowerCase().replace(/[^a-z]/g, '');
+  if (!APPS[app]) return; // pas de subtitle si app absent/invalide (fallback agent gere a la submission)
+  document.getElementById('app-sub-name').textContent = APPS[app];
+  document.getElementById('app-sub').hidden = false;
+}
+applyAppSubtitle();
 
 function initForm() {
   renderCountryList('');

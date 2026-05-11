@@ -73,16 +73,18 @@ try {
 auth_set_cookies($jwt['token'], $refresh);
 // M_OCRE_PATCH_OUTILS_RICHES — redirect vers app cible si param ?app=<slug> fourni
 $appTarget = preg_replace('/[^a-z]/', '', strtolower((string)($_GET['app'] ?? '')));
-// M_OCRE_PARCOURS_V4 — toutes les apps via app.ocre.immo/oi-<slug> (sous-domaines pas tous deployes)
+// M/2026/05/11/35 — M_SIGNUP_DIRECT : redirect direct vers le sous-domaine dedie de l'app
+// (PWA installable) au lieu du hub intermediaire app.ocre.immo. Param ?activated=1 declenche
+// le prompt PWA install. Fallback hub pour les apps sans sous-domaine dedie.
 $appUrls = [
-    'agent' => 'https://app.ocre.immo/oi-agent',
-    'scan' => 'https://app.ocre.immo/oi-scan',
-    'book' => 'https://app.ocre.immo/oi-book',
+    'agent'   => 'https://agent.ocre.immo/?activated=1',
+    'scan'    => 'https://app.ocre.immo/oi-scan',     // sous-domaine pas deploye
+    'book'    => 'https://app.ocre.immo/oi-book',
     'demande' => 'https://app.ocre.immo/oi-recherche',
     'capture' => 'https://app.ocre.immo/oi-capture',
     'estimer' => 'https://app.ocre.immo/oi-estimer',
 ];
-$dest = $appUrls[$appTarget] ?? 'https://app.ocre.immo/oi-agent';
+$dest = $appUrls[$appTarget] ?? 'https://agent.ocre.immo/?activated=1';
 // Activation auto module pour user (premier login outil = activation)
 if ($appTarget) um_activate($userId, $appTarget);
 header('Location: ' . $dest);
