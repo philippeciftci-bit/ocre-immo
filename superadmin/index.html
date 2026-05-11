@@ -475,6 +475,7 @@ const TAB_SUBTITLES = {
   modules: 'Catalogue Oi · Agent / Scan / Book / Demande',
   system: 'Santé serveur Hetzner · backups · deploys',
   maintenance: '⚠️ Backup auto · reset par périmètre · restore (M_SUPERADMIN_RESET)',
+  atelier: '🔧 Outils dev VPS · Live View CC + Monitoring + Backups + Maquettes (M_DASHBOARD_UNIFIE)',
   // Routes legacy conservées (drill-down) :
   workspaces: 'Workspaces (legacy alias → tenants)',
   clients: 'Clients inscrits · drill-down',
@@ -495,15 +496,17 @@ const DATAROOM_CONTENT = {
   funding_status: "Bootstrapped depuis 2025. Ouvert à discussion partenariats stratégiques (CRM immo existant, agences nationales) ou seed early-stage (200-500k€)."
 };
 
+// M_DASHBOARD_UNIFIE — sidebar Ocre + Atelier dans 1 dashboard
 const TAB_LABELS = {
-  tenants: '🏢 Tenants',
-  agents: '👥 Agents',
-  metrics: '📊 Métriques',
+  tenants: '👥 Utilisateurs Ocre',
+  agents: '🪪 Agents',
+  metrics: '📊 Statistiques Ocre',
   notifs: '🔔 Notifs & Events',
   modules: '🧩 Modules Oi',
   system: '🛠 Système',
   dataroom: '📊 Data Room',
   maintenance: '⚠️ Maintenance',
+  atelier: '🔧 Atelier',
   // Legacy (gardés pour compat hash URLs)
   workspaces: 'Workspaces',
   clients: 'Clients',
@@ -513,7 +516,7 @@ const TAB_LABELS = {
   users: 'Users',
   overview: 'Vue ensemble',
 };
-const TAB_ORDER = ['tenants', 'agents', 'metrics', 'notifs', 'modules', 'system', 'dataroom', 'maintenance'];
+const TAB_ORDER = ['tenants', 'agents', 'metrics', 'notifs', 'modules', 'system', 'dataroom', 'maintenance', 'atelier'];
 
 // Hash routing : URL #tab synchronise l'onglet actif.
 function parseHashTab() {
@@ -795,7 +798,26 @@ async function loadTab(t) {
   } else if (t === 'maintenance') {
     // M_SUPERADMIN_RESET — onglet Maintenance (backup auto + reset 3 niveaux + restore)
     await renderMaintenanceTab(c);
+  } else if (t === 'atelier') {
+    // M_DASHBOARD_UNIFIE — Atelier : outils dev VPS dans 1 dashboard
+    renderAtelierTab(c);
   }
+}
+
+// M_DASHBOARD_UNIFIE — Atelier tab : grid liens iframes vers outils VPS Philippe
+function renderAtelierTab(c) {
+  c.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:24px">'
+    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">📺</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Live View CC</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Terminaux Claude Code en temps réel (claude:0, cc-atelier:0). Streaming tmux WebSocket.</p><a href="https://46-225-215-148.sslip.io/live/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir →</a></div>'
+    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">📊</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Monitoring</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Grafana + Loki logs centralisés (Hetzner VPS, nginx, PHP-FPM, MariaDB, Docker).</p><a href="https://grafana.46-225-215-148.sslip.io/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir Grafana →</a></div>'
+    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">🎨</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Maquettes</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">17+ maquettes HTML interactives validation Philippe avant implémentation prod.</p><a href="https://46-225-215-148.sslip.io/maquettes/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir →</a></div>'
+    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">🛠</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Builder</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Constructeur de page WYSIWYG branché sur design tokens Ocre (cream/ocre/Cormorant).</p><a href="https://builder.46-225-215-148.sslip.io/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir →</a></div>'
+    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">💾</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Backups Restic</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Snapshots Restic chiffrés (DB ocre_meta + uploads + configs) — quotidien automatisé.</p><a href="https://46-225-215-148.sslip.io/backups/status.json" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Status JSON →</a></div>'
+    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">📨</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Notifications Telegram</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Bot Atelier @ocre_atelier_bot · canal Philippe pour alertes prod + retours missions.</p><a href="https://t.me/ocre_atelier_bot" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir Telegram →</a></div>'
+    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">🧪</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Tests E2E Playwright</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">20+ tests E2E parcours Ocre. Dernier rapport : 33 PASS / 7 FAIL (82.5%).</p><a href="https://46-225-215-148.sslip.io/maquettes/e2e-reports/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Rapports →</a></div>'
+    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">🐛</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">GlitchTip</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Capture erreurs JS frontend + exceptions PHP backend. À activer (M_GLITCHTIP_INSTALL).</p><a href="https://glitchtip.46-225-215-148.sslip.io/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir →</a></div>'
+    + '</div>'
+    + '<div style="background:#FBF7F0;border:1px solid #E5DDC8;border-radius:10px;padding:16px;font-size:12.5px;color:#6B5642"><strong>Note :</strong> Cette section regroupe les outils dev/infra du VPS Philippe. Liens externes ouvrent dans un nouvel onglet (sécurité X-Frame-Options empêche iframes pour la plupart). Pour iframer Live View en plein écran, créer page dédiée future.</div>';
 }
 
 // M_SUPERADMIN_RESET — Maintenance tab : backup + reset par perimetre + restore
