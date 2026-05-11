@@ -11873,8 +11873,10 @@ function App() {
         return saved;
       }
       if (saveError) {
-        if (isStagedSave) setStaged(prev => prev.filter(c => c.id !== tmpId));
-        else setClients(prev => prev.filter(c => c.id !== tmpId));
+        // M/2026/05/12/5 — purge tmpId courant ET tout straggler tmp-* d un cycle precedent (anti cards fantomes).
+        const purgeOrphans = c => c.id !== tmpId && !(typeof c.id === 'string' && c.id.startsWith('tmp-'));
+        if (isStagedSave) setStaged(prev => prev.filter(purgeOrphans));
+        else setClients(prev => prev.filter(purgeOrphans));
         try { window.dispatchEvent(new CustomEvent('ocre-draft-error', {detail: {message: saveError.message || 'Echec sauvegarde'}})); } catch (e) {}
         return null;
       }

@@ -465,6 +465,8 @@ switch ($action) {
             );
             // M/2026/05/06/71 — toute nouvelle fiche INSERT demarre en statut 'brouillon'.
             $statutInsert = $is_staged_new ? 'brouillon' : ($archived ? 'archive' : 'brouillon');
+            // M/2026/05/12/5 — guard backend : projet NOT NULL en DB. Fallback Acheteur si NULL (saisie prenom/nom avant choix profil).
+            if (!$projet) $projet = 'Acheteur';
             $stmt->execute([$user['id'], $data, $projet, $is_investisseur, $archived, $is_draft, $is_staged_new,
                             $prenom, $nom, $societe_nom, $tel, $email,
                             $payment_plan_json, $received_payments_json,
