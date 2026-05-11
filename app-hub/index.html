@@ -16,6 +16,30 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css?v=1">
+<!-- M_OCRE_HUB_INFINITE_LOADING_FULL_FIX — GlitchTip/Sentry frontend (DSN à activer quand /etc/ocre/glitchtip-dsn-app present) -->
+<script src="https://browser.sentry-cdn.com/9.36.0/bundle.min.js" crossorigin="anonymous"></script>
+<script>
+(function(){
+  // DSN injecté via meta si configuré (placeholder désactivé par défaut)
+  var meta = document.querySelector('meta[name="glitchtip-dsn"]');
+  var dsn = meta ? meta.getAttribute('content') : '';
+  if (!dsn || !window.Sentry) return;
+  Sentry.init({
+    dsn: dsn,
+    environment: 'production',
+    release: 'ocre-app-hub@v2',
+    tracesSampleRate: 0.1,
+    sendDefaultPii: false,
+    beforeSend: function(event){
+      var msg = event.exception && event.exception.values && event.exception.values[0] && event.exception.values[0].value;
+      if (msg && /Non-Error promise rejection|ResizeObserver loop|Script error/i.test(msg)) return null;
+      return event;
+    },
+  });
+  console.log('[hub] GlitchTip Sentry init OK');
+})();
+</script>
+<!-- Pour activer GlitchTip : ajouter <meta name="glitchtip-dsn" content="https://xxx@glitchtip.46-225-215-148.sslip.io/N"> ci-dessus avant </head> -->
 </head>
 <body>
 <div id="loader" class="loader" aria-busy="true">
