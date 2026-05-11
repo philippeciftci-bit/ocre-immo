@@ -12,7 +12,7 @@ test.describe('auth.ocre.immo signup/login parcours alternatif', () => {
     const responses = [];
     page.on('response', r => { if (r.url().includes('/api/')) responses.push({ url: r.url(), status: r.status() }); });
 
-    await page.goto('https://auth.ocre.immo/signup');
+    await page.goto('https://auth.ocre.immo/signup.html');
     await expect(page.locator('input[type=email]').first()).toBeVisible();
     // Vérifier ZÉRO bouton SSO Google/Apple/Facebook (M_OCRE_AUTH_ALIGN_V4 magic-link only)
     expect(await page.locator('text=/continuer avec google/i').count()).toBe(0);
@@ -39,7 +39,7 @@ test.describe('auth.ocre.immo signup/login parcours alternatif', () => {
   });
 
   test('auth.ocre.immo/login : 1 champ email seul + bouton M envoyer le lien', async ({ page }) => {
-    await page.goto('https://auth.ocre.immo/login');
+    await page.goto('https://auth.ocre.immo/login.html');
     await expect(page.locator('input[type=email]').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /M.envoyer.*lien/i })).toBeVisible();
     // Pas de champ prénom/nom visible (login simplifié)

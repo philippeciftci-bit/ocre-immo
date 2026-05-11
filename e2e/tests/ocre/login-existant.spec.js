@@ -20,7 +20,7 @@ test.describe('Login email existant → entrée directe app', () => {
   });
 
   test('Email reconnu via auth.ocre.immo/signup → redirect direct (pas Crée ton compte résiduel)', async ({ page }) => {
-    await page.goto('https://auth.ocre.immo/signup');
+    await page.goto('https://auth.ocre.immo/signup.html');
     await page.locator('input[type=email]').first().fill(email);
     await page.getByRole('button', { name: /Continuer/i }).click();
     await expect(page).toHaveURL(/oi-agent|app\.ocre\.immo/, { timeout: 8000 });
