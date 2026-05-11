@@ -114,11 +114,12 @@ h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font
             <input type="tel" id="phone" name="phone" class="phone-input" autocomplete="tel" placeholder="6 12 34 56 78">
           </div>
         </div>
-        <label class="cgu"><input type="checkbox" id="cgu"> J'accepte les <a href="https://ocre.immo/mentions-legales/" target="_blank">CGU</a> et la <a href="https://ocre.immo/confidentialite/" target="_blank">politique de confidentialité</a></label>
+        <label class="cgu"><input type="checkbox" id="cgu"> J'accepte les <a href="https://ocre.immo/mentions-legales/" target="_blank">conditions générales d'utilisation</a> *</label>
+        <label class="cgu"><input type="checkbox" id="rgpd"> J'accepte le traitement de mes données conformément à la <a href="https://ocre.immo/confidentialite/" target="_blank">politique de confidentialité</a> (RGPD) *</label>
       </div>
     </div>
 
-    <button type="submit" class="btn-submit" id="submit">Continuer</button>
+    <button type="submit" class="btn-submit" id="submit">Recevoir mon lien d'accès</button>
     <div id="feedback" class="feedback"></div>
   </form>
 
@@ -202,13 +203,14 @@ function validateForm() {
   var phone = ($('phone').value || '').trim();
   var country = $('country-code').value;
   var cgu = $('cgu').checked;
+  var rgpd = $('rgpd').checked;
   var phoneValid = validatePhoneE164(phone, country);
   var phoneEl = $('phone');
   phoneEl.classList.remove('is-phone-valid', 'is-phone-invalid');
   if (phoneValid) phoneEl.classList.add('is-phone-valid');
   else if (phone.replace(/\D/g, '').length > 4) phoneEl.classList.add('is-phone-invalid');
   var btn = $('submit');
-  var allValid = prenom.length >= 2 && nom.length >= 2 && phoneValid && cgu;
+  var allValid = prenom.length >= 2 && nom.length >= 2 && phoneValid && cgu && rgpd;
   btn.classList.toggle('btn-disabled', !allValid);
 }
 function emailBlur() {
@@ -283,9 +285,10 @@ async function signupSubmit(e) {
   var indicatif = $('country-prefix').value;
   var country = $('country-code').value;
   var cgu = $('cgu').checked;
-  if (!prenom || prenom.length < 2 || !nom || nom.length < 2 || !validatePhoneE164(phone, country) || !cgu) {
-    fb.textContent = '⚠ Tous les champs requis doivent être remplis valides + CGU cochée.'; fb.classList.add('show-fb', 'error');
-    btn.disabled = false; btn.textContent = 'Recevoir mon lien';
+  var rgpd = $('rgpd').checked;
+  if (!prenom || prenom.length < 2 || !nom || nom.length < 2 || !validatePhoneE164(phone, country) || !cgu || !rgpd) {
+    fb.textContent = '⚠ Tous les champs requis doivent être remplis + CGU + RGPD cochés.'; fb.classList.add('show-fb', 'error');
+    btn.disabled = false; btn.textContent = "Recevoir mon lien d'accès";
     return false;
   }
   btn.textContent = '⏳ Envoi…';
@@ -297,15 +300,15 @@ async function signupSubmit(e) {
         email: email, first_name: prenom, last_name: nom,
         societe: $('societe').value.trim(),
         phone: indicatif + ' ' + phone,
-        cgu_accepted: true, target_app: app,
+        cgu_accepted: true, rgpd_accepted: true, target_app: app,
       }),
     });
     var d2 = await r2.json();
     if (d2.ok) showToast('✓ Lien envoyé, vérifie ton email');
-    else { fb.textContent = 'Erreur : ' + (d2.error || 'inconnue'); fb.classList.add('show-fb', 'error'); btn.disabled = false; btn.textContent = 'Recevoir mon lien'; }
+    else { fb.textContent = 'Erreur : ' + (d2.error || 'inconnue'); fb.classList.add('show-fb', 'error'); btn.disabled = false; btn.textContent = "Recevoir mon lien d'accès"; }
   } catch (err) {
     fb.textContent = 'Erreur réseau : ' + err.message; fb.classList.add('show-fb', 'error');
-    btn.disabled = false; btn.textContent = 'Recevoir mon lien';
+    btn.disabled = false; btn.textContent = "Recevoir mon lien d'accès";
   }
   return false;
 }
@@ -325,6 +328,7 @@ function initForm() {
   $('country-search').addEventListener('input', function(){ renderCountryList(this.value); });
   ['prenom','nom','phone'].forEach(function(id){ $(id).addEventListener('input', validateForm); });
   $('cgu').addEventListener('change', validateForm);
+  $('rgpd').addEventListener('change', validateForm);
   $('email').addEventListener('blur', emailBlur);
 }
 if (document.readyState !== 'loading') initForm(); else document.addEventListener('DOMContentLoaded', initForm);

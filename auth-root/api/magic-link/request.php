@@ -37,12 +37,21 @@ $last = trim((string)($data['last_name'] ?? ''));
 $societe = trim((string)($data['societe'] ?? ''));
 $phone = trim((string)($data['phone'] ?? ''));
 $cgu = !empty($data['cgu_accepted']);
+$rgpd = !empty($data['rgpd_accepted']);
 $targetApp = preg_replace('/[^a-z]/', '', strtolower((string)($data['target_app'] ?? 'agent')));
+
+// M/2026/05/11/34 — double-lock CGU + RGPD obligatoire si profil etendu (full signup).
+// Si un user fait juste "demande lien existant" (email seul, pas first_name), CGU/RGPD pas requis
+// (déjà acceptés lors de l'inscription initiale). Si first_name OU phone fournis = full signup → 2 checks obligatoires.
+$isFullSignup = ($first !== '' || $last !== '' || $phone !== '');
+if ($isFullSignup && (!$cgu || !$rgpd)) {
+    auth_send_json(['ok' => false, 'error' => 'cgu_rgpd_required'], 400);
+}
 
 try {
     $userId = auth_get_or_create_user($email);
     // Mise a jour profil etendu si fourni (non-destructif : COALESCE NULLIF '')
-    if ($first || $last || $societe || $phone || $cgu) {
+    if ($first || $last || $societe || $phone || $cgu || $rgpd) {
         try {
             $up = auth_db()->prepare("UPDATE auth_users SET
                 first_name = COALESCE(NULLIF(?, ''), first_name),
@@ -50,9 +59,10 @@ try {
                 societe = COALESCE(NULLIF(?, ''), societe),
                 phone_e164 = COALESCE(NULLIF(?, ''), phone_e164),
                 cgu_accepted_at = CASE WHEN ? = 1 AND cgu_accepted_at IS NULL THEN NOW() ELSE cgu_accepted_at END,
+                rgpd_accepted_at = CASE WHEN ? = 1 AND rgpd_accepted_at IS NULL THEN NOW() ELSE rgpd_accepted_at END,
                 oauth_provider = COALESCE(oauth_provider, 'email_magic')
                 WHERE id = ?");
-            $up->execute([$first, $last, $societe, $phone, $cgu ? 1 : 0, $userId]);
+            $up->execute([$first, $last, $societe, $phone, $cgu ? 1 : 0, $rgpd ? 1 : 0, $userId]);
         } catch (Throwable $e) { /* swallow column missing */ }
     }
     // M/2026/05/11/20 — Cleanup tokens orphelins/expirés du user AVANT INSERT.
