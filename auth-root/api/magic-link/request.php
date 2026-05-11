@@ -74,9 +74,18 @@ try {
         auth_db()->prepare("DELETE FROM auth_magic_tokens WHERE expires_at < NOW()")->execute();
         auth_db()->prepare("UPDATE auth_magic_tokens SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL")->execute([$userId]);
     } catch (Throwable $e) { /* swallow : table may differ */ }
+    // M/2026/05/11/37 — TTL custom par user (colonne magic_link_ttl_hours, default 24h).
+    $ttlHours = 24;
+    try {
+        $ttlSt = auth_db()->prepare("SELECT magic_link_ttl_hours FROM auth_users WHERE id = ?");
+        $ttlSt->execute([$userId]);
+        $row = $ttlSt->fetch(PDO::FETCH_ASSOC);
+        if ($row && (int)$row['magic_link_ttl_hours'] > 0) $ttlHours = (int)$row['magic_link_ttl_hours'];
+    } catch (Throwable $e) { /* swallow column missing → fallback 24h */ }
+
     $token = bin2hex(random_bytes(32));
-    $st = auth_db()->prepare("INSERT INTO auth_magic_tokens (user_id, token, expires_at, ip) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), ?)");
-    $st->execute([$userId, $token, $ip]);
+    $st = auth_db()->prepare("INSERT INTO auth_magic_tokens (user_id, token, expires_at, ip) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? HOUR), ?)");
+    $st->execute([$userId, $token, $ttlHours, $ip]);
 
     $url = 'https://auth.ocre.immo/api/magic-link/validate.php?token=' . $token . '&app=' . urlencode($targetApp);
     $hello = $first ? 'Salut ' . htmlspecialchars($first) . ' 👋' : 'Bonjour 👋';

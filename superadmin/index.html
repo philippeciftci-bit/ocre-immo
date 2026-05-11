@@ -573,6 +573,7 @@ async function loadUsers() {
     const status = u.status === 'active' ? '<span class="badge badge-active">actif</span>' : `<span class="badge badge-suspended">${esc(u.status)}</span>`;
     const adminBadge = isAdmin ? ' <span class="badge badge-admin">super-admin</span>' : '';
     const delBtn = isAdmin ? '<span class="muted">protégé</span>' : `<button class="btn btn-danger btn-sm" onclick="confirmDeleteUser(${u.id}, ${JSON.stringify(u.email).replace(/"/g, '&quot;')})">Supprimer</button>`;
+    const authBtn = `<button class="btn btn-ghost btn-sm" title="Paramètres auth" onclick="openAuthSettings(${u.id}, ${u.magic_link_ttl_hours || 24}, ${u.session_idle_timeout_hours || 24})">🔑 Auth</button>`;
     return `<tr>
       <td class="cell-mono">${u.id}</td>
       <td><b>${esc(u.email)}</b>${adminBadge}</td>
@@ -581,7 +582,7 @@ async function loadUsers() {
       <td class="cell-mono" style="text-align:center">${u.active_sessions}</td>
       <td class="cell-mono">${fmtDate(u.last_login_at)}</td>
       <td class="cell-mono">${fmtDate(u.created_at)}</td>
-      <td class="cell-actions">${delBtn}</td>
+      <td class="cell-actions">${authBtn} ${delBtn}</td>
     </tr>`;
   }).join('');
   $('#users-table-wrap').innerHTML = `<div class="dt-wrap"><table class="dt"><thead><tr>
@@ -601,6 +602,38 @@ async function confirmDeleteUser(id, email) {
     },
   });
 }
+
+// M/2026/05/11/37 — Modale "Paramètres auth" : TTL magic link + idle timeout sessions par user.
+function openAuthSettings(userId, currentTtl, currentIdle) {
+  const root = $('#modal-root');
+  const opts = [{v:24,l:'24 heures'},{v:168,l:'7 jours'},{v:720,l:'30 jours'}];
+  const optHtml = (sel) => opts.map(o => `<option value="${o.v}" ${o.v===sel?'selected':''}>${o.l}</option>`).join('');
+  root.innerHTML = `<div class="modal-backdrop"><div class="modal">
+    <h2>Paramètres auth · user #${userId}</h2>
+    <p>Configure la durée du lien magique reçu par email et le délai d'inactivité avant déconnexion auto pour ce user.</p>
+    <label style="font-size:11.5px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.04em">Durée du magic link</label>
+    <select id="auth-ttl" style="width:100%;padding:10px 12px;border:1px solid var(--color-border);border-radius:7px;font:inherit;font-size:13.5px;margin:6px 0 14px">${optHtml(currentTtl)}</select>
+    <label style="font-size:11.5px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.04em">Déconnexion après inactivité</label>
+    <select id="auth-idle" style="width:100%;padding:10px 12px;border:1px solid var(--color-border);border-radius:7px;font:inherit;font-size:13.5px;margin:6px 0 14px">${optHtml(currentIdle)}</select>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="auth-cancel">Annuler</button>
+      <button class="btn btn-primary" id="auth-save" style="width:auto">Enregistrer</button>
+    </div>
+  </div></div>`;
+  $('#auth-cancel').onclick = () => { root.innerHTML = ''; };
+  $('#auth-save').onclick = async () => {
+    const ttl = parseInt($('#auth-ttl').value, 10);
+    const idle = parseInt($('#auth-idle').value, 10);
+    const btn = $('#auth-save'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+    try {
+      const r = maybeAuthError(await api('/api/superadmin_auth_users.php?action=update_auth_settings', { method: 'POST', body: { user_id: userId, magic_link_ttl_hours: ttl, session_idle_timeout_hours: idle } }));
+      if (!r.ok) throw new Error(r.error || 'erreur');
+      root.innerHTML = '';
+      loadUsers();
+    } catch (e) { btn.disabled = false; btn.textContent = 'Enregistrer'; alert('Erreur : ' + e.message); }
+  };
+}
+window.openAuthSettings = openAuthSettings;
 
 // ====== SECTION 3 — SESSIONS ======
 async function renderSessions() {

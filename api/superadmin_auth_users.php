@@ -28,6 +28,7 @@ if ($action === 'list') {
 
     $users = $meta->query(
         "SELECT id, email, first_name, last_name, status, is_super_admin, created_at, last_login_at,
+                magic_link_ttl_hours, session_idle_timeout_hours,
                 (SELECT COUNT(*) FROM auth_sessions s WHERE s.user_id=u.id AND s.revoked_at IS NULL AND s.expires_at > NOW()) AS active_sessions,
                 (SELECT COUNT(*) FROM auth_magic_tokens m WHERE m.user_id=u.id AND m.used_at IS NULL AND m.expires_at > NOW()) AS pending_magic
          FROM auth_users u
@@ -67,6 +68,24 @@ if ($action === 'delete' && $method === 'POST') {
     } catch (Throwable $e) {
         aj(['ok' => false, 'error' => 'delete_failed: ' . $e->getMessage()], 500);
     }
+}
+
+// M/2026/05/11/37 — update_auth_settings : magic_link_ttl_hours + session_idle_timeout_hours.
+if ($action === 'update_auth_settings' && $method === 'POST') {
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+    $userId = (int) ($input['user_id'] ?? 0);
+    $ttl = (int) ($input['magic_link_ttl_hours'] ?? 0);
+    $idle = (int) ($input['session_idle_timeout_hours'] ?? 0);
+    $ALLOWED = [24, 168, 720]; // 24h, 7j, 30j
+    if (!$userId) aj(['ok' => false, 'error' => 'missing user_id'], 400);
+    if (!in_array($ttl, $ALLOWED, true)) aj(['ok' => false, 'error' => 'invalid_ttl'], 400);
+    if (!in_array($idle, $ALLOWED, true)) aj(['ok' => false, 'error' => 'invalid_idle'], 400);
+    try {
+        $up = $meta->prepare("UPDATE auth_users SET magic_link_ttl_hours = ?, session_idle_timeout_hours = ? WHERE id = ?");
+        $up->execute([$ttl, $idle, $userId]);
+        if (function_exists('sa_audit_meta')) sa_audit_meta((int) $user['id'], 'auth_settings.update', ['user_id' => $userId, 'ttl' => $ttl, 'idle' => $idle]);
+        aj(['ok' => true, 'magic_link_ttl_hours' => $ttl, 'session_idle_timeout_hours' => $idle]);
+    } catch (Throwable $e) { aj(['ok' => false, 'error' => $e->getMessage()], 500); }
 }
 
 aj(['ok' => false, 'error' => 'unknown action: ' . $action], 400);
