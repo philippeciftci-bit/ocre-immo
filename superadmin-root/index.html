@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ocre · Super-dashboard</title>
+<meta name="theme-color" content="#8B5E3C">
+<link rel="icon" type="image/svg+xml" href="https://app.ocre.immo/favicon/oi-logo.svg">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css?v=1">
+</head>
+<body>
+  <div id="loader" class="loader">
+    <div class="spinner" aria-hidden="true"></div>
+    <p>Vérification de la session…</p>
+  </div>
+  <div id="auth-error" class="auth-error" hidden>
+    <div class="brand"><span class="oi">Oc</span><span class="re">re</span></div>
+    <h1>Accès super-administrateur requis</h1>
+    <p id="auth-msg">Connecte-toi avec un compte super-admin pour accéder au dashboard.</p>
+    <a class="btn btn-primary" href="https://auth.ocre.immo/login.html?app=admin&next=https%3A%2F%2Fadmin.ocre.immo%2F">Se connecter via magic link</a>
+  </div>
+  <div id="app" hidden>
+    <aside class="sidebar">
+      <div class="brand"><span class="oi">Oc</span><span class="re">re</span> · super-admin</div>
+      <nav>
+        <button class="nav-item active" data-section="overview">Vue d'ensemble</button>
+        <button class="nav-item" data-section="brand">Identité Ocre</button>
+        <button class="nav-item" data-section="modules">Modules Oi</button>
+        <button class="nav-item" data-section="auth">Auth &amp; sécurité</button>
+        <button class="nav-item" data-section="users">Utilisateurs</button>
+        <button class="nav-item" data-section="logs">Logs</button>
+        <button class="nav-item" data-section="stats">Stats</button>
+        <button class="nav-item" data-section="tools">Outils techniques</button>
+      </nav>
+      <div class="sidebar-footer">
+        <span id="me-email"></span>
+        <button id="logoutBtn" class="link">Se déconnecter</button>
+      </div>
+    </aside>
+    <main class="content">
+      <header class="content-head">
+        <h1 id="section-title">Vue d'ensemble</h1>
+        <button id="refreshBtn" class="btn btn-ghost" title="Rafraîchir">↻</button>
+      </header>
+      <section id="content-body"></section>
+    </main>
+  </div>
+<script src="/app.js?v=1"></script>
+</body>
+</html>
