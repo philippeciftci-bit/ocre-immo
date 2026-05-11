@@ -74,7 +74,8 @@ test('Anti-régression desktop 1440x900 : popup centrée, padding 28px inchangé
   await openPopupAndCheck(page, DESKTOP.viewport, DESKTOP.name, OUT_DIR);
   // Padding desktop 32px 28px
   const padding = await page.locator('.oal-modal').evaluate(el => getComputedStyle(el).padding);
-  expect(padding).toMatch(/^32px 28px/);
+  // M/2026/05/12/2 — padding desktop = clamp(20, 5vw, 32) capped a 32px (M/12/2 a remplacé 32px 28px par clamp uniforme)
+  expect(padding).toMatch(/^32px/);
   // Centre horizontal (left + width/2 = viewport/2 ±5px)
   const box = await page.locator('.oal-modal').boundingBox();
   const center = box.x + box.width / 2;

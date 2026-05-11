@@ -9,13 +9,10 @@
 <style>
 .oal-overlay { position: fixed; inset: 0; background: rgba(15,10,5,0.55); backdrop-filter: blur(4px); z-index: 9998; opacity: 0; pointer-events: none; transition: opacity .25s; display: flex; align-items: center; justify-content: center; padding: 20px; font-family: 'DM Sans', system-ui, sans-serif; }
 .oal-overlay.oal-show { opacity: 1; pointer-events: auto; }
-.oal-modal { background: #FAF6F1; border-radius: 22px; width: 100%; max-width: min(460px, calc(100vw - 32px)); padding: 32px 28px 26px; box-shadow: 0 30px 80px rgba(0,0,0,0.35); position: relative; transform: translateY(40px); opacity: 0; transition: all .35s cubic-bezier(.2,.7,.2,1); max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+/* M/2026/05/12/2 — card flottante centree 380px sur tous viewports (vs bottom-sheet plein largeur mobile).
+   Padding fluide clamp 20-32 selon viewport. max-height 90dvh evite recouvrement clavier iOS. */
+.oal-modal { background: #FAF6F1; border-radius: 22px; width: 100%; max-width: 380px; margin-inline: auto; padding: clamp(20px, 5vw, 32px); box-shadow: 0 30px 80px rgba(0,0,0,0.35); position: relative; transform: translateY(40px); opacity: 0; transition: all .35s cubic-bezier(.2,.7,.2,1); max-height: 90dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .oal-overlay.oal-show .oal-modal { transform: translateY(0); opacity: 1; }
-@media (max-width: 540px) {
-  .oal-overlay { align-items: flex-end; padding: 0; }
-  .oal-modal { border-radius: 22px 22px 0 0; max-width: 100%; padding: 24px 22px 18px; max-height: 90vh; max-height: calc(100dvh - env(safe-area-inset-top, 0px)); transform: translateY(100%); padding-bottom: max(18px, env(safe-area-inset-bottom)); }
-  .oal-overlay.oal-show .oal-modal { transform: translateY(0); }
-}
 /* M/2026/05/11/45 — breakpoint iPhone strict <=420px : typo serree + padding compact + text-wrap balance */
 @media (max-width: 420px) {
   .oal-modal { padding: 20px 18px 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
@@ -33,10 +30,11 @@
 @media (max-width: 420px) { .oal-row { grid-template-columns: 1fr; } }
 .oal-row .oal-field { margin-bottom: 0; }
 .oal-field label { font-size: 11px; font-weight: 600; color: #998877; text-transform: uppercase; letter-spacing: .04em; }
-.oal-field input { padding: 12px 13px; border: 1px solid #E5DAC6; border-radius: 9px; font-size: 14px; font-family: inherit; color: #3D2818; background: #FCFAF7; }
+/* M/2026/05/12/2 — Anti-zoom iOS Safari : 16px minimum sur inputs focusables (scope popup login uniquement) */
+.oal-field input { padding: 12px 13px; border: 1px solid #E5DAC6; border-radius: 9px; font-size: 16px; font-family: inherit; color: #3D2818; background: #FCFAF7; }
 .oal-field input:focus { outline: none; border-color: #8B5E3C; background: #fff; }
 .oal-tel-row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: end; }
-.oal-tel-row select, .oal-tel-row input { padding: 12px 10px; border: 1px solid #E5DAC6; border-radius: 9px; font-family: inherit; font-size: 14px; background: #FCFAF7; }
+.oal-tel-row select, .oal-tel-row input { padding: 12px 10px; border: 1px solid #E5DAC6; border-radius: 9px; font-family: inherit; font-size: 16px; background: #FCFAF7; }
 .oal-cgu { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #5A4E3D; line-height: 1.5; margin-bottom: 10px; }
 .oal-cgu input { margin-top: 2px; accent-color: #8B5E3C; }
 .oal-cgu a { color: #8B5E3C; text-decoration: underline; }
