@@ -22,7 +22,7 @@ test.describe('Signup vitrine ocre.immo → Oi Agent', () => {
     await page.locator('input#osp-prenom, input#prenom').first().fill('TestE2E');
     await page.locator('input#osp-nom, input#nom').first().fill('Playwright');
     await page.locator('input#osp-phone, input#phone').first().fill('612345678');
-    await page.locator('input#osp-cgu, input#cgu').first().evaluate(el => { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.locator('input#osp-cgu, input#cgu').first().check();
     const submitBtn = page.locator('#osp-submit, #submit').first();
     await expect(submitBtn).toBeEnabled({ timeout: 5000 });
     await submitBtn.click();

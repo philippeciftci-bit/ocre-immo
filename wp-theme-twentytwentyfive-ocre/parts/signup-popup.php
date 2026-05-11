@@ -68,7 +68,8 @@
 .osp-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .osp-tel-row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; align-items: end; }
 .osp-cgu { display: flex; align-items: flex-start; gap: 8px; margin: 8px 0 12px; font-size: 11.5px; color: #6B5642; line-height: 1.4; }
-.osp-cgu input { margin-top: 2px; accent-color: #8B5E3C; }
+.osp-cgu input { margin-top: 2px; accent-color: #8B5E3C; cursor: pointer; flex-shrink: 0; }
+.osp-cgu-label { cursor: pointer; user-select: none; }
 .osp-cgu a { color: #8B5E3C; text-decoration: underline; }
 
 .osp-toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); background: #2D7A3E; color: #fff; padding: 16px 26px; border-radius: 14px; font-size: 14.5px; font-weight: 600; box-shadow: 0 12px 40px rgba(45,122,62,0.4); opacity: 0; pointer-events: none; transition: all .25s cubic-bezier(.2,.7,.2,1); z-index: 9999; display: flex; align-items: center; gap: 10px; }
@@ -117,7 +118,11 @@
               <input type="tel" id="osp-phone" name="phone" class="osp-phone-input" autocomplete="tel" placeholder="6 12 34 56 78">
             </div>
           </div>
-          <label class="osp-cgu"><input type="checkbox" id="osp-cgu"> J'accepte les <a href="https://ocre.immo/mentions-legales/" target="_blank">CGU</a> et la <a href="https://ocre.immo/confidentialite/" target="_blank">politique de confidentialité</a></label>
+          <!-- M_OCRE_SIGNUP_STATE_MACHINE_FIX — checkbox HORS label parent + label for=osp-cgu pour eviter double toggle quand click direct sur input + onclick stopPropagation defense supplementaire -->
+          <div class="osp-cgu">
+            <input type="checkbox" id="osp-cgu" onclick="event.stopPropagation();">
+            <label for="osp-cgu" class="osp-cgu-label">J'accepte les <a href="https://ocre.immo/mentions-legales/" target="_blank">CGU</a> et la <a href="https://ocre.immo/confidentialite/" target="_blank">politique de confidentialité</a></label>
+          </div>
         </div>
       </div>
 
@@ -267,7 +272,9 @@ function ocreSignupOpen() {
   document.getElementById('osp-accordion').setAttribute('aria-hidden', 'true');
   document.getElementById('osp-email').disabled = false;
   document.getElementById('osp-submit').textContent = 'Continuer';
-  document.getElementById('osp-form').reset();
+  var formReset = document.getElementById('osp-form');
+  formReset.reset();
+  formReset.dataset.state = 'initial'; // M_OCRE_SIGNUP_STATE_MACHINE_FIX reset dataset
   ospSelectCountry(OSP_COUNTRIES.find(function(c){ return c.code === 'FR'; }));
   document.getElementById('osp-submit').classList.remove('osp-btn-disabled');
   document.getElementById('osp-phone').classList.remove('is-phone-valid', 'is-phone-invalid');
@@ -299,7 +306,12 @@ async function ocreSignupSubmit(e) {
   var email = emailEl.value.trim().toLowerCase();
   var app = window.OCRE_SIGNUP_APP || 'agent';
 
-  if (OCRE_SIGNUP_STATE === 'initial') {
+  // M_OCRE_SIGNUP_STATE_MACHINE_FIX — fallback dataset state si variable JS perdue
+  var stateEffective = OCRE_SIGNUP_STATE;
+  var formEl = document.getElementById('osp-form');
+  if (formEl && formEl.dataset.state) stateEffective = formEl.dataset.state;
+
+  if (stateEffective === 'initial') {
     btn.textContent = '⏳ Vérification…';
     try {
       var r = await fetch('https://auth.ocre.immo/api/email-check.php', {
@@ -315,8 +327,10 @@ async function ocreSignupSubmit(e) {
         setTimeout(function(){ window.location.href = d.redirect_url; }, 600);
         return false;
       }
-      // Email absent : ouvrir accordéon
+      // M_OCRE_SIGNUP_STATE_MACHINE_FIX — state robust : variable JS + dataset DOM source de vérité (resistance closure perdue ou re-render)
       OCRE_SIGNUP_STATE = 'form_open';
+      var formEl = document.getElementById('osp-form');
+      formEl.dataset.state = 'form_open';
       emailEl.disabled = true;
       var acc = document.getElementById('osp-accordion');
       acc.classList.add('osp-open');
