@@ -10,21 +10,42 @@ const MODULES = {
 
 let currentUser = null;
 
+// M_OCRE_HUB_INFINITE_LOADING — fetch avec timeout 8s pour éviter spinner infini si auth.ocre.immo lent/bloqué
+function fetchWithTimeout(url, opts, timeoutMs) {
+  opts = opts || {}; timeoutMs = timeoutMs || 8000;
+  var ctrl = new AbortController();
+  var timer = setTimeout(function(){ ctrl.abort(); }, timeoutMs);
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal })).finally(function(){ clearTimeout(timer); });
+}
+
 async function fetchMe() {
   try {
-    const r = await fetch(`${AUTH_BASE}/api/me.php`, { credentials: 'include' });
+    const r = await fetchWithTimeout(`${AUTH_BASE}/api/me.php`, { credentials: 'include' });
     if (!r.ok) return null;
     const data = await r.json();
     return data.ok ? data.user : null;
-  } catch (e) { return null; }
+  } catch (e) { console.warn('[hub] fetchMe failed:', e.message); return null; }
 }
 
 async function tryRefresh() {
   try {
-    const r = await fetch(`${AUTH_BASE}/api/refresh.php`, { method: 'POST', credentials: 'include' });
+    const r = await fetchWithTimeout(`${AUTH_BASE}/api/refresh.php`, { method: 'POST', credentials: 'include' });
     if (!r.ok) return null;
     return fetchMe();
-  } catch (e) { return null; }
+  } catch (e) { console.warn('[hub] tryRefresh failed:', e.message); return null; }
+}
+
+// M_OCRE_HUB_INFINITE_LOADING — UI fallback erreur bootstrap (timeout ou backend down)
+function showBootstrapError(reason) {
+  const loader = document.getElementById('loader');
+  if (!loader) return;
+  loader.innerHTML = '<div style="text-align:center;padding:40px 20px;font-family:Inter,sans-serif;color:#3D2818;max-width:380px;margin:60px auto 0;">'
+    + '<div style="font-size:48px;margin-bottom:14px">⚠️</div>'
+    + '<h2 style="font-family:Cormorant Garamond,serif;font-style:italic;font-weight:600;font-size:24px;margin-bottom:10px">Connexion impossible</h2>'
+    + '<p style="font-size:13.5px;color:#6B5642;margin-bottom:24px;line-height:1.5">' + (reason || "Le serveur d'authentification ne répond pas. Réessaie ou reconnecte-toi.") + '</p>'
+    + '<button onclick="location.reload()" style="padding:11px 22px;background:#8B5E3C;color:#fff;border:none;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;margin-right:8px">↻ Réessayer</button>'
+    + '<button onclick="location.href=\'https://auth.ocre.immo/\'" style="padding:11px 22px;background:transparent;color:#8B5E3C;border:1px solid #8B5E3C;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer">Se reconnecter</button>'
+    + '</div>';
 }
 
 async function logout() {
@@ -137,16 +158,29 @@ async function saveSettings() {
   }
 }
 
+// M_OCRE_HUB_INFINITE_LOADING — bootstrap avec safety net : si >12s sans aboutir, afficher fallback UI
 (async () => {
-  let user = await fetchMe();
-  if (!user) {
-    user = await tryRefresh();
+  var bootstrapTimer = setTimeout(function(){
+    showBootstrapError("Le serveur ne répond pas après 12 secondes. Essaie de te reconnecter.");
+  }, 12000);
+  try {
+    let user = await fetchMe();
     if (!user) {
-      window.location.href = `${AUTH_BASE}/`;
-      return;
+      user = await tryRefresh();
+      if (!user) {
+        clearTimeout(bootstrapTimer);
+        // Pas de session → redirect signup/login (au lieu de loop)
+        window.location.href = `${AUTH_BASE}/signup.html`;
+        return;
+      }
     }
+    clearTimeout(bootstrapTimer);
+    renderHub(user);
+  } catch (e) {
+    clearTimeout(bootstrapTimer);
+    console.error('[hub] bootstrap error:', e);
+    showBootstrapError("Erreur inattendue : " + e.message);
   }
-  renderHub(user);
 })();
 
 if ('serviceWorker' in navigator) {
