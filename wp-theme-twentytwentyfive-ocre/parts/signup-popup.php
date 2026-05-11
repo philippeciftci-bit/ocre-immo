@@ -60,9 +60,10 @@
 .osp-feedback.osp-error { background: #FDECEA; color: #C62828; }
 .osp-feedback.osp-info { background: #E8F4F8; color: #0277BD; }
 
-/* Accordéon registration */
+/* Accordéon registration — M_OCRE_POPUP_TIMING_FIX : overflow:hidden retiré pendant osp-open pour éviter que form intercepts pointer events au check CGU pendant transition 400ms */
 .osp-accordion { max-height: 0; overflow: hidden; transition: max-height .4s cubic-bezier(.2,.7,.2,1); }
-.osp-accordion.osp-open { max-height: 800px; }
+.osp-accordion.osp-open { max-height: 800px; overflow: visible; }
+.osp-accordion-inner { pointer-events: auto; }
 .osp-accordion-inner { padding-top: 14px; border-top: 1px solid #E5DAC6; margin-top: 14px; }
 .osp-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .osp-tel-row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; align-items: end; }
