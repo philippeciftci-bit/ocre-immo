@@ -83,40 +83,18 @@ if ($withinTtl) {
         auth_set_cookies($jwt['token'], $refresh);
     } catch (Throwable $e) { @error_log('[login cas A sso recreate] ' . $e->getMessage()); }
 
+    // M/2026/05/11/44 — toujours appeler auth_provision_tenant (idempotent : reuse slug existant +
+    // DB existante, juste insert nouvelle ligne sessions + retourne nouveau sso_token = mt_token pour SPA).
+    // Avant : 2 branches separees (slug existe = sans sso_token = pas de mt_token dans URL = SPA tombait
+    // en session_check fail -> redirect /login/ flash). Maintenant : 1 seule branche, toujours mt_token.
     try {
-        $env = parse_ini_file('/root/.secrets/ocre-db.env', false, INI_SCANNER_RAW);
-        $pdoMeta = new PDO('mysql:host=' . ($env['DB_HOST'] ?? '127.0.0.1') . ';dbname=ocre_meta;charset=utf8mb4',
-            $env['DB_USER'] ?? 'ocre_app', $env['DB_PASS'] ?? '',
-            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-        $lu = $pdoMeta->prepare("SELECT slug FROM users WHERE email = ? AND slug IS NOT NULL AND slug != '' LIMIT 1");
-        $lu->execute([$email]);
-        $legacy = $lu->fetch();
-        $slug = null;
-        if ($legacy && !empty($legacy['slug'])) {
-            $cand = preg_replace('/[^a-z0-9_-]/', '', $legacy['slug']);
-            $existsDb = $pdoMeta->query("SHOW DATABASES LIKE 'ocre_wsp_" . $cand . "'")->fetch();
-            if ($existsDb) $slug = $cand;
-        }
-        if (!$slug) {
-            // Provisioning inline via lib partagee (M/37 amd#2).
-            require_once __DIR__ . '/../lib/provision.php';
-            $prov = auth_provision_tenant($userId, 'agent');
-            if (!empty($prov['ok']) && !empty($prov['slug'])) {
-                $slug = $prov['slug'];
-                if (!empty($prov['sso_token'])) {
-                    auth_send_json([
-                        'ok' => true,
-                        'action' => 'direct',
-                        'redirect_url' => 'https://' . $slug . '.ocre.immo/?_s=' . urlencode($prov['sso_token']) . '&source=ttl_login',
-                    ]);
-                }
-            }
-        }
-        if ($slug) {
+        require_once __DIR__ . '/../lib/provision.php';
+        $prov = auth_provision_tenant($userId, 'agent');
+        if (!empty($prov['ok']) && !empty($prov['slug']) && !empty($prov['sso_token'])) {
             auth_send_json([
                 'ok' => true,
                 'action' => 'direct',
-                'redirect_url' => 'https://' . $slug . '.ocre.immo/?source=ttl_login',
+                'redirect_url' => 'https://' . $prov['slug'] . '.ocre.immo/?mt_token=' . urlencode($prov['sso_token']) . '&source=ttl_login',
             ]);
         }
     } catch (Throwable $e) { @error_log('[login cas A] ' . $e->getMessage()); }

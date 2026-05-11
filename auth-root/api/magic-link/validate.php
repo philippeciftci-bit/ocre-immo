@@ -84,7 +84,9 @@ if ($appTarget === 'agent' || $appTarget === '') {
     require_once __DIR__ . '/../../lib/provision.php';
     $prov = auth_provision_tenant($userId, 'agent');
     if (!empty($prov['ok']) && !empty($prov['slug']) && !empty($prov['sso_token'])) {
-        $dest = $prov['tenant_url'] . '?_s=' . urlencode($prov['sso_token']) . '&activated=1';
+        // M/2026/05/11/44 — mt_token = nom canonique attendu par la SPA tenant (cf consume index.html ligne 11564).
+        // Avant : ?_s= qui n'etait jamais consume -> SPA tombait sur session_check fail -> redirect /login/ flash.
+        $dest = $prov['tenant_url'] . '?mt_token=' . urlencode($prov['sso_token']) . '&activated=1';
     } else {
         // Fallback : si provisioning fail, agent.ocre.immo router gere l'erreur proprement (retry).
         @error_log('[validate] provision failed user_id=' . $userId . ' detail=' . json_encode($prov));

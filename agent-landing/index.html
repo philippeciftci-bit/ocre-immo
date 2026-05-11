@@ -130,8 +130,9 @@
           }
           // Phase 3 : redirect direct vers la SPA tenant
           var target = p.tenant_url || ('https://' + p.slug + '.ocre.immo/');
+          // M/2026/05/11/44 — mt_token = nom canonique attendu par SPA tenant (consume index.html).
           if (p.sso_token) {
-            target += (target.indexOf('?') === -1 ? '?' : '&') + '_s=' + encodeURIComponent(p.sso_token);
+            target += (target.indexOf('?') === -1 ? '?' : '&') + 'mt_token=' + encodeURIComponent(p.sso_token);
           }
           if (location.search.indexOf('activated=1') !== -1) {
             target += (target.indexOf('?') === -1 ? '?' : '&') + 'activated=1';
