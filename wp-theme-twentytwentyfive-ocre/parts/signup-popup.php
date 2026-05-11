@@ -9,18 +9,25 @@
 <style>
 .oal-overlay { position: fixed; inset: 0; background: rgba(15,10,5,0.55); backdrop-filter: blur(4px); z-index: 9998; opacity: 0; pointer-events: none; transition: opacity .25s; display: flex; align-items: center; justify-content: center; padding: 20px; font-family: 'DM Sans', system-ui, sans-serif; }
 .oal-overlay.oal-show { opacity: 1; pointer-events: auto; }
-.oal-modal { background: #FAF6F1; border-radius: 22px; width: 100%; max-width: 460px; padding: 32px 28px 26px; box-shadow: 0 30px 80px rgba(0,0,0,0.35); position: relative; transform: translateY(40px); opacity: 0; transition: all .35s cubic-bezier(.2,.7,.2,1); max-height: 92vh; overflow-y: auto; }
+.oal-modal { background: #FAF6F1; border-radius: 22px; width: 100%; max-width: min(460px, calc(100vw - 32px)); padding: 32px 28px 26px; box-shadow: 0 30px 80px rgba(0,0,0,0.35); position: relative; transform: translateY(40px); opacity: 0; transition: all .35s cubic-bezier(.2,.7,.2,1); max-height: 92vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .oal-overlay.oal-show .oal-modal { transform: translateY(0); opacity: 1; }
 @media (max-width: 540px) {
   .oal-overlay { align-items: flex-end; padding: 0; }
-  .oal-modal { border-radius: 22px 22px 0 0; max-width: 100%; padding: 26px 22px 20px; max-height: 90vh; transform: translateY(100%); }
+  .oal-modal { border-radius: 22px 22px 0 0; max-width: 100%; padding: 24px 22px 18px; max-height: 90vh; max-height: calc(100dvh - env(safe-area-inset-top, 0px)); transform: translateY(100%); padding-bottom: max(18px, env(safe-area-inset-bottom)); }
   .oal-overlay.oal-show .oal-modal { transform: translateY(0); }
+}
+/* M/2026/05/11/45 — breakpoint iPhone strict <=420px : typo serree + padding compact + text-wrap balance */
+@media (max-width: 420px) {
+  .oal-modal { padding: 20px 18px 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .oal-brand { font-size: 24px !important; }
+  .oal-h1 { font-size: 18px !important; line-height: 1.2; text-wrap: balance; }
+  .oal-sub { font-size: 12.5px !important; line-height: 1.4; text-wrap: balance; margin-bottom: 14px !important; padding: 0 4px; }
 }
 .oal-close { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,0.06); border: none; cursor: pointer; font-size: 18px; color: #6B5642; display: flex; align-items: center; justify-content: center; }
 .oal-brand { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600; font-size: 28px; color: #8B5E3C; text-align: center; margin: 0 0 4px; }
 .oal-brand .oal-re { color: #D4A256; }
-.oal-h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-style: italic; font-size: 22px; color: #3D2818; text-align: center; margin: 4px 0 4px; }
-.oal-sub { font-size: 13px; color: #6B5642; text-align: center; margin-bottom: 18px; }
+.oal-h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-style: italic; font-size: 22px; color: #3D2818; text-align: center; margin: 4px 0 4px; text-wrap: balance; }
+.oal-sub { font-size: 13px; color: #6B5642; text-align: center; margin-bottom: 18px; text-wrap: balance; }
 .oal-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 .oal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
 @media (max-width: 420px) { .oal-row { grid-template-columns: 1fr; } }
