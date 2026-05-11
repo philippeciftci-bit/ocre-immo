@@ -11,17 +11,76 @@ License: Proprietary
 Text Domain: twentytwentyfive-ocre
 */
 
-/* M/2026/05/11/46 — M_OCRE_VITRINE_RESPONSIVE filet de securite overflow horizontal iPhone.
-   Safari iOS : overflow-x:hidden sur <body> insuffisant si <html> n'a pas la meme regle.
-   Cause racine probable du flash popup tronquee : carrousels demo (.hv-demo-strip / .op-demo-strip)
-   contiennent des cards positionnees au-dela du viewport mobile, certains browsers iOS Safari
-   les rendent visibles malgre body overflow-x:hidden. */
+/* ============================================================
+   M/2026/05/11/47 — M_OCRE_THEME_REFONTE_MOBILE_FIRST
+   Refonte CSS fondations : mobile-first + fluid + tokens reutilisables.
+   Conserve patches existants M/46 (filet overflow-x) + M/45 (popup vh dvh).
+   PRIMO patterns : Kadence container fluid + GeneratePress mobile-first
+   + Smashing Magazine clamp() fluid typography 2024 + MDN box-sizing reset.
+   ZERO touch design desktop (couleurs, polices, illustrations inchanges).
+   Seuls tailles + spacing deviennent fluides via clamp().
+   ============================================================ */
+
+/* Reset universel box-sizing (Eric Meyer pattern + box-sizing inheritance) */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Filet overflow horizontal iPhone Safari (cf diag M/46 cause racine identifiee :
+   overflow-x:hidden sur body SEUL insuffisant si html n'a pas meme regle,
+   pattern bien connu MDN/StackOverflow 2024-2025) */
 html, body {
   overflow-x: hidden;
   max-width: 100vw;
   position: relative;
 }
-img, video, iframe { max-width: 100%; height: auto; }
+
+/* Medias systematiquement responsive */
+img, picture, video, iframe, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Fluid typography tokens via clamp(min, ideal, max) — pattern Smashing 2024 */
+:root {
+  /* Font sizes : du 12px small au 56px h1 hero */
+  --fs-xs: clamp(11px, 1.5vw, 12.5px);
+  --fs-sm: clamp(12px, 1.8vw, 14px);
+  --fs-base: clamp(15px, 2.2vw, 17px);
+  --fs-md: clamp(16px, 2.5vw, 19px);
+  --fs-lg: clamp(18px, 3vw, 24px);
+  --fs-h3: clamp(20px, 3.5vw, 28px);
+  --fs-h2: clamp(24px, 4.5vw, 40px);
+  --fs-h1: clamp(28px, 6vw, 56px);
+  /* Spacing : du 8px gap-xs au 96px gap-xl hero sections */
+  --space-xs: clamp(6px, 1vw, 10px);
+  --space-sm: clamp(10px, 2vw, 16px);
+  --space-md: clamp(16px, 3vw, 28px);
+  --space-lg: clamp(28px, 5vw, 56px);
+  --space-xl: clamp(48px, 8vw, 96px);
+  /* Container : padding interne fluide (16px mobile -> 32px desktop) */
+  --container-padding: clamp(16px, 4vw, 32px);
+  --container-max: 1280px;
+}
+
+/* Container fluide universel — applique aux wraps utilises par le theme */
+.container, .ocre-container, .site-content > article {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-padding);
+}
+
+/* Wordpress Gutenberg block group (alignwide / alignfull) — width clamped */
+.wp-block-group.alignwide { max-width: var(--container-max); margin-inline: auto; padding-inline: var(--container-padding); }
+.wp-block-group.alignfull { max-width: 100vw; padding-inline: var(--container-padding); }
+
+/* Breakpoints mobile-first standardises documentes (utilisable par futurs templates) */
+/* Default = mobile <768px */
+/* Tablet : @media (min-width: 768px) { ... } */
+/* Laptop : @media (min-width: 1024px) { ... } */
+/* Desktop : @media (min-width: 1440px) { ... } */
 
 :root {
   --ocre-cream: #FAF6F1;
