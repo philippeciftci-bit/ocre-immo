@@ -52,14 +52,18 @@
     </div>
     <p class="tagline">Le CRM matching pour agents immobiliers professionnels.</p>
 
-    <!-- Etat 1 : check session en cours -->
-    <div id="state-loading"><div class="spinner" aria-hidden="true"></div></div>
+    <!-- Etat 1 : check session + provisioning si necessaire (loading par defaut) -->
+    <div id="state-loading">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="loading-msg" style="font-size:13px;color:#5A4E3D;margin-top:14px">Ouverture de ton workspace…</p>
+    </div>
 
-    <!-- Etat 2 : connecté (cookie ocre_jwt valide) -->
-    <div id="state-logged" hidden>
-      <p class="greeting">Bonjour, <span id="user-name">agent</span>.</p>
+    <!-- Etat erreur : provisioning ko, affichage explicite avec retry -->
+    <div id="state-error" hidden>
+      <p class="greeting" style="color:#C73E3E">Erreur d'accès workspace</p>
+      <p id="error-msg" style="font-size:13px;color:#5A4E3D;margin:8px 0 20px">Réessaie dans quelques secondes.</p>
       <div class="ctas">
-        <a class="btn btn-primary" href="https://signup.ocre.immo/inscription/" id="cta-activate">Activer Oi Agent</a>
+        <button class="btn btn-primary" id="cta-retry">Réessayer</button>
         <button class="btn btn-ghost" id="cta-logout">Se déconnecter</button>
       </div>
     </div>
@@ -67,8 +71,8 @@
     <!-- Etat 3 : non connecté -->
     <div id="state-anon" hidden>
       <div class="ctas">
-        <a class="btn btn-primary" href="/login">Se connecter</a>
-        <a class="btn btn-secondary" href="https://signup.ocre.immo/inscription/">Devenir agent</a>
+        <a class="btn btn-primary" href="https://auth.ocre.immo/signup?app=agent">Créer mon compte</a>
+        <a class="btn btn-secondary" href="https://auth.ocre.immo/signup?app=agent">Se connecter</a>
       </div>
     </div>
   </main>
@@ -76,43 +80,66 @@
     Un produit <a href="https://ocre.immo">Ocre</a>
   </footer>
 
-<!-- M/2026/05/11/19 — SSO cross-subdomain : detect ocre_jwt session, no more email+password legacy. -->
+<!-- M/2026/05/11/36 — M_AGENT_LANDING_REELLE : routeur SSO transparent (zero bouton "Activer").
+  Cookie ocre_jwt valide -> fetch /api/me.php pour identifier user
+  -> POST /api/provision-tenant.php pour creer/recuperer workspace
+  -> redirect direct <slug>.ocre.immo/?_s=<sso> (SPA Oi Agent reelle, dashboard CRM)
+  Si pas de session -> CTA signup. Si erreur -> retry + logout. -->
 <script>
 (function(){
   var stateLoading = document.getElementById('state-loading');
-  var stateLogged = document.getElementById('state-logged');
+  var stateError = document.getElementById('state-error');
   var stateAnon = document.getElementById('state-anon');
+  var loadingMsg = document.getElementById('loading-msg');
   function show(el){
-    stateLoading.setAttribute('hidden','');
-    stateLogged.setAttribute('hidden','');
-    stateAnon.setAttribute('hidden','');
+    [stateLoading, stateError, stateAnon].forEach(function(s){ s.setAttribute('hidden',''); });
     el.removeAttribute('hidden');
   }
-  // Bypass si retour explicite logout ou ?landing=1 (forcer affichage anon)
+  function showError(msg){
+    document.getElementById('error-msg').textContent = msg || "Réessaie dans quelques secondes.";
+    show(stateError);
+  }
+  // Bypass : ?logout=1 ou ?landing=1 force ecran anon
   if (location.search.indexOf('logout') !== -1 || location.search.indexOf('landing') !== -1) {
     show(stateAnon); return;
   }
-  // Safety net 2s : si réseau bloque, fallback anon
-  var safety = setTimeout(function(){ show(stateAnon); }, 2000);
+
+  document.getElementById('cta-retry').addEventListener('click', function(){ location.reload(); });
+  document.getElementById('cta-logout').addEventListener('click', function(){
+    fetch('https://auth.ocre.immo/api/logout.php', { method:'POST', credentials:'include', mode:'cors' })
+      .finally(function(){ location.replace('/?logout=1'); });
+  });
+
+  // Phase 1 : verifie session SSO
   fetch('https://auth.ocre.immo/api/me.php', { credentials: 'include', mode: 'cors', cache: 'no-store' })
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(d){
-      clearTimeout(safety);
-      if (d && d.ok && d.user) {
-        var name = d.user.first_name || (d.user.email ? d.user.email.split('@')[0] : 'agent');
-        document.getElementById('user-name').textContent = name;
-        var cta = document.getElementById('cta-activate');
-        if (d.user.email) cta.href = 'https://signup.ocre.immo/inscription/?email=' + encodeURIComponent(d.user.email);
-        document.getElementById('cta-logout').addEventListener('click', function(){
-          fetch('https://auth.ocre.immo/api/logout.php', { method:'POST', credentials:'include', mode:'cors' })
-            .finally(function(){ location.replace('/?logout=1'); });
+      if (!d || !d.ok || !d.user) { show(stateAnon); return; }
+      // Phase 2 : provisioning auto si tenant manquant + recupere slug + _s token
+      loadingMsg.textContent = "Ouverture de ton workspace Oi Agent…";
+      return fetch('https://auth.ocre.immo/api/provision-tenant.php', {
+        method: 'POST', credentials: 'include', mode: 'cors',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ app: 'agent' }),
+      })
+        .then(function(r){ return r.json(); })
+        .then(function(p){
+          if (!p.ok) {
+            showError(p.error_message || ('Erreur provisioning : ' + (p.error || 'inconnue')));
+            return;
+          }
+          // Phase 3 : redirect direct vers la SPA tenant
+          var target = p.tenant_url || ('https://' + p.slug + '.ocre.immo/');
+          if (p.sso_token) {
+            target += (target.indexOf('?') === -1 ? '?' : '&') + '_s=' + encodeURIComponent(p.sso_token);
+          }
+          if (location.search.indexOf('activated=1') !== -1) {
+            target += (target.indexOf('?') === -1 ? '?' : '&') + 'activated=1';
+          }
+          location.replace(target);
         });
-        show(stateLogged);
-      } else {
-        show(stateAnon);
-      }
     })
-    .catch(function(){ clearTimeout(safety); show(stateAnon); });
+    .catch(function(e){ showError("Réseau indisponible : " + (e && e.message || e)); });
 })();
 </script>
 

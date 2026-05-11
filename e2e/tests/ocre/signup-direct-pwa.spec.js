@@ -58,12 +58,17 @@ test('1) Flow signup ?app=agent → magic link → redirect direct agent.ocre.im
   const token = getMagicTokenForEmail(email);
   expect(token).toMatch(/^[a-f0-9]{64}$/);
 
-  // d) Visite magic link → doit rediriger DIRECTEMENT vers agent.ocre.immo/?activated=1 (pas hub)
-  const response = await page.goto(`https://auth.ocre.immo/api/magic-link/validate.php?token=${token}&app=agent`, { waitUntil: 'load' });
-  await page.waitForLoadState('networkidle', { timeout: 10000 });
-  expect(page.url()).toMatch(/agent\.ocre\.immo\/\?activated=1/);
-  // ZÉRO hub : ne doit JAMAIS passer par app.ocre.immo
-  // (le redirect HTTP 302 du validate.php pointe direct sur agent.ocre.immo)
+  // d) Visite magic link → 302 vers agent.ocre.immo/?activated=1 → JS routeur M/36 redirige
+  // vers le tenant <slug>.ocre.immo/?_s=...&activated=1. Verifie URL FINALE = tenant ocre.immo
+  // (PAS app.ocre.immo hub supprime).
+  await page.goto(`https://auth.ocre.immo/api/magic-link/validate.php?token=${token}&app=agent`, { waitUntil: 'load' });
+  await page.waitForURL(/\.ocre\.immo/, { timeout: 15000 });
+  await page.waitForLoadState('domcontentloaded');
+  const url = page.url();
+  expect(url).toMatch(/\.ocre\.immo/);
+  expect(url).not.toMatch(/^https:\/\/app\.ocre\.immo/); // hub supprime
+  // Doit etre un tenant slug (post-provisioning M/36) ou agent.ocre.immo (fallback si pas de session)
+  expect(url).toMatch(/^https:\/\/(agent|[a-z0-9-]+)\.ocre\.immo/);
   await page.screenshot({ path: path.join(OUT_DIR, '03-redirect-direct-agent.png'), fullPage: true });
 
   cleanup(email);
@@ -134,7 +139,13 @@ test('5) Param ?app invalide → fallback agent (subtitle pas affiche)', async (
 
 test.afterAll(() => {
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  try { execSync(`mariadb ocre_meta -e "DELETE m FROM auth_magic_tokens m JOIN auth_users u ON u.id=m.user_id WHERE u.email LIKE 'e2e-direct-%@ocre.test'; DELETE FROM auth_users WHERE email LIKE 'e2e-direct-%@ocre.test'"`); } catch (e) {}
+  // Cleanup DBs tenant + users legacy + workspaces + sessions crees par le provisioning auto M/36.
+  try {
+    const dbs = execSync(`mariadb -BNe "SHOW DATABASES LIKE 'ocre_wsp_e2edirect%'"`).toString().trim().split('\n').filter(Boolean);
+    for (const db of dbs) { try { execSync(`mariadb -e "DROP DATABASE \\\`${db}\\\`"`); } catch (e) {} }
+    execSync(`mariadb ocre_meta -e "DELETE FROM workspace_members WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'e2e-direct-%@ocre.test'); DELETE FROM workspaces WHERE slug LIKE 'e2edirect%'; DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'e2e-direct-%@ocre.test'); DELETE FROM users WHERE email LIKE 'e2e-direct-%@ocre.test'"`);
+    execSync(`mariadb ocre_meta -e "DELETE m FROM auth_magic_tokens m JOIN auth_users u ON u.id=m.user_id WHERE u.email LIKE 'e2e-direct-%@ocre.test'; DELETE FROM auth_users WHERE email LIKE 'e2e-direct-%@ocre.test'"`);
+  } catch (e) {}
   fs.writeFileSync(path.join(OUT_DIR, 'index.html'), `<!doctype html><html><head><meta charset="utf-8"><title>signup-direct-pwa ${TS}</title>
 <style>body{font-family:system-ui;max-width:1100px;margin:auto;padding:24px;background:#fafaf7}h1{color:#001D3D}
 h2{font-size:14px;color:#001D3D;margin-top:24px;border-bottom:1px solid #e5dac6;padding-bottom:6px}
