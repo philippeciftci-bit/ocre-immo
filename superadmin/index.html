@@ -277,6 +277,7 @@ body.drawer-open { overflow: hidden; }
       <button class="nav-item" data-section="sessions"><span class="ico">🔑</span> Sessions actives</button>
       <button class="nav-item" data-section="magic"><span class="ico">✉️</span> Magic links</button>
       <button class="nav-item" data-section="modules"><span class="ico">🧩</span> Modules Oi</button>
+      <button class="nav-item" data-section="display"><span class="ico">🎨</span> Affichage</button>
       <button class="nav-item" data-section="audit"><span class="ico">📜</span> Audit log</button>
       <button class="nav-item" data-section="atelier"><span class="ico">🔧</span> Atelier</button>
       <div class="nav-separator"></div>
@@ -476,6 +477,7 @@ const SECTIONS = {
   sessions: { title: 'Sessions actives', sub: 'JWT sessions en cours', render: renderSessions },
   magic:    { title: 'Magic links',   sub: 'Tokens envoyés (pending / consumed / expired)', render: renderMagicLinks },
   modules:  { title: 'Modules Oi',    sub: 'État des 7 modules visibles dans le hub', render: renderModules },
+  display:  { title: "Paramètres d'affichage", sub: 'Format prix bi-devise · taux EUR/MAD · settings globaux SPA', render: renderDisplay },
   audit:    { title: 'Audit log',     sub: 'Historique des actions super-admin', render: renderAudit },
   atelier:  { title: 'Atelier',       sub: 'Outils VPS · Live View CC + Monitoring + Backups', render: renderAtelier },
   danger:   { title: 'Zone danger',   sub: 'Opérations destructives avec double confirmation', render: renderDanger },
@@ -731,6 +733,81 @@ async function setModuleState(slug, state) {
   if (!r.ok) { alert('Erreur : ' + (r.error || 'inconnue')); return; }
   render('modules');
 }
+
+// ====== SECTION — AFFICHAGE (M/2026/05/11/39) ======
+async function renderDisplay() {
+  $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('display')">↻ Rafraîchir</button>`;
+  const r = maybeAuthError(await api('/api/superadmin_app_settings.php?action=get'));
+  const variant = (r.settings && r.settings.price_display_variant) || 'A';
+  const rate = (r.settings && r.settings.exchange_rate_eur_mad) || '10.84';
+  const previewA = `<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#fff;border:1px solid var(--color-border);border-radius:8px;font-size:12px;justify-content:space-between">
+    <span style="display:inline-flex;align-items:center;gap:4px"><span style="background:#003399;color:#FFCC00;border-radius:3px;padding:1px 4px;font-size:9px;font-weight:700">EUR</span><b>1 200</b></span>
+    <span style="font-size:10px;color:var(--color-text-muted);padding:2px 6px;background:#FFF4E5;border-radius:4px">AUTO · ${esc(rate)}</span>
+    <span style="display:inline-flex;align-items:center;gap:4px"><span style="background:#C1272D;color:#fff;border-radius:3px;padding:1px 4px;font-size:9px;font-weight:700">MAD</span><b>13 008</b></span>
+  </div>`;
+  const previewB = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+    <div style="padding:8px 10px;background:linear-gradient(135deg, rgba(0,51,153,.06), rgba(255,204,0,.04));border:1px solid var(--color-border);border-radius:8px;position:relative;overflow:hidden">
+      <span style="position:absolute;top:2px;right:6px;font-size:18px;opacity:.18">🇪🇺</span>
+      <div style="font-size:10px;color:var(--color-text-muted)">EUR</div><b>1 200</b>
+    </div>
+    <div style="padding:8px 10px;background:linear-gradient(135deg, rgba(193,39,45,.06), rgba(0,98,51,.04));border:1px solid var(--color-border);border-radius:8px;position:relative;overflow:hidden">
+      <span style="position:absolute;top:2px;right:6px;font-size:18px;opacity:.18">🇲🇦</span>
+      <div style="font-size:10px;color:var(--color-text-muted)">MAD</div><b>13 008</b>
+    </div>
+  </div>`;
+  const cardClass = (v) => `padding:14px;border:2px solid ${v === variant ? 'var(--color-accent)' : 'var(--color-border)'};border-radius:10px;cursor:pointer;background:${v === variant ? '#FBF7EC' : '#fff'};transition:border-color .15s, background .15s`;
+  $('#content-body').innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h2>Format prix bi-devise</h2><span class="muted">Setting global · appliqué à toutes les fiches Oi Agent au prochain reload SPA</span></div>
+      <div class="panel-body">
+        <p class="muted" style="margin-bottom:14px;font-size:13px">Choisis le rendu des champs EUR/MAD utilisés dans Section III (Budget) et Section VI (Frais d'agence). Aperçu visuel ci-dessous.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div id="variant-card-A" data-v="A" style="${cardClass('A')}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <b style="font-size:13px">Variant A · Compact</b>
+              <span style="font-size:11px;color:var(--color-text-muted)">${variant === 'A' ? '● actif' : ''}</span>
+            </div>
+            ${previewA}
+            <p style="font-size:11.5px;color:var(--color-text-muted);margin-top:8px;line-height:1.5">EUR · taux AUTO · MAD sur une ligne. Densité optimale, lecture immédiate.</p>
+          </div>
+          <div id="variant-card-B" data-v="B" style="${cardClass('B')}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <b style="font-size:13px">Variant B · Empilé</b>
+              <span style="font-size:11px;color:var(--color-text-muted)">${variant === 'B' ? '● actif' : ''}</span>
+            </div>
+            ${previewB}
+            <p style="font-size:11.5px;color:var(--color-text-muted);margin-top:8px;line-height:1.5">2 cartes côte-à-côte, drapeaux en filigrane. Style plus aéré.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Taux de change EUR/MAD</h2></div>
+      <div class="panel-body">
+        <label style="font-size:11.5px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px">1 EUR = X MAD</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="rate-input" type="number" step="0.01" min="1" max="50" value="${esc(rate)}" style="padding:10px 12px;border:1px solid var(--color-border);border-radius:7px;font:inherit;font-size:14px;width:140px">
+          <button class="btn btn-primary btn-sm" id="rate-save" style="width:auto">Enregistrer le taux</button>
+        </div>
+        <p class="muted" style="margin-top:8px;font-size:12px">Utilisé par DualCurrencyPair pour la conversion AUTO. Saisis ce taux quotidiennement ou branche un cron BCE/BAM.</p>
+      </div>
+    </div>`;
+  $$('#content-body [data-v]').forEach(el => el.addEventListener('click', async () => {
+    const v = el.dataset.v;
+    if (v === variant) return;
+    const r2 = maybeAuthError(await api('/api/superadmin_app_settings.php?action=set', { method: 'POST', body: { key: 'price_display_variant', value: v } }));
+    if (r2.ok) render('display');
+    else alert('Erreur : ' + (r2.error || 'inconnue'));
+  }));
+  $('#rate-save').addEventListener('click', async () => {
+    const newRate = $('#rate-input').value;
+    const btn = $('#rate-save'); btn.disabled = true; btn.textContent = '…';
+    const r2 = maybeAuthError(await api('/api/superadmin_app_settings.php?action=set', { method: 'POST', body: { key: 'exchange_rate_eur_mad', value: newRate } }));
+    btn.disabled = false; btn.textContent = 'Enregistrer le taux';
+    if (r2.ok) render('display'); else alert('Erreur : ' + (r2.error || 'inconnue'));
+  });
+}
+window.renderDisplay = renderDisplay;
 
 // ====== SECTION 6 — AUDIT ======
 async function renderAudit() {
