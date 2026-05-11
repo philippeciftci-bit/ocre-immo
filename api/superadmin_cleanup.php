@@ -12,6 +12,8 @@
 //   POST {action: 'reset_total',         confirmation: 'RESET TOTAL'}     → cumul reset_pending + reset_workspaces + reset_audit
 
 require_once __DIR__ . '/lib/router.php';
+require_once __DIR__ . '/lib/sa_audit.php';
+require_once __DIR__ . '/lib/audit_logs.php';
 header('Content-Type: application/json; charset=utf-8');
 
 function jout(array $d, int $code = 200) {
@@ -267,25 +269,19 @@ if ($action === 'reset_total') {
     }
 
     // 6. DELETE sessions :
-    // M/2026/05/08/44 — étendu : purge AUSSI les sessions VPS internes même si user_id=super_admin
-    //   (sessions curl/scripts CC qui s'accumulent, capture Philippe 12:19 montrait 4x curl/7.81.0).
-    //   Garde-fou : préserve la session courante via token != $currentToken.
+    // M/2026/05/11/28 — vrai purge TOUTES les sessions sauf la courante du super-admin.
+    //   Avant : filtre complexe (user_id != sa OR ip VPS OR UA curl...) qui PRÉSERVAIT les sessions
+    //   browser accumulées du super-admin (41 sessions Playwright + tests). Maintenant : purge totale
+    //   sauf token courant (Philippe reste loggé pour voir le rapport).
     try {
         $currentToken = (string)($_SERVER['HTTP_X_SESSION_TOKEN'] ?? '');
-        $del = $meta->prepare(
-            "DELETE FROM sessions
-              WHERE token != ?
-                AND (
-                      user_id != ?
-                   OR ip = '46.225.215.148'
-                   OR user_agent LIKE 'curl%'
-                   OR user_agent LIKE 'PHP-Curl%'
-                   OR user_agent LIKE 'smoke-tests%'
-                   OR user_agent = ''
-                   OR user_agent IS NULL
-                )"
-        );
-        $del->execute([$currentToken, $superAdminId]);
+        if ($currentToken !== '') {
+            $del = $meta->prepare("DELETE FROM sessions WHERE token != ?");
+            $del->execute([$currentToken]);
+        } else {
+            $del = $meta->prepare("DELETE FROM sessions");
+            $del->execute();
+        }
         $report['sessions_deleted'] = $del->rowCount();
     } catch (Throwable $e) {
         $report['errors'][] = 'sessions err=' . $e->getMessage();
@@ -331,7 +327,10 @@ if ($action === 'reset_total') {
         }
     }
 
+    // M/2026/05/11/28 — log dans audit_logs APRÈS les TRUNCATE (table preservee), pour
+    // que la section Audit log du dashboard montre le reset effectue.
     _audit_log($LOG, $superAdminId, 'reset_total', $report);
+    try { sa_audit_meta($superAdminId, 'reset_total', $report); } catch (Throwable $e) { /* swallow */ }
     _audit_telegram('RESET TOTAL', array_merge($report, ['by' => $user['email']]));
     jout(['ok' => true, 'report' => $report]);
 }

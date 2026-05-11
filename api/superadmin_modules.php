@@ -4,6 +4,7 @@
 //   GET  ?action=list                          → état des 7 modules
 //   POST ?action=set_state body {slug, state}  → state: active | soon | disabled
 require_once __DIR__ . '/lib/router.php';
+require_once __DIR__ . '/lib/sa_audit.php';
 require_once __DIR__ . '/lib/audit_logs.php';
 header('Content-Type: application/json; charset=utf-8');
 
@@ -55,7 +56,7 @@ if ($action === 'set_state' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $old = $state[$slug]['state'];
     $state[$slug]['state'] = $newState;
     mo_save($STATE_FILE, $state);
-    audit_log_insert((int) $user['id'], 'module.set_state', ['slug' => $slug, 'from' => $old, 'to' => $newState]);
+    sa_audit_meta((int) $user['id'], 'module.set_state', ['slug' => $slug, 'from' => $old, 'to' => $newState]);
     mo_out(['ok' => true, 'slug' => $slug, 'state' => $newState]);
 }
 

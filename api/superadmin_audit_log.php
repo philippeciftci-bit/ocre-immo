@@ -1,7 +1,6 @@
 <?php
-// M/2026/05/11/25 — Lecture historique audit super_admin_events.
-//   GET ?action=list&limit=200 → 200 derniers événements.
-// Schema reel super_admin_events : id, super_admin_user_id, action, target_workspace_id, payload_json, created_at.
+// M/2026/05/11/28 — Lecture historique audit UNION audit_logs (ocre_meta) + super_admin_events (ocre_meta).
+// Utilise pdo_meta() directement (DB préservée par reset_total, contrairement à db() qui pointe sur ocre_wsp_<slug>).
 require_once __DIR__ . '/lib/router.php';
 header('Content-Type: application/json; charset=utf-8');
 
@@ -13,31 +12,64 @@ if (($user['role'] ?? '') !== 'super_admin') al_out(['ok' => false, 'error' => '
 require_once __DIR__ . '/db.php';
 $meta = pdo_meta();
 
+// Garantit que audit_logs existe en ocre_meta (idempotent, swallow si echec).
+try {
+    $meta->exec("CREATE TABLE IF NOT EXISTS audit_logs (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        user_id INT UNSIGNED NOT NULL,
+        action VARCHAR(64) NOT NULL,
+        payload JSON,
+        ip_address VARCHAR(45),
+        user_agent VARCHAR(256),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user (user_id), INDEX idx_action (action), INDEX idx_created (created_at)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+} catch (Throwable $e) { /* swallow */ }
+
 $limit = max(1, min(500, (int) ($_GET['limit'] ?? 200)));
 $actionFilter = trim((string) ($_GET['action_filter'] ?? ''));
 $emailFilter = trim((string) ($_GET['email'] ?? ''));
 
-$sql = "SELECT e.id, e.super_admin_user_id AS actor_id, u.email AS actor_email,
-               e.action, e.target_workspace_id, e.payload_json AS detail, e.created_at
-        FROM super_admin_events e LEFT JOIN users u ON u.id = e.super_admin_user_id";
-$where = []; $args = [];
-if ($actionFilter !== '') { $where[] = "e.action LIKE ?"; $args[] = '%' . $actionFilter . '%'; }
-if ($emailFilter !== '') { $where[] = "u.email LIKE ?"; $args[] = '%' . $emailFilter . '%'; }
-if ($where) $sql .= " WHERE " . implode(' AND ', $where);
-$sql .= " ORDER BY e.id DESC LIMIT $limit";
+$entries = [];
 
+// Source 1 : audit_logs (moderne, ocre_meta)
 try {
-    $st = $meta->prepare($sql);
-    $st->execute($args);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($rows as &$r) {
-        if (!empty($r['detail'])) {
-            $j = json_decode($r['detail'], true);
-            if ($j !== null) $r['detail'] = $j;
-        }
-        $r['ip'] = null; // colonne absente du schema legacy
+    $sql = "SELECT a.id, a.user_id AS actor_id, u.email AS actor_email,
+                   a.action, a.payload AS detail, a.created_at, a.ip_address AS ip,
+                   'audit_logs' AS source
+            FROM audit_logs a LEFT JOIN users u ON u.id = a.user_id";
+    $where = []; $args = [];
+    if ($actionFilter !== '') { $where[] = "a.action LIKE ?"; $args[] = '%' . $actionFilter . '%'; }
+    if ($emailFilter !== '') { $where[] = "u.email LIKE ?"; $args[] = '%' . $emailFilter . '%'; }
+    if ($where) $sql .= " WHERE " . implode(' AND ', $where);
+    $sql .= " ORDER BY a.id DESC LIMIT $limit";
+    $st = $meta->prepare($sql); $st->execute($args);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        if (!empty($r['detail'])) { $j = json_decode($r['detail'], true); if ($j !== null) $r['detail'] = $j; }
+        $entries[] = $r;
     }
-    al_out(['ok' => true, 'entries' => $rows, 'count' => count($rows)]);
-} catch (Throwable $e) {
-    al_out(['ok' => false, 'error' => $e->getMessage()], 500);
-}
+} catch (Throwable $e) { /* swallow source 1 */ }
+
+// Source 2 : super_admin_events (legacy, ocre_meta)
+try {
+    $sql = "SELECT e.id, e.super_admin_user_id AS actor_id, u.email AS actor_email,
+                   e.action, e.payload_json AS detail, e.created_at, NULL AS ip,
+                   'super_admin_events' AS source
+            FROM super_admin_events e LEFT JOIN users u ON u.id = e.super_admin_user_id";
+    $where = []; $args = [];
+    if ($actionFilter !== '') { $where[] = "e.action LIKE ?"; $args[] = '%' . $actionFilter . '%'; }
+    if ($emailFilter !== '') { $where[] = "u.email LIKE ?"; $args[] = '%' . $emailFilter . '%'; }
+    if ($where) $sql .= " WHERE " . implode(' AND ', $where);
+    $sql .= " ORDER BY e.id DESC LIMIT $limit";
+    $st = $meta->prepare($sql); $st->execute($args);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        if (!empty($r['detail'])) { $j = json_decode($r['detail'], true); if ($j !== null) $r['detail'] = $j; }
+        $entries[] = $r;
+    }
+} catch (Throwable $e) { /* swallow source 2 */ }
+
+// Sort desc by created_at + clip to limit
+usort($entries, fn($a, $b) => strcmp($b['created_at'] ?? '', $a['created_at'] ?? ''));
+$entries = array_slice($entries, 0, $limit);
+
+al_out(['ok' => true, 'entries' => $entries, 'count' => count($entries)]);

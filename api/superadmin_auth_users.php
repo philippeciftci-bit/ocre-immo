@@ -3,6 +3,7 @@
 //   GET  ?action=list                        → liste tous les auth_users + counts globaux
 //   POST ?action=delete  body {user_id}      → DELETE un user (refus si super-admin Philippe)
 require_once __DIR__ . '/lib/router.php';
+require_once __DIR__ . '/lib/sa_audit.php';
 require_once __DIR__ . '/lib/audit_logs.php';
 header('Content-Type: application/json; charset=utf-8');
 
@@ -61,7 +62,7 @@ if ($action === 'delete' && $method === 'POST') {
         try { $meta->prepare("DELETE FROM auth_refresh_tokens WHERE user_id = ?")->execute([$userId]); } catch (Throwable $e) { /* table may not exist */ }
         $del = $meta->prepare("DELETE FROM auth_users WHERE id = ?");
         $del->execute([$userId]);
-        audit_log_insert((int) $user['id'], 'auth_users.delete', ['user_id' => $userId, 'email' => $target['email']]);
+        sa_audit_meta((int) $user['id'], 'auth_users.delete', ['user_id' => $userId, 'email' => $target['email']]);
         aj(['ok' => true, 'deleted_id' => $userId, 'deleted_email' => $target['email']]);
     } catch (Throwable $e) {
         aj(['ok' => false, 'error' => 'delete_failed: ' . $e->getMessage()], 500);

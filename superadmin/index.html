@@ -421,20 +421,44 @@ function maybeAuthError(r) {
 
 // ====== SECTION 1 — OVERVIEW ======
 async function renderOverview() {
-  const r = maybeAuthError(await api('/api/superadmin_auth_users.php?action=list'));
+  const r = maybeAuthError(await api('/api/superadmin_overview_stats.php?action=stats'));
   const c = r.counts || {};
-  const totalUsers = c.auth_users ?? '—';
-  const sessionsActive = c.auth_sessions_active ?? '—';
-  const magicPending = c.auth_magic_tokens ?? '—';
-  const recentSignups = (r.users || []).filter(u => { const d = new Date((u.created_at || '').replace(' ', 'T')); return !isNaN(d) && Date.now() - d.getTime() < 24 * 3600 * 1000; }).length;
+  const signups = r.signups_7d || [];
+  const sessionsTotal = c.sessions_active_total ?? '—';
+  const sessionsTooltip = `legacy: ${c.sessions_legacy_active ?? 0} · auth v4: ${c.sessions_auth_active ?? 0}`;
   $('#content-body').innerHTML = `
     <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">Utilisateurs total</div><div class="kpi-value">${esc(totalUsers)}</div></div>
-      <div class="kpi"><div class="kpi-label">Sessions actives</div><div class="kpi-value">${esc(sessionsActive)}</div></div>
-      <div class="kpi"><div class="kpi-label">Magic links pending</div><div class="kpi-value">${esc(magicPending)}</div></div>
-      <div class="kpi"><div class="kpi-label">Signups 24h</div><div class="kpi-value">${recentSignups}</div></div>
+      <div class="kpi"><div class="kpi-label">Utilisateurs total</div><div class="kpi-value">${esc(c.users_total ?? '—')}</div></div>
+      <div class="kpi" title="${esc(sessionsTooltip)}"><div class="kpi-label">Sessions actives</div><div class="kpi-value">${esc(sessionsTotal)}</div><div class="kpi-trend">${esc(sessionsTooltip)}</div></div>
+      <div class="kpi"><div class="kpi-label">Magic links pending</div><div class="kpi-value">${esc(c.magic_pending ?? '—')}</div></div>
+      <div class="kpi"><div class="kpi-label">Signups 24h</div><div class="kpi-value">${esc(c.signups_24h ?? '—')}</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Inscriptions 7 derniers jours</h2><span class="muted">${c.signups_7d ?? 0} total · auto-refresh manuel</span></div>
+      <div class="panel-body">${renderSparkline(signups)}</div>
     </div>`;
   $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('overview')">↻ Rafraîchir</button>`;
+}
+
+function renderSparkline(points) {
+  if (!points || !points.length) return '<div class="empty-state">Aucune donnée.</div>';
+  const W = 720, H = 120, PAD = 24;
+  const counts = points.map(p => p.count);
+  const max = Math.max(1, ...counts);
+  const innerW = W - PAD * 2, innerH = H - PAD * 2;
+  const step = innerW / Math.max(1, points.length - 1);
+  const xy = (i, v) => [PAD + i * step, PAD + innerH - (v / max) * innerH];
+  const path = points.map((p, i) => { const [x, y] = xy(i, p.count); return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1); }).join(' ');
+  const area = path + ' L' + (PAD + (points.length - 1) * step).toFixed(1) + ' ' + (PAD + innerH).toFixed(1) + ' L' + PAD.toFixed(1) + ' ' + (PAD + innerH).toFixed(1) + ' Z';
+  const dots = points.map((p, i) => { const [x, y] = xy(i, p.count); const lbl = new Date(p.day).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }); return `<g><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#8b5e3c"></circle><title>${esc(lbl)} : ${p.count} signup(s)</title></g>`; }).join('');
+  const labels = points.map((p, i) => { const [x] = xy(i, 0); const lbl = new Date(p.day).toLocaleDateString('fr-FR', { weekday: 'short' }).slice(0, 3); return `<text x="${x.toFixed(1)}" y="${(H - 4).toFixed(1)}" text-anchor="middle" font-size="10" fill="#998877">${esc(lbl)}</text>`; }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;max-width:100%;height:auto">
+    <defs><linearGradient id="spk" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8b5e3c" stop-opacity=".25"/><stop offset="100%" stop-color="#8b5e3c" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#spk)"></path>
+    <path d="${path}" fill="none" stroke="#8b5e3c" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
+    ${dots}
+    ${labels}
+  </svg>`;
 }
 
 // ====== SECTION 2 — USERS ======

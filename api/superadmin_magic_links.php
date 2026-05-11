@@ -3,6 +3,7 @@
 //   GET  ?action=list  → tous les magic_tokens récents (pending + consumed + expired)
 //   POST ?action=revoke body {token_id} → marque used_at=NOW() (revoque)
 require_once __DIR__ . '/lib/router.php';
+require_once __DIR__ . '/lib/sa_audit.php';
 require_once __DIR__ . '/lib/audit_logs.php';
 header('Content-Type: application/json; charset=utf-8');
 
@@ -40,7 +41,7 @@ if ($action === 'revoke' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!$tokenId) ml_out(['ok' => false, 'error' => 'missing token_id'], 400);
     $st = $meta->prepare("UPDATE auth_magic_tokens SET used_at = NOW() WHERE id = ? AND used_at IS NULL");
     $st->execute([$tokenId]);
-    audit_log_insert((int) $user['id'], 'magic_link.revoke', ['token_id' => $tokenId]);
+    sa_audit_meta((int) $user['id'], 'magic_link.revoke', ['token_id' => $tokenId]);
     ml_out(['ok' => true, 'affected' => $st->rowCount()]);
 }
 
