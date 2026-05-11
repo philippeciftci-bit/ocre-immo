@@ -77,7 +77,7 @@ body { font-family: 'Inter', system-ui, sans-serif; color: var(--brown); backgro
 
 /* SECTION 1 — Hero plein écran 100vh */
 .op-hero {
-  height: 100vh; min-height: 600px; position: relative;
+  height: 100svh; min-height: 480px; max-height: 820px; padding-block: clamp(40px, 6vh, 80px); position: relative;
   background-image: linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.05) 30%, rgba(0,0,0,0.62) 100%), url('<?php echo esc_url($t['photo']); ?>');
   background-size: cover; background-position: center;
   display: flex; align-items: center; justify-content: center; text-align: center; color: #fff;

@@ -42,8 +42,10 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--
 .ocre-nav, .ocre-hero, .ocre-section, .ocre-footer { display: none !important; }
 
 .hv-hero {
-  height: 100vh;
-  min-height: 600px;
+  height: 100svh;
+  min-height: 480px;
+  max-height: 820px;
+  padding-block: clamp(40px, 6vh, 80px);
   position: relative;
   display: flex;
   align-items: center;
