@@ -105,21 +105,21 @@ button { font: inherit; cursor: pointer; }
 
 .content { flex: 1; padding: 28px 32px; min-width: 0; max-width: 100%; }
 .content-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
-.content-head h1 { font-family: var(--font-serif); font-weight: 600; font-style: italic; font-size: 30px; color: var(--color-text); margin: 0; }
-.content-head .head-sub { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+.content-head h1 { font-family: var(--font-sans); font-weight: 600; font-style: normal; font-size: 24px; color: #001D3D; margin: 0; letter-spacing: -.01em; }
+.content-head .head-sub { font-size: 13px; color: #6B7280; margin-top: 4px; }
 .content-head .head-actions { display: flex; gap: 8px; align-items: center; }
 
 /* ===== KPI cards ===== */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 24px; }
 .kpi { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 14px 16px; }
 .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); margin-bottom: 6px; }
-.kpi-value { font-family: var(--font-serif); font-weight: 600; font-size: 28px; color: var(--color-text); line-height: 1.1; }
+.kpi-value { font-family: var(--font-sans); font-weight: 600; font-size: 26px; color: #001D3D; line-height: 1.1; letter-spacing: -.02em; }
 .kpi-trend { font-size: 11.5px; color: var(--color-text-muted); margin-top: 4px; }
 
 /* ===== Panels ===== */
 .panel { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; margin-bottom: 18px; overflow: hidden; }
 .panel-head { padding: 14px 18px; border-bottom: 1px solid var(--color-border-subtle); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.panel-head h2 { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 17px; color: var(--color-text); margin: 0; }
+.panel-head h2 { font-family: var(--font-sans); font-style: normal; font-weight: 600; font-size: 15px; color: #001D3D; margin: 0; letter-spacing: -.005em; }
 .panel-head .panel-actions { display: flex; gap: 8px; align-items: center; }
 .panel-body { padding: 16px 18px; }
 .panel-body.no-pad { padding: 0; }
@@ -169,20 +169,20 @@ button { font: inherit; cursor: pointer; }
 .atelier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .atelier-card { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 18px; }
 .atelier-card .ico { font-size: 24px; margin-bottom: 8px; }
-.atelier-card h3 { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 17px; margin-bottom: 6px; }
+.atelier-card h3 { font-family: var(--font-sans); font-style: normal; font-weight: 600; font-size: 15px; margin-bottom: 6px; color: #001D3D; }
 .atelier-card p { font-size: 12.5px; color: var(--color-text-brown); margin-bottom: 12px; line-height: 1.45; }
 .atelier-card .btn { width: auto; }
 
 /* ===== Zone danger ===== */
 .danger-zone { border: 2px solid var(--color-danger); border-radius: 12px; background: var(--color-danger-bg); padding: 22px; margin-top: 8px; }
-.danger-zone h2 { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 19px; color: var(--color-danger); margin-bottom: 6px; }
+.danger-zone h2 { font-family: var(--font-sans); font-style: normal; font-weight: 600; font-size: 16px; color: var(--color-danger); margin-bottom: 6px; }
 .danger-zone p.warn { font-size: 12.5px; color: #6b4040; margin-bottom: 16px; line-height: 1.5; }
 .danger-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* ===== Modal ===== */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(42, 24, 16, .55); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
 .modal { background: #fff; border-radius: 12px; padding: 24px; max-width: 460px; width: 100%; box-shadow: 0 12px 48px rgba(0,0,0,.2); }
-.modal h2 { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 22px; margin-bottom: 8px; color: var(--color-text); }
+.modal h2 { font-family: var(--font-sans); font-style: normal; font-weight: 600; font-size: 18px; margin-bottom: 10px; color: #001D3D; letter-spacing: -.01em; }
 .modal p { font-size: 13.5px; color: var(--color-text-brown); margin-bottom: 16px; line-height: 1.5; }
 .modal input { width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 7px; font: inherit; font-size: 13.5px; margin-bottom: 14px; }
 .modal input:focus { outline: none; border-color: var(--color-danger); box-shadow: 0 0 0 3px rgba(199, 62, 62, .12); }
@@ -312,22 +312,51 @@ $('#other-email-btn').addEventListener('click', () => {
   submitBtn.disabled = false; submitBtn.innerHTML = "Demander un lien d'accès";
 });
 
-// ====== Bootstrap : session token from URL (?token=) or check session ======
+// ====== Bootstrap : 3 phases —
+//   1) ?activate=<token> reçu par email → POST /api/superadmin_activate.php (cookie ocre_session) → reload sans param
+//   2) cookie session présent → fetch /api/superadmin_session_check.php → bridge X-Session-Token via /api/session_check.php
+//   3) sinon → reste sur login form
 (async function bootstrap() {
-  const url = new URL(location.href);
-  const urlToken = url.searchParams.get('token');
-  if (urlToken) {
-    localStorage.setItem(TOKEN_KEY, urlToken);
-    url.searchParams.delete('token');
-    history.replaceState({}, '', url.toString());
+  const params = new URLSearchParams(location.search);
+  const activateToken = params.get('activate');
+  if (activateToken && /^[a-f0-9]{32,128}$/i.test(activateToken)) {
+    // Loader pendant l'echange token
+    $('#auth-shell').innerHTML = '<div style="margin:auto;text-align:center"><div class="spin" style="width:32px;height:32px"></div><p class="muted" style="margin-top:14px">Activation du lien…</p></div>';
+    try {
+      const r = await fetch('/api/superadmin_activate.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ token: activateToken }) });
+      const j = await r.json();
+      if (r.ok && j.ok) {
+        params.delete('activate');
+        const next = params.get('next');
+        location.replace(next && /^https:\/\/[a-z0-9-]+\.ocre\.immo\//.test(next) ? next : ('/' + (params.toString() ? '?' + params.toString() : '')));
+        return;
+      }
+    } catch (e) {}
+    $('#auth-shell').innerHTML = '<div class="auth-card"><h1>Lien expiré ou invalide</h1><p class="lead">Demandez un nouveau lien d\'accès.</p><a class="btn btn-primary" href="/">Retour</a></div>';
+    return;
   }
-  if (!localStorage.getItem(TOKEN_KEY)) return; // stay on login form
-  const r = await api('/api/superadmin_session_check.php');
-  if (r && r.ok && r.user && r.user.role === 'super_admin') {
-    enterApp(r.user);
-  } else {
-    localStorage.removeItem(TOKEN_KEY);
-  }
+  // Phase 2 : check cookie session existant
+  try {
+    const r = await fetch('/api/superadmin_session_check.php', { credentials: 'include', cache: 'no-store' });
+    const j = await r.json();
+    if (j && j.ok && (j.user || {}).role === 'super_admin') {
+      // Bridge legacy X-Session-Token pour endpoints qui le checkent (compat helper api())
+      try {
+        const r2 = await fetch('/api/session_check.php', { credentials: 'include', cache: 'no-store' });
+        const j2 = await r2.json();
+        if (j2 && j2.ok && j2.session_token) localStorage.setItem(TOKEN_KEY, j2.session_token);
+      } catch (e) {}
+      // Handler ?next= : redirect SSO vers autre sous-domaine si fourni
+      const nextParam = params.get('next');
+      if (nextParam && /^https:\/\/[a-z0-9-]+\.ocre\.immo\//.test(nextParam)) {
+        location.replace(nextParam);
+        return;
+      }
+      enterApp(j.user);
+      return;
+    }
+  } catch (e) {}
+  // Phase 3 : stay on login form (auth-shell visible par defaut)
 })();
 
 function enterApp(user) {
@@ -404,10 +433,7 @@ async function renderOverview() {
       <div class="kpi"><div class="kpi-label">Sessions actives</div><div class="kpi-value">${esc(sessionsActive)}</div></div>
       <div class="kpi"><div class="kpi-label">Magic links pending</div><div class="kpi-value">${esc(magicPending)}</div></div>
       <div class="kpi"><div class="kpi-label">Signups 24h</div><div class="kpi-value">${recentSignups}</div></div>
-    </div>
-    <div class="panel"><div class="panel-head"><h2>Raccourcis</h2></div><div class="panel-body">
-      <p class="muted">Accès rapide aux sections principales. Tout est consultable et actionnable depuis la sidebar.</p>
-    </div></div>`;
+    </div>`;
   $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('overview')">↻ Rafraîchir</button>`;
 }
 
@@ -646,31 +672,62 @@ async function renderDanger() {
 
 function confirmResetTotal() {
   openTypeToConfirm({
-    title: '🚨 Reset TOTAL — Tape DELETE pour confirmer',
+    title: 'Reset TOTAL — tape DELETE pour confirmer',
     body: 'Tu vas supprimer TOUTES les données sauf ton compte super-admin. Cette action est <b>irréversible</b> et déclenche un backup automatique.',
     expected: 'DELETE',
     confirmLabel: 'Lancer Reset TOTAL',
     onConfirm: async () => {
       const r = maybeAuthError(await api('/api/superadmin_cleanup.php', { method: 'POST', body: { action: 'reset_total', confirmation: 'RESET TOTAL' } }));
       if (!r.ok) throw new Error(r.error || 'erreur');
-      alert('Reset TOTAL terminé. Rapport :\n' + JSON.stringify(r.report, null, 2));
-      render('overview');
+      showResetReport('Reset Total terminé', r.report || {}, true);
     }
   });
 }
 function confirmResetPartial() {
   openTypeToConfirm({
-    title: 'Reset partiel — Tape DELETE pour confirmer',
-    body: 'Vide les magic_tokens, sessions et refresh_tokens. Les comptes auth_users restent intacts.',
+    title: 'Reset partiel — tape DELETE pour confirmer',
+    body: 'Vide les magic_tokens et sessions. Les comptes auth_users restent intacts.',
     expected: 'DELETE',
     confirmLabel: 'Reset partiel',
     onConfirm: async () => {
       const r = maybeAuthError(await api('/api/superadmin_cleanup.php', { method: 'POST', body: { action: 'reset_partial', confirmation: 'RESET PARTIAL' } }));
       if (!r.ok) throw new Error(r.error || 'erreur');
-      alert('Reset partiel OK : ' + (r.report.truncated || []).join(', '));
-      render('overview');
+      showResetReport('Reset partiel terminé', r.report || {}, false);
     }
   });
+}
+
+// Modal resume lisible (PAS de JSON brut). Parse le report retourne par reset_total / reset_partial.
+function showResetReport(title, report, isTotal) {
+  const items = [];
+  if (isTotal) {
+    if (report.users_deleted != null) items.push(`<b>${report.users_deleted}</b> utilisateur(s) legacy supprimé(s)`);
+    if (report.auth_users_deleted != null) items.push(`<b>${report.auth_users_deleted}</b> auth_user(s) supprimé(s) (Philippe préservé)`);
+    if (report.workspaces_dropped != null) items.push(`<b>${report.workspaces_dropped}</b> workspace(s) DROP DATABASE`);
+    if (report.orphan_dbs_dropped) items.push(`<b>${report.orphan_dbs_dropped}</b> DB orpheline(s) droppée(s)`);
+    if (report.sessions_deleted != null) items.push(`<b>${report.sessions_deleted}</b> session(s) legacy supprimée(s)`);
+    if (report.pending_deleted != null) items.push(`<b>${report.pending_deleted}</b> activation(s) pending supprimée(s)`);
+    if (Array.isArray(report.auth_tables_truncated) && report.auth_tables_truncated.length) items.push(`Tables vidées : <code style="font-size:11.5px">${report.auth_tables_truncated.join(', ')}</code>`);
+    if (report.audit_truncated) items.push(`Audit log truncated`);
+  } else {
+    if (Array.isArray(report.truncated) && report.truncated.length) items.push(`Tables vidées : <code style="font-size:11.5px">${report.truncated.join(', ')}</code>`);
+  }
+  const errs = Array.isArray(report.errors) ? report.errors : [];
+  const errBlock = errs.length === 0
+    ? '<div style="font-size:12px;color:var(--color-success);margin-top:10px">0 erreur</div>'
+    : `<div style="font-size:12px;color:var(--color-danger);margin-top:10px"><b>${errs.length} erreur(s) :</b><ul style="margin-top:4px;padding-left:18px">${errs.map(e => `<li style="font-family:ui-monospace,monospace;font-size:11px">${esc(e)}</li>`).join('')}</ul></div>`;
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal-backdrop"><div class="modal">
+    <h2><span style="color:var(--color-success);font-size:22px;vertical-align:-2px">✓</span> ${esc(title)}</h2>
+    <ul style="list-style:none;padding:0;margin:0 0 6px;font-size:13.5px;color:var(--color-text);line-height:1.8">
+      ${items.length ? items.map(t => `<li style="padding:3px 0;border-bottom:1px solid var(--color-border-subtle)">${t}</li>`).join('') : '<li class="muted">Aucune ligne dans le rapport.</li>'}
+    </ul>
+    ${errBlock}
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn btn-primary" id="report-close" style="width:auto">Fermer</button>
+    </div>
+  </div></div>`;
+  $('#report-close').onclick = () => { root.innerHTML = ''; render('overview'); };
 }
 
 // ====== Modals ======

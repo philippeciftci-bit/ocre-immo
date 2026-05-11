@@ -18,6 +18,13 @@ require_once __DIR__ . '/db.php';
 $meta = pdo_meta();
 
 if ($action === 'list') {
+    // M/2026/05/11/27 — auto-purge sessions expirees + magic tokens expires (silencieux, idempotent).
+    // Garde la table propre, evite faux KPI "30 sessions actives" qui incluait des sessions vieilles.
+    try {
+        $meta->exec("DELETE FROM auth_sessions WHERE expires_at < NOW() OR revoked_at < DATE_SUB(NOW(), INTERVAL 1 DAY)");
+        $meta->exec("DELETE FROM auth_magic_tokens WHERE expires_at < DATE_SUB(NOW(), INTERVAL 7 DAY)");
+    } catch (Throwable $e) { /* swallow */ }
+
     $users = $meta->query(
         "SELECT id, email, first_name, last_name, status, is_super_admin, created_at, last_login_at,
                 (SELECT COUNT(*) FROM auth_sessions s WHERE s.user_id=u.id AND s.revoked_at IS NULL AND s.expires_at > NOW()) AS active_sessions,

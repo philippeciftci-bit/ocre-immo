@@ -321,7 +321,8 @@ if ($action === 'reset_total') {
     } catch (Throwable $e) {
         $report['errors'][] = 'auth_users err=' . $e->getMessage();
     }
-    foreach (['auth_magic_tokens', 'auth_sessions', 'auth_user_modules', 'auth_refresh_tokens', 'superadmin_audit'] as $tbl) {
+    // M/2026/05/11/27 — auth_refresh_tokens retire (table n'existe pas en DB, levait SQLSTATE 42S02 dans report).
+    foreach (['auth_magic_tokens', 'auth_sessions', 'auth_user_modules', 'superadmin_audit'] as $tbl) {
         try {
             $meta->exec("TRUNCATE TABLE `$tbl`");
             $report['auth_tables_truncated'][] = $tbl;
@@ -340,7 +341,7 @@ if ($action === 'reset_total') {
 if ($action === 'reset_partial') {
     if (($input['confirmation'] ?? '') !== 'RESET PARTIAL') jout(['ok' => false, 'error' => 'confirmation "RESET PARTIAL" required'], 400);
     $report = ['truncated' => [], 'errors' => []];
-    foreach (['auth_magic_tokens', 'auth_sessions', 'auth_refresh_tokens'] as $tbl) {
+    foreach (['auth_magic_tokens', 'auth_sessions'] as $tbl) {
         try { $meta->exec("TRUNCATE TABLE `$tbl`"); $report['truncated'][] = $tbl; }
         catch (Throwable $e) { $report['errors'][] = "$tbl err=" . $e->getMessage(); }
     }

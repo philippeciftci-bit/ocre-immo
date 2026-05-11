@@ -1,6 +1,7 @@
 <?php
 // M/2026/05/11/25 — Lecture historique audit super_admin_events.
-//   GET ?action=list&limit=200 → 200 derniers événements avec filtres optionnels (action, actor_email).
+//   GET ?action=list&limit=200 → 200 derniers événements.
+// Schema reel super_admin_events : id, super_admin_user_id, action, target_workspace_id, payload_json, created_at.
 require_once __DIR__ . '/lib/router.php';
 header('Content-Type: application/json; charset=utf-8');
 
@@ -16,8 +17,9 @@ $limit = max(1, min(500, (int) ($_GET['limit'] ?? 200)));
 $actionFilter = trim((string) ($_GET['action_filter'] ?? ''));
 $emailFilter = trim((string) ($_GET['email'] ?? ''));
 
-$sql = "SELECT e.id, e.actor_id, u.email AS actor_email, e.action, e.detail, e.created_at, e.ip
-        FROM super_admin_events e LEFT JOIN users u ON u.id = e.actor_id";
+$sql = "SELECT e.id, e.super_admin_user_id AS actor_id, u.email AS actor_email,
+               e.action, e.target_workspace_id, e.payload_json AS detail, e.created_at
+        FROM super_admin_events e LEFT JOIN users u ON u.id = e.super_admin_user_id";
 $where = []; $args = [];
 if ($actionFilter !== '') { $where[] = "e.action LIKE ?"; $args[] = '%' . $actionFilter . '%'; }
 if ($emailFilter !== '') { $where[] = "u.email LIKE ?"; $args[] = '%' . $emailFilter . '%'; }
@@ -33,6 +35,7 @@ try {
             $j = json_decode($r['detail'], true);
             if ($j !== null) $r['detail'] = $j;
         }
+        $r['ip'] = null; // colonne absente du schema legacy
     }
     al_out(['ok' => true, 'entries' => $rows, 'count' => count($rows)]);
 } catch (Throwable $e) {
