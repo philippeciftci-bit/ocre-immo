@@ -46,6 +46,15 @@ um_activate($userId, $app); // active le module emprunté
 // JWT 1 an (quasi indéfini cette phase)
 $jwt = jwt_encode($userId, 365 * 86400);
 $refresh = bin2hex(random_bytes(32));
+// M_OCRE_EMAIL_RECONNU_LOOP_FIX — INSERT auth_sessions OBLIGATOIRE (sinon /api/me.php reject 'session_revoked' 401)
+try {
+    $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 256);
+    auth_db()->prepare(
+        "INSERT INTO auth_sessions (user_id, jti, refresh_token, expires_at, user_agent, ip)
+         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 YEAR), ?, ?)"
+    )->execute([$userId, $jwt['jti'], $refresh, $ua, $ip]);
+    auth_db()->prepare("UPDATE auth_users SET last_login_at = NOW() WHERE id = ?")->execute([$userId]);
+} catch (Throwable $e) { /* swallow refresh tokens table peut differer */ }
 try {
     auth_db()->prepare("INSERT INTO auth_refresh_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 YEAR))")->execute([$userId, hash('sha256', $refresh)]);
 } catch (Throwable $e) { /* swallow */ }
