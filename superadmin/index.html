@@ -165,16 +165,22 @@ body.drawer-open { overflow: hidden; }
 .search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 7px; font: inherit; font-size: 13px; background: #fff; }
 .search-input:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(139, 94, 60, .12); }
 
-/* ===== DataTable ===== */
+/* ===== DataTable (M/2026/05/11/32 densifie) ===== */
 .dt-wrap { overflow-x: auto; }
-.dt { width: 100%; border-collapse: collapse; font-size: 13px; }
-.dt th { text-align: left; padding: 11px 14px; background: var(--color-bg-sidebar); border-bottom: 1px solid var(--color-border-subtle); font-weight: 600; color: var(--color-text-brown); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
-.dt td { padding: 11px 14px; border-bottom: 1px solid var(--color-border-subtle); vertical-align: middle; }
+.dt { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.dt th { text-align: left; padding: 7px 10px; background: var(--color-bg-sidebar); border-bottom: 1px solid var(--color-border-subtle); font-weight: 600; color: var(--color-text-brown); font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.dt td { padding: 7px 10px; border-bottom: 1px solid var(--color-border-subtle); vertical-align: middle; line-height: 1.35; }
 .dt tr:last-child td { border-bottom: none; }
-.dt tr:hover td { background: #fdfaf3; }
-.dt td.cell-mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; color: var(--color-text-muted); }
+.dt tr:hover td { background: #fbf7ee; }
+.dt td.cell-mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; color: var(--color-text-muted); white-space: nowrap; }
+.dt td.cell-token { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; color: var(--color-text-brown); white-space: nowrap; cursor: default; }
+.dt td.cell-ua { white-space: nowrap; cursor: default; }
+.dt td.cell-ua .ua-label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--color-text); }
+.dt td.cell-ua .ua-icon { font-size: 11px; opacity: .7; }
 .dt td.cell-actions { text-align: right; white-space: nowrap; }
-.dt td.cell-actions .btn { margin-left: 4px; }
+.dt td.cell-actions .btn { margin-left: 4px; padding: 4px 8px; font-size: 11px; }
+.dt td .badge { font-size: 9.5px; padding: 2px 6px; }
+.dt-footer { padding: 6px 10px; }
 .empty-state { padding: 36px 18px; text-align: center; color: var(--color-text-muted); font-size: 13px; }
 .dt-footer { padding: 10px 14px; border-top: 1px solid var(--color-border-subtle); color: var(--color-text-muted); font-size: 11.5px; text-align: right; background: var(--color-bg-sidebar); }
 
@@ -306,6 +312,40 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const fmtDate = s => { if (!s) return '—'; const d = new Date(typeof s === 'string' ? s.replace(' ', 'T') : s); return isNaN(d) ? '—' : d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }); };
+
+// M/2026/05/11/32 — parser User-Agent en label court "OS Browser" + emoji.
+function parseUserAgent(ua) {
+  if (!ua) return { label: '—', icon: '' };
+  const s = String(ua);
+  // OS
+  let os = 'Other', icon = '🖥️';
+  if (/iPad/i.test(s))                          { os = 'iPad';    icon = '📱'; }
+  else if (/iPhone/i.test(s))                   { os = 'iPhone';  icon = '📱'; }
+  else if (/Android/i.test(s))                  { os = 'Android'; icon = '📱'; }
+  else if (/Macintosh|Mac OS X/i.test(s))       { os = 'Mac';     icon = '💻'; }
+  else if (/Windows/i.test(s))                  { os = 'Windows'; icon = '🪟'; }
+  else if (/Linux/i.test(s))                    { os = 'Linux';   icon = '🐧'; }
+  else if (/curl|PHP-Curl|HeadlessChrome/i.test(s)) { os = 'Bot'; icon = '🤖'; }
+  // Browser (ordre important : Edge avant Chrome, Chrome avant Safari)
+  let br = '';
+  if (/Edg\//i.test(s))                br = 'Edge';
+  else if (/OPR\/|Opera/i.test(s))     br = 'Opera';
+  else if (/Firefox\//i.test(s))       br = 'Firefox';
+  else if (/HeadlessChrome/i.test(s))  br = 'HeadlessChrome';
+  else if (/Chrome\//i.test(s))        br = 'Chrome';
+  else if (/Safari\//i.test(s))        br = 'Safari';
+  else if (/curl/i.test(s))            br = 'curl';
+  return { label: (os === 'Other' ? (br || 'inconnu') : os + (br ? ' ' + br : '')), icon };
+}
+function uaCell(ua) {
+  const p = parseUserAgent(ua);
+  return `<td class="cell-ua" title="${esc(ua || '—')}"><span class="ua-label"><span class="ua-icon">${p.icon}</span>${esc(p.label)}</span></td>`;
+}
+function tokenCell(tok) {
+  if (!tok) return '<td class="cell-token muted">—</td>';
+  const s = String(tok);
+  return `<td class="cell-token" title="${esc(s)}">${esc(s.slice(0, 8))}…</td>`;
+}
 
 async function api(url, opts = {}) {
   const headers = Object.assign({ 'X-Session-Token': localStorage.getItem(TOKEN_KEY) || '' }, opts.headers || {});
@@ -538,9 +578,9 @@ async function loadUsers() {
       <td><b>${esc(u.email)}</b>${adminBadge}</td>
       <td>${esc((u.first_name || '') + ' ' + (u.last_name || '')).trim() || '<span class="muted">—</span>'}</td>
       <td>${status}</td>
-      <td style="text-align:center">${u.active_sessions}</td>
-      <td>${fmtDate(u.last_login_at)}</td>
-      <td>${fmtDate(u.created_at)}</td>
+      <td class="cell-mono" style="text-align:center">${u.active_sessions}</td>
+      <td class="cell-mono">${fmtDate(u.last_login_at)}</td>
+      <td class="cell-mono">${fmtDate(u.created_at)}</td>
       <td class="cell-actions">${delBtn}</td>
     </tr>`;
   }).join('');
@@ -572,16 +612,16 @@ async function renderSessions() {
   }
   const rows = sessions.map(s => `<tr>
     <td><b>${esc(s.email || ('user ' + s.user_id))}</b></td>
-    <td class="cell-mono">${esc(((s.session_token || s.token || '') + '').slice(0, 12))}…</td>
-    <td>${esc(s.ip || '—')}</td>
-    <td class="muted">${esc((s.user_agent || '').slice(0, 40)) || '—'}</td>
-    <td>${fmtDate(s.created_at)}</td>
-    <td>${fmtDate(s.expires_at || s.last_seen)}</td>
+    ${tokenCell(s.session_token || s.token)}
+    <td class="cell-mono">${esc(s.ip || '—')}</td>
+    ${uaCell(s.user_agent)}
+    <td class="cell-mono">${fmtDate(s.created_at)}</td>
+    <td class="cell-mono">${fmtDate(s.expires_at || s.last_seen)}</td>
     <td class="cell-actions"><button class="btn btn-danger btn-sm" onclick="revokeSession(${JSON.stringify(s.session_token || s.token || '').replace(/"/g, '&quot;')})">Révoquer</button></td>
   </tr>`).join('');
   $('#content-body').innerHTML = `<div class="panel">
     <div class="panel-head"><h2>Sessions actives (${sessions.length})</h2></div>
-    <div class="panel-body no-pad"><div class="dt-wrap"><table class="dt"><thead><tr><th>User</th><th>Token</th><th>IP</th><th>User-Agent</th><th>Créée</th><th>Expire</th><th style="text-align:right">Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+    <div class="panel-body no-pad"><div class="dt-wrap"><table class="dt"><thead><tr><th>User</th><th>Token</th><th>IP</th><th>Appareil</th><th>Créée</th><th>Expire</th><th style="text-align:right">Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>
   </div>`;
 }
 async function revokeSession(token) {
@@ -613,11 +653,11 @@ async function renderMagicLinks() {
     const revokeBtn = t.state === 'pending' ? `<button class="btn btn-danger btn-sm" onclick="revokeMagic(${t.id})">Révoquer</button>` : '<span class="muted">—</span>';
     return `<tr>
       <td><b>${esc(t.email || ('user ' + t.user_id))}</b></td>
-      <td class="cell-mono">${esc(t.token_short)}…</td>
+      <td class="cell-token" title="${esc(t.token_short || '')}…">${esc(t.token_short || '—')}…</td>
       <td><span class="badge ${stateBadge}">${esc(t.state)}</span></td>
-      <td>${fmtDate(t.created_at)}</td>
-      <td>${fmtDate(t.expires_at)}</td>
-      <td>${esc(t.ip || '—')}</td>
+      <td class="cell-mono">${fmtDate(t.created_at)}</td>
+      <td class="cell-mono">${fmtDate(t.expires_at)}</td>
+      <td class="cell-mono">${esc(t.ip || '—')}</td>
       <td class="cell-actions">${revokeBtn}</td>
     </tr>`;
   }).join('');
