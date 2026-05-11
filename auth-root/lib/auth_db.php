@@ -157,35 +157,40 @@ function auth_cors_allow(): void {
 }
 
 function auth_set_cookies(string $jwt, string $refresh): void {
-    // M_OCRE_AGENT_SIGNUP_V1 — JWT cookie 30j (was 1h) cohérent UX Notion/Linear/Booking.
+    // M_OCRE_AGENT_SIGNUP_V1 — JWT cookie 1 an, cross-subdomain.
+    // M/2026/05/11/42 — SameSite=None (au lieu de Lax) pour passer Safari iPad ITP
+    // "Prevent Cross-Site Tracking" iOS 17+. Requis pour SSO cross-subdomain via fetch POST
+    // (cf diag M/41 : Lax bloquait le cookie sur fetch credentials:include depuis ocre.immo
+    // vers auth.ocre.immo malgré le même eTLD+1). secure=true mandatory par la spec.
     $jwtOpts = [
-        'expires' => time() + 365 * 86400, // M_OCRE_PARCOURS_V4 1 an quasi indefini
+        'expires' => time() + 365 * 86400,
         'path' => '/',
         'domain' => '.ocre.immo',
         'secure' => true,
         'httponly' => true,
-        'samesite' => 'Lax',
+        'samesite' => 'None',
     ];
     $refOpts = [
-        'expires' => time() + 365 * 86400, // M_OCRE_PARCOURS_V4 1 an quasi indefini
+        'expires' => time() + 365 * 86400,
         'path' => '/',
         'domain' => '.ocre.immo',
         'secure' => true,
         'httponly' => true,
-        'samesite' => 'Lax',
+        'samesite' => 'None',
     ];
     setcookie('ocre_jwt', $jwt, $jwtOpts);
     setcookie('ocre_refresh', $refresh, $refOpts);
 }
 
 function auth_clear_cookies(): void {
+    // M/2026/05/11/42 — meme attributs que auth_set_cookies pour matcher au clear.
     $opts = [
         'expires' => 1,
         'path' => '/',
         'domain' => '.ocre.immo',
         'secure' => true,
         'httponly' => true,
-        'samesite' => 'Lax',
+        'samesite' => 'None',
     ];
     setcookie('ocre_jwt', '', $opts);
     setcookie('ocre_refresh', '', $opts);

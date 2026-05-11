@@ -66,8 +66,8 @@ try {
     auth_db()->prepare("INSERT INTO auth_refresh_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 YEAR))")->execute([$userId, hash('sha256', $refresh)]);
 } catch (Throwable $e) { /* swallow */ }
 
-// Cookies cross-subdomain via auth_set_cookies (livré M_OCRE_AGENT_SIGNUP_V1 30j → bumper à 1an pour V4)
-$opts = ['expires' => time() + 365 * 86400, 'path' => '/', 'domain' => '.ocre.immo', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax'];
+// Cookies cross-subdomain. M/2026/05/11/42 SameSite=None pour Safari iPad ITP (cf diag M/41).
+$opts = ['expires' => time() + 365 * 86400, 'path' => '/', 'domain' => '.ocre.immo', 'secure' => true, 'httponly' => true, 'samesite' => 'None'];
 setcookie('ocre_jwt', $jwt['token'], $opts);
 setcookie('ocre_refresh', $refresh, $opts);
 
