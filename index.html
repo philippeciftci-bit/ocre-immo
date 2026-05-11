@@ -8824,14 +8824,8 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           <PriceField2Col label="Liquide dispo" valueKey="prix_liquide" set={set} d={d} hint="Cash hors crédit" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
-        <V55Bloc title="Frais d'agence" theme="agence">
-          <V55Field label="Honoraires à charge" type="select" value={d.honoraires_charge} onChange={v => set('honoraires_charge', v)}
-            options={['Vendeur','Acheteur','Partagés']}/>
-          {honoCharge === 'Vendeur' && (
-            <V55ReadOnly label="Honoraires" value="Supportés par le vendeur" hint="Aucun frais d'agence à votre charge"/>
-          )}
-          <M53FraisAgenceMulti d={d} set={set} baseAmount={_bMax} profil="Acheteur" forceUpdate={forceUpdate}/>
-        </V55Bloc>
+        {/* M/2026/05/11/38 — Frais d'agence Acheteur RETIRE de Section III, migre vers Section VI 6b
+            (cf bloc V55Bloc 06b · Frais d'agence rendu pour tous profils via activeProfil). */}
 
         {/* M/2026/05/03/2.1 — Réordonnancement : Synthèse Acheteur APRÈS Frais agence,
             AVANT Frais notaire (point 8 checklist). */}
@@ -9065,11 +9059,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
         <V55Bloc title="Honoraires location (estimation)" theme="agence">
           <V55Field label="Honoraires locataire estimés" type="number" value={d.honoraires_locataire_estimes} onChange={v => set('honoraires_locataire_estimes', v)} suffix={devise === 'MAD' ? 'MAD' : 'EUR'} hint={paysBien === 'FR' ? 'Encadré ALUR France ~10-13EUR/m² selon zone tendue' : 'MA usage variable, souvent payés par bailleur'}/>
           <V55Field label="Frais de dossier" type="number" value={d.frais_dossier} onChange={v => set('frais_dossier', v)} suffix={devise === 'MAD' ? 'MAD' : 'EUR'}/>
-          {/* M/2026/05/02/40 — M144.I : 4e call site Multi-acteurs FraisAgenceMultiActeurs Locataire (parité 4 profils).
-              Pré-rempli vide (Locataire pas d'agence par défaut, mais peut ajouter manuellement). baseAmount = loyer max. */}
-          <div style={{marginTop:'var(--space-10px)', paddingTop:'var(--space-10px)', borderTop:'1px solid var(--color-border-medium)40'}}>
-            <FraisAgenceMultiActeurs d={d} set={set} devise={devise} baseAmount={Number(d.loyer_max) || 0} profil="Locataire"/>
-          </div>
+          {/* M/2026/05/11/38 — Multi-acteurs Frais d'agence Locataire RETIRE de Section III, migre Section VI 6b. */}
         </V55Bloc>
 
         {/* M/2026/05/03/2.1 — Synthèse Locataire en gauche-currency UI state. */}
@@ -9184,8 +9174,7 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set}
           {d.honoraires_locataire_partage_oui && (
             <V55Field label="Montant à charge locataire" type="number" value={d.honoraires_locataire_montant} onChange={v => set('honoraires_locataire_montant', v)} suffix={CURRENCY_SYMBOL_V5[cur.left] || cur.left}/>
           )}
-          {/* M/2026/05/03/2.1 — Multi-acteurs Frais d'agence Bailleur via M53FraisAgenceMulti. */}
-          <M53FraisAgenceMulti d={d} set={set} baseAmount={Number(d.loyer_demande) || 0} profil="Bailleur" forceUpdate={forceUpdate}/>
+          {/* M/2026/05/11/38 — Multi-acteurs Frais d'agence Bailleur RETIRE de Section III, migre Section VI 6b. */}
         </V55Bloc>
 
         {/* M/2026/05/03/2.1 — Synthèse Bailleur. Display en gauche-currency UI state. */}
@@ -23287,13 +23276,23 @@ function FormView(props) {
                 <div style={{padding:'12px 14px', display:'flex', flexDirection:'column', gap:'var(--space-2)'}}>
                   {/* M/2026/05/06/80.1 — 6a Mandat juridique migre depuis Section III V55Bloc. */}
                   <M80MandatBlock d={d} set={set}/>
-                  {/* M/2026/05/06/80.2.A — 6b Frais d'agence : composant M53FraisAgenceMulti deplace TEL QUEL
-                      depuis Section III (PriceField2Col conserve, refactor DualCurrencyPair reporte M80.2.B). */}
+                  {/* M/2026/05/06/80.2.A + M/2026/05/11/38 — 6b Frais d'agence pour TOUS profils.
+                      M/38 : baseAmount adapte par profil (Locataire=loyer_max, Bailleur=loyer_demande,
+                      Acheteur=prix_max_total, autres=prix_affiche). forceUpdate reel propage. */}
                   <V55Bloc title="06b · Frais d'agence" theme="agence">
-                    <M53FraisAgenceMulti d={d} set={set}
-                      baseAmount={Number(d.prix_affiche) || 0}
-                      profil={activeProfil || 'Vendeur'}
-                      forceUpdate={() => {}}/>
+                    {(() => {
+                      const _ap = activeProfil || 'Vendeur';
+                      let _base = Number(d.prix_affiche) || 0;
+                      if (_ap === 'Acheteur' || _ap === 'Investisseur') _base = Number(d.prix_max_total || d.budget_max || d.prix_max) || 0;
+                      else if (_ap === 'Locataire') _base = Number(d.loyer_max) || 0;
+                      else if (_ap === 'Bailleur') _base = Number(d.loyer_demande) || 0;
+                      return (
+                        <M53FraisAgenceMulti d={d} set={set}
+                          baseAmount={_base}
+                          profil={_ap}
+                          forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
+                      );
+                    })()}
                   </V55Bloc>
                   {/* M/2026/05/06/80.3 — 6c Prix de vente affiche : composant migre depuis Section III. */}
                   <M80PrixVenteBlock d={d}/>
