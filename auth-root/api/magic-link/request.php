@@ -55,6 +55,15 @@ try {
             $up->execute([$first, $last, $societe, $phone, $cgu ? 1 : 0, $userId]);
         } catch (Throwable $e) { /* swallow column missing */ }
     }
+    // M/2026/05/11/20 — Cleanup tokens orphelins/expirés du user AVANT INSERT.
+    // (1) Supprime les tokens expirés > 15 min (garde la table propre)
+    // (2) Marque used_at sur les tokens non consommés non expirés du même user
+    //     → garantit qu'un seul magic link actif par user à tout instant,
+    //       le nouveau remplace l'ancien (anti orphelin loop).
+    try {
+        auth_db()->prepare("DELETE FROM auth_magic_tokens WHERE expires_at < NOW()")->execute();
+        auth_db()->prepare("UPDATE auth_magic_tokens SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL")->execute([$userId]);
+    } catch (Throwable $e) { /* swallow : table may differ */ }
     $token = bin2hex(random_bytes(32));
     $st = auth_db()->prepare("INSERT INTO auth_magic_tokens (user_id, token, expires_at, ip) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), ?)");
     $st->execute([$userId, $token, $ip]);

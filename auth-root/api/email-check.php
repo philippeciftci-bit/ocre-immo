@@ -43,6 +43,13 @@ if (!$user) {
 $userId = (int) $user['id'];
 um_activate($userId, $app); // active le module emprunté
 
+// M/2026/05/11/20 — Cleanup magic_tokens orphelins du user (anti loop : un user qui retape
+// son email après abandon d'un magic link laisse 0 token actif derrière lui).
+try {
+    auth_db()->prepare("DELETE FROM auth_magic_tokens WHERE expires_at < NOW()")->execute();
+    auth_db()->prepare("UPDATE auth_magic_tokens SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL")->execute([$userId]);
+} catch (Throwable $e) { /* swallow */ }
+
 // JWT 1 an (quasi indéfini cette phase)
 $jwt = jwt_encode($userId, 365 * 86400);
 $refresh = bin2hex(random_bytes(32));
