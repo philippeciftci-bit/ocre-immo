@@ -94,7 +94,7 @@ try {
         . '<div style="text-align:center;margin-bottom:18px"><span style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:36px;color:#8B5E3C">Oc<span style="color:#D4A256">re</span></span></div>'
         . '<h1 style="font-family:Georgia,serif;font-style:italic;font-weight:600;color:#3D2818;margin:0 0 16px;font-size:24px;text-align:center">Ton lien Ocre · Oi ' . htmlspecialchars(ucfirst($targetApp)) . '</h1>'
         . '<p style="color:#3D2818">' . $hello . '</p>'
-        . '<p style="color:#6B5642">Voici ton lien magique pour entrer dans Oi ' . htmlspecialchars(ucfirst($targetApp)) . '. Lien valide <strong>15 minutes</strong>, à usage unique.</p>'
+        . '<p style="color:#6B5642">Voici ton lien magique pour entrer dans Oi ' . htmlspecialchars(ucfirst($targetApp)) . '. Lien valide <strong>' . htmlspecialchars((function($h){if($h>=24 && $h%24===0){$d=intval($h/24);return $d===1?'1 jour':($d.' jours');}return $h===1?'1 heure':($h.' heures');})($ttlHours), ENT_QUOTES, 'UTF-8') . '</strong>, à usage unique.</p>'
         . '<p style="text-align:center;margin:32px 0">'
         . '<a href="' . htmlspecialchars($url) . '" style="background:#8B5E3C;color:#fff;text-decoration:none;padding:15px 32px;border-radius:10px;font-weight:600;display:inline-block">Entrer dans Oi ' . htmlspecialchars(ucfirst($targetApp)) . ' →</a>'
         . '</p>'
@@ -103,7 +103,7 @@ try {
         . '<p style="font-size:11.5px;color:#998877">Si tu n\'as pas demandé ce lien, ignore cet email — ton compte reste sécurisé.</p>'
         . '<p style="font-size:11.5px;color:#998877">— Ocre Immo · <a href="https://ocre.immo" style="color:#8B5E3C">ocre.immo</a></p>'
         . '</div></body></html>';
-    $text = "Ton lien Ocre · Oi " . ucfirst($targetApp) . "\n\nLien magique (15 min) : $url\n\nSi tu n'as pas demande ce lien, ignore cet email.\n— Ocre Immo";
+    $text = "Ton lien Ocre · Oi " . ucfirst($targetApp) . "\n\nLien magique : $url\n\nSi tu n'as pas demandé ce lien, ignore cet email.\n— Ocre Immo";
 
     // M_OCRE_MAGIC_LINK_DIAG — logging fichier traçabilité OVH SMTP envois magic link
     $logFile = '/var/log/ocre-magic-link.log';

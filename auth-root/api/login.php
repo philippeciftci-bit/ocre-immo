@@ -68,7 +68,9 @@ if ($jwtCookie) {
 }
 
 if ($hasValidSession) {
-    // Verifie tenant (slug dans ocre_meta.users + DB ocre_wsp_<slug>)
+    // M/2026/05/11/40 BUG#1 — Cas A : session valide. Verifie tenant (slug dans users + DB ocre_wsp_<slug>).
+    // Si user existe sans slug (legacy avant M/37 amd#2 provisioning auto), provisionne inline pour ne pas
+    // tomber en cas B (faux mail envoye). Reuse lib partagee auth_provision_tenant.
     try {
         $env = parse_ini_file('/root/.secrets/ocre-db.env', false, INI_SCANNER_RAW);
         $pdoMeta = new PDO('mysql:host=' . ($env['DB_HOST'] ?? '127.0.0.1') . ';dbname=ocre_meta;charset=utf8mb4',
@@ -77,18 +79,35 @@ if ($hasValidSession) {
         $lu = $pdoMeta->prepare("SELECT slug FROM users WHERE email = ? AND slug IS NOT NULL AND slug != '' LIMIT 1");
         $lu->execute([$email]);
         $legacy = $lu->fetch();
+        $slug = null;
         if ($legacy && !empty($legacy['slug'])) {
-            $slug = preg_replace('/[^a-z0-9_-]/', '', $legacy['slug']);
-            $existsDb = $pdoMeta->query("SHOW DATABASES LIKE 'ocre_wsp_" . $slug . "'")->fetch();
-            if ($existsDb) {
-                auth_send_json([
-                    'ok' => true,
-                    'action' => 'direct',
-                    'redirect_url' => 'https://' . $slug . '.ocre.immo/',
-                ]);
+            $cand = preg_replace('/[^a-z0-9_-]/', '', $legacy['slug']);
+            $existsDb = $pdoMeta->query("SHOW DATABASES LIKE 'ocre_wsp_" . $cand . "'")->fetch();
+            if ($existsDb) $slug = $cand;
+        }
+        if (!$slug) {
+            // Provisioning inline via lib partagee (M/37 amd#2).
+            require_once __DIR__ . '/../lib/provision.php';
+            $prov = auth_provision_tenant($userId, 'agent');
+            if (!empty($prov['ok']) && !empty($prov['slug'])) {
+                $slug = $prov['slug'];
+                if (!empty($prov['sso_token'])) {
+                    auth_send_json([
+                        'ok' => true,
+                        'action' => 'direct',
+                        'redirect_url' => 'https://' . $slug . '.ocre.immo/?_s=' . urlencode($prov['sso_token']) . '&source=login',
+                    ]);
+                }
             }
         }
-    } catch (Throwable $e) { /* fallback B */ }
+        if ($slug) {
+            auth_send_json([
+                'ok' => true,
+                'action' => 'direct',
+                'redirect_url' => 'https://' . $slug . '.ocre.immo/?source=login',
+            ]);
+        }
+    } catch (Throwable $e) { @error_log('[login cas A] ' . $e->getMessage()); }
 }
 
 // CAS B — magic link envoye avec TTL custom user
@@ -107,21 +126,31 @@ try {
 }
 
 $url = 'https://auth.ocre.immo/api/magic-link/validate.php?token=' . $token . '&app=' . urlencode($app);
-$ttlLabel = $ttlHours >= 24 ? (intval($ttlHours / 24) . ' jours') : ($ttlHours . ' heures');
-$html = '<!DOCTYPE html><html lang="fr"><body style="font-family:-apple-system,sans-serif;background:#FAF6F1;padding:32px;margin:0">'
+
+// M/2026/05/11/40 BUG#3 — formatTtlHuman : accord singulier/pluriel + accents UTF-8.
+function _login_format_ttl_human(int $hours): string {
+    if ($hours >= 24 && $hours % 24 === 0) {
+        $days = intval($hours / 24);
+        return $days === 1 ? '1 jour' : ($days . ' jours');
+    }
+    return $hours === 1 ? '1 heure' : ($hours . ' heures');
+}
+$ttlLabel = _login_format_ttl_human($ttlHours);
+$appLabel = htmlspecialchars(ucfirst($app), ENT_QUOTES, 'UTF-8');
+$html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head><body style="font-family:-apple-system,sans-serif;background:#FAF6F1;padding:32px;margin:0">'
     . '<div style="max-width:480px;margin:0 auto;background:#fff;padding:36px 30px;border-radius:14px;border:1px solid #E5DAC6">'
     . '<div style="text-align:center;margin-bottom:18px"><span style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:36px;color:#8B5E3C">Oc<span style="color:#D4A256">re</span></span></div>'
-    . '<h1 style="font-family:Georgia,serif;font-style:italic;font-weight:600;color:#3D2818;margin:0 0 16px;font-size:24px;text-align:center">Ton lien d\'acces Ocre</h1>'
-    . '<p style="color:#6B5642">Voici ton lien magique. Valide <strong>' . htmlspecialchars($ttlLabel) . '</strong>, a usage unique.</p>'
+    . '<h1 style="font-family:Georgia,serif;font-style:italic;font-weight:600;color:#3D2818;margin:0 0 16px;font-size:24px;text-align:center">Ton lien d\'accès Ocre</h1>'
+    . '<p style="color:#6B5642">Voici ton lien magique. Valide <strong>' . htmlspecialchars($ttlLabel, ENT_QUOTES, 'UTF-8') . '</strong>, à usage unique.</p>'
     . '<p style="text-align:center;margin:32px 0">'
-    . '<a href="' . htmlspecialchars($url) . '" style="background:#8B5E3C;color:#fff;text-decoration:none;padding:15px 32px;border-radius:10px;font-weight:600;display:inline-block">Entrer dans Oi ' . htmlspecialchars(ucfirst($app)) . ' &rarr;</a>'
+    . '<a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" style="background:#8B5E3C;color:#fff;text-decoration:none;padding:15px 32px;border-radius:10px;font-weight:600;display:inline-block">Entrer dans Oi ' . $appLabel . ' &rarr;</a>'
     . '</p>'
-    . '<p style="font-size:12.5px;color:#998877">Si tu n\'as pas demande ce lien, ignore cet email.</p>'
+    . '<p style="font-size:12.5px;color:#998877">Si tu n\'as pas demandé ce lien, ignore cet email.</p>'
     . '<p style="font-size:11.5px;color:#998877">&mdash; Ocre Immo</p>'
     . '</div></body></html>';
 $text = "Ton lien Ocre : " . $url . " (valide " . $ttlLabel . ")";
 
-@email_send($email, 'Ton lien d\'acces Ocre', $html, $text);
+@email_send($email, 'Ton lien d\'accès · Oi ' . ucfirst($app), $html, $text);
 @file_put_contents('/var/log/ocre-magic-link.log', '[' . date('c') . '] login_unified to=' . $email . ' app=' . $app . ' ttl=' . $ttlHours . 'h user_id=' . $userId . "\n", FILE_APPEND);
 
 auth_send_json(['ok' => true, 'action' => 'link_sent']);

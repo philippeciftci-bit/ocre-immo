@@ -238,8 +238,20 @@
         setBtn('Redirection…', true);
         setTimeout(function() { window.location.href = d.redirect_url; }, 1200);
       } else if (d.action === 'link_sent') {
+        // M/2026/05/11/40 BUG#2 — Cas B succes : fade form + auto-close 4s (idem cas C succes).
         showMsg('success', '✓ Lien envoyé à <b>' + email.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</b>. Vérifie ton email.');
-        startResendCooldown();
+        var form = document.getElementById('oal-form');
+        var subEl = document.querySelector('#oal-overlay .oal-sub');
+        var titleEl = document.getElementById('oal-title');
+        form.style.height = form.offsetHeight + 'px'; form.offsetHeight; // reflow
+        form.style.transition = 'height 300ms ease-out, opacity 200ms ease-out, margin 200ms ease-out';
+        form.style.overflow = 'hidden';
+        requestAnimationFrame(function() {
+          form.style.height = '0'; form.style.opacity = '0'; form.style.margin = '0';
+          if (subEl) { subEl.style.transition = 'opacity 200ms ease-out'; subEl.style.opacity = '0'; }
+        });
+        if (titleEl) titleEl.textContent = 'Lien envoyé !';
+        setTimeout(function() { window.ocreSignupClose(); }, 4000);
       } else if (d.action === 'signup_required') {
         openAccordeon();
         showMsg('info', 'Tu n\'as pas encore de compte — complète tes infos ci-dessous.');

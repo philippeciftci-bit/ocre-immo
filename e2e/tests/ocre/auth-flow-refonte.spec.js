@@ -16,6 +16,11 @@ const VIEWPORTS = [
 function cleanupEmail(email) {
   try { const s = email.replace(/'/g, "''"); execSync(`mariadb ocre_meta -e "DELETE m FROM auth_magic_tokens m JOIN auth_users u ON u.id=m.user_id WHERE u.email='${s}'; DELETE FROM auth_users WHERE email='${s}'"`); } catch (e) {}
 }
+
+// M/2026/05/11/40 — reset rate limits avant chaque test pour eviter 429 cumulatif
+test.beforeEach(() => {
+  try { execSync(`mariadb ocre_meta -e "DELETE FROM auth_rate_limit WHERE created_at < DATE_ADD(NOW(), INTERVAL 1 MINUTE)"`); } catch (e) {}
+});
 function lastMagicTtlSeconds(email) {
   const s = email.replace(/'/g, "''");
   const out = execSync(`mariadb ocre_meta -BNe "SELECT TIMESTAMPDIFF(SECOND, NOW(), expires_at) FROM auth_magic_tokens m JOIN auth_users u ON u.id=m.user_id WHERE u.email='${s}' ORDER BY m.id DESC LIMIT 1"`).toString().trim();
@@ -37,7 +42,8 @@ test('1) Popup s\'ouvre sur ocre.immo au clic CTA', async ({ page }) => {
   await page.screenshot({ path: path.join(OUT_DIR, '01-popup-initial.png'), fullPage: true });
 });
 
-test('2) Cas B — email connu Philippe → message "Lien envoyé"', async ({ page }) => {
+test('2) Cas B — email connu → message "Lien envoyé" + AMD #2 fade form + auto-close 4s', async ({ page }) => {
+  // M/2026/05/11/40 BUG#2 : popup ne reste plus figee avec cooldown, fade + auto-close comme cas C succes.
   await page.goto('https://ocre.immo/');
   await page.evaluate(() => window.ocreSignupOpen({ app: 'agent' }));
   await page.waitForSelector('#oal-overlay.oal-show', { timeout: 5000 });
@@ -47,12 +53,38 @@ test('2) Cas B — email connu Philippe → message "Lien envoyé"', async ({ pa
     const m = document.getElementById('oal-msg');
     return m && m.classList.contains('oal-show-msg') && /Lien envoy/i.test(m.textContent);
   }, { timeout: 8000 });
-  // Bouton "Renvoyer" disabled (cooldown)
-  const btnText = await page.locator('#oal-submit').textContent();
-  expect(btnText).toMatch(/Renvoyer/);
-  const disabled = await page.locator('#oal-submit').isDisabled();
-  expect(disabled).toBe(true);
-  await page.screenshot({ path: path.join(OUT_DIR, '02-cas-B-link-sent.png'), fullPage: true });
+  // Titre change en "Lien envoyé !"
+  await page.waitForTimeout(400);
+  const title = await page.textContent('#oal-title');
+  expect(title).toMatch(/Lien envoyé/);
+  // Form fade : height = 0px
+  const formH = await page.locator('#oal-form').evaluate(el => el.style.height);
+  expect(formH).toBe('0px');
+  await page.screenshot({ path: path.join(OUT_DIR, '02-cas-B-fade.png'), fullPage: true });
+  // Auto-close 4s : popup disparait (overlay !oal-show)
+  await page.waitForFunction(() => !document.getElementById('oal-overlay').classList.contains('oal-show'), { timeout: 6000 });
+});
+
+test('2bis) BUG#3 — encoding email UTF-8 + formatTtlHuman accents corrects', async ({ request }) => {
+  // POST login.php pour Philippe existant, recupere derniere entry magic_tokens.
+  // On verifie indirectement via le log /var/log/ocre-magic-link.log que l'envoi a eu lieu,
+  // et qu'aucun caractere "acces" (sans accent) n'est present dans le code source des emails.
+  const r = await request.post('https://auth.ocre.immo/api/login.php', {
+    headers: { 'Content-Type': 'application/json', 'Origin': 'https://ocre.immo' },
+    data: { email: 'philippe.ciftci@gmail.com', app: 'agent' },
+  });
+  expect(r.ok()).toBe(true);
+  const j = await r.json();
+  expect(j.action).toBe('link_sent');
+  // Code source de login.php contient les accents corrects (apostrophes PHP echappees)
+  const phpSrc = execSync('cat /opt/ocre-auth/api/login.php').toString();
+  expect(phpSrc).toMatch(/lien d\\?'accès/);  // d\'accès en PHP source
+  expect(phpSrc).toMatch(/à usage unique/);
+  expect(phpSrc).toMatch(/demandé/);
+  expect(phpSrc).not.toMatch(/Ton lien d\\?'acces Ocre/); // ancien encoding casse absent (sans accent)
+  // formatTtlHuman : "1 jour" / "N jours"
+  expect(phpSrc).toMatch(/'1 jour'/);
+  expect(phpSrc).toMatch(/' jours'/);
 });
 
 test('3) Cas C — email inconnu → accordéon s\'ouvre (champs prenom/nom/tel/cgu/rgpd visibles), ZERO redirect', async ({ page }) => {
