@@ -13,6 +13,9 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* M_OCRE_HUB_LOADING_RE_DIAGNOSTIC — fix critique : display:flex explicite override l'attribut HTML hidden, le spinner restait infini même après loader.hidden=true. Force display:none quand hidden. */
+[hidden] { display: none !important; }
+
 /* Loader plein écran */
 .loader {
   position: fixed;
