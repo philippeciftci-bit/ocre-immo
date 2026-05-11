@@ -35,7 +35,7 @@ $tools = [
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,shrink-to-fit=no">
 <meta name="theme-color" content="#3D2818">
 <title>Mes outils · Ocre</title>
 <link rel="manifest" href="/manifest.json">
