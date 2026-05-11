@@ -335,4 +335,17 @@ if ($action === 'reset_total') {
     jout(['ok' => true, 'report' => $report]);
 }
 
+// M/2026/05/11/25 — Reset partiel : juste les tokens magic-link + sessions auth_*,
+// sans toucher aux users ni aux workspaces. Pour "nettoyer la maison" sans tout perdre.
+if ($action === 'reset_partial') {
+    if (($input['confirmation'] ?? '') !== 'RESET PARTIAL') jout(['ok' => false, 'error' => 'confirmation "RESET PARTIAL" required'], 400);
+    $report = ['truncated' => [], 'errors' => []];
+    foreach (['auth_magic_tokens', 'auth_sessions', 'auth_refresh_tokens'] as $tbl) {
+        try { $meta->exec("TRUNCATE TABLE `$tbl`"); $report['truncated'][] = $tbl; }
+        catch (Throwable $e) { $report['errors'][] = "$tbl err=" . $e->getMessage(); }
+    }
+    _audit_log($LOG, (int) $user['id'], 'reset_partial', $report);
+    jout(['ok' => true, 'report' => $report]);
+}
+
 jout(['ok' => false, 'error' => 'unknown action: ' . $action], 400);

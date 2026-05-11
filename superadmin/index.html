@@ -3,1856 +3,730 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Ocre Immo — Super-admin</title>
+<title>Ocre · Super-admin</title>
 <link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon-180x180.png">
 <link rel="manifest" href="/favicon/site-admin.webmanifest">
 <meta name="theme-color" content="#8B5E3C">
-<meta name="apple-mobile-web-app-title" content="Ocre Admin">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
-<!-- M/2026/05/08/4 — DESIGN-TOKENS.2.6 link tokens.css -->
+<meta name="apple-mobile-web-app-title" content="Ocre Admin">
 <link rel="stylesheet" href="/styles/tokens.css">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* M/2026/05/09/7 (M59-FIX) — Fallback :root pour cas ou /styles/tokens.css ne charge pas (vhost superadmin renvoie text/html MIME -> Safari strict bloque). Sans ces vars, bouton background:var(--color-accent) etait invisible visuellement (pas de couleur). */
-  :root {
-    --color-bg-page: #FCFAF6;
-    --color-text-primary: #2A2018;
-    --color-text-muted: #6B5E4A;
-    --color-accent: #8B5E3C;
-    --color-bg-tint-warm: #FBF1E4;
-    --color-bg-tint-soft: #FFFCF5;
-    --color-bg-tint-hover: #FFF3EC;
-    --color-border-subtle: #E8DDD0;
-    --color-border-cream: #EDE6DC;
-    --color-text-brown: #6B4429;
-    --color-error: #C0392B;
-    --color-warning: #D68910;
-    --color-success: #2D7A3E;
-    --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-serif: 'Cormorant Garamond', Georgia, serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: var(--font-sans); background: var(--color-bg-page); color: var(--color-text-primary); padding: 24px; }
-  h1 { font-family: var(--font-serif); color: var(--color-accent); margin-bottom: 6px; font-size: 28px; }
-  .banner { background: #FCD5D0; color: #8B0000; padding: 8px 14px; text-align: center; font-weight: 600; margin-bottom: 20px; border-radius: 6px; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 20px 0; }
-  .stat { background: #fff; padding: 18px; border-radius: 10px; border: 1px solid #E5DDC8; text-align: center; }
-  .stat-v { font-family: var(--font-serif); font-size: 32px; color: var(--color-accent); font-weight: 700; }
-  .stat-l { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
-  table { width: 100%; background: #fff; border-radius: 10px; overflow: hidden; border-collapse: collapse; margin-top: 16px; border: 1px solid #E5DDC8; }
-  /* M/2026/05/08/32 — densité tables compact (Linear/Stripe/Notion). */
-  th, td { padding: 6px 10px; text-align: left; font-size: 13px; border-bottom: 1px solid #EDE6DC; vertical-align: middle; line-height: 1.35; }
-  th { background: var(--color-bg-tint-warm); color: #6B4429; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 8px 10px; }
-  tbody tr { height: 44px; }
-  tbody tr:hover { background: var(--color-bg-tint-warm); }
-  tbody tr:last-child td { border-bottom: none; }
-  /* Bordure gauche colorée pour état (au lieu de fond pleine largeur). */
-  td.state-cell { padding: 0; width: 4px; }
-  tr.state-green td.state-cell { background: #2D7A3E; }
-  tr.state-orange td.state-cell { background: #B8801E; }
-  tr.state-red td.state-cell { background: #C73E3E; }
-  /* Actions icônes alignées 1 ligne. */
-  td.actions { white-space: nowrap; text-align: right; }
-  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; margin: 0 2px; border: 1px solid transparent; background: transparent; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 15px; line-height: 1; opacity: 0.7; transition: opacity 120ms, background 120ms; }
-  .icon-btn:hover { opacity: 1; background: var(--color-bg-page); }
-  .icon-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
-  .icon-btn.danger:hover { background: #FBEAEA; }
-  .mono-tel { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--color-text-primary); }
-  .col-date { font-variant-numeric: tabular-nums; font-size: 12.5px; color: #6B5E4A; }
-  .col-attempts { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .col-provider { font-size: 11.5px; color: #6B5E4A; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .col-email { font-weight: 500; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .col-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* Mobile : scroll horizontal avec colonnes sticky. */
-  @media (max-width: 760px) {
-    table { display: block; overflow-x: auto; }
-    tbody tr { height: 52px; }
-  }
-  /* M/2026/05/08/46 — Modale custom (Reset TOTAL) compatible iPad Safari (qui peut bloquer confirm/prompt en cascade). */
-  .sa-modal-overlay { position: fixed; inset: 0; background: rgba(60,40,20,0.55); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .sa-modal { background: #fff; border-radius: 12px; max-width: 520px; width: 100%; padding: 24px 26px; box-shadow: 0 20px 60px rgba(60,40,20,0.30); font-family: var(--font-sans); }
-  .sa-modal h2 { font-family: var(--font-serif); font-style: italic; font-size: 22px; color: #C73E3E; margin: 0 0 12px; }
-  .sa-modal p { font-size: 14px; line-height: 1.5; color: var(--color-text-primary); margin-bottom: 12px; }
-  .sa-modal .danger-list { font-size: 12.5px; color: #6B5E4A; background: #FEF3C7; border-left: 3px solid #B8801E; padding: 10px 12px; margin: 12px 0; line-height: 1.6; }
-  .sa-modal input[type=text] { width: 100%; padding: 11px 13px; border: 1.5px solid #E8DDC9; border-radius: 8px; font-size: 14px; font-family: inherit; background: #FDFAF7; color: var(--color-text-primary); margin: 8px 0 4px; outline: none; }
-  .sa-modal input[type=text]:focus { border-color: var(--color-accent); background: #fff; }
-  .sa-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
-  .sa-modal-btn { padding: 10px 18px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; border: 1px solid; }
-  .sa-modal-btn.cancel { background: #fff; color: var(--color-text-muted); border-color: #E5DDC8; }
-  .sa-modal-btn.danger { background: #C73E3E; color: #fff; border-color: #C73E3E; }
-  .sa-modal-btn.danger:hover { background: #8B0000; }
-  .sa-modal-btn.danger:disabled { opacity: 0.4; cursor: not-allowed; }
-  .sa-modal-result { font-family: ui-monospace, monospace; background: #FBF1E4; padding: 10px 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin: 12px 0; }
-  /* M/2026/05/08/44 — table responsive iPad : table-layout fixed + col widths % évite scroll horizontal sur 1024px. */
-  table.sa-table-fixed { table-layout: fixed; width: 100%; }
-  table.sa-table-fixed td, table.sa-table-fixed th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  table.sa-table-fixed .sa-date-cell { white-space: normal; line-height: 1.25; font-size: 11.5px; }
-  table.sa-table-fixed .sa-date-cell div { font-variant-numeric: tabular-nums; }
-  /* En mobile, on libère table-layout pour permettre le scroll horizontal natif. */
-  @media (max-width: 760px) {
-    table.sa-table-fixed { table-layout: auto; min-width: 720px; }
-  }
-  /* M/2026/05/08/33 — Outils nettoyage. */
-  .write-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; font-family: inherit; font-size: 11px; color: var(--color-text-muted); cursor: pointer; margin-right: 8px; }
-  .write-toggle.on { background: #FEE2E2; color: #C73E3E; border-color: #FCA5A5; font-weight: 600; }
-  .write-toggle.on::before { content: '🔓'; }
-  .write-toggle:not(.on)::before { content: '🔒'; }
-  td.col-checkbox, th.col-checkbox { width: 30px; text-align: center; padding: 6px 4px; }
-  td.col-checkbox input, th.col-checkbox input { cursor: pointer; }
-  .action-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 2px solid var(--color-accent); padding: 12px 24px; box-shadow: 0 -4px 16px rgba(60,40,20,0.08); display: none; align-items: center; gap: 12px; z-index: 200; }
-  .action-bar.visible { display: flex; }
-  .action-bar .count { font-weight: 600; color: var(--color-text-primary); }
-  .action-bar button { padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; border: 1px solid; }
-  .action-bar .btn-danger { background: #C73E3E; color: #fff; border-color: #C73E3E; }
-  .action-bar .btn-danger:hover { background: #A02828; }
-  .action-bar .btn-cancel { background: #fff; color: var(--color-text-muted); border-color: #E5DDC8; }
-  .reset-zone { margin-top: 24px; padding: 16px; border: 2px dashed #FCA5A5; border-radius: 8px; background: #FFF5F5; }
-  .reset-zone .reset-label { font-size: 12px; color: #6B5E4A; font-style: italic; margin-bottom: 8px; }
-  .reset-btn { padding: 10px 16px; background: #fff; color: #C73E3E; border: 1.5px solid #C73E3E; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; }
-  .reset-btn:hover { background: #C73E3E; color: #fff; }
-  .reset-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .reset-total-zone { margin-top: 32px; padding: 24px; border: 3px solid #C73E3E; border-radius: 12px; background: #FEE2E2; }
-  .reset-total-zone h3 { color: #C73E3E; font-family: var(--font-serif); font-style: italic; margin-bottom: 8px; }
-  .reset-total-zone p { font-size: 12px; color: #6B5E4A; margin-bottom: 12px; }
-  .reset-total-btn { padding: 14px 24px; background: #C73E3E; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; }
-  .reset-total-btn:hover { background: #8B0000; }
-  .reset-total-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .login { max-width: 380px; margin: 80px auto; padding: 30px; background: #fff; border-radius: 12px; border: 1px solid #E5DDC8; }
-  .login input { width: 100%; padding: 10px 12px; border: 1px solid #B89968; border-radius: 6px; margin-bottom: 10px; font-family: inherit; font-size: 16px; }
-  .login button { width: 100%; padding: 12px; background: var(--color-accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600; }
-  .login button:disabled { background: #C9B698; cursor: not-allowed; opacity: 0.85; }
-  /* M/2026/05/09/6 — accessibilite clavier iOS : viewport reduit -> margin haut diminue pour garder bouton visible. */
-  @media (max-height: 600px) {
-    .login { margin: 16px auto; padding: 18px; }
-    .login h1 { margin-bottom: 4px; font-size: 22px; }
-  }
-  @keyframes oi-spin { to { transform: rotate(360deg); } }
-  .oi-spin { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: oi-spin 0.7s linear infinite; vertical-align: -2px; margin-right: 6px; }
-  /* M/2026/05/07/96.1bis — fix oeil debordait bouton Se connecter sur iPad. ROOT CAUSE : selecteur .login button (specificite 0,1,1) plus fort que .pwd-eye (0,1,0) -> .pwd-eye heritait width:100% + padding:12px + background:var(--color-accent) du bouton login = bouton geant qui debordait sur le bouton suivant. FIX : selecteur .login button.pwd-eye (0,2,1) gagne en specificite. wrapper porte margin (pas input), padding-right reserve zone oeil, centrage top:50% translateY -50% independant hauteur input, z-index 2 modere. */
-  .pwd-wrap { position: relative; margin-bottom: 10px; }
-  .login .pwd-wrap input { margin-bottom: 0; padding-right: 44px; }
-  .login button.pwd-eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; padding: 0; margin: 0; background: transparent; border: none; color: var(--color-accent); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; -webkit-appearance: none; appearance: none; box-shadow: none; font-weight: 400; }
-  .login button.pwd-eye:hover { color: #6B4429; background: transparent; }
-  .login button.pwd-eye svg { width: 18px; height: 18px; display: block; pointer-events: none; }
-  .forgot { display: block; text-align: center; margin-top: 10px; color: var(--color-accent); font-size: 12px; font-style: italic; cursor: pointer; text-decoration: none; }
-  .forgot:hover { text-decoration: underline; }
-  .reset-form { margin-top: 12px; padding: 12px; background: #FBF1E4; border-radius: 8px; }
-  .reset-form input { margin-bottom: 0; }
-  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
-  .tab { padding: 8px 14px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px; }
-  .tab.active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
-  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-  .filters select, .filters input { padding: 6px 10px; border: 1px solid #E5DDC8; border-radius: 6px; font-family: inherit; font-size: 12px; }
-  .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
-  .pagination button { padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; }
-  .pagination button.active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
-  .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
-  .badge-brouillon { color: #B91C1C; background: #FEE2E2; border: 1px solid #FCA5A5; }
-  .badge-archive { color: #6B5E4A; background: #EDE6DC; border: 1px solid #D9C9A8; }
-  .badge-enregistre { color: #2D7A3E; background: #D1FAE5; border: 1px solid #6EE7B7; }
-  .logout { float: right; padding: 6px 12px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: var(--color-accent); }
-  .search-btn { float: right; margin-right: 8px; padding: 6px 14px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: var(--color-accent); display: inline-flex; align-items: center; gap: 6px; }
-  .search-btn kbd { font-family: ui-monospace, monospace; font-size: 10px; padding: 1px 5px; background: #F5EDDF; border: 1px solid #D9C9A8; border-radius: 3px; color: #6B4429; }
-  .cmdk-overlay { position: fixed; inset: 0; background: rgba(60,40,20,0.4); z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; }
-  .cmdk-modal { width: 100%; max-width: 580px; background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(60,40,20,0.25); overflow: hidden; }
-  .cmdk-input { width: 100%; padding: 18px 20px; border: none; outline: none; font-size: 16px; font-family: inherit; border-bottom: 1px solid #E5DDC8; }
-  .cmdk-results { max-height: 460px; overflow-y: auto; padding: 6px 0; }
-  .cmdk-cat { font-size: 10px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 16px 4px; }
-  .cmdk-row { padding: 9px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
-  .cmdk-row:hover, .cmdk-row.active { background: #FBF1E4; }
-  .cmdk-row .lbl { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
-  .cmdk-row .sub { font-size: 11px; color: var(--color-text-muted); }
-  .cmdk-empty { padding: 30px; text-align: center; color: var(--color-text-muted); font-size: 13px; font-style: italic; }
-  /* M/2026/05/08/35 — Refonte présentation Console super-admin (hiérarchie + sections + élégance Ocre). */
-  body { padding: 32px 24px; }
-  .sa-shell { max-width: 1280px; margin: 0 auto; }
-  /* M62 — header compacté margin 24->12. */
-  .sa-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-  .sa-titles h1 { font-family: var(--font-serif); font-style: italic; font-weight: 500; font-size: 32px; color: var(--color-text-primary); margin: 0 0 4px; line-height: 1.2; }
-  .sa-titles .sa-subtitle { font-family: var(--font-sans); font-size: 14px; color: var(--color-text-muted); font-style: italic; line-height: 1.4; }
-  /* M62 — actions plus denses gap 10->6. */
-  .sa-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .sa-mode-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-  .sa-mode-badge.read { background: #EDE6DC; color: #6B5E4A; }
-  .sa-mode-badge.write { background: #FEE2E2; color: #C73E3E; }
-  /* M62 — sa-link compactée (tap target 36px conserve via line-height). */
-  .sa-link { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; background: #fff; border: 1px solid #E5DDC8; border-radius: 6px; font-size: 12px; color: var(--color-accent); text-decoration: none; cursor: pointer; transition: background 150ms, border-color 150ms; min-height: 36px; }
-  .sa-link:hover { background: var(--color-bg-tint-warm); border-color: var(--color-border-medium); }
-  .sa-link kbd { font-family: ui-monospace, monospace; font-size: 10px; padding: 1px 5px; background: #F5EDDF; border: 1px solid #D9C9A8; border-radius: 3px; color: #6B4429; }
-  /* Tabs nav unifiée. */
-  /* M/2026/05/08/46 → 49 — flex-wrap nowrap + scroll horizontal. Multi-defense rendering :
-     - font-weight identique entre actif/inactif (pas de width shift qui ré-aligne le scroll)
-     - background ocre + color blanc + box-shadow inset redondance
-     - bordure bottom 3px en plus comme indicateur visuel anti-bug Safari iPad
-     - scrollIntoView retiré (cause potentielle de mauvais positionnement Safari iPad). */
-  /* M62 — tabs marginBottom 28->14. */
-  .sa-tabs { display: flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--color-border-subtle); border-radius: 12px; margin-bottom: 14px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; max-width: 100%; min-width: 0; }
-  .sa-tabs::-webkit-scrollbar { height: 4px; }
-  .sa-tabs::-webkit-scrollbar-thumb { background: var(--color-border-subtle); border-radius: 2px; }
-  /* M62 — tab padding 9->7. */
-  .sa-tab { display: inline-flex; align-items: center; padding: 7px 14px; border: none; background: transparent; color: var(--color-text-muted); font-family: inherit; font-size: 13px; font-weight: 500; border-radius: 8px; cursor: pointer; transition: background 150ms ease, color 150ms ease; flex-shrink: 0; white-space: nowrap; min-width: max-content; border-bottom: 3px solid transparent; box-sizing: border-box; }
-  .sa-tab:hover { background: var(--color-bg-tint-warm); color: var(--color-text-primary); }
-  .sa-tab.active { background: var(--color-accent) !important; color: #fff !important; font-weight: 500; box-shadow: inset 0 0 0 1px var(--color-accent); border-bottom-color: var(--color-ocre-700, #5C3E27); }
-  /* Sections groupées Vue d'ensemble. M/2026/05/09/12 (M62) — section margin compactée 32->14px. */
-  .sa-section { margin-bottom: 14px; }
-  .sa-section-title { font-family: var(--font-sans); font-size: 10px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; padding: 5px 0; border-top: 1px solid var(--color-border-subtle); margin-bottom: 8px; }
-  .sa-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
-  /* M62 — card compactée : padding 20->10, transitions inchangées. */
-  .sa-card { background: #fff; border: 1px solid var(--color-border-subtle); border-top: 2px solid var(--color-text-muted); border-radius: 10px; padding: 10px 12px; transition: box-shadow 150ms, transform 150ms, border-top-width 150ms; position: relative; }
-  .sa-card:hover { box-shadow: 0 2px 12px rgba(60,40,20,0.06); }
-  /* M/2026/05/08/37 — cards cliquables avec hover + flèche indicateur. */
-  .sa-card.clickable { cursor: pointer; }
-  .sa-card.clickable:hover { transform: translateY(-2px); border-top-width: 4px; box-shadow: 0 4px 18px rgba(60,40,20,0.10); }
-  .sa-card.clickable:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  /* M62 — fleche en haut a droite (meme ligne que valeur), gain hauteur. */
-  .sa-card.clickable .sa-card-arrow { position: absolute; top: 8px; right: 10px; font-size: 12px; color: var(--color-text-muted); opacity: 0.5; transition: opacity 150ms, transform 150ms; }
-  .sa-card.clickable:hover .sa-card-arrow { opacity: 1; transform: translateX(2px); }
-  .sa-card.is-empty { opacity: 0.7; }
-  .sa-card.accent-ocre { border-top-color: var(--color-accent); }
-  .sa-card.accent-success { border-top-color: var(--color-success); }
-  .sa-card.accent-warning { border-top-color: var(--color-warning); }
-  .sa-card.accent-muted { border-top-color: var(--color-border-medium); }
-  /* M62 — typo compactée mobile-first. */
-  .sa-card-value { font-family: var(--font-serif); font-size: 26px; font-weight: 500; color: var(--color-text-primary); line-height: 1.05; font-variant-numeric: tabular-nums; }
-  .sa-card-label { font-size: 10px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 3px; }
-  .sa-card-desc { font-size: 11px; color: var(--color-text-muted); font-style: italic; margin-top: 2px; line-height: 1.3; }
-  /* Zone technique Reset (intégrée discrètement). */
-  .sa-tech-zone { margin-top: 40px; padding: 24px; background: var(--color-bg-tint-soft); border: 1px solid var(--color-border-subtle); border-radius: 10px; }
-  .sa-tech-zone .sa-tech-label { font-family: var(--font-sans); font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-  .sa-tech-zone .sa-tech-warn { font-size: 13px; color: var(--color-text-brown); font-style: italic; margin-bottom: 14px; line-height: 1.5; }
-  .sa-tech-zone .reset-total-btn { padding: 11px 20px; background: #B91C1C; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; transition: background 150ms; }
-  .sa-tech-zone .reset-total-btn:hover { background: #8B0000; }
-  /* Mobile responsive — M62 (max-height iPhone densifié). */
-  @media (max-width: 760px) {
-    body { padding: 12px 10px; }
-    .sa-titles h1 { font-size: 22px; }
-    .sa-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .sa-card { padding: 8px 10px; }
-    .sa-card-value { font-size: 22px; }
-    .sa-tabs { width: 100%; padding: 3px; margin-bottom: 14px; }
-    .sa-tab { flex: 1 1 auto; padding: 7px 8px; font-size: 12px; min-height: 36px; }
-    .sa-link { padding: 6px 10px; font-size: 11.5px; min-height: 36px; }
-    .sa-section { margin-bottom: 10px; }
-  }
+/* M/2026/05/11/25 — M_SUPERADMIN_REBUILD_PROPER : architecture propre Stripe/Vercel style.
+   Sidebar 240px fixe + main scroll + DataTable + Zone danger separee. */
+:root {
+  --color-bg: #fff;
+  --color-bg-sidebar: #fafaf7;
+  --color-bg-hover: #f4ebd9;
+  --color-border: #e5dac6;
+  --color-border-subtle: #f0e6d5;
+  --color-text: #2a1810;
+  --color-text-muted: #998877;
+  --color-text-brown: #6b5e4a;
+  --color-accent: #8b5e3c;
+  --color-accent-hover: #7a5230;
+  --color-danger: #c73e3e;
+  --color-danger-bg: #fef2f2;
+  --color-success: #2e7d32;
+  --color-warning: #b15a00;
+  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans); line-height: 1.5; -webkit-font-smoothing: antialiased; min-height: 100%; }
+[hidden] { display: none !important; }
+a { color: var(--color-accent); text-decoration: none; }
+button { font: inherit; cursor: pointer; }
 
-  /* M/2026/05/10/1 — M94 cosmetic refactor : sidebar 220px gradient ocre + drawer mobile + polish. */
-  body { padding: 0 !important; }
-  .m94-shell { display: flex; min-height: 100vh; }
-  .m94-sidebar { width: 220px; background: linear-gradient(180deg,#3D2818,#2A1810); color: #fff; flex-shrink: 0; display: flex; flex-direction: column; padding: 18px 0; position: sticky; top: 0; height: 100vh; box-shadow: 2px 0 8px rgba(0,0,0,0.08); z-index: 50; }
-  .m94-brand { padding: 0 18px 22px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 14px; }
-  .m94-brand h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-style: italic; color: #C9A961; font-weight: 700; line-height: 1.1; }
-  .m94-brand .sub { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 2px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
-  .m94-nav { flex: 1; padding: 0 8px; display: flex; flex-direction: column; gap: 2px; }
-  .m94-nav-item { padding: 10px 14px; border-radius: 7px; cursor: pointer; color: rgba(255,255,255,0.78); font-size: 13.5px; font-weight: 500; transition: all 150ms; user-select: none; min-height: 44px; display: flex; align-items: center; }
-  .m94-nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
-  .m94-nav-item.active { background: rgba(201,169,97,0.18); color: #C9A961; font-weight: 600; }
-  .m94-user { padding: 14px 18px 4px; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 14px; display: flex; align-items: center; gap: 10px; }
-  .m94-av { width: 32px; height: 32px; border-radius: 50%; background: #C9A961; color: #2A1810; display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700; font-size: 17px; flex-shrink: 0; }
-  .m94-info { font-size: 12px; line-height: 1.3; flex: 1; min-width: 0; }
-  .m94-name { color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .m94-role { color: rgba(255,255,255,0.5); font-size: 10px; }
-  .m94-main { flex: 1; min-width: 0; padding: 24px 30px 40px; }
-  .m94-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
-  .m94-overlay.open { display: block; }
-  .m94-menu-btn { display: none; background: var(--color-accent); color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 18px; border: 0; margin-right: 10px; }
-  /* Cache l'ancien .sa-tabs (remplacé par sidebar) */
-  .sa-tabs { display: none !important; }
-  .m94-main .sa-shell { max-width: none; padding: 0; margin: 0; }
-  .m94-main .sa-titles { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .m94-main .sa-titles h1 { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 700; font-style: italic; color: var(--color-accent); margin: 0; }
+/* ===== Login / Magic-link form ===== */
+.auth-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--color-bg-sidebar); }
+.auth-card { background: #fff; border: 1px solid var(--color-border); border-radius: 14px; padding: 32px 28px; max-width: 380px; width: 100%; box-shadow: 0 4px 16px rgba(60, 40, 20, .06); }
+.auth-card .brand { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 30px; color: var(--color-accent); text-align: center; margin-bottom: 4px; }
+.auth-card h1 { font-family: var(--font-serif); font-weight: 600; font-size: 22px; text-align: center; margin-bottom: 6px; color: var(--color-text); }
+.auth-card p.lead { font-size: 13px; color: var(--color-text-brown); margin-bottom: 18px; text-align: center; line-height: 1.5; }
+.auth-card input { width: 100%; padding: 11px 13px; border: 1px solid var(--color-border); border-radius: 8px; font: inherit; font-size: 14px; margin-bottom: 12px; }
+.auth-card input:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(139, 94, 60, .12); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px solid transparent; transition: background .12s, border-color .12s, color .12s, opacity .12s; text-decoration: none; }
+.btn-primary { background: var(--color-accent); color: #fff; width: 100%; padding: 12px; font-size: 14px; }
+.btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-ghost { background: transparent; color: var(--color-text-brown); border-color: var(--color-border); }
+.btn-ghost:hover { background: var(--color-bg-hover); color: var(--color-text); }
+.btn-danger { background: #fff; color: var(--color-danger); border-color: #f0c8c8; }
+.btn-danger:hover { background: #fdecec; }
+.btn-danger-solid { background: var(--color-danger); color: #fff; }
+.btn-danger-solid:hover { background: #8b1010; }
+.btn-sm { padding: 6px 10px; font-size: 11px; border-radius: 6px; }
+.feedback { margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 12.5px; min-height: 16px; }
+.feedback.error { color: var(--color-danger); background: var(--color-danger-bg); }
+.feedback.success { color: var(--color-success); background: #e8f5e9; }
+.muted { color: var(--color-text-muted); font-size: 12px; }
 
-  /* Charts SVG inline */
-  .m94-chart-card { background: #fff; border: 1px solid var(--color-border-cream); border-radius: 10px; padding: 16px 18px; box-shadow: 0 1px 2px rgba(60,40,20,0.06); margin-bottom: 16px; }
-  .m94-chart-card h3 { font-family: 'Cormorant Garamond', serif; font-size: 16px; font-style: italic; color: var(--color-accent); font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-  .m94-chart-card .legend { font-size: 10.5px; color: var(--color-text-muted); font-style: normal; font-weight: 500; display: flex; gap: 12px; }
-  .m94-chart-card .legend span { display: inline-flex; align-items: center; gap: 4px; }
-  .m94-chart-card .legend .dot { width: 8px; height: 8px; border-radius: 2px; }
-  svg.m94-line-chart { width: 100%; height: 200px; display: block; }
-  .m94-heatmap { display: grid; grid-template-columns: 30px repeat(24, 1fr); gap: 2px; font-size: 9px; color: var(--color-text-muted); margin-top: 8px; }
-  .m94-heatmap-cell { height: 14px; border-radius: 2px; }
+/* ===== App layout ===== */
+#app { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--color-bg-sidebar);
+  border-right: 1px solid var(--color-border);
+  padding: 20px 12px;
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.sidebar .brand-row { display: flex; align-items: center; gap: 8px; padding: 0 10px 18px; border-bottom: 1px solid var(--color-border-subtle); margin-bottom: 10px; }
+.sidebar .brand-row .brand-name { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 22px; color: var(--color-accent); line-height: 1; }
+.sidebar .brand-row .brand-sub { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .06em; margin-left: 4px; }
+.sidebar nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.nav-item { background: none; border: none; text-align: left; padding: 9px 12px; border-radius: 7px; color: var(--color-text-brown); font-size: 13.5px; font-weight: 500; display: flex; align-items: center; gap: 9px; transition: background .1s, color .1s; }
+.nav-item .ico { font-size: 14px; width: 18px; text-align: center; }
+.nav-item:hover { background: var(--color-bg-hover); color: var(--color-text); }
+.nav-item.active { background: var(--color-text); color: #fff; }
+.nav-item.active:hover { background: #1a0a00; }
+.nav-separator { height: 1px; background: var(--color-border-subtle); margin: 8px 4px; }
+.sidebar-footer { padding-top: 12px; border-top: 1px solid var(--color-border-subtle); font-size: 11.5px; color: var(--color-text-muted); }
+.sidebar-footer .me { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+.sidebar-footer .me .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #c9a96e 0%, #8b6f3a 100%); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+.sidebar-footer .logout-link { background: none; border: none; color: var(--color-accent); font-size: 11.5px; padding: 4px 8px; cursor: pointer; }
+.sidebar-footer .logout-link:hover { text-decoration: underline; }
 
-  /* Skeleton loader */
-  .m94-skeleton { display: inline-block; height: 1em; background: linear-gradient(90deg,#F4ECDF,#FAF6EE,#F4ECDF); background-size: 200% 100%; animation: m94-skeleton-pulse 1.5s ease-in-out infinite; border-radius: 4px; min-width: 60px; }
-  @keyframes m94-skeleton-pulse { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-  /* KPI count-up animation */
-  @keyframes m94-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-  .m94-main .sa-card, .m94-main .sa-section { animation: m94-fade-in 250ms ease-out; }
+/* Mobile drawer */
+.mobile-bar { display: none; padding: 14px 16px; border-bottom: 1px solid var(--color-border); justify-content: space-between; align-items: center; background: #fff; position: sticky; top: 0; z-index: 50; }
+.mobile-bar .brand-name { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 20px; color: var(--color-accent); }
+.hamburger { background: none; border: 1px solid var(--color-border); padding: 6px 10px; border-radius: 6px; font-size: 16px; color: var(--color-text-brown); }
+.sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(42, 24, 16, .35); z-index: 60; }
+@media (max-width: 900px) {
+  .mobile-bar { display: flex; }
+  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; height: 100vh; transform: translateX(-100%); transition: transform .2s ease; z-index: 70; width: 260px; box-shadow: 2px 0 12px rgba(0,0,0,.1); }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-backdrop.open { display: block; }
+  .content { padding: 16px !important; }
+}
 
-  /* Responsive — drawer mobile/tablet */
-  @media (max-width: 900px) {
-    .m94-sidebar { position: fixed; left: -240px; top: 0; transition: left 220ms ease; z-index: 100; }
-    .m94-sidebar.open { left: 0; box-shadow: 2px 0 16px rgba(0,0,0,0.25); }
-    .m94-menu-btn { display: inline-block; }
-    .m94-main { padding: 16px 14px 30px; }
-  }
+.content { flex: 1; padding: 28px 32px; min-width: 0; max-width: 100%; }
+.content-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
+.content-head h1 { font-family: var(--font-serif); font-weight: 600; font-style: italic; font-size: 30px; color: var(--color-text); margin: 0; }
+.content-head .head-sub { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
+.content-head .head-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ===== KPI cards ===== */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.kpi { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 14px 16px; }
+.kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-muted); margin-bottom: 6px; }
+.kpi-value { font-family: var(--font-serif); font-weight: 600; font-size: 28px; color: var(--color-text); line-height: 1.1; }
+.kpi-trend { font-size: 11.5px; color: var(--color-text-muted); margin-top: 4px; }
+
+/* ===== Panels ===== */
+.panel { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; margin-bottom: 18px; overflow: hidden; }
+.panel-head { padding: 14px 18px; border-bottom: 1px solid var(--color-border-subtle); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.panel-head h2 { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 17px; color: var(--color-text); margin: 0; }
+.panel-head .panel-actions { display: flex; gap: 8px; align-items: center; }
+.panel-body { padding: 16px 18px; }
+.panel-body.no-pad { padding: 0; }
+
+/* ===== Search + filter bar ===== */
+.search-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.search-input { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 7px; font: inherit; font-size: 13px; background: #fff; }
+.search-input:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(139, 94, 60, .12); }
+
+/* ===== DataTable ===== */
+.dt-wrap { overflow-x: auto; }
+.dt { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dt th { text-align: left; padding: 11px 14px; background: var(--color-bg-sidebar); border-bottom: 1px solid var(--color-border-subtle); font-weight: 600; color: var(--color-text-brown); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.dt td { padding: 11px 14px; border-bottom: 1px solid var(--color-border-subtle); vertical-align: middle; }
+.dt tr:last-child td { border-bottom: none; }
+.dt tr:hover td { background: #fdfaf3; }
+.dt td.cell-mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; color: var(--color-text-muted); }
+.dt td.cell-actions { text-align: right; white-space: nowrap; }
+.dt td.cell-actions .btn { margin-left: 4px; }
+.empty-state { padding: 36px 18px; text-align: center; color: var(--color-text-muted); font-size: 13px; }
+.dt-footer { padding: 10px 14px; border-top: 1px solid var(--color-border-subtle); color: var(--color-text-muted); font-size: 11.5px; text-align: right; background: var(--color-bg-sidebar); }
+
+/* ===== Badges ===== */
+.badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 5px; letter-spacing: .03em; text-transform: uppercase; vertical-align: middle; }
+.badge-active { background: #e8f5e9; color: #2e7d32; }
+.badge-soon { background: #fff4e5; color: #b15a00; }
+.badge-disabled { background: #f0e6d5; color: #998877; }
+.badge-suspended { background: #fdecea; color: var(--color-danger); }
+.badge-admin { background: #ede7f6; color: #5e35b1; }
+.badge-pending { background: #fff4e5; color: #b15a00; }
+.badge-consumed { background: #e8f5e9; color: #2e7d32; }
+.badge-expired { background: #f0e6d5; color: #998877; }
+
+/* ===== Module rows ===== */
+.module-row { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--color-border-subtle); }
+.module-row:last-child { border-bottom: none; }
+.module-row .label { flex: 1; font-weight: 600; font-size: 14px; }
+.module-states { display: flex; gap: 4px; background: var(--color-bg-sidebar); padding: 3px; border-radius: 7px; }
+.module-state-btn { background: none; border: none; padding: 5px 12px; border-radius: 5px; font-size: 11px; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; }
+.module-state-btn:hover { color: var(--color-text); }
+.module-state-btn.selected { background: #fff; color: var(--color-text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.module-state-btn.selected[data-state="active"] { color: var(--color-success); }
+.module-state-btn.selected[data-state="soon"] { color: var(--color-warning); }
+.module-state-btn.selected[data-state="disabled"] { color: var(--color-text-muted); }
+
+/* ===== Atelier cards ===== */
+.atelier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.atelier-card { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 18px; }
+.atelier-card .ico { font-size: 24px; margin-bottom: 8px; }
+.atelier-card h3 { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 17px; margin-bottom: 6px; }
+.atelier-card p { font-size: 12.5px; color: var(--color-text-brown); margin-bottom: 12px; line-height: 1.45; }
+.atelier-card .btn { width: auto; }
+
+/* ===== Zone danger ===== */
+.danger-zone { border: 2px solid var(--color-danger); border-radius: 12px; background: var(--color-danger-bg); padding: 22px; margin-top: 8px; }
+.danger-zone h2 { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 19px; color: var(--color-danger); margin-bottom: 6px; }
+.danger-zone p.warn { font-size: 12.5px; color: #6b4040; margin-bottom: 16px; line-height: 1.5; }
+.danger-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ===== Modal ===== */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(42, 24, 16, .55); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+.modal { background: #fff; border-radius: 12px; padding: 24px; max-width: 460px; width: 100%; box-shadow: 0 12px 48px rgba(0,0,0,.2); }
+.modal h2 { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 22px; margin-bottom: 8px; color: var(--color-text); }
+.modal p { font-size: 13.5px; color: var(--color-text-brown); margin-bottom: 16px; line-height: 1.5; }
+.modal input { width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 7px; font: inherit; font-size: 13.5px; margin-bottom: 14px; }
+.modal input:focus { outline: none; border-color: var(--color-danger); box-shadow: 0 0 0 3px rgba(199, 62, 62, .12); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.modal-warn { background: #fef2f2; border: 1px solid #fecaca; border-radius: 7px; padding: 10px 12px; margin-bottom: 14px; font-size: 12.5px; color: #6b4040; }
+
+/* ===== Spinner ===== */
+.spin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #e5dac6; border-top-color: var(--color-accent); animation: spin .8s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader { padding: 32px; text-align: center; color: var(--color-text-muted); }
 </style>
-<!-- M108 — Chart.js CDN pour data room charts (MRR projection + tenants 6 mois) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
 </head>
 <body>
-<div id="root"><div class="login" id="login">
-  <!-- M/2026/05/09/6 — Etat 1 (form) ou Etat 2 (confirmation) selon flag JS. -->
-  <div id="form-state">
+
+<!-- ============== LOGIN STATE ============== -->
+<div id="auth-shell" class="auth-shell">
+  <div class="auth-card">
+    <div class="brand">Oc<span style="color:#d4a256">re</span></div>
     <h1>Super-admin</h1>
-    <p style="color:#6B5E4A;margin-bottom:14px;font-size:13px">Entrez votre email super-administrateur, recevez un lien d'accès direct au dashboard.</p>
-    <form id="magic-form" autocomplete="on" novalidate>
-      <input id="email" type="email" placeholder="Email super-admin" autocomplete="email" inputmode="email" required>
-      <button id="btn-submit" type="submit" disabled>Demander un lien d'accès</button>
-    </form>
-    <p id="err" style="color:#8B0000;font-size:12px;margin-top:10px;min-height:14px"></p>
-  </div>
-  <div id="confirm-state" style="display:none;text-align:center">
-    <div style="font-size:54px;line-height:1;margin:8px 0 14px">✉️</div>
-    <h1 style="margin-bottom:6px">Lien envoyé</h1>
-    <p style="color:#3a2e22;font-size:14px;margin-bottom:14px;line-height:1.5">Un lien d'accès vient d'être envoyé à <b id="confirm-email"></b>. Vérifie ta boîte mail. Le lien est valide 24h.</p>
-    <button id="btn-resend" type="button" disabled style="background:transparent;color:var(--color-accent);border:1.5px solid var(--color-accent);font-weight:600">Disponible dans 60s</button>
-    <p style="margin-top:14px;font-size:13px;color:#6B5E4A"><a id="link-other-email" href="#" style="color:var(--color-accent);text-decoration:underline;cursor:pointer">Utiliser un autre email</a></p>
-    <p id="resend-msg" style="color:#2D7A3E;font-size:12px;margin-top:8px;min-height:14px"></p>
-  </div>
-</div></div>
-
-<script>
-// M/2026/05/09/75 — auth super-admin via magic link only (cookie ocre_session M71).
-// Pas de password, pas de localStorage token (cookie HttpOnly gere par le navigateur).
-// Conserve TOKEN_KEY localStorage pour compat headers X-Session-Token (legacy bridge endpoints).
-const TOKEN_KEY = 'ocre_sa_token';
-const api = (url, opts = {}) => {
-  opts.headers = Object.assign({}, opts.headers || {}, { 'X-Session-Token': localStorage.getItem(TOKEN_KEY) || '' });
-  opts.credentials = 'include';
-  if (opts.body && typeof opts.body !== 'string') { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(opts.body); }
-  return fetch(url, opts).then(r => r.json());
-};
-// M/2026/05/09/6 — pattern UX magic link Stripe/Vercel/Notion : 1 clic = 1 envoi, ecran confirmation, cooldown 60s.
-let isSubmitting = false;
-let lastEmail = '';
-let cooldownTimer = null;
-const SUBMIT_BTN_DEFAULT = "Demander un lien d'accès";
-const SUBMIT_BTN_SENDING = '<span class="oi-spin"></span>Envoi en cours…';
-const RESEND_COOLDOWN_S = 60;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function setSubmitEnabled(enabled) {
-  const btn = document.getElementById('btn-submit');
-  if (!btn) return;
-  btn.disabled = !enabled;
-}
-function emailValid(v) { return EMAIL_RE.test((v || '').trim()); }
-function bindForm() {
-  const emailEl = document.getElementById('email');
-  const errEl = document.getElementById('err');
-  const formEl = document.getElementById('magic-form');
-  if (!emailEl || !formEl) return;
-  emailEl.addEventListener('input', () => {
-    setSubmitEnabled(emailValid(emailEl.value));
-    if (errEl.textContent) errEl.textContent = '';
-  });
-  formEl.addEventListener('submit', (e) => { e.preventDefault(); doSendMagicLink(); });
-}
-async function doSendMagicLink() {
-  if (isSubmitting) return;
-  const emailEl = document.getElementById('email');
-  const errEl = document.getElementById('err');
-  const btn = document.getElementById('btn-submit');
-  const email = emailEl.value.trim();
-  errEl.textContent = '';
-  if (!emailValid(email)) { errEl.textContent = 'Email invalide.'; return; }
-  isSubmitting = true;
-  setSubmitEnabled(false);
-  btn.innerHTML = SUBMIT_BTN_SENDING;
-  emailEl.disabled = true;
-  try {
-    const r = await fetch('/api/superadmin_send_magic_link.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email})});
-    await r.json();
-    lastEmail = email;
-    showConfirmState(email);
-  } catch (e) {
-    errEl.textContent = 'Impossible d’envoyer pour le moment. Réessayez.';
-    btn.innerHTML = SUBMIT_BTN_DEFAULT;
-    emailEl.disabled = false;
-    setSubmitEnabled(emailValid(emailEl.value));
-    isSubmitting = false;
-  }
-}
-function showConfirmState(email) {
-  document.getElementById('form-state').style.display = 'none';
-  document.getElementById('confirm-state').style.display = '';
-  document.getElementById('confirm-email').textContent = email;
-  document.getElementById('resend-msg').textContent = '';
-  startResendCooldown();
-}
-function showFormState() {
-  if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null; }
-  isSubmitting = false;
-  document.getElementById('confirm-state').style.display = 'none';
-  document.getElementById('form-state').style.display = '';
-  const emailEl = document.getElementById('email');
-  emailEl.value = '';
-  emailEl.disabled = false;
-  document.getElementById('btn-submit').innerHTML = SUBMIT_BTN_DEFAULT;
-  setSubmitEnabled(false);
-  document.getElementById('err').textContent = '';
-  emailEl.focus();
-}
-function startResendCooldown() {
-  const btn = document.getElementById('btn-resend');
-  if (!btn) return;
-  btn.disabled = true;
-  let s = RESEND_COOLDOWN_S;
-  btn.textContent = 'Disponible dans ' + s + 's';
-  if (cooldownTimer) clearInterval(cooldownTimer);
-  cooldownTimer = setInterval(() => {
-    s -= 1;
-    if (s <= 0) {
-      clearInterval(cooldownTimer); cooldownTimer = null;
-      btn.disabled = false;
-      btn.textContent = 'Renvoyer un lien';
-    } else {
-      btn.textContent = 'Disponible dans ' + s + 's';
-    }
-  }, 1000);
-}
-async function doResendMagicLink() {
-  if (!lastEmail) return;
-  const btn = document.getElementById('btn-resend');
-  const msg = document.getElementById('resend-msg');
-  if (!btn || btn.disabled) return;
-  btn.disabled = true;
-  const orig = btn.textContent;
-  btn.innerHTML = '<span class="oi-spin" style="border-color:rgba(139,94,60,0.3);border-top-color:var(--color-accent)"></span>Envoi…';
-  msg.style.color = '#2D7A3E';
-  msg.textContent = '';
-  try {
-    const r = await fetch('/api/superadmin_send_magic_link.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({email: lastEmail})});
-    const j = await r.json().catch(() => ({}));
-    if (j && j.error === 'RATE_LIMIT') {
-      msg.style.color = '#8B0000';
-      msg.textContent = 'Trop de demandes, réessayez dans quelques minutes.';
-      btn.textContent = orig;
-      btn.disabled = false;
-    } else {
-      msg.textContent = 'Lien renvoyé.';
-      startResendCooldown();
-    }
-  } catch (e) {
-    msg.style.color = '#8B0000';
-    msg.textContent = 'Impossible d’envoyer. Réessayez.';
-    btn.textContent = orig;
-    btn.disabled = false;
-  }
-}
-function bindConfirm() {
-  const btn = document.getElementById('btn-resend');
-  const lnk = document.getElementById('link-other-email');
-  if (btn) btn.addEventListener('click', doResendMagicLink);
-  if (lnk) lnk.addEventListener('click', (e) => { e.preventDefault(); showFormState(); });
-}
-// Bind initial au DOM ready (script charge en bas de body, OK direct).
-bindForm();
-bindConfirm();
-async function logout() {
-  try { await fetch('/api/logout.php', {method:'POST', credentials:'include'}); } catch (e) {}
-  localStorage.removeItem(TOKEN_KEY);
-  location.reload();
-}
-let currentTab = 'tenants'; // M93 : default = tenants (ex-workspaces)
-let clientsState = {page: 1, perPage: 50, workspace: '', profil: '', statut: '', q: ''};
-
-// M/2026/05/09/47 — M93 : refactor 7 onglets → 6 onglets fidèle maquette M92 :
-//   tenants (ex-workspaces), agents (ex-users+clients), metrics (ex-overview), notifs (ex-audit),
-//   modules (NOUVEAU statique), system (ex-sessions + monitoring).
-//   Les anciens onglets pending/clients/sessions/audit deviennent des sous-vues drill-down accessibles
-//   depuis les 6 onglets principaux (route hash conservé pour compat URLs sauvegardées).
-const TAB_SUBTITLES = {
-  tenants: 'Utilisateurs (workspaces) · vue cross-utilisateur',
-  agents: 'Tous les agents · activité & pacts cross-workspace',
-  metrics: 'KPIs business · MRR / ARR / churn / conversion',
-  notifs: 'Logs PWA push (M88-M89) & audit super-admin',
-  modules: 'Catalogue Oi · Agent / Scan / Book / Demande',
-  system: 'Santé serveur Hetzner · backups · deploys',
-  maintenance: '⚠️ Backup auto · reset par périmètre · restore (M_SUPERADMIN_RESET)',
-  atelier: '🔧 Outils dev VPS · Live View CC + Monitoring + Backups + Maquettes (M_DASHBOARD_UNIFIE)',
-  // Routes legacy conservées (drill-down) :
-  workspaces: 'Workspaces (legacy alias → tenants)',
-  clients: 'Clients inscrits · drill-down',
-  pending: 'Inscriptions en attente · action requise',
-  audit: 'Audit super-admin · drill-down',
-  sessions: 'Sessions actives · drill-down',
-  users: 'Users (legacy alias → agents)',
-  overview: 'Vue d\'ensemble (legacy → metrics)',
-};
-// M108 — Data Room investor variables editables (Philippe peut modifier sans CC).
-const DATAROOM_CONTENT = {
-  tagline: "Le SaaS qui anonymise et fluidifie le matching immobilier inter-agents",
-  legal_status: "EI / SASU — à compléter par Philippe",
-  use_of_funds: { rd: 60, sales: 25, ops: 15 },
-  linkedin_philippe: "https://linkedin.com/in/philippe-ciftci",
-  contact_email: "philippe.ciftci@gmail.com",
-  team_bio: "Philippe Ciftci — chef de projet Ocre Immo, ancien commercial immobilier devenu chef produit no-code. Pilote l'ensemble des chantiers depuis Marrakech. 1 développeur principal + Claude Code agents (Anthropic API) pour exécution.",
-  funding_status: "Bootstrapped depuis 2025. Ouvert à discussion partenariats stratégiques (CRM immo existant, agences nationales) ou seed early-stage (200-500k€)."
-};
-
-// M_DASHBOARD_UNIFIE — sidebar Ocre + Atelier dans 1 dashboard
-const TAB_LABELS = {
-  tenants: '👥 Utilisateurs Ocre',
-  agents: '🪪 Agents',
-  metrics: '📊 Statistiques Ocre',
-  notifs: '🔔 Notifs & Events',
-  modules: '🧩 Modules Oi',
-  system: '🛠 Système',
-  dataroom: '📊 Data Room',
-  maintenance: '⚠️ Maintenance',
-  atelier: '🔧 Atelier',
-  // Legacy (gardés pour compat hash URLs)
-  workspaces: 'Workspaces',
-  clients: 'Clients',
-  pending: 'Inscriptions',
-  audit: 'Audit',
-  sessions: 'Sessions',
-  users: 'Users',
-  overview: 'Vue ensemble',
-};
-const TAB_ORDER = ['tenants', 'agents', 'metrics', 'notifs', 'modules', 'system', 'dataroom', 'maintenance', 'atelier'];
-
-// Hash routing : URL #tab synchronise l'onglet actif.
-function parseHashTab() {
-  const h = (location.hash || '').replace(/^#/, '').split('?')[0];
-  // M93 : alias legacy → nouveaux noms
-  const ALIAS = { overview: 'metrics', workspaces: 'tenants', users: 'agents', clients: 'agents', sessions: 'system', audit: 'notifs', pending: 'tenants' };
-  const target = ALIAS[h] || h;
-  return TAB_ORDER.indexOf(target) >= 0 ? target : 'tenants';
-}
-function goToTab(tab) {
-  if (TAB_ORDER.indexOf(tab) < 0) return;
-  if (location.hash !== '#' + tab) location.hash = '#' + tab;
-  // hashchange listener s'occupe du reste.
-}
-window.addEventListener('hashchange', () => {
-  const newTab = parseHashTab();
-  if (newTab !== currentTab) {
-    currentTab = newTab;
-    document.querySelectorAll('.sa-tab').forEach(x => x.classList.toggle('active', x.dataset.t === newTab));
-    document.querySelectorAll('.m94-nav-item').forEach(x => x.classList.toggle('active', x.dataset.t === newTab));
-    const lbl = document.getElementById('sa-tab-label'); if (lbl) lbl.textContent = TAB_LABELS[newTab];
-    const sub = document.getElementById('sa-subtitle'); if (sub) sub.textContent = TAB_SUBTITLES[newTab];
-    loadTab(newTab);
-    // M/2026/05/08/49 — scrollIntoView RETIRÉ (cause potentielle bug Safari iPad qui scrollait
-    // le parent jusqu'à masquer le tab actif). Préférence : scroll horizontal manuel via overflow-x auto.
-    // Auto-scroll plus subtil : aligner le tab dans la barre, mais SANS toucher au scroll de la PAGE.
-    const tabsBar = document.querySelector('.sa-tabs');
-    const activeTab = document.querySelector('.sa-tab.active');
-    if (tabsBar && activeTab) {
-      const left = activeTab.offsetLeft - (tabsBar.clientWidth - activeTab.offsetWidth) / 2;
-      try { tabsBar.scrollTo({left: Math.max(0, left), behavior: 'smooth'}); } catch (_) {}
-    }
-  }
-});
-
-async function renderConsole() {
-  const root = document.getElementById('root');
-  const writeOn = localStorage.getItem('ocre_sa_write_mode') === '1';
-  // Sync currentTab depuis le hash si présent (boot avec hash routing).
-  currentTab = parseHashTab();
-  const tabsHtml = TAB_ORDER.map(t =>
-    `<button class="sa-tab${t === currentTab ? ' active' : ''}" data-t="${t}">${TAB_LABELS[t]}</button>`
-  ).join('');
-  // M/2026/05/10/1 — M94 cosmetic refactor : sidebar 220px gradient ocre + drawer mobile.
-  // Sidebar nav remplace .sa-tabs sur ≥768px. Sur <768px, hamburger toggle drawer.
-  const sidebarNavHtml = TAB_ORDER.map(t =>
-    `<div class="m94-nav-item${t === currentTab ? ' active' : ''}" data-t="${t}">${TAB_LABELS[t]}</div>`
-  ).join('');
-  root.innerHTML =
-    '<div class="m94-shell">'
-    + '<aside class="m94-sidebar" id="m94-sidebar">'
-      + '<div class="m94-brand"><h1>Ocre Admin</h1><div class="sub">Superadmin</div></div>'
-      + '<nav class="m94-nav">' + sidebarNavHtml + '</nav>'
-      + '<div class="m94-user"><div class="m94-av">P</div><div class="m94-info"><div class="m94-name">Philippe Ciftci</div><div class="m94-role">Super-admin</div></div></div>'
-    + '</aside>'
-    + '<div class="m94-overlay" id="m94-overlay" onclick="document.getElementById(\'m94-sidebar\').classList.remove(\'open\');this.classList.remove(\'open\')"></div>'
-    + '<main class="m94-main">'
-    + '<div class="sa-shell">'
-    + '<div class="sa-header">'
-      + '<div class="sa-titles">'
-        + '<button class="m94-menu-btn" onclick="document.getElementById(\'m94-sidebar\').classList.toggle(\'open\');document.getElementById(\'m94-overlay\').classList.toggle(\'open\')">☰</button>'
-        + '<h1 id="sa-tab-label">' + TAB_LABELS[currentTab] + '</h1>'
-        + '<div class="sa-subtitle"><span id="sa-subtitle">' + TAB_SUBTITLES[currentTab] + '</span></div>'
-      + '</div>'
-      + '<div class="sa-actions">'
-        + '<span class="sa-mode-badge ' + (writeOn ? 'write' : 'read') + '" id="mode-badge">' + (writeOn ? '🔓 Lecture/Écriture' : '🔒 Lecture seule') + '</span>'
-        + '<button class="write-toggle ' + (writeOn ? 'on' : '') + '" onclick="toggleWriteMode()" title="Active les actions destructives">' + (writeOn ? 'Écriture activée' : 'Activer écriture') + '</button>'
-        + '<button class="sa-link" onclick="openCmdK()">🔍 Rechercher <kbd>⌘K</kbd></button>'
-        + '<a class="sa-link" href="https://dashboard.ocre.immo/" target="_blank" rel="noopener">⚡ Atelier (live) <kbd>MVP</kbd></a>'
-        + '<button class="sa-link" onclick="logout()" style="color:var(--color-text-muted)">Se déconnecter</button>'
-      + '</div>'
-    + '</div>'
-    + '<div id="content"></div>'
-    + '</div>'
-    + '</main>'
-    + '</div>';
-  // Bind sidebar nav clicks
-  document.querySelectorAll('.m94-nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const t = item.dataset.t;
-      goToTab(t);
-      document.querySelectorAll('.m94-nav-item').forEach(x => x.classList.toggle('active', x.dataset.t === t));
-      // Ferme drawer mobile
-      document.getElementById('m94-sidebar').classList.remove('open');
-      document.getElementById('m94-overlay').classList.remove('open');
-    });
-  });
-  document.querySelectorAll('.sa-tab').forEach(t => t.addEventListener('click', e => {
-    const target = e.target.dataset.t;
-    if (location.hash === '#' + target) {
-      // Re-render quand même si même hash (cas où rien à changer).
-      loadTab(target);
-    } else {
-      goToTab(target);
-    }
-  }));
-  loadTab(currentTab);
-}
-async function loadTab(t) {
-  const c = document.getElementById('content');
-  c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
-  if (t === 'overview') {
-    const r = await api('/api/superadmin_v20.php?action=overview');
-    if (!r.ok) { c.textContent = r.error; return; }
-    const s = r.stats || {};
-    // M/2026/05/08/35 → 37 — Cards regroupées + cliquables (raccourcis vers détails via hash routing).
-    const card = (key, label, desc, accent, target, ariaLabel) => {
-      const v = s[key] !== undefined ? s[key] : 0;
-      const empty = (v === 0) ? ' is-empty' : '';
-      const clickable = target ? ' clickable' : '';
-      const onclick = target ? ` onclick="goToTab('${target}')" tabindex="0" role="button" aria-label="${ariaLabel || label}" onkeydown="if(event.key==='Enter')goToTab('${target}')"` : '';
-      const arrow = target ? '<span class="sa-card-arrow" aria-hidden="true">→</span>' : '';
-      return `<div class="sa-card accent-${accent}${clickable}${empty}"${onclick}><div class="sa-card-value">${v}</div><div class="sa-card-label">${label}</div>${desc ? `<div class="sa-card-desc">${desc}</div>` : ''}${arrow}</div>`;
-    };
-    const pendingAccent = (s.pending_ruptures || 0) > 0 ? 'warning' : 'muted';
-    c.innerHTML =
-      '<section class="sa-section">'
-        + '<div class="sa-section-title">Espaces & Utilisateurs</div>'
-        + '<div class="sa-cards">'
-          + card('workspaces', 'Workspaces', 'total créés', 'ocre', 'workspaces', 'Voir tous les workspaces')
-          + card('wsp_active', 'WSP actifs', 'profils agents', 'ocre', 'workspaces', 'Voir les workspaces agents')
-          + card('wsc_active', 'WSC actifs', 'profils clients', 'success', 'clients', 'Voir tous les clients')
-          + card('users', 'Users', 'comptes inscrits', 'muted', 'users', 'Voir tous les users cross-workspace')
-        + '</div>'
-      + '</section>'
-      + '<section class="sa-section">'
-        + '<div class="sa-section-title">Activité temps réel</div>'
-        + '<div class="sa-cards">'
-          + card('sessions_active', 'Sessions actives', 'connexions courantes', 'success', 'sessions', 'Voir les sessions actives')
-          + card('pending_ruptures', 'Pending ruptures', 'demandes à exécuter', pendingAccent, 'pending', 'Voir les inscriptions en attente')
-          + card('super_admin_actions_24h', 'Actions super-admin', 'dernières 24h', 'ocre', 'audit', 'Voir l\'audit récent')
-        + '</div>'
-      + '</section>'
-      + '<section class="sa-section" id="sa-auth-users-section">'
-        + '<div class="sa-section-title">Utilisateurs en DB (auth V4 magic-link) <button class="link-btn" style="margin-left:8px;background:none;border:none;color:var(--color-accent);font-size:11px;cursor:pointer;text-decoration:underline" onclick="loadAuthUsers()">↻ Rafraîchir</button></div>'
-        + '<div id="sa-auth-users-content" class="muted" style="font-size:12px;color:var(--color-text-muted);padding:8px">Chargement…</div>'
-      + '</section>'
-      + '<section class="sa-tech-zone">'
-        + '<div class="sa-tech-label">Zone technique (mode test)</div>'
-        + '<div class="sa-tech-warn">⚠️ Outils destructifs réservés à la phase de test. Désactiver après lancement officiel.</div>'
-        + '<button class="reset-total-btn" onclick="resetTotal()">🔥 Reset TOTAL provisoire</button>'
-      + '</section>';
-    setTimeout(loadAuthUsers, 50);
-  } else if (t === 'workspaces') {
-    const r = await api('/api/superadmin_v20.php?action=workspaces');
-    selection.workspaces.clear();
-    c.innerHTML = '<table><thead><tr>'
-      + '<th class="col-checkbox"><input type="checkbox" id="cb-all-workspaces" onchange="toggleAllSelection(\'workspaces\', this.checked)"></th>'
-      + '<th>Slug</th><th>Type</th><th>Nom</th><th>Pays</th><th style="text-align:center">Membres</th><th>Créé</th><th style="text-align:center">Archivé</th></tr></thead><tbody>'
-      + (r.workspaces || []).map(w =>
-        `<tr data-workspaces-id="${w.id}"><td class="col-checkbox"><input type="checkbox" onchange="toggleRowSelection('workspaces', ${w.id}, this.checked)"></td><td><b>${w.slug}</b></td><td><span style="font-size:11px;color:#6B5E4A;text-transform:uppercase">${w.type}</span></td><td class="col-name" title="${(w.display_name||'').replace(/"/g,'&quot;')}">${w.display_name}</td><td class="col-date">${w.country_code || '—'}</td><td class="col-attempts">${w.members_count}</td><td class="col-date" title="${w.created_at||''}">${(w.created_at || '').slice(0, 10).replace(/(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1')}</td><td style="text-align:center">${w.archived_at ? '✓' : '—'}</td></tr>`
-      ).join('') + '</tbody></table>'
-      + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_workspaces\', \'TOUS les workspaces (DROP DB tenant)\')">🔥 Reset Workspaces</button></div>';
-    updateActionBar('workspaces');
-  } else if (t === 'clients') {
-    await renderClientsTab();
-  } else if (t === 'pending') {
-    await renderPendingTab();
-  } else if (t === 'sessions') {
-    await renderSessionsTab();
-  } else if (t === 'users') {
-    await renderUsersTab();
-  } else if (t === 'audit') {
-    const r = await api('/api/superadmin_v20.php?action=audit_recent');
-    c.innerHTML = '<table><thead><tr><th>Date</th><th>Workspace</th><th>Acteur</th><th>Action</th><th>Cible</th></tr></thead><tbody>'
-      + (r.events || []).map(e => {
-        const dt = (e.created_at || '').replace('T', ' ');
-        const m = dt.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
-        const dtCompact = m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : dt.slice(0, 16);
-        return `<tr><td class="col-date" title="${e.created_at||''}">${dtCompact}</td><td><b>${e.workspace_slug || '—'}</b></td><td class="col-email">${e.email || '—'}</td><td>${e.action}</td><td class="col-provider">${e.target_type || ''} ${e.target_id || ''}</td></tr>`;
-      }).join('') + '</tbody></table>'
-      + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_audit\', \'audit récent (TRUNCATE super_admin_events)\')">🔥 Reset Audit récent</button></div>';
-  // M93 — 6 nouveaux onglets fidèles maquette M92.
-  } else if (t === 'tenants') {
-    await loadTab('workspaces'); // alias : tenants = vue workspaces enrichie
-    return;
-  } else if (t === 'agents') {
-    await renderUsersTab(); // alias : agents = vue users cross-workspace
-    return;
-  } else if (t === 'metrics') {
-    const r = await api('/api/superadmin_metrics.php');
-    if (!r || !r.ok) { c.textContent = (r && r.error) || 'Erreur metrics'; return; }
-    const k = r.kpis || {};
-    const fmt = (v) => v == null ? '—' : v;
-    c.innerHTML = '<section class="sa-section">'
-      + '<div class="sa-section-title">KPIs business</div>'
-      + '<div class="sa-cards">'
-        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + fmt(k.mrr_eur) + ' €</div><div class="sa-card-label">MRR</div><div class="sa-card-desc">monthly recurring revenue</div></div>'
-        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + fmt(k.arr_eur) + ' €</div><div class="sa-card-label">ARR projeté</div><div class="sa-card-desc">annual recurring (MRR × 12)</div></div>'
-        + '<div class="sa-card accent-success"><div class="sa-card-value">' + fmt(k.churn_pct_30d) + ' %</div><div class="sa-card-label">Churn 30j</div><div class="sa-card-desc">tenants suspendus</div></div>'
-        + '<div class="sa-card accent-success"><div class="sa-card-value">' + fmt(k.conversion_trial_paid_pct) + ' %</div><div class="sa-card-label">Conversion trial→paid</div><div class="sa-card-desc">30 derniers jours</div></div>'
-      + '</div></section>'
-      + '<section class="sa-section">'
-      + '<div class="sa-section-title">Top tenants par activité</div>'
-      + '<table><thead><tr><th>Utilisateur</th><th style="text-align:center">Dossiers</th><th style="text-align:center">Matchings</th></tr></thead><tbody>'
-      + (r.top_tenants || []).map(x => '<tr><td><b>' + (x.slug || '—') + '</b></td><td style="text-align:center">' + (x.dossiers || 0) + '</td><td style="text-align:center">' + (x.matchings || 0) + '</td></tr>').join('')
-      + '</tbody></table></section>'
-      // M94 — Chart 30j SVG + Heatmap 7×24
-      + '<section class="sa-section"><div class="m94-chart-card">'
-        + '<h3>Activité 30 jours <span class="legend">'
-          + '<span><span class="dot" style="background:#5B3C1F"></span>Tenants</span>'
-          + '<span><span class="dot" style="background:#1976D2"></span>Dossiers</span>'
-          + '<span><span class="dot" style="background:#43A047"></span>Pacts</span>'
-        + '</span></h3>'
-        + '<svg class="m94-line-chart" viewBox="0 0 800 200" preserveAspectRatio="none">'
-          + '<line x1="40" y1="180" x2="780" y2="180" stroke="#E5DCCB" stroke-width="1"/>'
-          + '<line x1="40" y1="20" x2="40" y2="180" stroke="#E5DCCB" stroke-width="1"/>'
-          + '<text x="30" y="180" text-anchor="end" fill="#7A6A5C" font-size="10">0</text>'
-          + '<text x="30" y="100" text-anchor="end" fill="#7A6A5C" font-size="10">50</text>'
-          + '<text x="30" y="20" text-anchor="end" fill="#7A6A5C" font-size="10">100</text>'
-          + (function() { var pts1=[], pts2=[], pts3=[]; for (var i=0;i<30;i++) { var x=40+(i*740/29); pts1.push(x+','+(170-i*5)); pts2.push(x+','+(160-i*5)); pts3.push(x+','+(180-i*4.5)); } return '<polyline fill="none" stroke="#5B3C1F" stroke-width="2" points="'+pts1.join(' ')+'"/><polyline fill="none" stroke="#1976D2" stroke-width="2" points="'+pts2.join(' ')+'"/><polyline fill="none" stroke="#43A047" stroke-width="2" points="'+pts3.join(' ')+'"/>'; })()
-          + '<text x="40" y="196" fill="#7A6A5C" font-size="9.5">11 avr</text>'
-          + '<text x="765" y="196" text-anchor="end" fill="#7A6A5C" font-size="9.5">9 mai</text>'
-        + '</svg>'
-      + '</div></section>'
-      + '<section class="sa-section"><div class="m94-chart-card">'
-        + '<h3>Heatmap usage par heure (lun-dim)</h3>'
-        + '<div class="m94-heatmap" id="m94-heatmap"></div>'
-      + '</div></section>';
-    // M94 — populate heatmap
-    setTimeout(function() {
-      var h = document.getElementById('m94-heatmap');
-      if (!h) return;
-      var days = ['L','M','M','J','V','S','D'];
-      h.innerHTML = '<div></div>' + Array.from({length:24}, function(_, hr) { return '<div style="text-align:center;color:var(--color-text-muted);font-size:8px">'+hr+'</div>'; }).join('');
-      days.forEach(function(d, di) {
-        h.innerHTML += '<div style="color:var(--color-text-muted);font-weight:600">'+d+'</div>';
-        for (var hr = 0; hr < 24; hr++) {
-          var intensity = 0;
-          var weekend = di >= 5;
-          if ((hr >= 9 && hr <= 12) || (hr >= 14 && hr <= 19)) intensity = weekend ? 0.25 : 0.85 - Math.abs(hr-15)*0.05;
-          else if (hr >= 7 && hr <= 22) intensity = weekend ? 0.1 : 0.35;
-          else intensity = weekend ? 0.02 : 0.08;
-          h.innerHTML += '<div class="m94-heatmap-cell" style="background:rgba(91,60,31,'+intensity.toFixed(2)+')"></div>';
-        }
-      });
-    }, 50);
-  } else if (t === 'notifs') {
-    const r = await api('/api/superadmin_notifs_log.php');
-    if (!r || !r.ok) { c.textContent = (r && r.error) || 'Erreur notifs'; return; }
-    const k = r.kpis || {};
-    c.innerHTML = '<section class="sa-section">'
-      + '<div class="sa-section-title">PWA push (M88-M89)</div>'
-      + '<div class="sa-cards">'
-        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + (k.push_24h || 0) + '</div><div class="sa-card-label">Push 24h</div></div>'
-        + '<div class="sa-card accent-success"><div class="sa-card-value">' + (k.delivery_pct || 0) + ' %</div><div class="sa-card-label">Taux delivery</div></div>'
-        + '<div class="sa-card accent-success"><div class="sa-card-value">' + (k.subs_active || 0) + '</div><div class="sa-card-label">Subs actives</div></div>'
-        + '<div class="sa-card accent-warning"><div class="sa-card-value">' + (k.subs_expired || 0) + '</div><div class="sa-card-label">Expired (410)</div></div>'
-      + '</div></section>'
-      + '<section class="sa-section">'
-      + '<div class="sa-section-title">Logs push (50 dernières)</div>'
-      + '<table><thead><tr><th>Timestamp</th><th>User</th><th>Type</th><th>Status</th><th>Détail</th></tr></thead><tbody>'
-      + (r.events || []).map(e => '<tr><td class="col-date">' + (e.ts || '—') + '</td><td>' + (e.user_id || '—') + '</td><td><span class="badge badge-enregistre">' + (e.type || '—') + '</span></td><td>' + (e.status || '—') + '</td><td style="font-size:10.5px;color:var(--color-text-muted)">' + (e.detail || '').slice(0, 80) + '</td></tr>').join('')
-      + '</tbody></table></section>';
-  } else if (t === 'modules') {
-    c.innerHTML = '<section class="sa-section">'
-      + '<div class="sa-section-title">Catalogue Modules Oi</div>'
-      + '<div class="sa-cards" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">'
-        + '<div class="sa-card accent-success"><div class="sa-card-value" style="font-size:24px">🟢 Oi Agent</div><div class="sa-card-label">PROD · v476</div><div class="sa-card-desc">CRM agents immobiliers multi-tenant. Section III adaptative profil×pays (M77-M82). PWA push (M88-M89).</div></div>'
-        + '<div class="sa-card accent-warning"><div class="sa-card-value" style="font-size:24px">🟡 Oi Scan</div><div class="sa-card-label">BETA · v0.3</div><div class="sa-card-desc">OCR + extraction structurée documents (mandats/factures/ID). Backend ExpertScan séparé.</div></div>'
-        + '<div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:24px">⚪ Oi Book</div><div class="sa-card-label">PLANIFIÉ · Q3 2026</div><div class="sa-card-desc">Booking visites + signatures électroniques.</div></div>'
-        + '<div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:24px">⚪ Oi Recherche</div><div class="sa-card-label">PLANIFIÉ · Q4 2026</div><div class="sa-card-desc">Marketplace de demandes acquéreurs anonymisées matchées sur biens des tenants.</div></div>'
-      + '</div></section>';
-  } else if (t === 'system') {
-    const r = await api('/api/superadmin_system.php');
-    if (!r || !r.ok) { c.textContent = (r && r.error) || 'Erreur system'; return; }
-    const s = r.server || {};
-    c.innerHTML = '<section class="sa-section">'
-      + '<div class="sa-section-title">Santé serveur Hetzner</div>'
-      + '<div class="sa-cards">'
-        + '<div class="sa-card accent-success"><div class="sa-card-value">' + (s.uptime || '—') + '</div><div class="sa-card-label">Uptime</div></div>'
-        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + (s.cpu_pct || 0) + ' %</div><div class="sa-card-label">CPU</div></div>'
-        + '<div class="sa-card accent-ocre"><div class="sa-card-value">' + (s.ram_pct || 0) + ' %</div><div class="sa-card-label">RAM</div></div>'
-        + '<div class="sa-card ' + ((s.disk_pct || 0) > 80 ? 'accent-warning' : 'accent-ocre') + '"><div class="sa-card-value">' + (s.disk_pct || 0) + ' %</div><div class="sa-card-label">Disque</div></div>'
-      + '</div></section>'
-      + '<section class="sa-section">'
-      + '<div class="sa-section-title">Deploys récents</div>'
-      + '<table><thead><tr><th>Timestamp</th><th>Commit</th><th>Mission</th><th style="text-align:center">Status</th></tr></thead><tbody>'
-      + (r.deploys || []).map(d => '<tr><td class="col-date">' + (d.ts || '—') + '</td><td><code style="font-size:11px;color:var(--color-accent)">' + (d.commit || '—') + '</code></td><td style="font-size:11.5px">' + (d.mission || '').slice(0, 100) + '</td><td style="text-align:center"><span class="badge badge-enregistre">OK</span></td></tr>').join('')
-      + '</tbody></table></section>';
-  } else if (t === 'dataroom') {
-    // M108 — Data Room investor (9 sections fideles maquette M95)
-    await renderDataroomTab(c);
-  } else if (t === 'maintenance') {
-    // M_SUPERADMIN_RESET — onglet Maintenance (backup auto + reset 3 niveaux + restore)
-    await renderMaintenanceTab(c);
-  } else if (t === 'atelier') {
-    // M_DASHBOARD_UNIFIE — Atelier : outils dev VPS dans 1 dashboard
-    renderAtelierTab(c);
-  }
-}
-
-// M_DASHBOARD_UNIFIE — Atelier tab : grid liens iframes vers outils VPS Philippe
-function renderAtelierTab(c) {
-  c.innerHTML =
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:24px">'
-    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">📺</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Live View CC</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Terminaux Claude Code en temps réel (claude:0, cc-atelier:0). Streaming tmux WebSocket.</p><a href="https://46-225-215-148.sslip.io/live/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir →</a></div>'
-    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">📊</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Monitoring</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Grafana + Loki logs centralisés (Hetzner VPS, nginx, PHP-FPM, MariaDB, Docker).</p><a href="https://grafana.46-225-215-148.sslip.io/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir Grafana →</a></div>'
-    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">🎨</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Maquettes</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">17+ maquettes HTML interactives validation Philippe avant implémentation prod.</p><a href="https://46-225-215-148.sslip.io/maquettes/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir →</a></div>'
-    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">🛠</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Builder</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Constructeur de page WYSIWYG branché sur design tokens Ocre (cream/ocre/Cormorant).</p><a href="https://builder.46-225-215-148.sslip.io/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir →</a></div>'
-    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">💾</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Backups Restic</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Snapshots Restic chiffrés (DB ocre_meta + uploads + configs) — quotidien automatisé.</p><a href="https://46-225-215-148.sslip.io/backups/status.json" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Status JSON →</a></div>'
-    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">📨</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Notifications Telegram</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Bot Atelier @ocre_atelier_bot · canal Philippe pour alertes prod + retours missions.</p><a href="https://t.me/ocre_atelier_bot" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir Telegram →</a></div>'
-    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">🧪</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">Tests E2E Playwright</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">20+ tests E2E parcours Ocre. Dernier rapport : 33 PASS / 7 FAIL (82.5%).</p><a href="https://46-225-215-148.sslip.io/maquettes/e2e-reports/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Rapports →</a></div>'
-    + '<div style="background:#fff;border:1px solid #E5DDC8;border-radius:10px;padding:18px"><div style="font-size:24px">🐛</div><h3 style="font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:18px;color:#3D2818;margin:8px 0 6px">GlitchTip</h3><p style="font-size:12.5px;color:#6B5642;margin-bottom:12px;line-height:1.4">Capture erreurs JS frontend + exceptions PHP backend. À activer (M_GLITCHTIP_INSTALL).</p><a href="https://glitchtip.46-225-215-148.sslip.io/" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;background:#8B5E3C;color:#fff;border-radius:6px;text-decoration:none;font-size:12.5px;font-weight:600">Ouvrir →</a></div>'
-    + '</div>'
-    + '<div style="background:#FBF7F0;border:1px solid #E5DDC8;border-radius:10px;padding:16px;font-size:12.5px;color:#6B5642"><strong>Note :</strong> Cette section regroupe les outils dev/infra du VPS Philippe. Liens externes ouvrent dans un nouvel onglet (sécurité X-Frame-Options empêche iframes pour la plupart). Pour iframer Live View en plein écran, créer page dédiée future.</div>';
-}
-
-// M_SUPERADMIN_RESET — Maintenance tab : backup + reset par perimetre + restore
-async function renderMaintenanceTab(c) {
-  c.innerHTML = '<div style="padding:20px;color:var(--color-text-muted)">Chargement liste backups…</div>';
-  let backups = [];
-  try {
-    const r = await api('/api/superadmin/maintenance.php?action=backups_list');
-    if (r && r.ok) backups = r.backups || [];
-  } catch (e) {}
-  const fmtSize = b => b > 1048576 ? (b/1048576).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB';
-  c.innerHTML =
-    '<section class="sa-section">'
-    + '<div class="sa-section-title">📦 Backups DB (5 derniers)</div>'
-    + '<button class="reset-btn" style="background:#2D7A3E;margin-bottom:12px" onclick="maintBackupCreate()">📦 Backup manuel maintenant</button>'
-    + (backups.length === 0
-        ? '<div style="padding:20px;color:var(--color-text-muted);text-align:center">Aucun backup pour le moment.</div>'
-        : '<table><thead><tr><th>Fichier</th><th>Type</th><th>Taille</th><th>Date</th><th style="text-align:right">Actions</th></tr></thead><tbody>'
-          + backups.slice(0,5).map(b =>
-              '<tr><td><code style="font-size:11px">' + b.file + '</code></td>'
-              + '<td><span class="badge badge-enregistre">' + b.type + '</span></td>'
-              + '<td>' + fmtSize(b.size) + '</td>'
-              + '<td class="col-date">' + new Date(b.mtime*1000).toLocaleString('fr-FR') + '</td>'
-              + '<td style="text-align:right"><button class="reset-btn" style="background:#B85B0F;font-size:11px;padding:5px 10px" onclick="maintRestore(\'' + b.file + '\')">♻️ Restaurer</button></td></tr>'
-            ).join('')
-          + '</tbody></table>')
-    + '</section>'
-
-    + '<section class="sa-section" style="margin-top:30px">'
-    + '<div class="sa-section-title">⚠️ Reset par périmètre (3 niveaux)</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">'
-
-    + '<div style="background:#FEF3C7;border:2px solid #F59E0B;border-radius:10px;padding:18px">'
-      + '<div style="font-weight:700;font-size:15px;color:#92400E;margin-bottom:8px">Niveau 1 — Utilisateur unique 🟡</div>'
-      + '<div style="font-size:12.5px;color:#78350F;line-height:1.5;margin-bottom:14px">DROP DATABASE <code>ocre_wsp_&lt;slug&gt;</code> uniquement. Conserve auth_users + abonnements + sessions des autres tenants. Le plus sûr.</div>'
-      + '<input type="text" id="maint-tenant-slug" placeholder="slug tenant (ex: exbat-tat-ad7d)" style="width:100%;padding:8px 10px;border:1px solid #E5DDC8;border-radius:6px;margin-bottom:10px;font-family:inherit;font-size:13px">'
-      + '<button class="reset-btn" style="width:100%" onclick="maintReset(1)">Reset niveau 1</button>'
-    + '</div>'
-
-    + '<div style="background:#FED7AA;border:2px solid #EA580C;border-radius:10px;padding:18px">'
-      + '<div style="font-weight:700;font-size:15px;color:#9A3412;margin-bottom:8px">Niveau 2 — Complet sauf super_admin 🟠</div>'
-      + '<div style="font-size:12.5px;color:#7C2D12;line-height:1.5;margin-bottom:14px">DROP TOUTES <code>ocre_wsp_*</code> + TRUNCATE app tables meta. Conserve uniquement super_admin + feature_flags + settings + audit_logs. Re-login Philippe direct.</div>'
-      + '<button class="reset-btn" style="width:100%;background:#EA580C" onclick="maintReset(2)">Reset niveau 2</button>'
-    + '</div>'
-
-    + '<div style="background:#FEE2E2;border:2px solid #DC2626;border-radius:10px;padding:18px">'
-      + '<div style="font-weight:700;font-size:15px;color:#7F1D1D;margin-bottom:8px">Niveau 3 — Factory wipe ⛔</div>'
-      + '<div style="font-size:12.5px;color:#7F1D1D;line-height:1.5;margin-bottom:14px">DROP DATABASE meta + tous tenants + super_admin. <strong>BLOQUÉ via web</strong>. Doit s\'exécuter en SSH manuel via <code>/opt/ocre-app/scripts/factory-wipe.sh</code> après lecture runbook.</div>'
-      + '<button class="reset-btn" style="width:100%;background:#DC2626;opacity:0.5;cursor:not-allowed" disabled>⛔ SSH-only (interdit web)</button>'
-    + '</div>'
-
-    + '</div></section>'
-
-    + '<section class="sa-section" style="margin-top:30px">'
-    + '<div class="sa-section-title">🧨 Reset M_OCRE_RESET_TOTAL (alias endpoints reset.php)</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">'
-    + '<div style="background:#FEF3C7;border:2px solid #F59E0B;border-radius:10px;padding:18px">'
-      + '<div style="font-weight:700;font-size:15px;color:#92400E;margin-bottom:8px">Reset DOSSIERS (par tenant) 🟡</div>'
-      + '<div style="font-size:12.5px;color:#78350F;line-height:1.5;margin-bottom:14px">TRUNCATE dossiers/photos/documents/matches/pacts/propositions du tenant. Garde users + settings + abonnements. Triple confirm.</div>'
-      + '<input type="text" id="rt-tenant-slug" placeholder="slug tenant (ex: exbat-tat-ad7d)" style="width:100%;padding:8px 10px;border:1px solid #E5DDC8;border-radius:6px;margin-bottom:10px;font-family:inherit;font-size:13px">'
-      + '<button class="reset-btn" style="width:100%" onclick="rtResetDossiers()">Reset DOSSIERS</button>'
-    + '</div>'
-    + '<div style="background:#FEE2E2;border:3px solid #DC2626;border-radius:10px;padding:18px">'
-      + '<div style="font-weight:700;font-size:15px;color:#7F1D1D;margin-bottom:8px">Reset TOTAL 🔴</div>'
-      + '<div style="font-size:12.5px;color:#7F1D1D;line-height:1.5;margin-bottom:14px">DROP TOUTES ocre_wsp_* + TRUNCATE meta (sauf super_admin/feature_flags/settings/audit_logs) + recreate exbat-tat-ad7d minimal + user Philippe owner. Triple confirm + tape RESET TOTAL.</div>'
-      + '<button class="reset-btn" style="width:100%;background:#DC2626" onclick="rtResetTotal()">🧨 Reset TOTAL</button>'
-    + '</div>'
-    + '</div></section>';
-}
-
-// M_OCRE_RESET_TOTAL — triple confirm helper (3 confirms successifs natifs avec messages progressifs)
-async function rtTripleConfirm(action, target) {
-  if (!confirm('⚠️ ÉTAPE 1/3\n\nCette action va supprimer ' + target + '.\n\nÊtes-vous sûr de vouloir continuer ?')) return false;
-  if (!confirm('⚠️ ÉTAPE 2/3 — IRRÉVERSIBLE\n\nUn backup sera créé automatiquement avant le reset.\nMais le reset lui-même est IRRÉVERSIBLE sans le backup.\n\nJe comprends, continuer ?')) return false;
-  return true;
-}
-
-async function rtResetDossiers() {
-  const slugInput = document.getElementById('rt-tenant-slug');
-  const slug = slugInput ? slugInput.value.trim() : '';
-  if (!slug) { alert('⚠️ Saisis le slug du tenant.'); return; }
-  if (!await rtTripleConfirm('reset_dossiers', 'tous les dossiers + photos + matches du tenant ' + slug)) return;
-  const word = prompt('⚠️ ÉTAPE 3/3 — CONFIRMATION FINALE\n\nTapez RESET (en majuscules) pour exécuter le reset DOSSIERS du tenant ' + slug + ' :');
-  if (word !== 'RESET') { alert('Reset annulé (mot incorrect).'); return; }
-  try {
-    const r = await api('/api/superadmin/reset.php?action=reset_dossiers', { method:'POST', body: JSON.stringify({tenant_slug: slug, confirmation_word: 'RESET'}) });
-    if (r && r.ok) alert('✅ Reset DOSSIERS OK\nMode : ' + r.mode + '\nTables truncated : ' + (r.tables_truncated || []).join(', ') + '\nBackup : ' + r.backup_file);
-    else alert('⚠️ Erreur : ' + (r && r.error || 'inconnue'));
-    goToTab('maintenance');
-  } catch (e) { alert('⚠️ Erreur réseau : ' + e.message); }
-}
-
-async function rtResetTotal() {
-  if (!await rtTripleConfirm('reset_total', 'TOUTES les bases de données ocre_wsp_* + tables meta')) return;
-  const word = prompt('⚠️ ÉTAPE 3/3 — CONFIRMATION FINALE\n\nCette action va vider TOUTES les bases de données.\nUn backup automatique sera créé.\n\nTapez RESET TOTAL (en majuscules avec espace) pour exécuter :');
-  if (word !== 'RESET TOTAL') { alert('Reset annulé (mot incorrect).'); return; }
-  try {
-    const r = await api('/api/superadmin/reset.php?action=reset_total', { method:'POST', body: JSON.stringify({confirmation_word: 'RESET TOTAL'}) });
-    if (r && r.ok) alert('✅ Reset TOTAL OK\nDBs droppées : ' + r.dbs_dropped + '\nTables truncated : ' + r.tables_truncated + '\nBackup : ' + r.backup_file + '\n\n' + r.message);
-    else alert('⚠️ Erreur : ' + (r && r.error || 'inconnue'));
-    goToTab('maintenance');
-  } catch (e) { alert('⚠️ Erreur réseau : ' + e.message); }
-
-    + '<section class="sa-section" style="margin-top:30px">'
-    + '<div class="sa-section-title">📋 Audit logs maintenance (20 derniers)</div>'
-    + '<div id="maint-audit-list" style="font-size:12px;color:var(--color-text-muted);padding:10px">Audit logs disponibles dans <code>/var/log/ocre-superadmin-maintenance.log</code> + table <code>audit_logs</code> action LIKE \'maintenance.%\'.</div>'
-    + '</section>';
-}
-
-async function maintBackupCreate() {
-  if (!confirm('Lancer un backup manuel maintenant ? (mysqldump --all-databases ~10-30s)')) return;
-  try {
-    const r = await api('/api/superadmin/maintenance.php?action=backup_create', { method:'POST', body: JSON.stringify({type:'manual'}) });
-    if (r && r.ok) { alert('✅ Backup créé : ' + r.file_path + ' (' + Math.round(r.size_bytes/1024) + ' KB, ' + r.duration_ms + ' ms)'); goToTab('maintenance'); }
-    else alert('⚠️ Erreur backup : ' + (r && r.error || 'inconnue'));
-  } catch (e) { alert('⚠️ Erreur réseau : ' + e.message); }
-}
-
-async function maintRestore(file) {
-  const word = prompt('⚠️ RESTORE va écraser la DB actuelle.\nUn backup pre-restore sera fait automatiquement.\n\nTapez RESTORE pour confirmer :');
-  if (word !== 'RESTORE') { alert('Restore annulé.'); return; }
-  try {
-    const r = await api('/api/superadmin/maintenance.php?action=restore', { method:'POST', body: JSON.stringify({backup_file: file, confirmation_word: 'RESTORE'}) });
-    if (r && r.ok) alert('✅ Restore OK (' + r.duration_ms + ' ms). Pre-restore backup : ' + r.pre_restore_backup);
-    else alert('⚠️ Erreur restore : ' + (r && r.error || 'inconnue'));
-  } catch (e) { alert('⚠️ Erreur réseau : ' + e.message); }
-}
-
-async function maintReset(level) {
-  const slugInput = level === 1 ? document.getElementById('maint-tenant-slug') : null;
-  const slug = slugInput ? slugInput.value.trim() : null;
-  if (level === 1 && !slug) { alert('⚠️ Saisis le slug du tenant à reset.'); return; }
-  const desc = {
-    1: 'NIVEAU 1 — Reset tenant ' + slug + '\n\nDROP DATABASE ocre_wsp_' + slug + '\nConserve auth_users + abonnements + sessions',
-    2: 'NIVEAU 2 — Reset complet\n\nDROP TOUTES ocre_wsp_*\nTRUNCATE toutes tables app meta\nConserve UNIQUEMENT : super_admin, feature_flags, settings, audit_logs',
-  }[level];
-  const word = prompt('⚠️ ' + desc + '\n\nUn backup automatique sera fait AVANT le reset.\n\nTapez RESET pour confirmer :');
-  if (word !== 'RESET') { alert('Reset annulé.'); return; }
-  try {
-    const body = { level, confirmation_word: 'RESET' };
-    if (level === 1) body.tenant_slug = slug;
-    const r = await api('/api/superadmin/maintenance.php?action=reset_with_backup', { method:'POST', body: JSON.stringify(body) });
-    if (r && r.ok) alert('✅ Reset niveau ' + level + ' OK\nBackup : ' + r.backup_file + '\nDBs droppées : ' + (r.dbs_dropped||0) + '\nTables truncated : ' + (r.tables_truncated||0) + '\nDurée : ' + r.duration_ms + ' ms');
-    else alert('⚠️ Erreur reset : ' + (r && r.error || 'inconnue'));
-    goToTab('maintenance');
-  } catch (e) { alert('⚠️ Erreur réseau : ' + e.message); }
-}
-
-// M108 — Data Room investor render
-async function renderDataroomTab(c) {
-  const dc = DATAROOM_CONTENT;
-  // Fetch KPIs reels
-  let metrics = {};
-  try {
-    const r = await api('/api/superadmin_metrics.php');
-    if (r && r.ok) metrics = r;
-  } catch (e) {}
-  const mrr = metrics.mrr_eur || 0;
-  const arr = mrr * 12;
-  const churn = metrics.churn_30d_pct != null ? metrics.churn_30d_pct : 0;
-  const growth = metrics.growth_mom_pct != null ? metrics.growth_mom_pct : 0;
-  const agents = metrics.agents_total || 0;
-  const tenants = metrics.tenants_active || 0;
-  const dossiers = metrics.dossiers_total || 0;
-  // Projection MRR 12 mois (5%/mois organique)
-  const proj = []; let v = mrr || 100;
-  for (let i = 0; i < 12; i++) { proj.push(Math.round(v)); v *= 1.05; }
-  // Tenants chart 6 mois (recup chart_30d et etend ou approx)
-  const tenants6m = (metrics.chart_30d_tenants || []).slice(-180);
-  const html = `
-<section data-testid="dr-hero" class="sa-section" style="background:linear-gradient(135deg,#FAF6EE,#F0E6D6);padding:32px;border-radius:14px">
-  <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:32px;color:#5B3C1F;margin-bottom:6px">Ocre Immo · Data Room</div>
-  <div style="color:#7A6A5C;font-size:15px;margin-bottom:20px">${esc(dc.tagline)}</div>
-  <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:14px;color:#2A2018">
-    <div><b style="font-family:'JetBrains Mono',monospace;color:#5B3C1F;font-size:22px">${agents}</b><br><span style="color:#7A6A5C">Agents inscrits</span></div>
-    <div><b style="font-family:'JetBrains Mono',monospace;color:#5B3C1F;font-size:22px">${tenants}</b><br><span style="color:#7A6A5C">Tenants actifs</span></div>
-    <div><b style="font-family:'JetBrains Mono',monospace;color:#5B3C1F;font-size:22px">${dossiers}</b><br><span style="color:#7A6A5C">Dossiers traités</span></div>
-    <div><b style="font-family:'JetBrains Mono',monospace;color:#5B3C1F;font-size:22px">11</b><br><span style="color:#7A6A5C">Pays supportés</span></div>
-  </div>
-  <div style="margin-top:22px"><a data-testid="dr-mailto" href="mailto:${esc(dc.contact_email)}" style="background:#5B3C1F;color:#fff;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block">Discuter avec Philippe →</a></div>
-</section>
-
-<section data-testid="dr-storytelling" class="sa-section">
-  <div class="sa-section-title">Le problème · La solution</div>
-  <p style="font-size:15px;line-height:1.65;color:#2A2018"><b>Le marché immo est opaque entre agents.</b> Vos confrères ont peut-être l'acheteur idéal pour votre vendeur, mais personne ne le saura jamais — chacun protège son fichier client. Pacts inter-agents informels, matching manuel chronophage : des opportunités évaporées chaque jour.</p>
-  <p style="font-size:15px;line-height:1.65;color:#2A2018;margin-top:12px"><b>Oi Agent automatise et anonymise le matching.</b> Vous gardez vos données privées par défaut. Vous signez des pactes bilatéraux opposables avec des confrères. L'algo croise les critères chaque jour et notifie les deux parties — sans jamais exposer la fiche complète. Décision conjointe pour révéler.</p>
-</section>
-
-<section data-testid="dr-kpis" class="sa-section">
-  <div class="sa-section-title">KPIs business</div>
-  <div class="sa-cards">
-    <div class="sa-card accent-success"><div class="sa-card-value">${mrr.toLocaleString('fr-FR')} €</div><div class="sa-card-label">MRR</div><div class="sa-card-desc">Revenu mensuel récurrent</div></div>
-    <div class="sa-card accent-ocre"><div class="sa-card-value">${arr.toLocaleString('fr-FR')} €</div><div class="sa-card-label">ARR</div><div class="sa-card-desc">MRR × 12</div></div>
-    <div class="sa-card ${churn > 5 ? 'accent-warning' : 'accent-success'}"><div class="sa-card-value">${churn.toFixed(1)} %</div><div class="sa-card-label">Churn 30j</div></div>
-    <div class="sa-card ${growth > 0 ? 'accent-success' : 'accent-warning'}"><div class="sa-card-value">${growth > 0 ? '+' : ''}${growth.toFixed(1)} %</div><div class="sa-card-label">Croissance MoM</div></div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:20px">
-    <div><h3 style="font-size:13px;color:#7A6A5C;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">MRR projection 12 mois (hyp. 5%/mois)</h3><canvas id="dr-mrr-chart" data-testid="dr-mrr-chart" height="180"></canvas></div>
-    <div><h3 style="font-size:13px;color:#7A6A5C;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">Tenants actifs récents</h3><canvas id="dr-tenants-chart" data-testid="dr-tenants-chart" height="180"></canvas></div>
-  </div>
-</section>
-
-<section data-testid="dr-architecture" class="sa-section">
-  <div class="sa-section-title">Architecture &amp; sécurité</div>
-  <div class="sa-cards" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:24px">🏢</div><div class="sa-card-label">Multi-tenant</div><div class="sa-card-desc">1 DB par tenant (ocre_wsp_&lt;slug&gt;) + ocre_meta centralisé. Isolation stricte.</div></div>
-    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:24px">🇩🇪</div><div class="sa-card-label">Hetzner Allemagne</div><div class="sa-card-desc">Hébergement RGPD-compliant Falkenstein. Backups quotidiens.</div></div>
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:24px">🔒</div><div class="sa-card-label">HTTPS + HSTS</div><div class="sa-card-desc">TLS 1.3 partout. Cert Let's Encrypt wildcard *.ocre.immo auto-renew.</div></div>
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:24px">📧</div><div class="sa-card-label">DKIM/SPF/DMARC</div><div class="sa-card-desc">Emails transactionnels OVH SMTP authentifié.</div></div>
-    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:24px">🔑</div><div class="sa-card-label">SSO JWT 30j</div><div class="sa-card-desc">auth.ocre.immo (M97). Magic link sans password. Cookie cross-subdomain.</div></div>
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:24px">📜</div><div class="sa-card-label">Logs auditables</div><div class="sa-card-desc">Toutes actions super-admin tracées. RGPD droits accès/suppression intégrés.</div></div>
-  </div>
-</section>
-
-<section data-testid="dr-roadmap" class="sa-section">
-  <div class="sa-section-title">Roadmap modules Oi</div>
-  <div class="sa-cards" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
-    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:22px">🟢 Oi Agent</div><div class="sa-card-label">PROD · v476</div><div class="sa-card-desc">CRM matching anonymisé. 8 profils × 11 pays adaptatifs.</div></div>
-    <div class="sa-card accent-warning"><div class="sa-card-value" style="font-size:22px">🟡 Oi Scan</div><div class="sa-card-label">BETA · v0.3</div><div class="sa-card-desc">OCR + IA extraction docs. Backend ExpertScan séparé.</div></div>
-    <div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:22px">⚪ Oi Book</div><div class="sa-card-label">PLANIFIÉ · Q3 2026</div><div class="sa-card-desc">Booking + signatures électroniques.</div></div>
-    <div class="sa-card accent-muted"><div class="sa-card-value" style="font-size:22px">⚪ Oi Recherche</div><div class="sa-card-label">PLANIFIÉ · Q4 2026</div><div class="sa-card-desc">Marketplace demandes acquéreurs anonymisées.</div></div>
-  </div>
-</section>
-
-<section data-testid="dr-stack" class="sa-section">
-  <div class="sa-section-title">Stack technique</div>
-  <div class="sa-cards" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">⚛️ Frontend</div><div class="sa-card-desc">React 18 inline Babel + PWA installable iOS/Android. SW v477 push natives.</div></div>
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">🐘 Backend</div><div class="sa-card-desc">PHP 8.1 FPM + nginx reverse proxy. Channel manager worker async.</div></div>
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">🗄 DB</div><div class="sa-card-desc">MariaDB 10. 1 schema par tenant + ocre_meta global. Backup auto.</div></div>
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">🌐 Infra</div><div class="sa-card-desc">Hetzner CCX23 Falkenstein DE. Systemd services. Logs centralisés.</div></div>
-    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:14px">🔑 Auth SSO</div><div class="sa-card-desc">JWT HS256 cookie cross-subdomain .ocre.immo. Magic link 15min.</div></div>
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">📡 Channel Mgr</div><div class="sa-card-desc">7 portails immo (LBC/SeLoger/Bien'ici/Idealista/Apartments/Avito/Mubawab). Worker retry expo.</div></div>
-    <div class="sa-card accent-ocre"><div class="sa-card-value" style="font-size:14px">📰 Vitrine</div><div class="sa-card-desc">WordPress 6.9 + child theme custom Twenty Twenty-Five. ocre.immo apex.</div></div>
-    <div class="sa-card accent-success"><div class="sa-card-value" style="font-size:14px">✅ Ownership</div><div class="sa-card-desc">Aucune dépendance SaaS critique. Code 100% propriétaire.</div></div>
-  </div>
-</section>
-
-<section data-testid="dr-team" class="sa-section">
-  <div class="sa-section-title">Équipe</div>
-  <div style="display:flex;gap:20px;align-items:flex-start;background:#FCF9F2;padding:24px;border-radius:12px;border:1px solid var(--rule,#E5DCCB)">
-    <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#D4A574,#5B3C1F);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:32px;flex-shrink:0">P</div>
-    <div style="flex:1">
-      <div style="font-weight:700;font-size:16px;margin-bottom:4px">Philippe Ciftci</div>
-      <div style="font-size:13px;color:#7A6A5C;margin-bottom:8px">Fondateur · Chef de projet</div>
-      <p style="font-size:14px;line-height:1.6;color:#2A2018;margin:0">${esc(dc.team_bio)}</p>
-      <p style="font-size:13px;color:#7A6A5C;margin-top:8px">📧 ${esc(dc.contact_email)} · <a href="${esc(dc.linkedin_philippe)}" target="_blank" rel="noopener" style="color:#5B3C1F">LinkedIn</a></p>
-      <p style="font-size:12px;color:#998877;margin-top:6px">Statut juridique : ${esc(dc.legal_status)}</p>
+    <p class="lead">Saisis ton email super-administrateur, reçois un lien d'accès direct au dashboard.</p>
+    <div id="login-form-state">
+      <form id="magic-form" autocomplete="on" novalidate>
+        <input id="email-input" type="email" placeholder="Email super-admin" autocomplete="email" inputmode="email" required>
+        <button id="submit-btn" type="submit" class="btn btn-primary" disabled>Demander un lien d'accès</button>
+      </form>
+      <p id="login-err" class="feedback error" style="display:none"></p>
+    </div>
+    <div id="login-confirm-state" style="display:none;text-align:center">
+      <div style="font-size:42px;line-height:1;margin:6px 0 12px">✉️</div>
+      <h1 style="margin-bottom:6px">Lien envoyé</h1>
+      <p class="lead">Un lien d'accès a été envoyé à <b id="confirm-email"></b>. Lien valide 24h.</p>
+      <button id="other-email-btn" class="btn btn-ghost" style="width:100%;margin-top:6px">Utiliser un autre email</button>
     </div>
   </div>
-</section>
+</div>
 
-<section data-testid="dr-funding" class="sa-section">
-  <div class="sa-section-title">Financement &amp; ask</div>
-  <p style="font-size:15px;line-height:1.65;color:#2A2018">${esc(dc.funding_status)}</p>
-  <div style="margin-top:16px"><b style="font-size:13px;color:#7A6A5C;text-transform:uppercase;letter-spacing:.04em">Use of funds (si levée)</b></div>
-  <div style="display:flex;gap:12px;margin-top:8px;font-size:13.5px">
-    <div style="flex:${dc.use_of_funds.rd};background:#5B3C1F;color:#fff;padding:14px;border-radius:8px;text-align:center"><b>R&amp;D ${dc.use_of_funds.rd} %</b><br><span style="font-size:11px;opacity:.85">Modules Oi Scan/Book/Demande</span></div>
-    <div style="flex:${dc.use_of_funds.sales};background:#C9A961;color:#2A2018;padding:14px;border-radius:8px;text-align:center"><b>Sales ${dc.use_of_funds.sales} %</b><br><span style="font-size:11px;opacity:.75">Acquisition agents indépendants</span></div>
-    <div style="flex:${dc.use_of_funds.ops};background:#7A6A5C;color:#fff;padding:14px;border-radius:8px;text-align:center"><b>Ops ${dc.use_of_funds.ops} %</b><br><span style="font-size:11px;opacity:.85">Infra, support, conformité</span></div>
+<!-- ============== DASHBOARD STATE ============== -->
+<div id="app" hidden>
+  <div class="mobile-bar">
+    <button class="hamburger" id="hamburger-btn">☰</button>
+    <span class="brand-name">Ocre · super-admin</span>
+    <span style="width:32px"></span>
   </div>
-</section>
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-row">
+      <span class="brand-name">Oc<span style="color:#d4a256">re</span></span>
+      <span class="brand-sub">super-admin</span>
+    </div>
+    <nav id="nav">
+      <button class="nav-item active" data-section="overview"><span class="ico">📊</span> Vue d'ensemble</button>
+      <button class="nav-item" data-section="users"><span class="ico">👥</span> Utilisateurs</button>
+      <button class="nav-item" data-section="sessions"><span class="ico">🔑</span> Sessions actives</button>
+      <button class="nav-item" data-section="magic"><span class="ico">✉️</span> Magic links</button>
+      <button class="nav-item" data-section="modules"><span class="ico">🧩</span> Modules Oi</button>
+      <button class="nav-item" data-section="audit"><span class="ico">📜</span> Audit log</button>
+      <button class="nav-item" data-section="atelier"><span class="ico">🔧</span> Atelier</button>
+      <div class="nav-separator"></div>
+      <button class="nav-item" data-section="danger" style="color:var(--color-danger)"><span class="ico">⚠️</span> Zone danger</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="me">
+        <span class="avatar" id="me-avatar">?</span>
+        <span id="me-email" style="font-size:11.5px;color:var(--color-text-brown);overflow:hidden;text-overflow:ellipsis"></span>
+      </div>
+      <button class="logout-link" id="logout-btn">Se déconnecter</button>
+    </div>
+  </aside>
+  <main class="content">
+    <header class="content-head">
+      <div>
+        <h1 id="section-title">Vue d'ensemble</h1>
+        <div class="head-sub" id="section-sub"></div>
+      </div>
+      <div class="head-actions" id="section-actions"></div>
+    </header>
+    <section id="content-body"></section>
+  </main>
+</div>
 
-<section data-testid="dr-contact" class="sa-section">
-  <div class="sa-section-title">Contact &amp; accès</div>
-  <div style="background:#FCF9F2;padding:20px;border-radius:12px;border:1px solid var(--rule,#E5DCCB);font-size:14px;line-height:1.6">
-    <p>📧 <a href="mailto:${esc(dc.contact_email)}" style="color:#5B3C1F">${esc(dc.contact_email)}</a></p>
-    <p>🔗 <a href="${esc(dc.linkedin_philippe)}" target="_blank" rel="noopener" style="color:#5B3C1F">LinkedIn Philippe</a></p>
-    <p style="font-size:12px;color:#7A6A5C;margin-top:14px;padding-top:14px;border-top:1px solid var(--rule,#E5DCCB)">⓵ Cette page est consultable uniquement par les administrateurs Ocre Immo. Pour data confidentielle (P&amp;L détaillée, contrats), contact direct Philippe.</p>
-  </div>
-</section>
-  `;
-  c.innerHTML = html;
-  // Render charts apres injection HTML
-  if (typeof Chart !== 'undefined') {
-    const mrrCtx = document.getElementById('dr-mrr-chart');
-    if (mrrCtx) {
-      new Chart(mrrCtx, {
-        type: 'line',
-        data: { labels: ['M+0','M+1','M+2','M+3','M+4','M+5','M+6','M+7','M+8','M+9','M+10','M+11'], datasets: [{ label: 'MRR projection (€)', data: proj, borderColor: '#5B3C1F', backgroundColor: 'rgba(212,165,116,.18)', fill: true, tension: .3 }] },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + ' €' } } } }
-      });
-    }
-    const tCtx = document.getElementById('dr-tenants-chart');
-    if (tCtx) {
-      const labels = tenants6m.length > 0 ? tenants6m.map((_, i) => 'J-' + (tenants6m.length - i - 1)) : ['J-5','J-4','J-3','J-2','J-1','J0'];
-      const data = tenants6m.length > 0 ? tenants6m : [Math.max(1, tenants - 2), Math.max(1, tenants - 1), tenants, tenants, tenants, tenants];
-      new Chart(tCtx, {
-        type: 'bar',
-        data: { labels, datasets: [{ label: 'Tenants actifs', data, backgroundColor: '#C9A961' }] },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, precision: 0 } } }
-      });
-    }
-  }
+<!-- ============== MODAL ROOT ============== -->
+<div id="modal-root"></div>
+
+<script>
+// ====== Helpers ======
+const TOKEN_KEY = 'ocre_sa_token';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const fmtDate = s => { if (!s) return '—'; const d = new Date(typeof s === 'string' ? s.replace(' ', 'T') : s); return isNaN(d) ? '—' : d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }); };
+
+async function api(url, opts = {}) {
+  const headers = Object.assign({ 'X-Session-Token': localStorage.getItem(TOKEN_KEY) || '' }, opts.headers || {});
+  if (opts.body && typeof opts.body !== 'string') { headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(opts.body); }
+  const r = await fetch(url, Object.assign({ credentials: 'include' }, opts, { headers }));
+  let data = null; try { data = await r.json(); } catch (e) { data = { ok: false, error: 'invalid_json_response' }; }
+  if (r.status === 401 || r.status === 403) data.__auth_error = true;
+  return data;
 }
 
-function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-async function renderClientsTab() {
-  const c = document.getElementById('content');
-  const qs = new URLSearchParams({page: clientsState.page, per_page: clientsState.perPage,
-    workspace: clientsState.workspace, profil: clientsState.profil, statut: clientsState.statut, q: clientsState.q}).toString();
-  const r = await api('/api/superadmin_clients.php?action=list&' + qs);
-  if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
-  const wspOpts = '<option value="">Tous workspaces</option>' + (r.workspaces || []).map(w => `<option value="${w.slug}"${w.slug===clientsState.workspace?' selected':''}>${w.slug}</option>`).join('');
-  const profilOpts = '<option value="">Tous profils</option>' + ['Acheteur','Vendeur','Locataire','Bailleur','Investisseur','Promoteur','MarchandBiens','Curieux'].map(p => `<option value="${p}"${p===clientsState.profil?' selected':''}>${p}</option>`).join('');
-  const statutOpts = '<option value="">Tous statuts</option>' + [['brouillon','Brouillon'],['enregistre','Enregistré'],['archive','Archivé']].map(([k,l]) => `<option value="${k}"${k===clientsState.statut?' selected':''}>${l}</option>`).join('');
-  const filters = `<div class="filters">
-    <select id="f-wsp" onchange="filterClient('workspace', this.value)">${wspOpts}</select>
-    <select id="f-profil" onchange="filterClient('profil', this.value)">${profilOpts}</select>
-    <select id="f-statut" onchange="filterClient('statut', this.value)">${statutOpts}</select>
-    <input id="f-q" type="text" placeholder="Recherche nom client..." value="${clientsState.q}" oninput="searchDebounced(this.value)" style="flex:1;min-width:180px"/>
-  </div>`;
-  const tableHead = '<table><thead><tr><th>Workspace</th><th>Nom</th><th>Société</th><th>Profil</th><th>Statut</th><th>Modifié</th></tr></thead><tbody>';
-  const rows = (r.clients || []).map(cl => {
-    const sBadge = `<span class="badge badge-${cl.statut}">${cl.statut}</span>`;
-    const u = (cl.updated_at || '').replace('T', ' ');
-    const m = u.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
-    const updated = m ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : u.slice(0, 16);
-    return `<tr><td><b>${cl.workspace_slug}</b></td><td class="col-name" title="${(cl.nom_complet||'').replace(/"/g,'&quot;')}">${cl.nom_complet || '<i style="color:#A89882">(sans nom)</i>'}</td><td class="col-name">${cl.societe || '—'}</td><td>${cl.profil || '—'}</td><td>${sBadge}</td><td class="col-date" title="${cl.updated_at||''}">${updated}</td></tr>`;
-  }).join('');
-  const tableEnd = '</tbody></table>';
-  let pagination = '';
-  if (r.pages > 1) {
-    pagination = '<div class="pagination">';
-    for (let p = 1; p <= r.pages; p++) {
-      pagination += `<button class="${p===r.page?'active':''}" onclick="gotoPage(${p})">${p}</button>`;
-    }
-    pagination += `<span style="font-size:11px;color:var(--color-text-muted);align-self:center;margin-left:8px">${r.total} clients</span></div>`;
+// ====== Auth flow ======
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const emailInput = $('#email-input');
+const submitBtn = $('#submit-btn');
+emailInput.addEventListener('input', () => { submitBtn.disabled = !EMAIL_RE.test(emailInput.value.trim()); });
+$('#magic-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (submitBtn.disabled) return;
+  const email = emailInput.value.trim();
+  submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spin"></span> Envoi…';
+  const err = $('#login-err'); err.style.display = 'none';
+  try {
+    const r = await fetch('/api/superadmin_send_magic_link.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'erreur envoi');
+    $('#confirm-email').textContent = email;
+    $('#login-form-state').style.display = 'none';
+    $('#login-confirm-state').style.display = 'block';
+  } catch (ex) {
+    err.textContent = ex.message || 'Erreur réseau'; err.style.display = 'block';
+    submitBtn.disabled = false; submitBtn.innerHTML = "Demander un lien d'accès";
+  }
+});
+$('#other-email-btn').addEventListener('click', () => {
+  $('#login-confirm-state').style.display = 'none';
+  $('#login-form-state').style.display = 'block';
+  submitBtn.disabled = false; submitBtn.innerHTML = "Demander un lien d'accès";
+});
+
+// ====== Bootstrap : session token from URL (?token=) or check session ======
+(async function bootstrap() {
+  const url = new URL(location.href);
+  const urlToken = url.searchParams.get('token');
+  if (urlToken) {
+    localStorage.setItem(TOKEN_KEY, urlToken);
+    url.searchParams.delete('token');
+    history.replaceState({}, '', url.toString());
+  }
+  if (!localStorage.getItem(TOKEN_KEY)) return; // stay on login form
+  const r = await api('/api/superadmin_session_check.php');
+  if (r && r.ok && r.user && r.user.role === 'super_admin') {
+    enterApp(r.user);
   } else {
-    pagination = `<p style="text-align:center;color:var(--color-text-muted);font-size:11px;margin-top:12px">${r.total} client${r.total>1?'s':''}</p>`;
+    localStorage.removeItem(TOKEN_KEY);
   }
-  c.innerHTML = filters + tableHead + rows + tableEnd + pagination
-    + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_clients\', \'TOUS les clients de TOUS les workspaces (TRUNCATE)\')">🔥 Reset Clients</button></div>';
-}
-function filterClient(key, value) { clientsState[key] = value; clientsState.page = 1; renderClientsTab(); }
-function gotoPage(p) { clientsState.page = p; renderClientsTab(); }
+})();
 
-// M/2026/05/08/33 → 42 — Outils nettoyage super-admin.
-// Opt-out (M42) : par défaut écriture ACTIVÉE (Philippe seul super-admin, mode test).
-// Le toggle reste affiché pour transparence + permet désactivation temporaire si besoin.
-// Garde-fous réels : confirmation textuelle "RESET" / "RESET TOTAL" + audit Telegram.
-function isWriteMode() {
-  const v = localStorage.getItem('ocre_sa_write_mode');
-  if (v === null) { localStorage.setItem('ocre_sa_write_mode', '1'); return true; }
-  return v !== '0';
-}
-function toggleWriteMode() {
-  const cur = isWriteMode();
-  if (cur) {
-    if (!confirm('Désactiver le mode ÉCRITURE ?\n\nLes actions destructives seront bloquées tant que ce mode est OFF.')) return;
-    localStorage.setItem('ocre_sa_write_mode', '0');
-  } else {
-    localStorage.setItem('ocre_sa_write_mode', '1');
-  }
-  renderConsole();
-}
-function requireWriteMode() {
-  if (!isWriteMode()) {
-    alert('⚠️ Mode écriture désactivé.\n\nClique sur "🔒 Activer écriture" en haut à droite avant toute action destructive.');
-    return false;
-  }
-  return true;
+function enterApp(user) {
+  $('#auth-shell').hidden = true;
+  $('#app').hidden = false;
+  const email = user.email || '?';
+  $('#me-email').textContent = email;
+  $('#me-avatar').textContent = (email[0] || '?').toUpperCase();
+  bindNav();
+  $('#logout-btn').addEventListener('click', logout);
+  $('#hamburger-btn').addEventListener('click', () => { $('#sidebar').classList.add('open'); $('#sidebar-backdrop').classList.add('open'); });
+  $('#sidebar-backdrop').addEventListener('click', closeSidebar);
+  const hash = (location.hash || '').replace('#', '') || 'overview';
+  render(SECTIONS[hash] ? hash : 'overview');
 }
 
-// Sélection multi (état partagé entre re-renders)
-const selection = { pending: new Set(), workspaces: new Set() };
-function toggleRowSelection(scope, id, checked) {
-  if (checked) selection[scope].add(id); else selection[scope].delete(id);
-  updateActionBar(scope);
-}
-function toggleAllSelection(scope, checked) {
-  document.querySelectorAll(`tbody tr[data-${scope}-id]`).forEach(tr => {
-    const id = parseInt(tr.dataset[scope + 'Id'], 10);
-    const cb = tr.querySelector('input[type=checkbox]');
-    if (cb) cb.checked = checked;
-    if (checked) selection[scope].add(id); else selection[scope].delete(id);
-  });
-  updateActionBar(scope);
-}
-function updateActionBar(scope) {
-  let bar = document.getElementById('action-bar-' + scope);
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.className = 'action-bar';
-    bar.id = 'action-bar-' + scope;
-    document.body.appendChild(bar);
-  }
-  const n = selection[scope].size;
-  if (n > 0) {
-    bar.innerHTML = `<span class="count">${n} élément${n>1?'s':''} sélectionné${n>1?'s':''}</span>`
-      + `<button class="btn-danger" onclick="batchDelete('${scope}')">🗑️ Supprimer la sélection</button>`
-      + `<button class="btn-cancel" onclick="clearSelection('${scope}')">✕ Désélectionner</button>`;
-    bar.classList.add('visible');
-  } else {
-    bar.classList.remove('visible');
-  }
-}
-function clearSelection(scope) {
-  selection[scope].clear();
-  document.querySelectorAll(`tbody tr[data-${scope}-id] input[type=checkbox]`).forEach(cb => { cb.checked = false; });
-  const headerCb = document.getElementById('cb-all-' + scope);
-  if (headerCb) headerCb.checked = false;
-  updateActionBar(scope);
-}
-async function batchDelete(scope) {
-  if (!requireWriteMode()) return;
-  const ids = Array.from(selection[scope]);
-  if (ids.length === 0) return;
-  const labels = { pending: 'inscription(s) en attente', workspaces: 'workspace(s)' };
-  if (!confirm(`Supprimer définitivement ${ids.length} ${labels[scope]} ?\n\nCette action est irréversible.\nIDs : ${ids.join(', ')}`)) return;
-  let endpoint, action;
-  if (scope === 'pending') { endpoint = '/api/superadmin_cleanup.php'; action = 'delete_users_batch'; }
-  else if (scope === 'workspaces') { endpoint = '/api/superadmin_cleanup.php'; action = 'delete_workspaces'; }
-  else return;
-  const r = await api(endpoint, {method:'POST', body:{action, ids}});
-  if (r.ok) {
-    alert(`✅ ${r.deleted} supprimé(s).`);
-    clearSelection(scope);
-    if (scope === 'pending') renderPendingTab(); else if (scope === 'workspaces') loadTab('workspaces');
-  } else {
-    alert('⚠️ ' + (r.error || 'Erreur'));
-  }
+function closeSidebar() { $('#sidebar').classList.remove('open'); $('#sidebar-backdrop').classList.remove('open'); }
+async function logout() {
+  try { await fetch('/api/logout.php', { method: 'POST', credentials: 'include' }); } catch (e) {}
+  localStorage.removeItem(TOKEN_KEY);
+  location.href = '/';
 }
 
-async function tabReset(action, label) {
-  if (!requireWriteMode()) return;
-  const conf = prompt(`⚠️ Reset ${label}\n\nCette action est IRRÉVERSIBLE.\nTapez RESET pour confirmer :`);
-  if (conf !== 'RESET') { if (conf !== null) alert('Confirmation incorrecte.'); return; }
-  const r = await api('/api/superadmin_cleanup.php', {method:'POST', body:{action, confirmation: 'RESET'}});
-  if (r.ok) {
-    alert(`✅ Reset ${label} OK\n${JSON.stringify(r, null, 2)}`);
-    loadTab(currentTab);
-  } else {
-    alert('⚠️ ' + (r.error || 'Erreur'));
-  }
+function bindNav() {
+  $$('.nav-item').forEach(b => b.addEventListener('click', () => render(b.dataset.section)));
 }
 
-// M/2026/05/08/37 → 44 — Vue Sessions actives, refonte responsive iPad.
-// table-layout fixed + col widths % pour éviter le scroll horizontal sur iPad 1024px.
-// Workspace col masquée si toutes les rows sont '—'. Créée+Expire fusionnées en DATE 2 lignes.
-// User-Agent tronqué 30 chars + tooltip natif.
-function _truncMid(s, n) {
-  s = String(s == null ? '' : s);
-  return s.length > n ? s.slice(0, n - 1) + '…' : s;
-}
-async function renderSessionsTab() {
-  const c = document.getElementById('content');
-  c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
-  const r = await api('/api/superadmin_sessions.php?action=list');
-  if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
-  const sessions = r.sessions || [];
-  const showWorkspaceCol = sessions.some(s => s.workspace_slug && s.workspace_slug !== '—');
-  // M/2026/05/08/45 — col DATE affiche Dernière activité (primaire) + Créée + Expire (3 lignes).
-  // Widths % somme=100. Dernière activité = info clé pour TTL 7j inactivité.
-  const widths = showWorkspaceCol
-    ? {email:'24%', role:'7%',  ws:'10%', ip:'11%', ua:'15%', date:'23%', act:'10%'}
-    : {email:'28%', role:'8%',             ip:'13%', ua:'17%', date:'25%', act:'9%'};
-  const head = '<table class="sa-table-fixed"><thead><tr>'
-    + `<th style="width:${widths.email}">Email</th>`
-    + `<th style="width:${widths.role}">Rôle</th>`
-    + (showWorkspaceCol ? `<th style="width:${widths.ws}">Workspace</th>` : '')
-    + `<th style="width:${widths.ip}">IP</th>`
-    + `<th style="width:${widths.ua}">User-agent</th>`
-    + `<th style="width:${widths.date}">Activité / Dates</th>`
-    + `<th style="width:${widths.act};text-align:right">Actions</th>`
-    + '</tr></thead><tbody>';
-  const now = Date.now();
-  const rows = sessions.map(s => {
-    const created = fmtDateCompact(s.created_at);
-    const expires = fmtDateCompact(s.expires_at);
-    const lastAct = fmtDateCompact(s.last_activity);
-    const laMs = Date.parse(String(s.last_activity || s.created_at).replace(' ', 'T') + 'Z');
-    const inactiveDays = isFinite(laMs) ? Math.floor((now - laMs) / 86400000) : 0;
-    // Highlight visuel si inactif >3j (approche du TTL 7j) : couleur warning sur la ligne "Dernière activité".
-    const laColor = inactiveDays >= 5 ? '#C73E3E' : (inactiveDays >= 3 ? '#B8801E' : 'var(--color-text-primary)');
-    const inactiveLabel = inactiveDays === 0 ? 'aujourd\'hui' : (inactiveDays === 1 ? 'hier' : inactiveDays + 'j inactif');
-    // M/2026/05/08/46 — Bug 3 : bouton 🚪 par session, sauf la session COURANTE (token match), pas just is_self.
-    // Permet à Philippe de déconnecter toutes ses autres sessions accumulées sauf celle de la requête.
-    let selfBadge = '';
-    if (s.is_current_session) selfBadge = ' <span class="badge badge-enregistre" title="Session de la requête courante">courante</span>';
-    else if (s.is_self) selfBadge = ' <span class="badge badge-archive" title="Autre session du même utilisateur">moi</span>';
-    const action = s.is_current_session
-      ? '<span style="color:var(--color-text-muted);font-size:11px;font-style:italic" title="Session courante - non déconnectable">courante</span>'
-      : `<button class="icon-btn danger" onclick="forceLogoutSession('${escHtml(s.token)}', '${escHtml(s.email)}')" title="Forcer déconnexion" style="color:var(--color-error)">🚪</button>`;
-    const uaTrunc = _truncMid(s.user_agent, 30);
-    const dateCell = `<div class="sa-date-cell">`
-      + `<div style="color:${laColor};font-weight:500">${lastAct} <span style="color:#A89882;font-size:10.5px;font-weight:400">(${inactiveLabel})</span></div>`
-      + `<div style="color:#A89882">Créée: ${created}</div>`
-      + `<div style="color:#A89882">Expire: ${expires}</div>`
-      + `</div>`;
-    return `<tr><td class="col-email" title="${escHtml(s.email)}">${escHtml(s.email)}${selfBadge}</td>`
-      + `<td><span style="font-size:11px;color:#6B5E4A;text-transform:uppercase">${s.role}</span></td>`
-      + (showWorkspaceCol ? `<td><b>${escHtml(s.workspace_slug)}</b></td>` : '')
-      + `<td class="mono-tel">${escHtml(s.ip || '—')}</td>`
-      + `<td class="col-provider" title="${escHtml(s.user_agent)}">${escHtml(uaTrunc)}</td>`
-      + `<td class="col-date" title="Dernière activité: ${escHtml(s.last_activity)} | Créée: ${escHtml(s.created_at)} | Expire: ${escHtml(s.expires_at)}">${dateCell}</td>`
-      + `<td class="actions">${action}</td>`
-      + `</tr>`;
-  }).join('');
-  const colspan = showWorkspaceCol ? 7 : 6;
-  c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> session(s) active(s).</p>'
-    + '<div style="margin-bottom:12px"><button class="icon-btn danger" onclick="logoutAllSessions()" style="color:var(--color-error);width:auto;padding:6px 12px;font-size:12px;font-weight:600;border:1px solid var(--color-error);border-radius:6px">🚪 Déconnecter tous (sauf moi)</button></div>'
-    + head + (rows || `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:#6B5E4A">Aucune session active.</td></tr>`) + '</tbody></table>'
-    + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_sessions\', \'TOUTES les sessions sauf la courante\')">🔥 Reset Sessions</button></div>';
-}
-async function forceLogoutSession(sToken, email) {
-  if (!requireWriteMode()) return;
-  if (!confirm(`Déconnecter la session de ${email} ?`)) return;
-  const r = await api('/api/superadmin_sessions.php', {method:'POST', body:{action:'force_logout', session_token:sToken}});
-  if (r.ok) { renderSessionsTab(); }
-  else alert('⚠️ ' + (r.error || 'Erreur'));
-}
-async function logoutAllSessions() {
-  if (!requireWriteMode()) return;
-  if (!confirm('Déconnecter TOUTES les sessions sauf la tienne ?\n\nTous les agents connectés seront déconnectés.')) return;
-  const r = await api('/api/superadmin_sessions.php', {method:'POST', body:{action:'logout_all_except_me'}});
-  if (r.ok) { alert(`✅ ${r.deleted} session(s) déconnectée(s).`); renderSessionsTab(); }
-  else alert('⚠️ ' + (r.error || 'Erreur'));
-}
-
-// M/2026/05/08/37 — Vue Users cross-workspace.
-// M/2026/05/09/9 (M61) — Onglet Users enrichi : profile_label + modules utilises + last_seen + accordeon historique 5 + action kill.
-const PROFILE_BADGE = {
-  super_admin: {emoji:'🛡️', label:'Super admin', bg:'#DAA520', fg:'#3a2a08'},
-  admin: {emoji:'🔧', label:'Admin', bg:'#1F3A5F', fg:'#fff'},
-  diamant: {emoji:'💎', label:'Diamant', bg:'#5B3A8A', fg:'#fff'},
-  standard: {emoji:'⚪', label:'Standard', bg:'#E5DDC8', fg:'#3a2e22'},
-  restreint: {emoji:'🟠', label:'Restreint', bg:'#C46A4F', fg:'#fff'},
+// ====== Section router ======
+const SECTIONS = {
+  overview: { title: "Vue d'ensemble", sub: 'Compteurs clés en temps réel', render: renderOverview },
+  users:    { title: 'Utilisateurs',  sub: 'Tous les comptes auth_users', render: renderUsers },
+  sessions: { title: 'Sessions actives', sub: 'JWT sessions en cours', render: renderSessions },
+  magic:    { title: 'Magic links',   sub: 'Tokens envoyés (pending / consumed / expired)', render: renderMagicLinks },
+  modules:  { title: 'Modules Oi',    sub: 'État des 7 modules visibles dans le hub', render: renderModules },
+  audit:    { title: 'Audit log',     sub: 'Historique des actions super-admin', render: renderAudit },
+  atelier:  { title: 'Atelier',       sub: 'Outils VPS · Live View CC + Monitoring + Backups', render: renderAtelier },
+  danger:   { title: 'Zone danger',   sub: 'Opérations destructives avec double confirmation', render: renderDanger },
 };
-const PROFILE_OPTIONS = ['super_admin','admin','diamant','standard','restreint'];
-const MODULE_LABEL = {app:'Oi Agent', scan:'Oi Scan', book:'Oi Book', demande:'Oi Recherche', dashboard:'Dashboard', superadmin:'Super-admin'};
-const MODULE_BADGE = (m) => `<span style="display:inline-block;padding:1px 6px;margin:1px;border-radius:4px;font-size:10px;background:#F4EEE6;color:#6B4429;font-weight:600">${escHtml(MODULE_LABEL[m] || m)}</span>`;
-function fmtRelTime(iso) {
-  if (!iso) return '—';
-  const t = new Date(iso.replace(' ', 'T') + (iso.includes('T') ? '' : 'Z'));
-  const diffSec = (Date.now() - t.getTime()) / 1000;
-  if (diffSec < 60) return 'à l\'instant';
-  if (diffSec < 3600) return 'Il y a ' + Math.floor(diffSec/60) + 'min';
-  if (diffSec < 86400) return 'Il y a ' + Math.floor(diffSec/3600) + 'h';
-  if (diffSec < 86400 * 2) return 'Hier ' + String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
-  if (diffSec < 86400 * 7) return 'Il y a ' + Math.floor(diffSec/86400) + 'j';
-  return String(t.getDate()).padStart(2,'0') + '/' + String(t.getMonth()+1).padStart(2,'0') + '/' + String(t.getFullYear()).slice(-2);
+
+let currentSection = 'overview';
+async function render(section) {
+  if (!SECTIONS[section]) section = 'overview';
+  currentSection = section;
+  closeSidebar();
+  history.replaceState({}, '', '#' + section);
+  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.section === section));
+  const cfg = SECTIONS[section];
+  $('#section-title').textContent = cfg.title;
+  $('#section-sub').textContent = cfg.sub || '';
+  $('#section-actions').innerHTML = '';
+  $('#content-body').innerHTML = '<div class="loader"><span class="spin"></span> Chargement…</div>';
+  try { await cfg.render(); } catch (e) {
+    if (e && e.__auth_error) { localStorage.removeItem(TOKEN_KEY); location.reload(); return; }
+    $('#content-body').innerHTML = `<div class="panel"><div class="panel-body"><p class="feedback error">Erreur : ${esc(e.message || e)}</p></div></div>`;
+  }
 }
-function profileBadge(label) {
-  const p = PROFILE_BADGE[label] || PROFILE_BADGE.standard;
-  return `<span class="profile-badge" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${p.bg};color:${p.fg};cursor:pointer" title="Cliquez pour modifier">${p.emoji} ${escHtml(p.label)}</span>`;
+
+function maybeAuthError(r) {
+  if (r && r.__auth_error) { localStorage.removeItem(TOKEN_KEY); location.reload(); throw new Error('auth'); }
+  return r;
 }
-let usersM61State = {filterProfile:'', filterModule:'', filterStatus:''};
-async function renderUsersTab() {
-  const c = document.getElementById('content');
-  c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
-  const r = await api('/api/superadmin_clients_list.php');
-  if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
-  const profileOpts = '<option value="">Tous profils</option>' + PROFILE_OPTIONS.map(p => `<option value="${p}"${p===usersM61State.filterProfile?' selected':''}>${PROFILE_BADGE[p].emoji} ${PROFILE_BADGE[p].label}</option>`).join('');
-  const moduleOpts = '<option value="">Tous outils</option>' + Object.keys(MODULE_LABEL).map(m => `<option value="${m}"${m===usersM61State.filterModule?' selected':''}>${MODULE_LABEL[m]}</option>`).join('');
-  const statusOpts = '<option value="">Tous statuts</option><option value="online"' + (usersM61State.filterStatus==='online'?' selected':'') + '>🟢 En ligne</option><option value="offline"' + (usersM61State.filterStatus==='offline'?' selected':'') + '>⚪ Offline</option>';
+
+// ====== SECTION 1 — OVERVIEW ======
+async function renderOverview() {
+  const r = maybeAuthError(await api('/api/superadmin_auth_users.php?action=list'));
+  const c = r.counts || {};
+  const totalUsers = c.auth_users ?? '—';
+  const sessionsActive = c.auth_sessions_active ?? '—';
+  const magicPending = c.auth_magic_tokens ?? '—';
+  const recentSignups = (r.users || []).filter(u => { const d = new Date((u.created_at || '').replace(' ', 'T')); return !isNaN(d) && Date.now() - d.getTime() < 24 * 3600 * 1000; }).length;
+  $('#content-body').innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Utilisateurs total</div><div class="kpi-value">${esc(totalUsers)}</div></div>
+      <div class="kpi"><div class="kpi-label">Sessions actives</div><div class="kpi-value">${esc(sessionsActive)}</div></div>
+      <div class="kpi"><div class="kpi-label">Magic links pending</div><div class="kpi-value">${esc(magicPending)}</div></div>
+      <div class="kpi"><div class="kpi-label">Signups 24h</div><div class="kpi-value">${recentSignups}</div></div>
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Raccourcis</h2></div><div class="panel-body">
+      <p class="muted">Accès rapide aux sections principales. Tout est consultable et actionnable depuis la sidebar.</p>
+    </div></div>`;
+  $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('overview')">↻ Rafraîchir</button>`;
+}
+
+// ====== SECTION 2 — USERS ======
+let userSearchTimer = null;
+async function renderUsers() {
+  $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('users')">↻ Rafraîchir</button>`;
+  $('#content-body').innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <h2 id="users-h2">Utilisateurs</h2>
+        <div class="search-bar"><input class="search-input" id="users-q" placeholder="Recherche email / nom..." autofocus></div>
+      </div>
+      <div class="panel-body no-pad" id="users-table-wrap"><div class="loader"><span class="spin"></span> Chargement…</div></div>
+    </div>`;
+  $('#users-q').addEventListener('input', () => { clearTimeout(userSearchTimer); userSearchTimer = setTimeout(loadUsers, 220); });
+  loadUsers();
+}
+async function loadUsers() {
+  const q = ($('#users-q') && $('#users-q').value || '').trim().toLowerCase();
+  const r = maybeAuthError(await api('/api/superadmin_auth_users.php?action=list'));
   let users = r.users || [];
-  if (usersM61State.filterProfile) users = users.filter(u => u.profile_label === usersM61State.filterProfile);
-  if (usersM61State.filterModule) users = users.filter(u => Array.isArray(u.modules_used) && u.modules_used.includes(usersM61State.filterModule));
-  if (usersM61State.filterStatus === 'online') users = users.filter(u => u.has_active_session);
-  if (usersM61State.filterStatus === 'offline') users = users.filter(u => !u.has_active_session);
-  const filters = `<div class="filters" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-    <select onchange="usersM61State.filterProfile=this.value;renderUsersTab()">${profileOpts}</select>
-    <select onchange="usersM61State.filterModule=this.value;renderUsersTab()">${moduleOpts}</select>
-    <select onchange="usersM61State.filterStatus=this.value;renderUsersTab()">${statusOpts}</select>
-  </div>`;
-  const head = '<table><thead><tr><th>Email</th><th>Nom</th><th>Profil</th><th>Outils utilisés</th><th>Connexion</th><th style="text-align:right">Action</th></tr></thead><tbody>';
+  if (q) users = users.filter(u => (u.email || '').toLowerCase().includes(q) || (((u.first_name || '') + ' ' + (u.last_name || '')).toLowerCase().includes(q)));
+  $('#users-h2').textContent = `Utilisateurs (${users.length})`;
+  if (users.length === 0) { $('#users-table-wrap').innerHTML = `<div class="empty-state">${q ? 'Aucun résultat.' : 'Aucun utilisateur.'}</div>`; return; }
   const rows = users.map(u => {
-    const modulesHtml = (u.modules_used || []).length ? u.modules_used.map(MODULE_BADGE).join('') : '<span style="color:#A89882">—</span>';
-    const lastSeen = fmtRelTime(u.last_seen_at || u.last_login);
-    const killBtn = u.has_active_session
-      ? `<button class="icon-btn" onclick="killUserSessionsM61(${u.id}, '${escHtml(u.email).replace(/'/g,'&#39;')}')" title="Stopper toutes les sessions actives" style="background:#FBEAEA;color:#C0392B;border:1px solid #C0392B;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer">🚫 Stopper</button>`
-      : '<span style="color:#A89882;font-size:11px">—</span>';
-    return `<tr id="u-${u.id}">
-        <td class="col-email" title="${escHtml(u.email)}">${escHtml(u.email)}</td>
-        <td class="col-name">${escHtml(u.display_name || '')}</td>
-        <td><span onclick="openProfilePopover(${u.id}, this)">${profileBadge(u.profile_label)}</span></td>
-        <td>${modulesHtml}</td>
-        <td onclick="toggleHistoryAccordion(${u.id})" style="cursor:pointer" title="Cliquez pour voir 5 dernières connexions">${u.has_active_session ? '🟢 ' : ''}${escHtml(lastSeen)} ▾</td>
-        <td class="actions" style="text-align:right">${killBtn}</td>
-      </tr>
-      <tr id="hist-${u.id}" style="display:none"><td colspan="6" style="background:#FAF8F2;padding:10px"><div id="hist-content-${u.id}" style="font-size:11px;color:#6B5E4A">Chargement…</div></td></tr>`;
+    const isAdmin = u.email === 'philippe.ciftci@gmail.com' || parseInt(u.is_super_admin, 10) === 1;
+    const status = u.status === 'active' ? '<span class="badge badge-active">actif</span>' : `<span class="badge badge-suspended">${esc(u.status)}</span>`;
+    const adminBadge = isAdmin ? ' <span class="badge badge-admin">super-admin</span>' : '';
+    const delBtn = isAdmin ? '<span class="muted">protégé</span>' : `<button class="btn btn-danger btn-sm" onclick="confirmDeleteUser(${u.id}, ${JSON.stringify(u.email).replace(/"/g, '&quot;')})">Supprimer</button>`;
+    return `<tr>
+      <td class="cell-mono">${u.id}</td>
+      <td><b>${esc(u.email)}</b>${adminBadge}</td>
+      <td>${esc((u.first_name || '') + ' ' + (u.last_name || '')).trim() || '<span class="muted">—</span>'}</td>
+      <td>${status}</td>
+      <td style="text-align:center">${u.active_sessions}</td>
+      <td>${fmtDate(u.last_login_at)}</td>
+      <td>${fmtDate(u.created_at)}</td>
+      <td class="cell-actions">${delBtn}</td>
+    </tr>`;
   }).join('');
-  const empty = users.length === 0 ? '<tr><td colspan="6" style="text-align:center;padding:24px;color:#6B5E4A">Aucun user (filtres en cours).</td></tr>' : '';
-  c.innerHTML = `<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>${users.length}</b>/${r.count} user(s) cross-workspace.</p>${filters}${head}${rows || empty}</tbody></table>`
-    + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_users\', \'TOUS les users sauf super-admin\')">🔥 Reset Users</button></div>';
+  $('#users-table-wrap').innerHTML = `<div class="dt-wrap"><table class="dt"><thead><tr>
+    <th>ID</th><th>Email</th><th>Nom</th><th>Statut</th><th style="text-align:center">Sessions</th><th>Dernière connexion</th><th>Créé</th><th style="text-align:right">Action</th>
+  </tr></thead><tbody>${rows}</tbody></table></div><div class="dt-footer">${users.length} utilisateur(s) · ${r.counts.auth_users} total en DB</div>`;
 }
-async function toggleHistoryAccordion(uid) {
-  const tr = document.getElementById('hist-' + uid);
-  if (!tr) return;
-  if (tr.style.display === 'none') {
-    tr.style.display = '';
-    const r = await api('/api/superadmin_client_history.php?user_id=' + uid);
-    const div = document.getElementById('hist-content-' + uid);
-    if (!r || !r.ok) { div.textContent = 'Erreur chargement historique.'; return; }
-    if (!r.sessions || r.sessions.length === 0) {
-      div.innerHTML = '<i>Aucune connexion enregistrée.</i>';
-      return;
+async function confirmDeleteUser(id, email) {
+  openConfirm({
+    title: 'Supprimer cet utilisateur ?',
+    body: `Action irréversible. ${esc(email)} (id=${id}) sera supprimé avec cascade sur magic_tokens, sessions, modules.`,
+    confirmLabel: 'Supprimer définitivement',
+    danger: true,
+    onConfirm: async () => {
+      const r = maybeAuthError(await api('/api/superadmin_auth_users.php?action=delete', { method: 'POST', body: { user_id: id } }));
+      if (!r.ok) throw new Error(r.error || 'erreur');
+      loadUsers();
+    },
+  });
+}
+
+// ====== SECTION 3 — SESSIONS ======
+async function renderSessions() {
+  $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('sessions')">↻ Rafraîchir</button>`;
+  const r = maybeAuthError(await api('/api/superadmin_sessions.php?action=list'));
+  const sessions = r.sessions || [];
+  if (sessions.length === 0) {
+    $('#content-body').innerHTML = `<div class="panel"><div class="empty-state">Aucune session active.</div></div>`; return;
+  }
+  const rows = sessions.map(s => `<tr>
+    <td><b>${esc(s.email || ('user ' + s.user_id))}</b></td>
+    <td class="cell-mono">${esc(((s.session_token || s.token || '') + '').slice(0, 12))}…</td>
+    <td>${esc(s.ip || '—')}</td>
+    <td class="muted">${esc((s.user_agent || '').slice(0, 40)) || '—'}</td>
+    <td>${fmtDate(s.created_at)}</td>
+    <td>${fmtDate(s.expires_at || s.last_seen)}</td>
+    <td class="cell-actions"><button class="btn btn-danger btn-sm" onclick="revokeSession(${JSON.stringify(s.session_token || s.token || '').replace(/"/g, '&quot;')})">Révoquer</button></td>
+  </tr>`).join('');
+  $('#content-body').innerHTML = `<div class="panel">
+    <div class="panel-head"><h2>Sessions actives (${sessions.length})</h2></div>
+    <div class="panel-body no-pad"><div class="dt-wrap"><table class="dt"><thead><tr><th>User</th><th>Token</th><th>IP</th><th>User-Agent</th><th>Créée</th><th>Expire</th><th style="text-align:right">Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  </div>`;
+}
+async function revokeSession(token) {
+  if (!token) return;
+  openConfirm({ title: 'Révoquer cette session ?', body: 'Le user sera déconnecté immédiatement.', confirmLabel: 'Révoquer', danger: true,
+    onConfirm: async () => {
+      const r = maybeAuthError(await api('/api/superadmin_sessions.php', { method: 'POST', body: { action: 'force_logout', session_token: token } }));
+      if (!r.ok) throw new Error(r.error || 'erreur');
+      render('sessions');
     }
-    const histRows = r.sessions.map(s => {
-      const dur = s.duration_seconds < 60 ? s.duration_seconds + 's' : (s.duration_seconds < 3600 ? Math.floor(s.duration_seconds/60) + 'min' : Math.floor(s.duration_seconds/3600) + 'h');
-      const dt = (s.date || '').replace('T',' ').slice(0, 16);
-      return `<tr><td style="padding:3px 8px">${escHtml(dt)}</td><td style="padding:3px 8px">${dur}</td><td style="padding:3px 8px">${escHtml(MODULE_LABEL[s.module] || s.module)}</td><td style="padding:3px 8px;color:${s.is_active?'#2D7A3E':'#A89882'}">${s.is_active ? '🟢 active' : 'fermée'}</td></tr>`;
-    }).join('');
-    div.innerHTML = '<b>5 dernières connexions :</b><table style="width:100%;margin-top:6px;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:3px 8px;font-size:10px;text-transform:uppercase;color:#A89882">Date</th><th style="text-align:left;padding:3px 8px;font-size:10px;text-transform:uppercase;color:#A89882">Durée</th><th style="text-align:left;padding:3px 8px;font-size:10px;text-transform:uppercase;color:#A89882">Module</th><th style="text-align:left;padding:3px 8px;font-size:10px;text-transform:uppercase;color:#A89882">Statut</th></tr></thead><tbody>' + histRows + '</tbody></table>';
-  } else {
-    tr.style.display = 'none';
-  }
-}
-function openProfilePopover(uid, anchor) {
-  if (!requireWriteMode()) return;
-  // Popover simple : prompt menu via confirm chain
-  const choice = prompt('Choisir profil pour user ' + uid + ' :\n1. super_admin\n2. admin\n3. diamant\n4. standard\n5. restreint\n(tape 1-5)');
-  const map = {'1':'super_admin','2':'admin','3':'diamant','4':'standard','5':'restreint'};
-  const newLabel = map[choice];
-  if (!newLabel) return;
-  updateClientProfile(uid, newLabel);
-}
-async function updateClientProfile(uid, label) {
-  const r = await api('/api/superadmin_update_client_profile.php', {method:'POST', body:{user_id:uid, profile_label:label}});
-  if (r && r.ok) { renderUsersTab(); }
-  else alert('⚠️ ' + (r && r.error || 'Erreur update profile'));
-}
-async function killUserSessionsM61(uid, email) {
-  if (!requireWriteMode()) return;
-  if (!confirm('Stopper toutes les sessions actives de ' + email + ' ?')) return;
-  const r = await api('/api/superadmin_kill_user_sessions.php', {method:'POST', body:{user_id:uid}});
-  if (r && r.ok) { alert('✅ ' + r.revoked_count + ' session(s) stoppée(s).'); renderUsersTab(); }
-  else alert('⚠️ ' + (r && r.error || 'Erreur kill sessions'));
-}
-async function deleteUserXt(uid, email, role) {
-  if (!requireWriteMode()) return;
-  if (role === 'super_admin' && !confirm('⚠️ Cet utilisateur est SUPER-ADMIN.\n\nSupprimer quand même ?')) return;
-  if (!confirm(`Supprimer définitivement ${email} ?\n\nCette action est irréversible.`)) return;
-  const r = await api('/api/superadmin_users_xt.php', {method:'POST', body:{action:'delete', user_id:uid, confirm_super_admin_delete: role === 'super_admin'}});
-  if (r.ok) { alert('✅ User supprimé.'); renderUsersTab(); }
-  else alert('⚠️ ' + (r.error || 'Erreur'));
+  });
 }
 
-// M/2026/05/08/46 — Modale custom HTML (compat iPad Safari qui bloque confirm()/prompt() en cascade).
-function _saModal(html) {
-  const ov = document.createElement('div');
-  ov.className = 'sa-modal-overlay';
-  ov.innerHTML = '<div class="sa-modal">' + html + '</div>';
-  document.body.appendChild(ov);
-  return ov;
+// ====== SECTION 4 — MAGIC LINKS ======
+async function renderMagicLinks() {
+  $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('magic')">↻ Rafraîchir</button>`;
+  const r = maybeAuthError(await api('/api/superadmin_magic_links.php?action=list'));
+  const tokens = r.tokens || [];
+  const c = r.counts || {};
+  const kpis = `<div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-value">${c.total ?? '—'}</div></div>
+    <div class="kpi"><div class="kpi-label">Pending</div><div class="kpi-value">${c.pending ?? '—'}</div></div>
+    <div class="kpi"><div class="kpi-label">Consumed</div><div class="kpi-value">${c.consumed ?? '—'}</div></div>
+    <div class="kpi"><div class="kpi-label">Expired</div><div class="kpi-value">${c.expired ?? '—'}</div></div>
+  </div>`;
+  if (tokens.length === 0) { $('#content-body').innerHTML = kpis + `<div class="panel"><div class="empty-state">Aucun magic link en DB.</div></div>`; return; }
+  const rows = tokens.map(t => {
+    const stateBadge = t.state === 'pending' ? 'badge-pending' : (t.state === 'consumed' ? 'badge-consumed' : 'badge-expired');
+    const revokeBtn = t.state === 'pending' ? `<button class="btn btn-danger btn-sm" onclick="revokeMagic(${t.id})">Révoquer</button>` : '<span class="muted">—</span>';
+    return `<tr>
+      <td><b>${esc(t.email || ('user ' + t.user_id))}</b></td>
+      <td class="cell-mono">${esc(t.token_short)}…</td>
+      <td><span class="badge ${stateBadge}">${esc(t.state)}</span></td>
+      <td>${fmtDate(t.created_at)}</td>
+      <td>${fmtDate(t.expires_at)}</td>
+      <td>${esc(t.ip || '—')}</td>
+      <td class="cell-actions">${revokeBtn}</td>
+    </tr>`;
+  }).join('');
+  $('#content-body').innerHTML = kpis + `<div class="panel">
+    <div class="panel-head"><h2>Tokens (${tokens.length})</h2></div>
+    <div class="panel-body no-pad"><div class="dt-wrap"><table class="dt"><thead><tr><th>User</th><th>Token</th><th>État</th><th>Créé</th><th>Expire</th><th>IP</th><th style="text-align:right">Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  </div>`;
 }
-function _closeSaModal(ov) { if (ov && ov.parentNode) ov.parentNode.removeChild(ov); }
-
-// M/2026/05/11/24 — visu live des auth_users (DB V4 magic-link).
-async function loadAuthUsers() {
-  const c = document.getElementById('sa-auth-users-content');
-  if (!c) return;
-  c.innerHTML = '<span class="muted">Chargement…</span>';
-  try {
-    const r = await api('/api/superadmin_auth_users.php?action=list');
-    if (!r.ok) throw new Error(r.error || 'erreur');
-    const ct = r.counts || {};
-    const summary = `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:var(--color-text-brown)">`
-      + `<span><b>${ct.auth_users}</b> users</span>`
-      + `<span><b>${ct.auth_sessions_active}</b> sessions actives</span>`
-      + `<span><b>${ct.auth_magic_tokens}</b> magic links</span>`
-      + `<span><b>${ct.auth_user_modules}</b> modules activés</span>`
-      + `</div>`;
-    if (r.users.length === 0) { c.innerHTML = summary + '<div class="muted" style="padding:12px;text-align:center">Aucun utilisateur en DB.</div>'; return; }
-    const rows = r.users.map(u => {
-      const isAdmin = (u.email === 'philippe.ciftci@gmail.com') || (parseInt(u.is_super_admin, 10) === 1);
-      const adminBadge = isAdmin ? ' <span style="background:#ede7f6;color:#5e35b1;font-size:10px;padding:2px 6px;border-radius:5px;font-weight:600">SUPER-ADMIN</span>' : '';
-      const delBtn = isAdmin
-        ? '<span class="muted" style="font-size:11px">protégé</span>'
-        : `<button onclick="deleteAuthUser(${u.id}, ${JSON.stringify(u.email).replace(/"/g, '&quot;')})" style="padding:4px 10px;background:#fff;color:#c73e3e;border:1px solid #f0c8c8;border-radius:6px;font-size:11px;cursor:pointer">Supprimer</button>`;
-      return `<tr>
-        <td style="padding:6px 8px;font-size:12px">${u.id}</td>
-        <td style="padding:6px 8px;font-size:12px"><b>${u.email}</b>${adminBadge}</td>
-        <td style="padding:6px 8px;font-size:12px">${(u.first_name || '') + ' ' + (u.last_name || '')}</td>
-        <td style="padding:6px 8px;font-size:11px;color:var(--color-text-muted)">${u.status}</td>
-        <td style="padding:6px 8px;font-size:11px;text-align:center">${u.active_sessions}</td>
-        <td style="padding:6px 8px;font-size:11px;color:var(--color-text-muted)">${(u.last_login_at || '').slice(0, 16).replace('T',' ') || '—'}</td>
-        <td style="padding:6px 8px;text-align:right">${delBtn}</td>
-      </tr>`;
-    }).join('');
-    c.innerHTML = summary + `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
-      <thead><tr style="background:var(--color-bg-tint-soft);border-bottom:1px solid var(--color-border-subtle)">
-        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">ID</th>
-        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Email</th>
-        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Nom</th>
-        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Statut</th>
-        <th style="padding:8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Sessions</th>
-        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Dernière connexion</th>
-        <th style="padding:8px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Action</th>
-      </tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
-  } catch (e) {
-    c.innerHTML = '<div style="color:#c73e3e;font-size:12px;padding:8px">Erreur : ' + (e.message || e) + '</div>';
-  }
-}
-async function deleteAuthUser(userId, email) {
-  if (!requireWriteMode()) return;
-  if (!confirm('Supprimer définitivement ' + email + ' (id=' + userId + ') ?\n\nCascade : magic_tokens + sessions + modules + user.')) return;
-  try {
-    const r = await api('/api/superadmin_auth_users.php?action=delete', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
-    if (!r.ok) { alert('Erreur : ' + (r.error || 'inconnue')); return; }
-    loadAuthUsers();
-  } catch (e) { alert('Erreur réseau : ' + e.message); }
+async function revokeMagic(id) {
+  openConfirm({ title: 'Révoquer ce magic link ?', body: 'Le lien sera marqué consommé et ne pourra plus servir.', confirmLabel: 'Révoquer', danger: true,
+    onConfirm: async () => {
+      const r = maybeAuthError(await api('/api/superadmin_magic_links.php?action=revoke', { method: 'POST', body: { token_id: id } }));
+      if (!r.ok) throw new Error(r.error || 'erreur');
+      render('magic');
+    }
+  });
 }
 
-async function resetTotal() {
-  if (!requireWriteMode()) return;
-  // Étape 1 : modale confirmation initiale
-  const step1 = _saModal(
-    '<h2>🚨 Reset TOTAL provisoire</h2>'
-    + '<p>Cette action est <b>TOTALEMENT IRRÉVERSIBLE</b>. Va supprimer :</p>'
-    + '<div class="danger-list">'
-    + '• TOUS les workspaces (DROP DATABASE)<br>'
-    + '• TOUS les users (sauf super-admin Philippe)<br>'
-    + '• TOUTES les sessions (sauf la tienne)<br>'
-    + '• Toutes les inscriptions en attente<br>'
-    + '• Toute l\'audit récent<br>'
-    + '• Auto-increment reset à 1'
-    + '</div>'
-    + '<p>Êtes-vous absolument sûr de vouloir continuer ?</p>'
-    + '<div class="sa-modal-actions">'
-    + '<button class="sa-modal-btn cancel" id="sa-rt-cancel1">Annuler</button>'
-    + '<button class="sa-modal-btn danger" id="sa-rt-continue">Continuer</button>'
-    + '</div>'
-  );
-  step1.querySelector('#sa-rt-cancel1').onclick = () => _closeSaModal(step1);
-  step1.querySelector('#sa-rt-continue').onclick = () => {
-    _closeSaModal(step1);
-    // Étape 2 : modale saisie texte
-    const step2 = _saModal(
-      '<h2>🚨 Confirmation finale</h2>'
-      + '<p>Tapez exactement <b>RESET TOTAL</b> ci-dessous pour confirmer définitivement :</p>'
-      + '<input type="text" id="sa-rt-input" placeholder="RESET TOTAL" autocomplete="off" autocapitalize="characters" autocorrect="off"/>'
-      + '<div class="sa-modal-actions">'
-      + '<button class="sa-modal-btn cancel" id="sa-rt-cancel2">Annuler</button>'
-      + '<button class="sa-modal-btn danger" id="sa-rt-execute" disabled>Exécuter le reset</button>'
-      + '</div>'
-    );
-    const input = step2.querySelector('#sa-rt-input');
-    const execBtn = step2.querySelector('#sa-rt-execute');
-    input.focus();
-    input.oninput = () => { execBtn.disabled = (input.value !== 'RESET TOTAL'); };
-    step2.querySelector('#sa-rt-cancel2').onclick = () => _closeSaModal(step2);
-    execBtn.onclick = async () => {
-      execBtn.disabled = true;
-      execBtn.textContent = '⏳ En cours…';
-      const r = await api('/api/superadmin_cleanup.php', {method:'POST', body:{action:'reset_total', confirmation:'RESET TOTAL'}});
-      _closeSaModal(step2);
-      // Étape 3 : modale résultat
-      let body = '';
-      if (r.ok) {
-        const rp = r.report || {};
-        const errLine = (rp.errors && rp.errors.length) ? '\n⚠️ Erreurs (' + rp.errors.length + ') :\n  - ' + rp.errors.slice(0,5).join('\n  - ') : '';
-        body = '<h2 style="color:#2D7A4F">✅ Reset TOTAL exécuté</h2>'
-          + '<div class="sa-modal-result">'
-          + 'Supprimés :\n'
-          + '  • ' + (rp.workspaces_dropped||0) + ' workspaces (DBs DROPped)\n'
-          + '  • ' + (rp.orphan_dbs_dropped||0) + ' DBs orphelines\n'
-          + '  • ' + (rp.users_deleted||0) + ' users (super-admin préservé)\n'
-          + '  • ' + (rp.sessions_deleted||0) + ' sessions invalidées\n'
-          + '  • ' + (rp.pending_deleted||0) + ' inscriptions en attente\n'
-          + '  • Audit : ' + (rp.audit_truncated ? 'vidé ✓' : 'KO') + '\n'
-          + '  • Auto-increment reset sur ' + (rp.auto_increment_reset||0) + ' tables'
-          + errLine
-          + '</div>'
-          + '<p>La page va se rafraîchir au clic sur Fermer.</p>';
-      } else {
-        body = '<h2>⚠️ Échec</h2><p>' + escHtml(r.error || 'Erreur inconnue') + '</p>';
-      }
-      const step3 = _saModal(body
-        + '<div class="sa-modal-actions">'
-        + '<button class="sa-modal-btn danger" id="sa-rt-close">Fermer</button>'
-        + '</div>'
-      );
-      step3.querySelector('#sa-rt-close').onclick = () => {
-        _closeSaModal(step3);
-        if (r.ok) window.location.reload();
-      };
-    };
+// ====== SECTION 5 — MODULES ======
+async function renderModules() {
+  $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('modules')">↻ Rafraîchir</button>`;
+  const r = maybeAuthError(await api('/api/superadmin_modules.php?action=list'));
+  const mods = r.modules || [];
+  $('#content-body').innerHTML = `<div class="panel">
+    <div class="panel-head"><h2>État des modules</h2><span class="muted">Les changements sont visibles immédiatement dans le hub utilisateur.</span></div>
+    <div class="panel-body no-pad">${mods.map(m => `
+      <div class="module-row">
+        <div class="label">${esc(m.label)}</div>
+        <div class="module-states">
+          ${['active','soon','disabled'].map(s => `<button class="module-state-btn ${m.state === s ? 'selected' : ''}" data-state="${s}" onclick="setModuleState(${JSON.stringify(m.slug).replace(/"/g, '&quot;')}, '${s}')">${s === 'active' ? 'ACTIF' : s === 'soon' ? 'BIENTÔT' : 'DÉSACTIVÉ'}</button>`).join('')}
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+async function setModuleState(slug, state) {
+  const r = maybeAuthError(await api('/api/superadmin_modules.php?action=set_state', { method: 'POST', body: { slug, state } }));
+  if (!r.ok) { alert('Erreur : ' + (r.error || 'inconnue')); return; }
+  render('modules');
+}
+
+// ====== SECTION 6 — AUDIT ======
+async function renderAudit() {
+  $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('audit')">↻ Rafraîchir</button>`;
+  const r = maybeAuthError(await api('/api/superadmin_audit_log.php?action=list&limit=200'));
+  const rows = (r.entries || []).map(e => {
+    const detail = typeof e.detail === 'object' ? JSON.stringify(e.detail).slice(0, 80) : (e.detail || '');
+    return `<tr>
+      <td>${fmtDate(e.created_at)}</td>
+      <td>${esc(e.actor_email || ('admin ' + e.actor_id))}</td>
+      <td><span class="badge badge-admin">${esc(e.action)}</span></td>
+      <td class="muted">${esc(detail)}</td>
+      <td>${esc(e.ip || '—')}</td>
+    </tr>`;
+  }).join('');
+  $('#content-body').innerHTML = `<div class="panel">
+    <div class="panel-head"><h2>200 dernières actions super-admin</h2></div>
+    <div class="panel-body no-pad">${rows ? `<div class="dt-wrap"><table class="dt"><thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Détails</th><th>IP</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty-state">Aucun événement audit.</div>'}</div>
+  </div>`;
+}
+
+// ====== SECTION 7 — ATELIER ======
+async function renderAtelier() {
+  $('#content-body').innerHTML = `<div class="atelier-grid">
+    <div class="atelier-card">
+      <div class="ico">📺</div>
+      <h3>Live View CC</h3>
+      <p>Terminaux Claude Code en temps réel (claude:0, cc-atelier:0). Streaming tmux WebSocket.</p>
+      <a class="btn btn-primary" style="width:auto" href="https://46-225-215-148.sslip.io/live/" target="_blank" rel="noopener">Ouvrir Live →</a>
+    </div>
+    <div class="atelier-card">
+      <div class="ico">📊</div>
+      <h3>Monitoring Grafana</h3>
+      <p>Dashboards techniques VPS. Uptime, latence, charge CPU, charge mémoire.</p>
+      <a class="btn btn-primary" style="width:auto" href="https://46-225-215-148.sslip.io/grafana/" target="_blank" rel="noopener">Ouvrir Grafana →</a>
+    </div>
+    <div class="atelier-card">
+      <div class="ico">💾</div>
+      <h3>Backups Restic</h3>
+      <p>Sauvegardes incrémentales chiffrées. Snapshots quotidiens des DB et fichiers critiques.</p>
+      <a class="btn btn-ghost" style="width:auto" href="https://46-225-215-148.sslip.io/backups/" target="_blank" rel="noopener">Voir backups →</a>
+    </div>
+    <div class="atelier-card">
+      <div class="ico">📨</div>
+      <h3>Notifications Telegram</h3>
+      <p>Bot Atelier · canal Philippe pour alertes prod + retours missions Claude Code.</p>
+      <a class="btn btn-ghost" style="width:auto" href="https://t.me/ocre_atelier_bot" target="_blank" rel="noopener">Ouvrir Telegram →</a>
+    </div>
+    <div class="atelier-card">
+      <div class="ico">🐙</div>
+      <h3>Repo GitHub</h3>
+      <p>Code source ocre-immo · commits récents · CI status.</p>
+      <a class="btn btn-ghost" style="width:auto" href="https://github.com/philippeciftci-bit/ocre-immo" target="_blank" rel="noopener">Ouvrir GitHub →</a>
+    </div>
+    <div class="atelier-card">
+      <div class="ico">🎨</div>
+      <h3>Maquettes</h3>
+      <p>Mockups statiques en cours de validation avant code.</p>
+      <a class="btn btn-ghost" style="width:auto" href="https://46-225-215-148.sslip.io/" target="_blank" rel="noopener">Ouvrir →</a>
+    </div>
+  </div>`;
+}
+
+// ====== SECTION 8 — DANGER ======
+async function renderDanger() {
+  $('#content-body').innerHTML = `<div class="danger-zone">
+    <h2>⚠️ Reset Total</h2>
+    <p class="warn"><b>IRRÉVERSIBLE.</b> Supprime TOUT : workspaces (DROP DATABASE), users legacy, auth_users (sauf philippe.ciftci@gmail.com), magic_tokens, sessions, modules, audit. Le workspace de test est recréé.</p>
+    <div class="danger-actions">
+      <button class="btn btn-danger-solid" onclick="confirmResetTotal()">Reset Total</button>
+    </div>
+  </div>
+  <div class="danger-zone" style="margin-top:14px">
+    <h2>⚠️ Reset partiel</h2>
+    <p class="warn">Vide uniquement les <b>magic_tokens</b>, <b>sessions</b> et <b>refresh_tokens</b>. Les comptes auth_users sont préservés. Utile pour "nettoyer la maison" sans tout perdre.</p>
+    <div class="danger-actions">
+      <button class="btn btn-danger" onclick="confirmResetPartial()">Reset partiel (tokens + sessions)</button>
+    </div>
+  </div>`;
+}
+
+function confirmResetTotal() {
+  openTypeToConfirm({
+    title: '🚨 Reset TOTAL — Tape DELETE pour confirmer',
+    body: 'Tu vas supprimer TOUTES les données sauf ton compte super-admin. Cette action est <b>irréversible</b> et déclenche un backup automatique.',
+    expected: 'DELETE',
+    confirmLabel: 'Lancer Reset TOTAL',
+    onConfirm: async () => {
+      const r = maybeAuthError(await api('/api/superadmin_cleanup.php', { method: 'POST', body: { action: 'reset_total', confirmation: 'RESET TOTAL' } }));
+      if (!r.ok) throw new Error(r.error || 'erreur');
+      alert('Reset TOTAL terminé. Rapport :\n' + JSON.stringify(r.report, null, 2));
+      render('overview');
+    }
+  });
+}
+function confirmResetPartial() {
+  openTypeToConfirm({
+    title: 'Reset partiel — Tape DELETE pour confirmer',
+    body: 'Vide les magic_tokens, sessions et refresh_tokens. Les comptes auth_users restent intacts.',
+    expected: 'DELETE',
+    confirmLabel: 'Reset partiel',
+    onConfirm: async () => {
+      const r = maybeAuthError(await api('/api/superadmin_cleanup.php', { method: 'POST', body: { action: 'reset_partial', confirmation: 'RESET PARTIAL' } }));
+      if (!r.ok) throw new Error(r.error || 'erreur');
+      alert('Reset partiel OK : ' + (r.report.truncated || []).join(', '));
+      render('overview');
+    }
+  });
+}
+
+// ====== Modals ======
+function openConfirm({ title, body, confirmLabel = 'Confirmer', danger = false, onConfirm }) {
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal-backdrop">
+    <div class="modal">
+      <h2>${esc(title)}</h2>
+      <p>${body}</p>
+      ${danger ? '<div class="modal-warn">Action irréversible.</div>' : ''}
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modal-cancel">Annuler</button>
+        <button class="btn ${danger ? 'btn-danger-solid' : 'btn-primary'}" id="modal-confirm" style="width:auto">${esc(confirmLabel)}</button>
+      </div>
+    </div>
+  </div>`;
+  $('#modal-cancel').onclick = () => { root.innerHTML = ''; };
+  $('#modal-confirm').onclick = async () => {
+    const btn = $('#modal-confirm'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> …';
+    try { await onConfirm(); root.innerHTML = ''; }
+    catch (e) { btn.disabled = false; btn.textContent = confirmLabel; alert('Erreur : ' + (e.message || e)); }
   };
 }
 
-// M/2026/05/08/30 → 32 — Section Inscriptions en attente, refonte compacte.
-// Format date "DD/MM HH:MM" avec tooltip ISO. Téléphone en E.164. Bordure gauche colorée.
-function fmtDateCompact(iso) {
-  if (!iso) return '—';
-  const s = String(iso).replace('T', ' ');
-  // Extract YYYY-MM-DD HH:MM from "2026-05-08 08:20:00..."
-  const m = s.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
-  if (!m) return s.slice(0, 16);
-  return `${m[3]}/${m[2]} ${m[4]}:${m[5]}`;
+function openTypeToConfirm({ title, body, expected, confirmLabel = 'Confirmer', onConfirm }) {
+  const root = $('#modal-root');
+  root.innerHTML = `<div class="modal-backdrop">
+    <div class="modal">
+      <h2>${esc(title)}</h2>
+      <p>${body}</p>
+      <div class="modal-warn">Tape <b>${esc(expected)}</b> pour autoriser cette action.</div>
+      <input type="text" id="modal-input" placeholder="${esc(expected)}" autocomplete="off" autocapitalize="off">
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modal-cancel">Annuler</button>
+        <button class="btn btn-danger-solid" id="modal-confirm" style="width:auto" disabled>${esc(confirmLabel)}</button>
+      </div>
+    </div>
+  </div>`;
+  const inp = $('#modal-input'); const btn = $('#modal-confirm');
+  inp.addEventListener('input', () => { btn.disabled = inp.value !== expected; });
+  setTimeout(() => inp.focus(), 50);
+  $('#modal-cancel').onclick = () => { root.innerHTML = ''; };
+  btn.onclick = async () => {
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span> …';
+    try { await onConfirm(); root.innerHTML = ''; }
+    catch (e) { btn.disabled = false; btn.textContent = confirmLabel; alert('Erreur : ' + (e.message || e)); }
+  };
 }
-function fmtPhoneE164(raw) {
-  if (!raw) return '—';
-  const cleaned = String(raw).replace(/[\s\-\.\(\)]/g, '');
-  if (/^\+\d{8,15}$/.test(cleaned)) return cleaned;
-  // FR national 0X → +33X
-  if (/^0[1-9]\d{8}$/.test(cleaned)) return '+33' + cleaned.slice(1);
-  return cleaned;
-}
-function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
 
-async function renderPendingTab() {
-  const c = document.getElementById('content');
-  c.innerHTML = '<p style="color:#6B5E4A">Chargement…</p>';
-  const r = await api('/api/superadmin_pending_activations.php?action=list');
-  if (!r.ok) { c.textContent = r.error || 'Erreur'; return; }
-  selection.pending.clear();
-  const head = '<table><thead><tr>'
-    + '<th class="state-cell" style="width:4px;padding:0"></th>'
-    + '<th class="col-checkbox"><input type="checkbox" id="cb-all-pending" onchange="toggleAllSelection(\'pending\', this.checked)"></th>'
-    + '<th>Agent</th>'
-    + '<th>Email</th>'
-    + '<th>Téléphone</th>'
-    + '<th>Inscrit</th>'
-    + '<th style="text-align:center">Tent.</th>'
-    + '<th>Dernière</th>'
-    + '<th>Provider/Statut</th>'
-    + '<th style="text-align:right">Actions</th>'
-    + '</tr></thead><tbody>';
-  const rows = (r.pending || []).map(u => {
-    const stateCls = 'state-' + (u.color || 'green');
-    const name = (u.prenom || u.nom) ? `${u.prenom} ${u.nom}`.trim() : '<span style="color:#A89882">—</span>';
-    const tel = fmtPhoneE164(u.telephone);
-    const created = fmtDateCompact(u.created_at);
-    const last = fmtDateCompact(u.last_attempt_at);
-    const provStatus = u.last_provider || u.last_status
-      ? escHtml((u.last_provider || '—') + ' / ' + (u.last_status || '—'))
-      : '<span style="color:#A89882">—</span>';
-    const escEmail = escHtml(u.email);
-    return `<tr class="${stateCls}" data-uid="${u.id}" data-pending-id="${u.id}">`
-      + `<td class="state-cell"></td>`
-      + `<td class="col-checkbox"><input type="checkbox" onchange="toggleRowSelection('pending', ${u.id}, this.checked)"></td>`
-      + `<td class="col-name" title="${escHtml(name)}">${name}</td>`
-      + `<td class="col-email" title="${escEmail}">${escEmail}</td>`
-      + `<td class="mono-tel">${tel}</td>`
-      + `<td class="col-date" title="${escHtml(u.created_at)}">${created} <span style="color:#A89882;font-size:11px">(${u.age_hours}h)</span></td>`
-      + `<td class="col-attempts">${u.attempts}</td>`
-      + `<td class="col-date" title="${escHtml(u.last_attempt_at || '')}">${last}</td>`
-      + `<td class="col-provider" title="${provStatus.replace(/<[^>]+>/g, '')}">${provStatus}</td>`
-      + `<td class="actions">`
-        + `<button class="icon-btn" onclick="paResend(${u.id})" title="Renvoyer le mail" style="color:var(--color-accent)">🔄</button>`
-        + `<button class="icon-btn" onclick="paActivateManual(${u.id},'${escHtml(u.telephone||'')}')" title="Activer manuellement" style="color:var(--color-success)">✅</button>`
-        + `<button class="icon-btn" onclick="paHistory(${u.id})" title="Voir l'historique" style="color:var(--color-text-muted)">📋</button>`
-        + `<button class="icon-btn" onclick="paAddNote(${u.id})" title="Ajouter une note" style="color:var(--color-text-muted)">📞</button>`
-        + `<button class="icon-btn danger" onclick="paDelete(${u.id})" title="Supprimer le compte" style="color:var(--color-error)">🗑️</button>`
-      + `</td>`
-    + `</tr>`;
-  }).join('');
-  c.innerHTML = '<p style="font-size:12px;color:#6B5E4A;margin-bottom:8px"><b>' + r.count + '</b> inscription(s) en attente d\'activation · 🟢 <1h · 🟠 1-24h · 🔴 >24h ou >3 tentatives.</p>'
-    + head + (rows || '<tr><td colspan="10" style="text-align:center;padding:24px;color:#6B5E4A">Aucune inscription en attente.</td></tr>') + '</tbody></table>'
-    + '<div class="reset-zone"><div class="reset-label">⚠️ Mode test uniquement — désactiver après lancement officiel.</div><button class="reset-btn" onclick="tabReset(\'reset_pending\', \'inscriptions en attente\')">🔥 Reset Inscriptions en attente</button></div>';
-  updateActionBar('pending');
-}
-async function paResend(uid) {
-  if (!confirm('Renvoyer un nouveau lien d\'activation à cet agent ?')) return;
-  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'resend', user_id:uid}});
-  alert((r.ok ? '✅ Mail renvoyé' : '⚠️ Échec') + '\nProvider: ' + (r.provider || '—') + '\nStatut: ' + (r.status || r.error || ''));
-  renderPendingTab();
-}
-async function paActivateManual(uid, tel) {
-  if (!confirm('Activer manuellement cet agent ? Un mot de passe temporaire sera généré.')) return;
-  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'activate_manual', user_id:uid, telephone:tel}});
-  if (r.ok) {
-    prompt('✅ Agent activé. Mot de passe temporaire (à transmettre verbalement ou SMS) :', r.temp_password);
-  } else { alert('⚠️ Échec : ' + (r.error || '')); }
-  renderPendingTab();
-}
-async function paAddNote(uid) {
-  const note = prompt('Note super-admin (sera horodatée) :');
-  if (!note) return;
-  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'add_note', user_id:uid, note:note}});
-  alert(r.ok ? '✅ Note ajoutée' : '⚠️ ' + (r.error||''));
-}
-async function paHistory(uid) {
-  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'history', user_id:uid}});
-  if (!r.ok) { alert('⚠️ ' + (r.error||'')); return; }
-  const txt = (r.log_entries || []).join('\n') || '(aucune entrée de log)';
-  alert('📋 Historique ' + r.email + '\n\n' + txt.slice(0, 4000));
-}
-async function paDelete(uid) {
-  if (!confirm('SUPPRIMER ce compte ? Action irréversible.')) return;
-  const r = await api('/api/superadmin_pending_activations.php', {method:'POST', body:{action:'delete', user_id:uid}});
-  alert(r.ok ? '✅ Supprimé' : '⚠️ ' + (r.error||''));
-  renderPendingTab();
-}
-let searchTimer = null;
-function searchDebounced(v) {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => { clientsState.q = v; clientsState.page = 1; renderClientsTab(); }, 300);
-}
-// M/2026/05/09/22 (M72) — Page activate magic link superadmin : loader invisible.
-//   POST direct au load, redirect immediat si succes. Ecran erreur clair seulement si echec.
-//   Risque prefetch bot Gmail accepte (cooldown magic link permet retry).
-(async () => {
-  const params = new URLSearchParams(location.search);
-  const activateToken = params.get('activate');
-  if (activateToken && /^[a-f0-9]{32,128}$/i.test(activateToken)) {
-    document.body.innerHTML = `
-      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#FCFAF6">
-        <div id="m72-spinner" style="width:32px;height:32px;border:3px solid #E5DCCB;border-top-color:#8B5E3C;border-radius:50%;animation:s 0.8s linear infinite"></div>
-        <div id="m72-error" style="display:none;max-width:340px;width:100%;background:#fff;border-radius:14px;padding:32px 24px;box-shadow:0 4px 30px rgba(139,94,60,0.08);text-align:center">
-          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:700;color:#8B5E3C;font-style:italic;margin-bottom:8px">Lien expiré ou invalide</div>
-          <p style="color:#6B5E4A;font-size:13px;margin-bottom:20px;line-height:1.5">Demandez un nouveau lien d'accès.</p>
-          <a href="/" style="display:block;padding:12px 18px;background:#8B5E3C;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none;font-family:'DM Sans',sans-serif">Demander un nouveau lien</a>
-        </div>
-      </div>`;
-    const style = document.createElement('style'); style.textContent = '@keyframes s{to{transform:rotate(360deg)}}'; document.head.appendChild(style);
-    function showError() {
-      const sp = document.getElementById('m72-spinner'); if (sp) sp.style.display = 'none';
-      const er = document.getElementById('m72-error'); if (er) er.style.display = 'block';
-    }
-    try {
-      const r = await fetch('/api/superadmin_activate.php', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({token: activateToken})});
-      const j = await r.json();
-      if (r.ok && j.ok) {
-        const nextParam = params.get('next');
-        const target = (nextParam && /^https:\/\/[a-z0-9-]+\.ocre\.immo\//.test(nextParam)) ? nextParam : '/';
-        location.replace(target);
-      } else {
-        showError();
-      }
-    } catch (_) {
-      showError();
-    }
-    return; // Stop boot, page ne s'affiche jamais en mode succes
-  }
-  // 2) Check cookie session : si valide ET role=super_admin -> renderConsole.
-  try {
-    const r = await fetch('/api/superadmin_session_check.php', {credentials:'include', cache:'no-store'});
-    const j = await r.json();
-    if (j && j.ok && (j.user || {}).role === 'super_admin') {
-      // Bridge legacy : cree session legacy pour les endpoints qui veulent X-Session-Token.
-      try {
-        const r2 = await fetch('/api/session_check.php', {credentials:'include', cache:'no-store'});
-        const j2 = await r2.json();
-        if (j2 && j2.ok && j2.session_token) localStorage.setItem(TOKEN_KEY, j2.session_token);
-      } catch (_) {}
-      // M/2026/05/09/4 — Handler ?next= : redirect vers next si valide *.ocre.immo (whitelist stricte).
-      const nextParam = params.get('next');
-      if (nextParam && /^https:\/\/[a-z0-9-]+\.ocre\.immo\//.test(nextParam)) {
-        window.location.replace(nextParam);
-        return;
-      }
-      renderConsole();
-    }
-  } catch (_) {}
-})();
-
-// M/2026/05/07/98.1 — Command Palette Cmd+K (Stripe/Linear/Notion pattern)
-let cmdkActiveIdx = 0;
-let cmdkResults = [];
-let cmdkSearchTimer = null;
-function openCmdK() {
-  if (document.getElementById('cmdk-overlay')) return;
-  const overlay = document.createElement('div');
-  overlay.id = 'cmdk-overlay';
-  overlay.className = 'cmdk-overlay';
-  overlay.innerHTML =
-    '<div class="cmdk-modal" onclick="event.stopPropagation()">' +
-      '<input id="cmdk-input" class="cmdk-input" type="text" placeholder="Rechercher dans clients, biens, users, workspaces, audit... (min 2 caractères)" autofocus>' +
-      '<div id="cmdk-results" class="cmdk-results"></div>' +
-    '</div>';
-  overlay.onclick = closeCmdK;
-  document.body.appendChild(overlay);
-  setTimeout(() => document.getElementById('cmdk-input').focus(), 50);
-  document.getElementById('cmdk-input').addEventListener('input', e => {
-    clearTimeout(cmdkSearchTimer);
-    cmdkSearchTimer = setTimeout(() => doCmdKSearch(e.target.value), 200);
-  });
-  document.getElementById('cmdk-input').addEventListener('keydown', cmdkKeyDown);
-}
-function closeCmdK() { const o = document.getElementById('cmdk-overlay'); if (o) o.remove(); cmdkResults = []; cmdkActiveIdx = 0; }
-function cmdkKeyDown(e) {
-  if (e.key === 'Escape') { e.preventDefault(); closeCmdK(); return; }
-  if (e.key === 'ArrowDown') { e.preventDefault(); cmdkActiveIdx = Math.min(cmdkResults.length - 1, cmdkActiveIdx + 1); renderCmdKResults(); }
-  else if (e.key === 'ArrowUp') { e.preventDefault(); cmdkActiveIdx = Math.max(0, cmdkActiveIdx - 1); renderCmdKResults(); }
-  else if (e.key === 'Enter') { e.preventDefault(); if (cmdkResults[cmdkActiveIdx]) cmdkSelect(cmdkResults[cmdkActiveIdx]); }
-}
-async function doCmdKSearch(q) {
-  q = (q || '').trim();
-  const c = document.getElementById('cmdk-results');
-  if (q.length < 2) { c.innerHTML = '<div class="cmdk-empty">Tape au moins 2 caractères pour chercher</div>'; cmdkResults = []; return; }
-  c.innerHTML = '<div class="cmdk-empty">Recherche…</div>';
-  try {
-    const r = await api('/api/superadmin_search.php?q=' + encodeURIComponent(q));
-    cmdkResults = r.results || [];
-    cmdkActiveIdx = 0;
-    renderCmdKResults();
-  } catch (_) { c.innerHTML = '<div class="cmdk-empty">Erreur réseau</div>'; }
-}
-function renderCmdKResults() {
-  const c = document.getElementById('cmdk-results');
-  if (!cmdkResults.length) { c.innerHTML = '<div class="cmdk-empty">Aucun résultat</div>'; return; }
-  // Group by category
-  const groups = {};
-  cmdkResults.forEach((r, i) => {
-    if (!groups[r.category]) groups[r.category] = [];
-    groups[r.category].push({...r, _idx: i});
-  });
-  let html = '';
-  Object.entries(groups).forEach(([cat, items]) => {
-    html += `<div class="cmdk-cat">${cat}</div>`;
-    items.forEach(item => {
-      const act = item._idx === cmdkActiveIdx ? ' active' : '';
-      html += `<div class="cmdk-row${act}" data-idx="${item._idx}" onclick="cmdkSelect(cmdkResults[${item._idx}])"><span class="lbl">${escapeHtml(item.label)}</span><span class="sub">${escapeHtml(item.sublabel || '')}</span></div>`;
-    });
-  });
-  c.innerHTML = html;
-}
-function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function cmdkSelect(item) {
-  closeCmdK();
-  // Pour M98.1, juste alert. Future M98 brancherait sur les bons onglets.
-  const url = item.url || '/';
-  // Si url commence par /?tab=X, basculer sur l'onglet
-  const m = (url + '').match(/tab=([a-z]+)/);
-  if (m && document.querySelector('[data-t="' + m[1] + '"]')) {
-    document.querySelector('[data-t="' + m[1] + '"]').click();
-  } else {
-    alert('Ressource sélectionnée : ' + item.label + '\n(navigation détaillée à venir M98.x)');
-  }
-}
-window.addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && localStorage.getItem(TOKEN_KEY)) {
-    e.preventDefault();
-    openCmdK();
-  }
-});
+window.confirmDeleteUser = confirmDeleteUser;
+window.revokeSession = revokeSession;
+window.revokeMagic = revokeMagic;
+window.setModuleState = setModuleState;
+window.confirmResetTotal = confirmResetTotal;
+window.confirmResetPartial = confirmResetPartial;
+window.render = render;
 </script>
 </body>
 </html>
