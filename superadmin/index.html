@@ -650,11 +650,16 @@ async function loadTab(t) {
           + card('super_admin_actions_24h', 'Actions super-admin', 'dernières 24h', 'ocre', 'audit', 'Voir l\'audit récent')
         + '</div>'
       + '</section>'
+      + '<section class="sa-section" id="sa-auth-users-section">'
+        + '<div class="sa-section-title">Utilisateurs en DB (auth V4 magic-link) <button class="link-btn" style="margin-left:8px;background:none;border:none;color:var(--color-accent);font-size:11px;cursor:pointer;text-decoration:underline" onclick="loadAuthUsers()">↻ Rafraîchir</button></div>'
+        + '<div id="sa-auth-users-content" class="muted" style="font-size:12px;color:var(--color-text-muted);padding:8px">Chargement…</div>'
+      + '</section>'
       + '<section class="sa-tech-zone">'
         + '<div class="sa-tech-label">Zone technique (mode test)</div>'
         + '<div class="sa-tech-warn">⚠️ Outils destructifs réservés à la phase de test. Désactiver après lancement officiel.</div>'
         + '<button class="reset-total-btn" onclick="resetTotal()">🔥 Reset TOTAL provisoire</button>'
       + '</section>';
+    setTimeout(loadAuthUsers, 50);
   } else if (t === 'workspaces') {
     const r = await api('/api/superadmin_v20.php?action=workspaces');
     selection.workspaces.clear();
@@ -1466,6 +1471,63 @@ function _saModal(html) {
   return ov;
 }
 function _closeSaModal(ov) { if (ov && ov.parentNode) ov.parentNode.removeChild(ov); }
+
+// M/2026/05/11/24 — visu live des auth_users (DB V4 magic-link).
+async function loadAuthUsers() {
+  const c = document.getElementById('sa-auth-users-content');
+  if (!c) return;
+  c.innerHTML = '<span class="muted">Chargement…</span>';
+  try {
+    const r = await api('/api/superadmin_auth_users.php?action=list');
+    if (!r.ok) throw new Error(r.error || 'erreur');
+    const ct = r.counts || {};
+    const summary = `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:var(--color-text-brown)">`
+      + `<span><b>${ct.auth_users}</b> users</span>`
+      + `<span><b>${ct.auth_sessions_active}</b> sessions actives</span>`
+      + `<span><b>${ct.auth_magic_tokens}</b> magic links</span>`
+      + `<span><b>${ct.auth_user_modules}</b> modules activés</span>`
+      + `</div>`;
+    if (r.users.length === 0) { c.innerHTML = summary + '<div class="muted" style="padding:12px;text-align:center">Aucun utilisateur en DB.</div>'; return; }
+    const rows = r.users.map(u => {
+      const isAdmin = (u.email === 'philippe.ciftci@gmail.com') || (parseInt(u.is_super_admin, 10) === 1);
+      const adminBadge = isAdmin ? ' <span style="background:#ede7f6;color:#5e35b1;font-size:10px;padding:2px 6px;border-radius:5px;font-weight:600">SUPER-ADMIN</span>' : '';
+      const delBtn = isAdmin
+        ? '<span class="muted" style="font-size:11px">protégé</span>'
+        : `<button onclick="deleteAuthUser(${u.id}, ${JSON.stringify(u.email).replace(/"/g, '&quot;')})" style="padding:4px 10px;background:#fff;color:#c73e3e;border:1px solid #f0c8c8;border-radius:6px;font-size:11px;cursor:pointer">Supprimer</button>`;
+      return `<tr>
+        <td style="padding:6px 8px;font-size:12px">${u.id}</td>
+        <td style="padding:6px 8px;font-size:12px"><b>${u.email}</b>${adminBadge}</td>
+        <td style="padding:6px 8px;font-size:12px">${(u.first_name || '') + ' ' + (u.last_name || '')}</td>
+        <td style="padding:6px 8px;font-size:11px;color:var(--color-text-muted)">${u.status}</td>
+        <td style="padding:6px 8px;font-size:11px;text-align:center">${u.active_sessions}</td>
+        <td style="padding:6px 8px;font-size:11px;color:var(--color-text-muted)">${(u.last_login_at || '').slice(0, 16).replace('T',' ') || '—'}</td>
+        <td style="padding:6px 8px;text-align:right">${delBtn}</td>
+      </tr>`;
+    }).join('');
+    c.innerHTML = summary + `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:var(--color-bg-tint-soft);border-bottom:1px solid var(--color-border-subtle)">
+        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">ID</th>
+        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Email</th>
+        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Nom</th>
+        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Statut</th>
+        <th style="padding:8px;text-align:center;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Sessions</th>
+        <th style="padding:8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Dernière connexion</th>
+        <th style="padding:8px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--color-text-muted)">Action</th>
+      </tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  } catch (e) {
+    c.innerHTML = '<div style="color:#c73e3e;font-size:12px;padding:8px">Erreur : ' + (e.message || e) + '</div>';
+  }
+}
+async function deleteAuthUser(userId, email) {
+  if (!requireWriteMode()) return;
+  if (!confirm('Supprimer définitivement ' + email + ' (id=' + userId + ') ?\n\nCascade : magic_tokens + sessions + modules + user.')) return;
+  try {
+    const r = await api('/api/superadmin_auth_users.php?action=delete', { method: 'POST', body: JSON.stringify({ user_id: userId }) });
+    if (!r.ok) { alert('Erreur : ' + (r.error || 'inconnue')); return; }
+    loadAuthUsers();
+  } catch (e) { alert('Erreur réseau : ' + e.message); }
+}
 
 async function resetTotal() {
   if (!requireWriteMode()) return;

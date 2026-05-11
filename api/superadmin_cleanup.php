@@ -309,6 +309,27 @@ if ($action === 'reset_total') {
         }
     }
 
+    // 9. M/2026/05/11/24 — WIPE tables auth_* (DB V4 magic-link).
+    //    Bug racine : reset_total nettoyait users legacy mais PAS auth_users → user
+    //    reconnu sur auth.ocre.immo après reset. Préserve uniquement super-admin Philippe (par email).
+    $report['auth_users_deleted'] = 0;
+    $report['auth_tables_truncated'] = [];
+    try {
+        $del = $meta->prepare("DELETE FROM auth_users WHERE email != ?");
+        $del->execute(['philippe.ciftci@gmail.com']);
+        $report['auth_users_deleted'] = $del->rowCount();
+    } catch (Throwable $e) {
+        $report['errors'][] = 'auth_users err=' . $e->getMessage();
+    }
+    foreach (['auth_magic_tokens', 'auth_sessions', 'auth_user_modules', 'auth_refresh_tokens', 'superadmin_audit'] as $tbl) {
+        try {
+            $meta->exec("TRUNCATE TABLE `$tbl`");
+            $report['auth_tables_truncated'][] = $tbl;
+        } catch (Throwable $e) {
+            $report['errors'][] = "auth $tbl err=" . $e->getMessage();
+        }
+    }
+
     _audit_log($LOG, $superAdminId, 'reset_total', $report);
     _audit_telegram('RESET TOTAL', array_merge($report, ['by' => $user['email']]));
     jout(['ok' => true, 'report' => $report]);
