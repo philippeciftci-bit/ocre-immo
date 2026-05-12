@@ -8573,8 +8573,48 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
   const _popItem = (active) => ({display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:5, cursor:'pointer', fontFamily:'inherit', fontSize:'var(--font-size-12)', color: active ? 'var(--color-text-brown)' : 'var(--color-text-primary)', background: active ? 'var(--color-bg-tint-warm)' : 'transparent', minHeight:36, fontWeight: active ? 700 : 500});
   // M/2026/05/09/31 — M80 : élargi pour laisser passer les hints fiscaux pays-spécifiques (droits enreg, IMT, ITP, etc.).
   const _showHint = hint && (warn || /🔒|⚠|mois|cash|crédit|hors compta|récupérables|inclure|droits|notaire|registro|steuer|overdracht|frais|honoraires|encadrement|loyer|conservation/i.test(hint)) && hint !== 'Conversion bidir live';
+
+  // M/2026/05/13/15 — Migration Variant B : fork render selon setting price_display_variant (M/13/8 boot).
+  const _priceVariant = (typeof window !== 'undefined' && window.__ocrePriceVariant === 'B') ? 'B' : 'A';
+  if (_priceVariant === 'B') {
+    const _isMobile = (typeof window !== 'undefined' && window.innerWidth < 600);
+    const _flagSize = _isMobile ? 44 : 56;
+    const _pad = _isMobile ? 42 : 56;
+    const _gap = _isMobile ? 6 : 8;
+    return (
+      <div data-variant="B" style={{marginBottom:'var(--space-2)'}}>
+        <div style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600, marginBottom:'var(--space-1)'}}>
+          {label} {_isCustomRate && <span style={{marginLeft:6, fontSize:'var(--font-size-9)', background:'var(--color-accent)', color:'#fff', padding:'1px 6px', borderRadius:10, fontWeight:700}}>TAUX PERSO</span>}
+        </div>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 0.7fr 1fr', gap: _gap, alignItems:'center'}}>
+          <div style={{position:'relative', padding:'8px '+_pad+'px 8px 10px', background: warn ? '#FEF6F6' : '#fff', border:'1px solid '+(warn ? 'var(--color-error)' : '#D6C7AC'), borderRadius:8, overflow:'hidden'}}>
+            <span aria-hidden="true" style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+            <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2}}>{cur.left}</div>
+            <input type="text" inputMode="numeric" value={fmtNumV5(displayLeft)} onChange={handleLeft} placeholder="0"
+              style={{width:'100%', border:'none', outline:'none', fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', padding:0, background:'transparent', fontVariantNumeric:'tabular-nums'}}/>
+          </div>
+          <div style={{position:'relative', padding:'8px 10px', background:'var(--color-bg-tint-warm)', border:'1px solid #D6C7AC', borderRadius:8, textAlign:'center', cursor:'pointer'}}
+            onClick={(e) => { e.stopPropagation(); setRateEditing(true); setRateDraft(String(rate)); }}>
+            <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginBottom:2}}>1 {cur.left} =</div>
+            <span style={{color: _isCustomRate ? 'var(--color-accent)' : (isManual ? '#C77D2D' : 'var(--color-text-brown)'), fontWeight:700, fontSize:'var(--font-size-13)', fontVariantNumeric:'tabular-nums'}}>
+              {Number(rate).toFixed(rate < 10 ? 4 : 2)}
+            </span>
+            <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginTop:2}}>{cur.right}</div>
+          </div>
+          <div style={{position:'relative', padding:'8px 10px 8px '+_pad+'px', background: warn ? '#FEF6F6' : '#fff', border:'1px solid '+(warn ? 'var(--color-error)' : '#D6C7AC'), borderRadius:8, overflow:'hidden'}}>
+            <span aria-hidden="true" style={{position:'absolute', left:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+            <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2, textAlign:'right'}}>{cur.right}</div>
+            <input type="text" inputMode="numeric" value={fmtNumV5(displayRight)} onChange={handleRight} placeholder="0"
+              style={{width:'100%', border:'none', outline:'none', fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', padding:0, background:'transparent', fontVariantNumeric:'tabular-nums', textAlign:'right'}}/>
+          </div>
+        </div>
+        {_showHint && <div style={{fontSize:'var(--font-size-10)', color: warn ? 'var(--color-error)' : 'var(--color-text-muted)', fontStyle:'italic', marginTop:'var(--space-1)'}}>{hint}</div>}
+      </div>
+    );
+  }
+
   return (
-    <div style={{marginBottom:'var(--space-2)'}}>
+    <div data-variant="A" style={{marginBottom:'var(--space-2)'}}>
       <div style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600, marginBottom:'var(--space-1)'}}>{label}</div>
       <div style={_row}>
         {/* GAUCHE : [input][devise V_A2] */}
