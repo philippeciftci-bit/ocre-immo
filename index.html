@@ -2200,7 +2200,9 @@ function AdresseBlock({value, onChange, showQuartier = true, paysFixe = null, co
     if (p.adresse) nx.adresse = p.adresse;
     if (p.ville) nx.ville = p.ville;
     if (p.code_postal && !userTouchedCpRef.current) nx.cp = p.code_postal;
-    if (p.quartier) nx.quartier = p.quartier;
+    // M/2026/05/12/20 — ecrit toujours quartier (vide si pick.quartier vide), pour clear toute valeur
+    // stale du state (cas fiche existante avec quartier garbage cache pre-M/12/9).
+    nx.quartier = p.quartier || '';
     if (p.pays && !paysFixe) nx.pays = p.pays;
     patch(nx);
   }
@@ -3484,17 +3486,23 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
     }, 300);
   }
 
-  // M/2026/05/12/9 — guard defensif quartier : ne JAMAIS injecter dans Quartier l'adresse / la rue / la ville.
-  // Si l'API renvoie l'adresse complete (cas suburb=road dans certains datasets OSM rural), laisser VIDE.
-  // Pattern Stripe Address Element : never auto-fill garbage data.
+  // M/2026/05/12/9 + M/2026/05/12/20 — guard defensif quartier renforce.
+  // Ne JAMAIS injecter dans Quartier l adresse / la rue / la ville. Empty si match ou heuristique
+  // (commence par num+espace = adresse). Pattern Stripe Address Element : never auto-fill garbage data.
   function cleanQuartier(q, adresseRue, road, ville) {
     const qn = String(q || '').trim();
     if (!qn) return '';
+    // M/2026/05/12/20 — heuristique : commence par chiffre(s)+espace = numero de rue, donc adresse pas quartier.
+    if (/^\d+\s/.test(qn)) return '';
     const norm = s => String(s || '').trim().toLowerCase();
-    if (norm(qn) === norm(adresseRue)) return '';
-    if (norm(qn) === norm(road)) return '';
-    if (norm(qn) === norm(ville)) return '';
-    if (adresseRue && norm(qn).includes(norm(adresseRue))) return '';
+    const qnN = norm(qn);
+    if (qnN === norm(adresseRue)) return '';
+    if (qnN === norm(road)) return '';
+    if (qnN === norm(ville)) return '';
+    if (adresseRue && qnN.includes(norm(adresseRue))) return '';
+    // M/2026/05/12/20 — bidirectionnel : si quartier candidat contient ou est contenu dans road, garbage.
+    if (road && qnN.includes(norm(road))) return '';
+    if (road && norm(road).includes(qnN) && qnN.length > 3) return '';
     return qn;
   }
 

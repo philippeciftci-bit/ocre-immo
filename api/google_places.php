@@ -124,17 +124,30 @@ if ($action === 'details') {
     $get = function ($key, $field = 'long_name') use ($components) {
         return $components[$key][$field] ?? '';
     };
+    $adresseLine = trim(($get('street_number') ? $get('street_number') . ' ' : '') . $get('route'));
+    $route = $get('route');
+    $ville = $get('locality') ?: $get('postal_town') ?: $get('administrative_area_level_2');
+    // M/2026/05/12/9 — sublocality_level_1 prioritaire avant sublocality / neighborhood.
+    $quartierRaw = $get('sublocality_level_1') ?: $get('sublocality') ?: $get('neighborhood') ?: '';
+    // M/2026/05/12/20 — backend-side guard : ne JAMAIS retourner quartier == adresse / route / ville
+    // (defense en profondeur, complete cleanQuartier frontend).
+    $qLow = mb_strtolower(trim($quartierRaw));
+    if ($qLow === '' || $qLow === mb_strtolower($adresseLine) || $qLow === mb_strtolower($route)
+        || $qLow === mb_strtolower($ville) || preg_match('/^\d+\s/', $quartierRaw)) {
+        $quartierClean = '';
+    } else {
+        $quartierClean = $quartierRaw;
+    }
     jsonOk([
         'lat' => $r['geometry']['location']['lat'] ?? null,
         'lng' => $r['geometry']['location']['lng'] ?? null,
         'formatted_address' => $r['formatted_address'] ?? '',
         'street_number' => $get('street_number'),
-        'route' => $get('route'),
-        'adresse' => trim(($get('street_number') ? $get('street_number') . ' ' : '') . $get('route')),
+        'route' => $route,
+        'adresse' => $adresseLine,
         'code_postal' => $get('postal_code'),
-        'ville' => $get('locality') ?: $get('postal_town') ?: $get('administrative_area_level_2'),
-        // M/2026/05/12/9 — sublocality_level_1 prioritaire (vrais quartiers Paris, etc.) avant sublocality / neighborhood.
-        'quartier' => $get('sublocality_level_1') ?: $get('sublocality') ?: $get('neighborhood') ?: '',
+        'ville' => $ville,
+        'quartier' => $quartierClean,
         'pays' => strtoupper($get('country', 'short_name')),
         'pays_name' => $get('country'),
     ]);
