@@ -95,9 +95,13 @@ try {
         . '<h1 style="font-family:Georgia,serif;font-style:italic;font-weight:600;color:#3D2818;margin:0 0 16px;font-size:24px;text-align:center">Ton lien Ocre · Oi ' . htmlspecialchars(ucfirst($targetApp)) . '</h1>'
         . '<p style="color:#3D2818">' . $hello . '</p>'
         . '<p style="color:#6B5642">Voici ton lien magique pour entrer dans Oi ' . htmlspecialchars(ucfirst($targetApp)) . '. Lien valide <strong>' . htmlspecialchars((function($h){if($h>=24 && $h%24===0){$d=intval($h/24);return $d===1?'1 jour':($d.' jours');}return $h===1?'1 heure':($h.' heures');})($ttlHours), ENT_QUOTES, 'UTF-8') . '</strong>, à usage unique.</p>'
-        . '<p style="text-align:center;margin:32px 0">'
-        . '<a href="' . htmlspecialchars($url) . '" style="background:#8B5E3C;color:#fff;text-decoration:none;padding:15px 32px;border-radius:10px;font-weight:600;display:inline-block">Entrer dans Oi ' . htmlspecialchars(ucfirst($targetApp)) . ' →</a>'
-        . '</p>'
+        // M/2026/05/12/32 — CTA rendu en table HTML pattern Stripe/Linear/Notion/Vercel/GitHub.
+        // Gmail iOS/iPad strippe padding+display:inline-block sur <a> simple. Table inline = universel
+        // tous clients mail (Outlook, Gmail web/iOS/Android, Apple Mail, Yahoo, Thunderbird).
+        . '<table cellpadding="0" cellspacing="0" border="0" role="presentation" align="center" style="margin:32px auto;border-collapse:separate;">'
+        . '<tr><td align="center" bgcolor="#8B5E3C" style="background-color:#8B5E3C;border-radius:10px;padding:15px 32px;">'
+        . '<a href="' . htmlspecialchars($url) . '" target="_blank" style="background-color:#8B5E3C;color:#FFFFFF;text-decoration:none;font-family:\'DM Sans\',Helvetica,Arial,sans-serif;font-size:16px;font-weight:600;display:inline-block;letter-spacing:0.3px;line-height:1;">Entrer dans Oi ' . htmlspecialchars(ucfirst($targetApp)) . ' →</a>'
+        . '</td></tr></table>'
         . '<p style="font-size:12.5px;color:#998877">Ou copie ce lien :<br><span style="word-break:break-all;color:#8B5E3C">' . htmlspecialchars($url) . '</span></p>'
         . '<hr style="border:0;border-top:1px solid #E5DAC6;margin:28px 0">'
         . '<p style="font-size:11.5px;color:#998877">Si tu n\'as pas demandé ce lien, ignore cet email — ton compte reste sécurisé.</p>'
