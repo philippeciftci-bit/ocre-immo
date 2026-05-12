@@ -4216,92 +4216,154 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
     if (b < 1024 * 1024) return Math.round(b / 1024) + ' Ko';
     return (b / (1024 * 1024)).toFixed(1) + ' Mo';
   }
+  // M/2026/05/12/26 — Refonte accordeon ferme par defaut + 5 lignes structurees + photos 3 miniatures.
+  // Pattern Apple HIG Disclosure Group + Material Design Expansion Panel.
+  const [expanded, setExpanded] = React.useState(false);
+  const wrapperRef = React.useRef(null);
+  // Auto-close on tap outside, sauf si focus dans un input du bloc (preserve saisie en cours).
+  React.useEffect(() => {
+    if (!expanded) return;
+    function onDocClick(e) {
+      const w = wrapperRef.current;
+      if (!w) return;
+      if (w.contains(e.target)) return;
+      // M/2026/05/12/26 — defere si focus dans input/select du bloc
+      const ae = document.activeElement;
+      if (ae && w.contains(ae) && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/i.test(ae.tagName)) return;
+      setExpanded(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('touchstart', onDocClick);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('touchstart', onDocClick);
+    };
+  }, [expanded]);
+
+  // M/2026/05/12/26 — Liste villes statique par pays (top metropoles, autocomplete simple).
+  const VILLES_PAR_PAYS = {
+    FR: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Le Havre', 'Saint-Etienne', 'Toulon'],
+    MA: ['Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger', 'Agadir', 'Meknès', 'Oujda', 'Kénitra', 'Tétouan'],
+    BE: ['Bruxelles', 'Anvers', 'Gand', 'Charleroi', 'Liège', 'Bruges', 'Namur', 'Mons'],
+    CH: ['Zurich', 'Genève', 'Bâle', 'Lausanne', 'Berne', 'Lugano', 'Lucerne'],
+    ES: ['Madrid', 'Barcelone', 'Valence', 'Séville', 'Saragosse', 'Malaga', 'Bilbao'],
+    IT: ['Rome', 'Milan', 'Naples', 'Turin', 'Florence', 'Venise', 'Bologne', 'Gênes'],
+    DE: ['Berlin', 'Hambourg', 'Munich', 'Cologne', 'Francfort', 'Stuttgart', 'Düsseldorf'],
+    UK: ['Londres', 'Manchester', 'Birmingham', 'Liverpool', 'Edimbourg', 'Glasgow'],
+    US: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphie', 'San Antonio'],
+    PT: ['Lisbonne', 'Porto', 'Coimbra', 'Faro', 'Braga'],
+  };
+  const villesSugg = VILLES_PAR_PAYS[d.identite_pays_delivrance || ''] || [];
+
+  // M/2026/05/12/26 — photos identite limitees a 3 (refonte Ligne 5).
+  const PIECE_PHOTOS_MAX = 3;
+
   return (
-    <div style={{borderLeft:'3px solid var(--color-accent)', paddingLeft:'var(--space-10px)', marginTop:'var(--space-14px)', marginBottom:'var(--space-10px)'}}>
-      <div style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4, marginBottom:'var(--space-2)'}}>Pièce d'identité</div>
-      {/* M/2026/05/12/23 — Date+Pays naissance integres en 1ere ligne (logique metier : infos d'identite). */}
-      <div className="row-pair" style={{marginBottom:'var(--space-6px)'}}>
-        <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1, marginBottom:'var(--space-0)'}}/>
-        <div style={{flex:1, minWidth:0}}>
-          <PaysCompactButton label="Pays de naissance" value={d.pays_naissance} onChange={v => set('pays_naissance', v)}/>
-        </div>
-      </div>
-      {/* M/2026/05/02/7 — M120 livrable C : 3 colonnes PAYS / TYPE / N° (CountryPicker partage). */}
-      <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)', gap:'var(--space-6px)', marginBottom:'var(--space-6px)'}}>
-        <PaysCompactButton label="Pays" value={d.id_country || ''} onChange={v => set('id_country', v)}/>
-        <Select label="Type pièce" value={d.identite_type || ''} onChange={v => set('identite_type', v)} options={V8_TYPES_PIECE} style={{marginBottom:'var(--space-0)'}}/>
-        <Field label="N° du document" value={d.identite_numero || ''} onChange={v => set('identite_numero', v)} style={{marginBottom:'var(--space-0)'}}/>
-      </div>
-      <div className="row-pair">
-        <Field label="Délivré par" value={d.identite_delivre_par || ''} onChange={v => set('identite_delivre_par', v)} style={{flex:1}}/>
-        <DateMaskField label="Date expiration" value={d.identite_date_exp || ''} onChange={v => set('identite_date_exp', v)} style={{flex:1}}/>
-      </div>
-      {/* M/2026/05/02/17 — M128 livrable B : bouton "+ Ajouter" conditionnel.
-          Si 4/4 documents -> texte gris à la place du bouton. */}
-      <div style={{marginTop:'var(--space-6px)'}}>
-        {files.length < M128_MAX_FILES_IDENTITE ? (
-          <button type="button" onClick={() => inputRef.current && inputRef.current.click()}
-            disabled={uploading}
-            style={{padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--color-border-strong)', background:'var(--color-bg-tint-hover)', color:'var(--color-accent)', fontSize:'var(--font-size-xs)', fontWeight:700, cursor: uploading ? 'wait' : 'pointer', fontFamily:'inherit'}}>
-            {uploading ? '⏳ Upload…' : '+ Ajouter un fichier'}
-          </button>
-        ) : (
-          <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', fontStyle:'italic', padding:'4px 0'}}>
-            Maximum {M128_MAX_FILES_IDENTITE} documents (CNI recto/verso, passeport, etc.)
+    <div ref={wrapperRef} style={{borderLeft:'3px solid var(--color-accent)', paddingLeft:'var(--space-10px)', marginTop:'var(--space-14px)', marginBottom:'var(--space-10px)'}}>
+      {/* M/2026/05/12/26 — Header accordeon cliquable (Apple HIG Disclosure Group). */}
+      <button type="button"
+        onClick={() => setExpanded(e => !e)}
+        aria-expanded={expanded}
+        aria-controls="piece-identite-body"
+        style={{display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'4px 0', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', outline:'none'}}>
+        <span style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4}}>📄 Pièce d'identité</span>
+        <span aria-hidden="true" style={{color:'var(--color-accent)', fontSize:'var(--font-size-13)', transition:'transform 200ms ease', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', lineHeight:1}}>▼</span>
+      </button>
+      {expanded && (
+        <div id="piece-identite-body" style={{overflow:'hidden', animation:'slideDownPiece 200ms ease-out'}}>
+          <style>{`
+            @keyframes slideDownPiece {
+              from { opacity: 0; transform: translateY(-8px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
+          {/* Ligne 1 — Date+Pays naissance (M/12/23) */}
+          <div className="row-pair" style={{marginTop:'var(--space-2)', marginBottom:'var(--space-6px)'}}>
+            <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1, marginBottom:'var(--space-0)'}}/>
+            <div style={{flex:1, minWidth:0}}>
+              <PaysCompactButton label="Pays de naissance" value={d.pays_naissance} onChange={v => set('pays_naissance', v)}/>
+            </div>
           </div>
-        )}
-        {/* M/2026/05/02/16 — M127 hotfix iOS : capture="environment" RETIRÉ pour sheet standard. */}
-        <input ref={inputRef} type="file" multiple accept="image/*,application/pdf"
-          onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} style={{display:'none'}}/>
-      </div>
-      {/* M/2026/05/02/17 — M128 livrable A : grille compacte 4 carrés max
-          au lieu de la liste verticale. Carrés 80x80 (1:1 responsive), thumbnail
-          image cover, icône PDF centrée, ✕ absolute top-right, nom dessous tronqué. */}
-      {files.length > 0 && (
-        <div style={{marginTop:'var(--space-2)', display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'var(--space-2)'}}>
-          {files.map((f, i) => {
-            const img = isImage(f);
-            const pdf = isPdf(f);
-            const imgIdx = img ? imageFiles.indexOf(f) : -1;
-            return (
-              <div key={i} style={{position:'relative', display:'flex', flexDirection:'column', gap:'var(--space-1)', minWidth:0}}>
-                <div style={{position:'relative', width:'100%', aspectRatio:'1 / 1', borderRadius:8, overflow:'hidden', background: 'var(--color-bg-page)', border:'1px solid var(--color-border-cream)'}}>
-                  {img ? (
-                    <img src={f.url || '#'} alt={f.name}
-                      onClick={() => imgIdx >= 0 && setLightboxOpenIdx(imgIdx)}
-                      style={{width:'100%', height:'100%', objectFit:'cover', cursor:'pointer', display:'block'}}
-                      onError={e => { e.target.style.display = 'none'; }}/>
-                  ) : pdf ? (
-                    <a href={f.url || '#'} target="_blank" rel="noopener"
-                      style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textDecoration:'none', color:'var(--color-accent)'}}>
-                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <text x="7.5" y="17" fontSize="6" fontWeight="700" fill="currentColor" stroke="none" fontFamily="Arial">PDF</text>
-                      </svg>
-                    </a>
-                  ) : (
-                    <a href={f.url || '#'} target="_blank" rel="noopener"
-                      style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textDecoration:'none', color:'var(--color-text-muted)', fontSize:'var(--font-size-11)', fontWeight:700}}>
-                      DOC
-                    </a>
-                  )}
-                  <button type="button" onClick={() => removeFile(i)} title="Retirer"
-                    style={{position:'absolute', top:4, right:4, width:22, height:22, borderRadius:11, border:'1px solid var(--color-border-subtle)', background:'rgba(255,255,255,0.95)', color:'var(--color-text-muted)', cursor:'pointer', fontSize:'var(--font-size-13)', padding:'var(--space-0)', lineHeight:'18px', boxShadow:'0 1px 3px rgba(0,0,0,0.12)'}}>×</button>
-                </div>
-                <div title={f.name} style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'center'}}>
-                  {truncateName(f.name, 16)}
-                </div>
-              </div>
-            );
-          })}
+          {/* Ligne 2 — Type pièce + N° du document */}
+          <div className="row-pair" style={{marginBottom:'var(--space-6px)'}}>
+            <Select label="Type pièce" value={d.identite_type || ''} onChange={v => set('identite_type', v)} options={V8_TYPES_PIECE} style={{flex:1, marginBottom:'var(--space-0)'}}/>
+            <Field label="N° du document" value={d.identite_numero || ''} onChange={v => set('identite_numero', v)} style={{flex:1, marginBottom:'var(--space-0)'}}/>
+          </div>
+          {/* Ligne 3 — Délivré le (date) + Date expiration. M/12/26 : remplace ancien champ texte 'Délivré par'. */}
+          <div className="row-pair" style={{marginBottom:'var(--space-6px)'}}>
+            <DateMaskField label="Délivré le" value={d.identite_delivre_le || ''} onChange={v => set('identite_delivre_le', v)} style={{flex:1, marginBottom:'var(--space-0)'}}/>
+            <DateMaskField label="Date expiration" value={d.identite_date_exp || ''} onChange={v => set('identite_date_exp', v)} style={{flex:1, marginBottom:'var(--space-0)'}}/>
+          </div>
+          {/* Ligne 4 — Pays + Ville délivrance (NOUVEAU). Ville = datalist HTML5 = autocomplete native. */}
+          <div className="row-pair" style={{marginBottom:'var(--space-2)'}}>
+            <div style={{flex:1, minWidth:0}}>
+              <PaysCompactButton label="Pays de délivrance" value={d.identite_pays_delivrance || ''} onChange={v => set('identite_pays_delivrance', v)}/>
+            </div>
+            <div style={{flex:1, minWidth:0}}>
+              <Field label="Ville de délivrance" value={d.identite_ville_delivrance || ''} onChange={v => set('identite_ville_delivrance', v)}
+                placeholder="Ex. Paris" list="ville-delivrance-suggestions" style={{marginBottom:'var(--space-0)'}}/>
+              {villesSugg.length > 0 && (
+                <datalist id="ville-delivrance-suggestions">
+                  {villesSugg.map(v => <option key={v} value={v}/>)}
+                </datalist>
+              )}
+            </div>
+          </div>
+          {/* Ligne 5 — Photos 3 miniatures max (refonte M/12/26). */}
+          <div style={{marginTop:'var(--space-2)'}}>
+            <div style={{fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-1)'}}>Photos pièce</div>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'var(--space-2)'}}>
+              {/* Slots remplis */}
+              {files.slice(0, PIECE_PHOTOS_MAX).map((f, i) => {
+                const img = isImage(f);
+                const pdf = isPdf(f);
+                const imgIdx = img ? imageFiles.indexOf(f) : -1;
+                return (
+                  <div key={i} style={{position:'relative', width:'100%', aspectRatio:'1 / 1', borderRadius:8, overflow:'hidden', background:'var(--color-bg-page)', border:'1px solid var(--color-border-cream)'}}>
+                    {img ? (
+                      <img src={f.url || '#'} alt={f.name || 'photo'}
+                        onClick={() => imgIdx >= 0 && setLightboxOpenIdx(imgIdx)}
+                        style={{width:'100%', height:'100%', objectFit:'cover', cursor:'pointer', display:'block'}}
+                        onError={e => { e.target.style.display = 'none'; }}/>
+                    ) : pdf ? (
+                      <a href={f.url || '#'} target="_blank" rel="noopener"
+                        style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', textDecoration:'none', color:'var(--color-accent)'}}>
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                      </a>
+                    ) : (
+                      <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--color-text-muted)', fontSize:'var(--font-size-11)', fontWeight:700}}>DOC</div>
+                    )}
+                    <button type="button" onClick={() => removeFile(i)} title="Retirer"
+                      style={{position:'absolute', top:3, right:3, width:20, height:20, borderRadius:10, border:'1px solid var(--color-border-subtle)', background:'rgba(255,255,255,0.95)', color:'var(--color-text-muted)', cursor:'pointer', fontSize:'var(--font-size-11)', padding:'var(--space-0)', lineHeight:'17px', boxShadow:'0 1px 3px rgba(0,0,0,0.12)'}}>×</button>
+                  </div>
+                );
+              })}
+              {/* Slot ajout (+) si moins de 3 photos */}
+              {files.length < PIECE_PHOTOS_MAX && (
+                <button type="button" onClick={() => inputRef.current && inputRef.current.click()}
+                  disabled={uploading}
+                  aria-label="Ajouter une photo"
+                  style={{width:'100%', aspectRatio:'1 / 1', borderRadius:8, border:'1.5px dashed var(--color-border-strong)', background:'var(--color-bg-tint-hover)', color:'var(--color-accent)', cursor: uploading ? 'wait' : 'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'var(--space-1)', fontFamily:'inherit', padding:'var(--space-2)'}}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  <span style={{fontSize:'var(--font-size-10)', fontWeight:600}}>{uploading ? 'Upload…' : 'Ajouter'}</span>
+                </button>
+              )}
+            </div>
+            <input ref={inputRef} type="file" accept="image/*,application/pdf"
+              onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} style={{display:'none'}}/>
+          </div>
+          {/* Lightbox photos identite */}
+          {lightboxOpenIdx >= 0 && imageFiles.length > 0 && (
+            <PhotoLightbox photos={imageFiles.map(f => f.url).filter(Boolean)}
+              startIndex={lightboxOpenIdx}
+              onClose={() => setLightboxOpenIdx(-1)}/>
+          )}
         </div>
-      )}
-      {/* M/2026/04/30/1 — Lightbox photos identite (reuse PhotoLightbox M/46). */}
-      {lightboxOpenIdx >= 0 && imageFiles.length > 0 && (
-        <PhotoLightbox photos={imageFiles.map(f => f.url).filter(Boolean)}
-          startIndex={lightboxOpenIdx}
-          onClose={() => setLightboxOpenIdx(-1)}/>
       )}
     </div>
   );
