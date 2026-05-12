@@ -240,10 +240,37 @@ switch ($action) {
         $_purgeRes = purgeUnreferenced($dossier_id);
         if (!empty($_purgeRes['purged'])) error_log('upload pre-check auto-purge dossier=' . $dossier_id . ' removed=' . count($_purgeRes['purged']));
         $existing = listPhotos($dossier_id);
-        // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : limit lit getMaxPhotos() (default 30, reglable admin).
-        $_limit = getMaxPhotos();
-        if (count($existing) >= $_limit) {
-            jsonError('Limite atteinte (count_fs=' . count($existing) . ', limit=' . $_limit . ')', 409);
+
+        // M/2026/05/12/38 — Compteurs SEPARES par categorie : photos bien (limite 30) vs piece identite (limite 3).
+        // Detection categorie via document_type POST + prefix nom de fichier (doc-identite-* / doc-*).
+        $_docTypeIn = trim((string)($_POST['document_type'] ?? ''));
+        $_isIdentite = ($_docTypeIn === 'identite');
+        $_isPhotosBien = ($_docTypeIn === '');
+        $_countIdentite = 0;
+        $_countBien = 0;
+        $_countAutreDoc = 0;
+        foreach ($existing as $p) {
+            $n = (string)($p['name'] ?? '');
+            if (strpos($n, 'doc-identite-') === 0) { $_countIdentite++; }
+            elseif (strpos($n, 'doc-') === 0) { $_countAutreDoc++; }
+            else { $_countBien++; }
+        }
+        if ($_isIdentite) {
+            $_limitIdentite = 3;
+            if ($_countIdentite >= $_limitIdentite) {
+                jsonError("Limite Photos piece identite atteinte ({$_countIdentite}/{$_limitIdentite})", 409);
+            }
+        } elseif ($_isPhotosBien) {
+            $_limitBien = getMaxPhotos();
+            if ($_countBien >= $_limitBien) {
+                jsonError("Limite Photos du bien atteinte ({$_countBien}/{$_limitBien})", 409);
+            }
+        } else {
+            // Autres categories (Section III docs) : conserve cap global existant pour non-regression.
+            $_limit = getMaxPhotos();
+            if (count($existing) >= $_limit) {
+                jsonError('Limite atteinte (count_fs=' . count($existing) . ', limit=' . $_limit . ')', 409);
+            }
         }
 
         // V18.39 — quotas globaux : 500 Mo total photos par user (100/dossier déjà couvert
