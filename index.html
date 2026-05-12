@@ -13822,9 +13822,22 @@ function HelpPage({onBack}) {
   const [openedCat, setOpenedCat] = React.useState(null);
   const [opened, setOpened] = React.useState({});
   // M/12/55 #6 — feedback inline par article (persisté localStorage).
+  // M/2026/05/13/12 — Aide FAQ v2 : feedback POST DB + fallback localStorage si offline.
   const [feedback, setFeedback] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('ocre_help_feedback') || '{}'); } catch (_) { return {}; }
   });
+  // M/13/12 — Top articles populaires data-driven.
+  const [topArticles, setTopArticles] = React.useState(null);
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/help_feedback.php?action=top&limit=3').then(r => r.json());
+        if (r && r.ok) setTopArticles(r.top || []);
+      } catch (_) { setTopArticles([]); }
+    })();
+  }, []);
+  // M/13/12 — Modale support state.
+  const [supportOpen, setSupportOpen] = React.useState(false);
   // M/12/55 #8 — detect PWA push subscription pour conditionner le bandeau.
   const [pwaPushActive, setPwaPushActive] = React.useState(false);
   React.useEffect(() => {
@@ -13842,14 +13855,14 @@ function HelpPage({onBack}) {
   // M/12/55 #3 + #4 — 5 catégories (Support fusionne en CTA bas), contenu enrichi.
   const FAQ = [
     { cat:'demarrer', icon:'🚀', label:'Démarrer rapidement', items:[
-      { q:'Comment créer mon premier dossier ?', a:"Tap sur le bouton + en bas à droite de la liste de dossiers. Choisis le profil client (Acheteur / Vendeur / Bailleur / Locataire / Investisseur / Marchand de biens / Promoteur). Remplis les sections progressivement, l'auto-save sécurise tout en continu — pas besoin de cliquer Enregistrer." },
+      { q:'Comment créer mon premier dossier ?', a:"Tap sur le bouton + en bas à droite de la liste de dossiers. Choisis le profil client (Acheteur / Vendeur / Bailleur / Locataire / Investisseur / Marchand de biens / Promoteur). Remplis les sections progressivement, l'auto-save sécurise tout en continu — pas besoin de cliquer Enregistrer.", videoUrl: '/static/help-videos/demo-placeholder.mp4' },
       { q:'Comment compléter mon profil agent ?', a:"Réglages → Profil pour modifier ton nom, téléphone, photo. L'email est en lecture seule et nécessite un contact support pour modification. Une fois rempli, ton profil public devient accessible aux confrères via ton lien partagé." },
       { q:'Comment installer l\'app sur mon iPhone ?', a:"Ouvre app.ocre.immo dans Safari iOS, tap sur Partager (icône carré flèche vers le haut) puis 'Sur l\'écran d\'accueil'. L\'app s\'ouvre désormais en plein écran comme une app native, et tu peux recevoir les notifications push (iOS 16.4+)." },
       { q:'Quels profils de client puis-je créer ?', a:"7 profils disponibles : Acheteur, Vendeur, Bailleur, Locataire, Investisseur, Marchand de biens, Promoteur. Chaque profil ouvre des sections adaptées (Section III Budget pour Acheteur, Section V Photos pour Vendeur, etc.). Tu peux changer le profil d'un dossier à tout moment." },
       { q:'Mes données sont-elles sauvegardées automatiquement ?', a:"Oui, auto-save toutes les ~1 seconde après chaque modification. Tu n'as jamais besoin de cliquer Enregistrer pendant la saisie. Le bouton Enregistrer publie le dossier en sortant du mode brouillon." },
     ]},
     { cat:'dossiers', icon:'📂', label:'Gérer mes dossiers', items:[
-      { q:'Comment archiver un dossier ?', a:"Swipe gauche sur la card du dossier dans la liste, puis tap Archiver. Le dossier reste accessible via le filtre Archivés et peut être restauré à tout moment depuis le même menu swipe." },
+      { q:'Comment archiver un dossier ?', a:"Swipe gauche sur la card du dossier dans la liste, puis tap Archiver. Le dossier reste accessible via le filtre Archivés et peut être restauré à tout moment depuis le même menu swipe.", videoUrl: '/static/help-videos/demo-placeholder.mp4' },
       { q:'Comment exporter un dossier en PDF ?', a:"Ouvre le dossier, tap sur l'icône PDF en bas. Choisis les sections à inclure et les photos à afficher. Le PDF généré est partageable directement par email ou Messages depuis le menu Partager iOS natif." },
       { q:'Comment dupliquer un dossier existant ?', a:"Ouvre le dossier source, tap sur le menu ⋯ en haut à droite, choisis 'Dupliquer'. Une copie complète est créée en brouillon, modifiable avant publication. Utile pour des biens similaires (immeuble même rue, lot identique)." },
       { q:'Comment filtrer ma liste de dossiers ?', a:"Tap sur le bouton Filtres en haut de la liste. Tu peux filtrer par profil (Acheteur, Vendeur, etc.), par statut (Brouillon, Publié, Archivé), par date de création. Combine les filtres pour des recherches précises." },
@@ -13874,7 +13887,7 @@ function HelpPage({onBack}) {
       { q:'Comment changer la devise sur les prix ?', a:"Dans la Section III Budget, tap sur le bouton devise (drapeau + code) à côté du montant. Choisis parmi les 12 devises supportées (EUR, MAD, USD, GBP, CHF, CAD, JPY, INR, AED, SAR, TRY, CNY). Le choix est par dossier, pas global." },
       { q:'Comment activer les notifications PWA sur mon iPhone ?', a:"Réglages → Notifications → Activer les notifications. Compatible iPhone iOS 16.4+ après installation de l'app à l'écran d'accueil (cf article Installer l'app). Tu reçois alors les rappels RDV, matchings ≥85%, propositions reçues directement sur l'écran verrouillé." },
       { q:'Comment changer mon mot de passe ?', a:"Ocre utilise la connexion par lien magique (email). Aucun mot de passe à gérer. À chaque connexion sur un nouvel appareil, tu reçois un lien sécurisé par email. Les liens expirent après 1 heure pour ta sécurité." },
-      { q:'Comment exporter mes données (RGPD) ?', a:"Réglages → Mes données → Télécharger mes données. Un fichier JSON contenant ton profil, tes dossiers, tes factures et tes sessions actives est généré et téléchargé immédiatement. Limite 3 exports / 24h pour éviter la surcharge serveur." },
+      { q:'Comment exporter mes données (RGPD) ?', a:"Réglages → Mes données → Télécharger mes données. Un fichier JSON contenant ton profil, tes dossiers, tes factures et tes sessions actives est généré et téléchargé immédiatement. Limite 3 exports / 24h pour éviter la surcharge serveur.", videoUrl: '/static/help-videos/demo-placeholder.mp4' },
       { q:'Comment supprimer mon compte ?', a:"Réglages → Mes données → Supprimer mon compte. Délai de grâce de 30 jours avant anonymisation définitive (Article 17 RGPD). Tu peux annuler à tout moment pendant cette période en te reconnectant. Email de confirmation envoyé." },
       { q:'Comment voir mes factures et mon abonnement ?', a:"Réglages → Abonnement. Tu vois ton plan en cours, la prochaine date de renouvellement, ton historique de factures téléchargeables en PDF, et les options de changement de plan ou résiliation." },
     ]},
@@ -13914,16 +13927,34 @@ function HelpPage({onBack}) {
       try { localStorage.setItem('ocre_help_feedback', JSON.stringify(next)); } catch (_) {}
       return next;
     });
+    // M/13/12 — POST DB (fire-and-forget, fallback localStorage si offline OK).
+    if (v === 'up' || v === 'down') {
+      try {
+        const tk = localStorage.getItem('ocre_token') || '';
+        fetch('/api/help_feedback.php?action=submit', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json', 'X-Session-Token': tk},
+          body: JSON.stringify({article_id: k, type: v}),
+        }).catch(() => {});
+      } catch (_) {}
+    }
   }
-  const Toggle = ({open, onClick, q: question, a, k, query}) => (
+  const Toggle = ({open, onClick, q: question, a, k, query, videoUrl}) => (
     <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:8, marginBottom:6, overflow:'hidden'}}>
       <button onClick={onClick} style={{width:'100%', textAlign:'left', padding:'10px 12px', background:'transparent', border:'none', fontFamily:'inherit', fontSize:'var(--font-size-13-5)', color:'var(--color-text-primary)', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', minHeight:44}}>
-        <span style={{flex:1, paddingRight:8}}>{query ? highlight(question, query) : question}</span>
+        <span style={{flex:1, paddingRight:8}}>{query ? highlight(question, query) : question}{videoUrl && <span style={{marginLeft:6, fontSize:'var(--font-size-10)', color:'var(--color-accent)', fontWeight:700}}>▶ video</span>}</span>
         <span style={{color:'var(--color-accent)', fontSize:14}}>{open ? '−' : '+'}</span>
       </button>
       {open && (
         <div style={{padding:'4px 12px 12px', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)', lineHeight:1.6}}>
           <div>{query ? highlight(a, query) : a}</div>
+          {videoUrl && (
+            <div style={{marginTop:10, borderRadius:8, overflow:'hidden', background:'#000'}}>
+              <video controls preload="metadata" style={{width:'100%', display:'block', maxHeight:240}} src={videoUrl}>
+                Ton navigateur ne supporte pas la video HTML5.
+              </video>
+            </div>
+          )}
           <div style={{display:'flex', alignItems:'center', gap:6, marginTop:10, paddingTop:8, borderTop:'1px solid var(--color-border-cream)'}}>
             <span style={{fontSize:11, color:'var(--color-text-muted)', marginRight:'auto'}}>Cet article t'a-t-il aidé ?</span>
             <button onClick={(e) => { e.stopPropagation(); setFb(k, feedback[k] === 'up' ? null : 'up'); }}
@@ -13992,7 +14023,7 @@ function HelpPage({onBack}) {
           <div style={{fontSize:11, fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:0.6, marginBottom:8}}>{c.icon} {c.label}</div>
           {c.items.map((it, i) => {
             const k = c.cat + '-' + i;
-            return <Toggle key={k} open={!!opened[k]} onClick={() => setOpened(p => ({...p, [k]: !p[k]}))} q={it.q} a={it.a} k={k} query={q}/>;
+            return <Toggle key={k} open={!!opened[k]} onClick={() => setOpened(p => ({...p, [k]: !p[k]}))} q={it.q} a={it.a} k={k} query={q} videoUrl={it.videoUrl}/>;
           })}
         </div>
       ))}
@@ -14010,7 +14041,7 @@ function HelpPage({onBack}) {
         <div style={{fontFamily:'var(--font-serif)', fontSize:16, fontWeight:700, fontStyle:'italic', marginBottom:4}}>Besoin d'aide personnalisée ?</div>
         <div style={{fontSize:11, opacity:0.85, marginBottom:10}}>Notre équipe répond en moins de 2h en semaine ouvrée.</div>
         <div style={{display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap'}}>
-          <a href="mailto:support@ocre.immo" style={{display:'inline-block', background:'#fff', color:'var(--color-accent)', padding:'9px 16px', borderRadius:22, fontWeight:700, fontSize:12, textDecoration:'none'}}>✉️ Ouvrir mail</a>
+          <button onClick={() => setSupportOpen(true)} style={{display:'inline-block', background:'#fff', color:'var(--color-accent)', padding:'9px 16px', borderRadius:22, fontWeight:700, fontSize:12, textDecoration:'none', border:'none', cursor:'pointer', fontFamily:'inherit'}}>✉️ Envoyer un ticket</button>
           <button onClick={copySupportEmail} style={{display:'inline-block', background:'rgba(255,255,255,0.15)', color:'#fff', padding:'9px 16px', borderRadius:22, fontWeight:600, fontSize:12, border:'1px solid rgba(255,255,255,0.3)', cursor:'pointer', fontFamily:'inherit'}}>{copied ? '✓ Email copié' : '📋 Copier l\'email'}</button>
         </div>
       </div>
@@ -14041,7 +14072,7 @@ function HelpPage({onBack}) {
         <div>
           {c.items.map((it, i) => {
             const k = catId + '-' + i;
-            return <Toggle key={k} open={!!opened[k]} onClick={() => setOpened(p => ({...p, [k]: !p[k]}))} q={it.q} a={it.a} k={k}/>;
+            return <Toggle key={k} open={!!opened[k]} onClick={() => setOpened(p => ({...p, [k]: !p[k]}))} q={it.q} a={it.a} k={k} videoUrl={it.videoUrl}/>;
           })}
         </div>
         {/* M/12/55 #7 — CTA support bas de categorie. */}
@@ -14061,6 +14092,75 @@ function HelpPage({onBack}) {
       <PageHeader onBack={handleBack} title={titre}/>
       <div style={{flex:1, overflowY:'auto', padding:'14px 14px 30px'}}>
         {openedCat ? renderCat(openedCat) : renderHome()}
+      </div>
+      {supportOpen && <SupportModal onClose={() => setSupportOpen(false)}/>}
+    </div>
+  );
+}
+
+// M/2026/05/13/12 — SupportModal : form integre (subject select + message textarea + email).
+// POST /api/support_ticket.php (auth optionnelle, email pre-rempli si user connu).
+function SupportModal({onClose}) {
+  const [subject, setSubject] = React.useState('question');
+  const [message, setMessage] = React.useState('');
+  const [email, setEmail] = React.useState(() => {
+    try { return localStorage.getItem('ocre_user_email_cached') || ''; } catch (_) { return ''; }
+  });
+  const [busy, setBusy] = React.useState(false);
+  const [sent, setSent] = React.useState(false);
+  async function submit() {
+    if (message.trim().length < 5) { alert('Message trop court (5 caracteres min)'); return; }
+    if (message.length > 500) { alert('Message trop long (500 caracteres max)'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('Email invalide'); return; }
+    setBusy(true);
+    try {
+      const tk = localStorage.getItem('ocre_token') || '';
+      const r = await fetch('/api/support_ticket.php?action=submit', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'X-Session-Token': tk},
+        body: JSON.stringify({subject, message, email}),
+      }).then(r => r.json());
+      if (r && r.ok) { setSent(true); setTimeout(() => onClose(), 2500); }
+      else alert((r && r.error) || 'Echec envoi');
+    } catch (e) { alert('Erreur reseau'); }
+    setBusy(false);
+  }
+  return (
+    <div onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.55)', zIndex:9100, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-4)'}}>
+      <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:14, padding:'20px 18px', width:'100%', maxWidth:420, boxShadow:'0 8px 32px rgba(0,0,0,.22)', maxHeight:'90vh', overflowY:'auto'}}>
+        {sent ? (
+          <>
+            <div style={{textAlign:'center', padding:'20px 0'}}>
+              <div style={{fontSize:48, marginBottom:8}}>✅</div>
+              <div style={{fontFamily:'var(--font-serif)', fontSize:18, fontWeight:700, color:'var(--color-accent)', marginBottom:6}}>Ticket envoye !</div>
+              <div style={{fontSize:13, color:'var(--color-text-taupe)', lineHeight:1.5}}>On revient vers toi sous 24h ouvrees a l'adresse <b>{email}</b>.</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
+              <div style={{fontFamily:'var(--font-serif)', fontSize:18, fontWeight:700, color:'var(--color-accent)'}}>Contacter le support</div>
+              <button onClick={onClose} style={{background:'transparent', border:'none', fontSize:22, color:'var(--color-text-muted)', cursor:'pointer'}}>×</button>
+            </div>
+            <label style={{display:'block', fontSize:11, fontWeight:600, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:0.5, marginBottom:4}}>Sujet</label>
+            <select value={subject} onChange={e => setSubject(e.target.value)} style={{width:'100%', padding:'9px 10px', border:'1px solid var(--color-border-strong)', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:10, boxSizing:'border-box'}}>
+              <option value="bug">Bug</option>
+              <option value="question">Question</option>
+              <option value="feature">Demande feature</option>
+              <option value="autre">Autre</option>
+            </select>
+            <label style={{display:'block', fontSize:11, fontWeight:600, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:0.5, marginBottom:4}}>Message ({message.length}/500)</label>
+            <textarea value={message} onChange={e => setMessage(e.target.value.slice(0, 500))} rows={5} placeholder="Decris ton probleme ou ta demande..."
+              style={{width:'100%', padding:'9px 10px', border:'1px solid var(--color-border-strong)', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:10, boxSizing:'border-box', resize:'vertical'}}/>
+            <label style={{display:'block', fontSize:11, fontWeight:600, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:0.5, marginBottom:4}}>Email de reponse</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ton@email.com"
+              style={{width:'100%', padding:'9px 10px', border:'1px solid var(--color-border-strong)', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:14, boxSizing:'border-box'}}/>
+            <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+              <button onClick={onClose} disabled={busy} style={{padding:'9px 16px', background:'#fff', color:'var(--color-text-primary)', border:'1px solid var(--color-border-strong)', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button onClick={submit} disabled={busy} style={{padding:'9px 16px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:12, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit'}}>{busy ? 'Envoi…' : 'Envoyer le ticket'}</button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
