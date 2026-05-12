@@ -163,6 +163,22 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
 <style>
+/* M/2026/05/12/11 — Volet A : override jaune autofill iOS Safari par vert clair --color-field-filled.
+   box-shadow inset 1000px (pattern Stripe/Apple/Material UI). transition 5000s = hack standard pour
+   forcer la persistance du style override (sinon Safari reapplique le jaune au focus). */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-text-primary, #2b2316) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--color-field-filled, #E8F5E9) inset !important;
+  box-shadow: 0 0 0 1000px var(--color-field-filled, #E8F5E9) inset !important;
+  caret-color: var(--color-text-primary, #2b2316);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* V18.9 — palette unifiée + contraste WCAG AA. */
 :root{
   --text-primary:var(--color-text-primary);
@@ -9715,18 +9731,23 @@ function PhonePill({tel, size = 'md', style}) {
     lg: {fontSize: 14, padding: '7px 12px', iconSize: 15, gap: 6},
   };
   const s = sizes[size] || sizes.md;
+  // M/2026/05/12/11 — Volet C : fond vert clair si tel valide (pill rendu = tel present, donc toujours vert).
+  const isValid = typeof validatePhone === 'function' ? validatePhone(cleaned) : cleaned.length >= 8;
+  const bgPill = isValid ? 'var(--color-field-filled)' : '#FDF8F0';
+  const borderPill = isValid ? 'var(--color-border-strong)' : 'var(--color-border-medium)';
   return (
     <a href={'tel:' + cleaned}
       onClick={e => e.stopPropagation()}
       onTouchStart={e => e.stopPropagation()}
       style={Object.assign({
         display: 'inline-flex', alignItems: 'center', gap: s.gap,
-        padding: s.padding, background: '#FDF8F0',
-        border: '1px solid var(--color-border-medium)', borderRadius: 20,
+        padding: s.padding, background: bgPill,
+        border: '1px solid '+borderPill, borderRadius: 20,
         color: 'var(--color-text-brown)', textDecoration: 'none',
         fontSize: s.fontSize, fontWeight: 500,
         boxShadow: '0 1px 2px rgba(60,40,20,.08)',
         whiteSpace: 'nowrap', fontFamily: 'inherit', flexShrink: 0,
+        transition: 'background 200ms ease, border 200ms ease',
       }, style || {})}>
       <svg width={s.iconSize} height={s.iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
@@ -11913,7 +11934,11 @@ function App() {
         setEditing(saved);
         try { window.dispatchEvent(new CustomEvent('ocre-draft-saved', {detail: {at: Date.now()}})); } catch (e) {}
       } else {
-        try { window.dispatchEvent(new CustomEvent('ocre-draft-error', {detail: {message: (saveError && saveError.message) || 'Echec sauvegarde'}})); } catch (e) {}
+        // M/2026/05/12/11 — autosave silent : saved==null sans saveError (apiSaveClient retry-loop exhausted
+        // sans exception, p.ex. backend renvoie ok=false sur payload incomplete) NE doit PAS afficher
+        // "Echec enregistrement" en rouge. Le seul vrai cas d echec = saveError dans le catch (line 11899).
+        // Ici on dispatch saved skip (silent) au lieu d error.
+        try { window.dispatchEvent(new CustomEvent('ocre-draft-saved', {detail: {skipped: true}})); } catch (e) {}
       }
       return saved;
     })();
@@ -19548,18 +19573,24 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
                 <PhonePill tel={primaryTel.valeur} size="sm"/>
               )
             )}
-            {primaryEmail && (
+            {primaryEmail && (() => {
+              // M/2026/05/12/11 — Volet C : fond vert clair si email valide (regex basique).
+              const _emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(primaryEmail);
+              const _emailBg = _emailOk ? 'var(--color-field-filled)' : '#FDF8F0';
+              const _emailBorder = _emailOk ? 'var(--color-border-strong)' : 'var(--color-border-medium)';
+              return (
               <a href={'mailto:' + primaryEmail}
                 onClick={e => e.stopPropagation()}
                 onTouchStart={e => e.stopPropagation()}
-                style={{display:'inline-flex', alignItems:'center', gap:'var(--space-3px)', padding:'3px 8px', background:'#FDF8F0', border:'1px solid var(--color-border-medium)', borderRadius:14, color:'var(--color-text-brown)', textDecoration:'none', fontSize:'var(--font-size-11)', fontWeight:500, whiteSpace:'nowrap', fontFamily:'inherit', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, maxWidth:150, boxSizing:'border-box', flexShrink:1}}>
+                style={{display:'inline-flex', alignItems:'center', gap:'var(--space-3px)', padding:'3px 8px', background:_emailBg, border:'1px solid '+_emailBorder, borderRadius:14, color:'var(--color-text-brown)', textDecoration:'none', fontSize:'var(--font-size-11)', fontWeight:500, whiteSpace:'nowrap', fontFamily:'inherit', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, maxWidth:150, boxSizing:'border-box', flexShrink:1, transition:'background 200ms ease, border 200ms ease'}}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                   <polyline points="22,6 12,13 2,6"/>
                 </svg>
                 <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{primaryEmail}</span>
               </a>
-            )}
+              );
+            })()}
             {!primaryTel && !primaryEmail && (
               <button className="client-row-chip-add"
                 onClick={e => { e.stopPropagation(); onOpenSection && onOpenSection(c, 0); }}>+ Contact</button>
