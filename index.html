@@ -3509,6 +3509,30 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
   const debounceRef = React.useRef(null);
   const token = () => localStorage.getItem('ocre_token') || '';
 
+  // M/2026/05/12/24 — scroll lock body pendant que le dropdown autocomplete est ouvert.
+  // Pattern Stripe Address Element / Google Places Autocomplete / Mapbox Geocoder : empeche le
+  // scrollIntoView natif Safari iOS qui pousse la page vers le bas a l ouverture du clavier.
+  // Capture scrollY a l ouverture, restaure au close si la page a derive.
+  const _scrollYRef = React.useRef(0);
+  React.useEffect(() => {
+    if (open) {
+      _scrollYRef.current = window.scrollY || window.pageYOffset || 0;
+      document.body.style.overflow = 'hidden';
+      // Pattern Stripe : detecte les scrolls non sollicites pendant 500ms apres l ouverture
+      const startY = _scrollYRef.current;
+      const tid = setTimeout(() => {
+        const dy = (window.scrollY || 0) - startY;
+        if (Math.abs(dy) > 5) window.scrollTo(0, startY); // restaure si Safari a scrolle > 5px
+      }, 300);
+      return () => {
+        clearTimeout(tid);
+        document.body.style.overflow = '';
+      };
+    } else {
+      document.body.style.overflow = '';
+    }
+  }, [open]);
+
   function handleChange(e) {
     const raw = e.target.value;
     onChange(raw);
@@ -11900,7 +11924,29 @@ function App() {
     _toastTimerRef.current = setTimeout(() => { setToast(null); _lastToastRef.current = ''; }, 3000);
   }
 
+  // M/2026/05/12/24 — sanitizeQuartierField : defense ULTIME au moment de la sauvegarde.
+  // Independent de l autocomplete : meme si le state contient un quartier garbage (cache device
+  // pre-M/12/9, saisie manuelle accidentelle, source legacy), on filtre ici avant POST backend.
+  // Pattern Stripe Address Element : never persist data that doesn t look like a real neighborhood.
+  function sanitizeQuartierField(v) {
+    if (typeof v !== 'string') return v;
+    const s = v.trim();
+    if (!s) return '';
+    // Heuristique adresse : commence par chiffre(s)+espace = numero de rue
+    if (/^\d+\s/.test(s)) return '';
+    // Mots-cles voie : si contient rue/avenue/boulevard/chemin/route/place suivis d un espace, c est une adresse pas un quartier
+    if (/\b(rue|avenue|boulevard|bd|av\.|chemin|route|place|impasse|allée|allee|cours)\s/i.test(s)) return '';
+    return s;
+  }
+
   async function apiSaveClient(data) {
+    // M/2026/05/12/24 — sanitization quartier defense ultime AVANT POST.
+    if (data && typeof data === 'object') {
+      if ('quartier_residence' in data) data.quartier_residence = sanitizeQuartierField(data.quartier_residence);
+      if (data.bien && typeof data.bien === 'object' && 'quartier' in data.bien) {
+        data.bien.quartier = sanitizeQuartierField(data.bien.quartier);
+      }
+    }
     // M/2026/05/01/11 — pattern draft-on-input : retry x3 avec backoff sur le tout premier
     // commit (creation INSERT). Pour les UPDATE (id deja set), un seul appel : la
     // sauvegarde debounced 800ms reessaiera spontanement au prochain change.
