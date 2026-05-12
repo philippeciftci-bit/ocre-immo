@@ -1487,27 +1487,39 @@ function useInactivityLogout(logoutFn) {
 // M/2026/04/30/31 — useAutoSaveStatus + DraftSaveIndicator visuel pour la sauvegarde
 // auto Section II (handleSaveLocal V17.7 instrumente avec events ocre-draft-*).
 function useAutoSaveStatus() {
-  const [state, setState] = React.useState({status: 'idle', lastSaveAt: null, errorMessage: null, tick: 0});
+  const [state, setState] = React.useState({status: 'idle', lastSaveAt: null, errorMessage: null, tick: 0, published: false});
   React.useEffect(() => {
-    function onSaving() { setState(s => ({...s, status: 'saving'})); }
+    function onSaving() {
+      setState(s => {
+        // M/2026/05/12/37 — published=true : badge masque permanent. Les events draft-* sont ignores.
+        if (s.published) return s;
+        return {...s, status: 'saving'};
+      });
+    }
     function onSaved(e) {
       const at = (e && e.detail && e.detail.at) || Date.now();
-      setState(s => ({...s, status: 'saved', lastSaveAt: at, errorMessage: null}));
+      setState(s => {
+        if (s.published) return s;
+        return {...s, status: 'saved', lastSaveAt: at, errorMessage: null};
+      });
     }
     function onError(e) {
       const message = (e && e.detail && e.detail.message) || 'Echec sauvegarde';
-      setState(s => ({...s, status: 'error', errorMessage: message}));
+      setState(s => {
+        if (s.published) return s;
+        return {...s, status: 'error', errorMessage: message};
+      });
     }
-    // M/2026/05/12/36 — Au publish (brouillon -> enregistre), reset le badge a idle.
-    // La fiche n'est plus brouillon donc 'Brouillon enregistré' n'a plus de sens (Philippe brief).
+    // M/2026/05/12/36 + 37 — Au publish (brouillon -> enregistre), reset le badge a idle ET
+    // bascule published=true pour ignorer tous les ocre-draft-saved/saving suivants. Le badge
+    // 'Brouillon enregistré' n'a plus de sens une fois le dossier publie (Philippe brief M/12/36).
     function onPublished() {
-      setState({status: 'idle', lastSaveAt: null, errorMessage: null, tick: 0});
+      setState({status: 'idle', lastSaveAt: null, errorMessage: null, tick: 0, published: true});
     }
     window.addEventListener('ocre-draft-saving', onSaving);
     window.addEventListener('ocre-draft-saved', onSaved);
     window.addEventListener('ocre-draft-error', onError);
     window.addEventListener('ocre-dossier-published', onPublished);
-    // Tick toutes les 5s pour rafraichir le compteur "il y a Xs".
     const t = setInterval(() => setState(s => ({...s, tick: s.tick + 1})), 5000);
     return () => {
       window.removeEventListener('ocre-draft-saving', onSaving);
@@ -1520,7 +1532,9 @@ function useAutoSaveStatus() {
   return state;
 }
 function DraftSaveIndicator() {
-  const {status, lastSaveAt, errorMessage} = useAutoSaveStatus();
+  const {status, lastSaveAt, errorMessage, published} = useAutoSaveStatus();
+  // M/2026/05/12/37 — defense ultime : si publish a eu lieu dans cette session, badge masque permanent.
+  if (published) return null;
   // Format compteur Xs depuis lastSaveAt.
   function fmtAgo(at) {
     if (!at) return '';

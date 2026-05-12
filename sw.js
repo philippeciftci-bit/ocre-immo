@@ -2,7 +2,7 @@
 // Conversion depuis killswitch v474 : on garde le SW REGISTERED (plus d'unregister à activate)
 // pour permettre la réception des push notifications PWA. Tous les fetchs restent en network-first
 // (pas de cache offline business — fallback minimal pour mode=navigate uniquement).
-const SW_VERSION = 'ocre-sw-v498.0-m12-36-fix-toast-orthographe-masque-brouillon-publish';
+const SW_VERSION = 'ocre-sw-v499.0-m12-37-fix-volet2-brouillon-masque-permanent-published-flag';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
