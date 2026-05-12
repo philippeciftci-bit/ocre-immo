@@ -4316,13 +4316,21 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
   return (
     <div ref={wrapperRef} style={{borderLeft:'3px solid var(--color-accent)', paddingLeft:'var(--space-10px)', marginTop:'var(--space-14px)', marginBottom:'var(--space-10px)'}}>
       {/* M/2026/05/12/26 — Header accordeon cliquable (Apple HIG Disclosure Group). */}
+      {/* M/2026/05/12/33 — Style carte d'identite francaise miniature : bande tricolore verticale a gauche
+          (bleu/blanc/rouge fines) + bordure ocre + coins arrondis + typo serif Cormorant Garamond. */}
       <button type="button"
         onClick={() => setExpanded(e => !e)}
         aria-expanded={expanded}
         aria-controls="piece-identite-body"
-        style={{display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'4px 0', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', outline:'none'}}>
-        <span style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4}}>📄 Pièce d'identité</span>
-        <span aria-hidden="true" style={{color:'var(--color-accent)', fontSize:'var(--font-size-13)', transition:'transform 200ms ease', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', lineHeight:1}}>▼</span>
+        style={{display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', minHeight:54, padding:'6px 12px 6px 0', background:'var(--color-bg-tint-warm)', border:'1.5px solid #C9A961', borderRadius:6, cursor:'pointer', fontFamily:'inherit', textAlign:'left', outline:'none', gap:10, boxShadow:'0 1px 2px rgba(0,0,0,0.05)'}}>
+        {/* Bande tricolore verticale fine (Drapeau FR : bleu / blanc / rouge) */}
+        <span aria-hidden="true" style={{display:'inline-flex', flexShrink:0, height:36, alignItems:'stretch', marginLeft:0, borderRadius:'4px 0 0 4px', overflow:'hidden'}}>
+          <span style={{width:3, background:'#002395'}}/>
+          <span style={{width:3, background:'#FFFFFF'}}/>
+          <span style={{width:3, background:'#ED2939'}}/>
+        </span>
+        <span style={{fontFamily:'"Cormorant Garamond", Georgia, serif', fontSize:'var(--font-size-15)', fontWeight:600, fontStyle:'italic', color:'#1D4E89', letterSpacing:.4, flex:1, lineHeight:1.1}}>Pièce d'identité</span>
+        <span aria-hidden="true" style={{color:'#1D4E89', fontSize:'var(--font-size-13)', transition:'transform 200ms ease', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', lineHeight:1, flexShrink:0}}>▼</span>
       </button>
       {expanded && (
         <div id="piece-identite-body" style={{overflow:'hidden', animation:'slideDownPiece 200ms ease-out'}}>
@@ -4365,9 +4373,11 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
             </div>
           </div>
           {/* Ligne 5 — Photos 3 miniatures max (refonte M/12/26). */}
+          {/* M/2026/05/12/33 — miniatures 2x plus petites : grid 3 cols a max-width 180px chacune,
+              aligne a gauche. Sur ecrans larges, conserve 3 cases compactes au lieu de gros carres. */}
           <div style={{marginTop:'var(--space-2)'}}>
             <div style={{fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-1)'}}>Photos pièce</div>
-            <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'var(--space-2)'}}>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 180px))', gap:'var(--space-2)', justifyContent:'start'}}>
               {/* Slots remplis */}
               {files.slice(0, PIECE_PHOTOS_MAX).map((f, i) => {
                 const img = isImage(f);

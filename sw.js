@@ -2,7 +2,7 @@
 // Conversion depuis killswitch v474 : on garde le SW REGISTERED (plus d'unregister à activate)
 // pour permettre la réception des push notifications PWA. Tous les fetchs restent en network-first
 // (pas de cache offline business — fallback minimal pour mode=navigate uniquement).
-const SW_VERSION = 'ocre-sw-v494.0-m12-28-limite-2-tel-emails-detection-doublon';
+const SW_VERSION = 'ocre-sw-v495.0-m12-33-piece-identite-carte-id-mini-photos';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
