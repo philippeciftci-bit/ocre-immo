@@ -2,7 +2,7 @@
 // Conversion depuis killswitch v474 : on garde le SW REGISTERED (plus d'unregister à activate)
 // pour permettre la réception des push notifications PWA. Tous les fetchs restent en network-first
 // (pas de cache offline business — fallback minimal pour mode=navigate uniquement).
-const SW_VERSION = 'ocre-sw-v492.0-m12-26-piece-identite-accordeon-4-lignes-photos';
+const SW_VERSION = 'ocre-sw-v493.0-m12-27-archivage-brouillons-universel-401-handler';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

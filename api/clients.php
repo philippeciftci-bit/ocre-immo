@@ -670,19 +670,34 @@ switch ($action) {
     }
 
     case 'archive': {
+        // M/2026/05/12/27 — autorise archivage sur tous statuts (brouillon + enregistre + tous profils).
+        // Garde-fou : refuse 400 si la fiche est deja dans l'etat target (no-op evite, anti-UX).
         $id = (int)($input['id'] ?? 0);
         $archived = !empty($input['archived']) ? 1 : 0;
         if (!$id) jsonError('id requis');
+        // Pre-check etat courant pour refuser idempotent (re-archive deja archive = 400).
+        $st = db()->prepare("SELECT archived FROM clients WHERE id = ? AND user_id = ? LIMIT 1");
+        $st->execute([$id, $user['id']]);
+        $row = $st->fetch();
+        if (!$row) jsonError('Introuvable', 404);
+        if ((int)$row['archived'] === $archived) {
+            jsonError($archived ? 'Deja archive' : 'Deja desarchive', 400);
+        }
         $stmt = db()->prepare("UPDATE clients SET archived = ? WHERE id = ? AND user_id = ?");
         $stmt->execute([$archived, $id, $user['id']]);
         jsonOk(['id' => $id, 'archived' => (bool)$archived]);
     }
 
     case 'unarchive': {
-        // V43 — alias action=unarchive pour désarchivage explicite. Equivaut à
-        // archive avec archived=0.
+        // V43 — alias action=unarchive pour désarchivage explicite. Equivaut à archive avec archived=0.
+        // M/2026/05/12/27 — meme garde-fou idempotent (deja desarchive = 400).
         $id = (int)($input['id'] ?? 0);
         if (!$id) jsonError('id requis');
+        $st = db()->prepare("SELECT archived FROM clients WHERE id = ? AND user_id = ? LIMIT 1");
+        $st->execute([$id, $user['id']]);
+        $row = $st->fetch();
+        if (!$row) jsonError('Introuvable', 404);
+        if ((int)$row['archived'] === 0) jsonError('Deja desarchive', 400);
         $stmt = db()->prepare("UPDATE clients SET archived = 0 WHERE id = ? AND user_id = ?");
         $stmt->execute([$id, $user['id']]);
         jsonOk(['id' => $id, 'archived' => false]);

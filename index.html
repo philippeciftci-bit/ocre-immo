@@ -19522,7 +19522,19 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
         body: JSON.stringify({id: c.id, archived: isRestore ? 0 : 1}),
       });
-      const j = await r.json();
+      // M/2026/05/12/27 — gestion explicite 401 + r.json() defensif (response peut etre HTML/empty si redirect auth).
+      if (r.status === 401) {
+        try { setSwipeX(0); } catch (_) {}
+        if (typeof showOcreToast === 'function') showOcreToast('Session expiree, reconnexion necessaire');
+        try { localStorage.removeItem('ocre_token'); window.location = '/login/?expired=1'; } catch (_) {}
+        return;
+      }
+      let j = null;
+      try { j = await r.json(); } catch (_jsonErr) {
+        try { setSwipeX(0); } catch (_) {}
+        if (typeof showOcreToast === 'function') showOcreToast('Reponse serveur invalide (status ' + r.status + ')');
+        return;
+      }
       if (j && j.ok) {
         // M/2026/05/07/101 — optimistic fade-out + onRemove (au lieu de window.location.reload()).
         // M/2026/05/07/102 — onRemoveStart marque _removing IMMEDIATEMENT cote parent pour
