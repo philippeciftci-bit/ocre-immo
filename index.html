@@ -182,7 +182,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous" defer></script>
 <style>
 /* M/2026/05/12/11 — Volet A : override jaune autofill iOS Safari par vert clair --color-field-filled.
    box-shadow inset 1000px (convention interne Ocre/Apple/design Ocre). transition 5000s = hack standard pour
@@ -443,14 +443,14 @@ input, select, textarea, button { font-size: var(--font-size-13) }
 /* M/2026/04/30/57 — fix universel symbole devise tronque (Safari iOS Cormorant side-bearing negatif). */
 .amount,.price-final,.price-display,.budget-display,.price-button,.price-badge{overflow:visible!important;padding-right:6px}
 </style>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script crossorigin="anonymous" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin="anonymous" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin="anonymous" integrity="sha384-ku9eM40vVDsFUiERorrdlHlF0LIhdfn716M7TntM72Uo98T7LWiogD3hNenPx8Q0" src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <!-- M/2026/04/30/53 — SheetJS pour export XLSX multi-onglets cote client (navigator.share natif iOS). -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
 <!-- M/2026/05/02/4 — M110 Phase B : libphonenumber-js (Google) bundle UMD. Expose window.libphonenumber.
      Utilise par PhoneInput pour AsYouType formatting, isValidPhoneNumber validation, parsePhoneNumber E.164. -->
-<script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.10.51/bundle/libphonenumber-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/libphonenumber-js@1.10.51/bundle/libphonenumber-js.min.js" integrity="sha384-DpiLMmtK16j/3wW3U8+q2VvDkUO678U04tewx61Yb/OIcb++cL9rGCKMqRpjJODr" crossorigin="anonymous"></script>
 <!-- M113d — Helper i18n client (window.t/window.i18n + auto-translate data-i18n + RTL applique au load si AR) -->
 <script src="/i18n/i18n_client.js" defer></script>
 </head>
@@ -11820,10 +11820,19 @@ function App() {
     return () => { window.__ocreAsk = null; };
   }, []);
   // M/2026/05/09/44 — M90 : expose openPrefs + logout en globals (utilisés par HelpPage M90 lien PWA push + ReglagesPage M87 bouton Se déconnecter).
+  // M/2026/05/12/52 — Fix deep-link #help : expose __ocreOpenHelp + boot detection hash=#help (avant : hash defini par PreferencesPage L17391 sans listener -> bloque sur home).
   useEffect(() => {
     window.__ocreOpenPrefs = () => pushView('preferences');
+    window.__ocreOpenHelp = () => pushView('help');
     window.__ocreLogout = () => { try { logout && logout(); } catch (_) {} };
-    return () => { window.__ocreOpenPrefs = null; window.__ocreLogout = null; };
+    // Boot : si URL contient #help, naviguer directement vers la page Aide.
+    try {
+      if (window.location.hash === '#help') {
+        window.history.replaceState({view: 'list', depth: 0}, '', '/');
+        pushView('help');
+      }
+    } catch (_) {}
+    return () => { window.__ocreOpenPrefs = null; window.__ocreOpenHelp = null; window.__ocreLogout = null; };
   }, []);
   function resolveConfirm(result) {
     const r = confirmResolverRef.current;
@@ -17388,7 +17397,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
         </Group>
         <SectionTitle>Aide & déconnexion</SectionTitle>
         <Group>
-          <Row icon="🆘" iconBg="#F57F17" label="Aide & FAQ" onClick={() => { window.location.hash = '#help'; }}/>
+          <Row icon="🆘" iconBg="#F57F17" label="Aide & FAQ" onClick={() => { if (typeof window.__ocreOpenHelp === 'function') window.__ocreOpenHelp(); }}/>
           <Row icon="🚪" iconBg="#455A64" label="Se déconnecter" dangerLabel onClick={() => { if (typeof window.__ocreLogout === 'function') window.__ocreLogout(); }}/>
         </Group>
         <div style={{padding:'18px 16px 30px', textAlign:'center', fontSize:10, color:'var(--color-text-muted)', fontStyle:'italic'}}>
