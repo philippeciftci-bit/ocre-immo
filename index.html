@@ -4195,6 +4195,13 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
   return (
     <div style={{borderLeft:'3px solid var(--color-accent)', paddingLeft:'var(--space-10px)', marginTop:'var(--space-14px)', marginBottom:'var(--space-10px)'}}>
       <div style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4, marginBottom:'var(--space-2)'}}>Pièce d'identité</div>
+      {/* M/2026/05/12/23 — Date+Pays naissance integres en 1ere ligne (logique metier : infos d'identite). */}
+      <div className="row-pair" style={{marginBottom:'var(--space-6px)'}}>
+        <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1, marginBottom:'var(--space-0)'}}/>
+        <div style={{flex:1, minWidth:0}}>
+          <PaysCompactButton label="Pays de naissance" value={d.pays_naissance} onChange={v => set('pays_naissance', v)}/>
+        </div>
+      </div>
       {/* M/2026/05/02/7 — M120 livrable C : 3 colonnes PAYS / TYPE / N° (CountryPicker partage). */}
       <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)', gap:'var(--space-6px)', marginBottom:'var(--space-6px)'}}>
         <PaysCompactButton label="Pays" value={d.id_country || ''} onChange={v => set('id_country', v)}/>
@@ -23213,14 +23220,7 @@ function FormView(props) {
                 <Field label="Quartier" value={d.quartier_residence} onChange={v => set('quartier_residence', v)} style={{marginBottom:'var(--space-0)'}}
                   placeholder="Optionnel" autoComplete="address-level3" name="address-level3"/>
               </div>
-              {/* M/2026/04/29/44 v8 — L3 Date naissance / Pays de naissance. */}
-              <div className="row-pair">
-                <DateMaskField label="Date de naissance" value={d.date_naissance} onChange={v => set('date_naissance', v)} style={{flex:1}}/>
-                <div style={{flex:1, minWidth:0}}>
-                  <PaysCompactButton label="Pays de naissance" value={d.pays_naissance} onChange={v => set('pays_naissance', v)}/>
-                </div>
-              </div>
-              {/* M/2026/04/29/44 v8 — Sub-bloc Piece d'identite. */}
+              {/* M/2026/05/12/23 — Date+Pays naissance deplaces en 1ere ligne du bloc Piece d'identite (logique metier : ce sont des infos d'identite). */}
               <PieceIdentiteBlock d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null} showToast={showToast}/>
               </form>
             </>
