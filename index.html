@@ -207,6 +207,9 @@ select:-webkit-autofill {
   --text-hint:var(--color-text-muted);
   --border-input:var(--color-border-medium);
   --border-subtle:var(--color-border-subtle);
+  /* M/2026/05/13/16 — Dark theme complet (audit M/13/3 + Reglages v3 Phase 1). */
+  --color-bg-page-light: #FCFAF6;
+  --color-bg-card-light: #FFFFFF;
   /* M/2026/05/13/4 — Uniformization photos Phase 1 (audit M/13/3) */
   /* Axe 2 : 3 tailles avatar utilisateur canoniques */
   --avatar-sm:36px;   /* badges en ligne (futur) */
@@ -265,6 +268,71 @@ select:-webkit-autofill {
   --ocre-bb-side-margin: var(--space-3);
   --ocre-bb-max-width:360px;
 }
+
+/* M/2026/05/13/16 — Dark theme overrides ([data-theme="dark"] applique sur <html> par applyTheme M/12/53).
+   Convention : identite ocre (accent) preservee + texte clair + bg sombre + bordures attenuees.
+   Audit complet CSS vars utilisees dans l'app, overrides cibles. */
+[data-theme="dark"] {
+  --color-bg-page: #1A1F2E;
+  --color-bg-card: #242938;
+  --color-bg-input: #2A3041;
+  --color-bg-tint-warm: #2D3344;
+  --color-bg-tint-hover: #313749;
+  --color-bg-tint-cream: #2A3041;
+  --color-bg-tint-soft: #232838;
+  --color-bg-tint-warm-bandeau: #2A3041;
+  --color-field-empty: #2A3041;
+  --color-field-filled: #2D4030;
+  --color-field-invalid: #4A2828;
+
+  --color-text-primary: #E8E8E8;
+  --color-text-taupe: #C0BAB0;
+  --color-text-muted: #909090;
+  --color-text-brown: #D4A875;
+
+  --color-border-cream: #3A4050;
+  --color-border-subtle: #2F3548;
+  --color-border-strong: #4A5064;
+  --color-border-medium: #404654;
+
+  /* Identite ocre preservee (accent + ocre-deep) */
+  --color-accent: #D4A875;
+  --color-ocre-deep: #B87333;
+  --color-ocre-flamboyant: #E0A86D;
+
+  --color-error: #FF6B6B;
+  --color-alert: #FF6B6B;
+
+  --photo-border: 1px solid var(--color-border-subtle);
+  --photo-border-accent: 3px solid var(--color-accent);
+}
+
+/* Auto = follow systeme via prefers-color-scheme */
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    --color-bg-page: #1A1F2E;
+    --color-bg-card: #242938;
+    --color-bg-input: #2A3041;
+    --color-bg-tint-warm: #2D3344;
+    --color-bg-tint-hover: #313749;
+    --color-bg-tint-cream: #2A3041;
+    --color-bg-tint-soft: #232838;
+    --color-field-empty: #2A3041;
+    --color-field-filled: #2D4030;
+    --color-field-invalid: #4A2828;
+    --color-text-primary: #E8E8E8;
+    --color-text-taupe: #C0BAB0;
+    --color-text-muted: #909090;
+    --color-text-brown: #D4A875;
+    --color-border-cream: #3A4050;
+    --color-border-subtle: #2F3548;
+    --color-border-strong: #4A5064;
+    --color-border-medium: #404654;
+    --color-accent: #D4A875;
+    --color-error: #FF6B6B;
+  }
+}
+
 @media (max-width:768px){
   :root{
     --pill-btn-min-width:44px;
