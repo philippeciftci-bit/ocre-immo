@@ -1,6 +1,6 @@
 <?php
 // M107 — POST /api/billing/cancel.php
-// Active cancel_at_period_end=true sur subscription Stripe. Garde acces jusqu'a fin periode.
+// Active cancel_at_period_end=true sur subscription interne Ocre. Garde acces jusqu'a fin periode.
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../_session.php';

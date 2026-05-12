@@ -1,7 +1,7 @@
 <?php
 /**
  * M_OCRE_HOME_VISUELLE — Refonte radicale home en HUB outils gratuits visuel.
- * Style Airbnb/Notion/Apple inspired. Zero paragraphe >3 lignes. Photos Unsplash CDN.
+ * Style Airbnb/convention interne/Apple inspired. Zero paragraphe >3 lignes. Photos Unsplash CDN.
  * Rejette M102 textuel (9 sections paragraphes B2B SaaS).
  * M_OCRE_PWA_UNIFIE — meta PWA + apple-touch-icon + register sw.js dans cette page.
  */

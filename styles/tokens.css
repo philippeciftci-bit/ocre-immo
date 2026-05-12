@@ -1,6 +1,6 @@
 /* M/2026/05/07/DESIGN-TOKENS — Design system Oi Agent (un produit Ocre).
  * Source de vérité unique pour tous les modules Oi (Agent, Scan, Book, Demande).
- * Pattern Stripe / Vercel / Linear / Notion : 3 couches primitives -> semantic -> component.
+ * Pattern interne Ocre / déploiement interne / modèle interne Ocre / convention interne : 3 couches primitives -> semantic -> component.
  *
  * Modifier UN token = changement propage partout en 1 reload.
  * Voir styles/README.md pour conventions et procedure d'ajout/modification.
@@ -62,8 +62,8 @@
   /* M/2026/05/12/21 — Systeme universel 3 etats champs (vide / valide / invalide).
      Tokens centralises, surcharge possible via /api/design-tokens.php au boot (panneau Apparence superadmin). */
   --color-field-empty: #FAF6F0;      /* cream neutre, champ vide ou efface */
-  --color-field-filled: #E8F5E9;     /* M/2026/05/09/79 — Material green-50 : champ rempli ET valide */
-  --color-field-invalid: #FEE8E8;    /* M/2026/05/12/21 — Material red-50 : champ rempli format INVALIDE */
+  --color-field-filled: #E8F5E9;     /* M/2026/05/09/79 — vert clair Ocre-50 : champ rempli ET valide */
+  --color-field-invalid: #FEE8E8;    /* M/2026/05/12/21 — rouge clair Ocre-50 : champ rempli format INVALIDE */
   /* M/2026/05/09/80 — alerte rouge unifiee (BROUILLON, Choisir un profil, futur). Var prete pour expose superadmin Apparence. */
   --color-alert: #B91C1C;
   --alert-border-style: dashed;

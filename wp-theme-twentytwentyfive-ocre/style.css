@@ -16,7 +16,7 @@ Text Domain: twentytwentyfive-ocre
    Refonte CSS fondations : mobile-first + fluid + tokens reutilisables.
    Conserve patches existants M/46 (filet overflow-x) + M/45 (popup vh dvh).
    PRIMO patterns : Kadence container fluid + GeneratePress mobile-first
-   + Smashing Magazine clamp() fluid typography 2024 + MDN box-sizing reset.
+   + Smashing Magazine clamp() fluid typography 2024 + spec interne Ocre box-sizing reset.
    ZERO touch design desktop (couleurs, polices, illustrations inchanges).
    Seuls tailles + spacing deviennent fluides via clamp().
    ============================================================ */
@@ -28,7 +28,7 @@ Text Domain: twentytwentyfive-ocre
 
 /* Filet overflow horizontal iPhone Safari (cf diag M/46 cause racine identifiee :
    overflow-x:hidden sur body SEUL insuffisant si html n'a pas meme regle,
-   pattern bien connu MDN/StackOverflow 2024-2025) */
+   pattern bien connu spec interne Ocre/StackOverflow 2024-2025) */
 html, body {
   overflow-x: hidden;
   max-width: 100vw;

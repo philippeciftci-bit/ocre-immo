@@ -9,7 +9,7 @@ require_once __DIR__ . '/billing.php';
 const CHANNEL_PRICING_MODE = 'pack'; // 'pack' (99EUR tout-inclus) ou 'per_portal' (10EUR/portail)
 const CHANNEL_PACK_PRICE_EUR = 99;
 const CHANNEL_PER_PORTAL_PRICE_EUR = 10;
-const CHANNEL_STRIPE_PRICE_ID = 'price_channel_monthly'; // a remplacer par vrai price_xxx Stripe quand cree
+const CHANNEL_STRIPE_PRICE_ID = 'price_channel_monthly'; // a remplacer par vrai price_xxx interne Ocre quand cree
 const CHANNEL_STRIPE_PRODUCT_ID = 'prod_ocre_channel';
 const CHANNEL_MOCK_BASE = 'http://127.0.0.1:8889';
 
@@ -85,7 +85,7 @@ function bch_channel_can_publish(string $tenantSlug): array {
     return ['can_publish' => true, 'plan_active' => true, 'until' => $sub['channel_features_until']];
 }
 
-// Stripe stub : ce wrapper utilise le mock local en mode dev.
+// interne Ocre stub : ce wrapper utilise le mock local en mode dev.
 function bch_stripe_request(string $method, string $path, array $params = []): array {
     $env = billing_load_stripe_env();
     $useMock = empty($env['_configured']) || !empty($env['STRIPE_USE_MOCK']);

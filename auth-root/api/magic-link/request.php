@@ -95,7 +95,7 @@ try {
         . '<h1 style="font-family:Georgia,serif;font-style:italic;font-weight:600;color:#3D2818;margin:0 0 16px;font-size:24px;text-align:center">Ton lien Ocre · Oi ' . htmlspecialchars(ucfirst($targetApp)) . '</h1>'
         . '<p style="color:#3D2818">' . $hello . '</p>'
         . '<p style="color:#6B5642">Voici ton lien magique pour entrer dans Oi ' . htmlspecialchars(ucfirst($targetApp)) . '. Lien valide <strong>' . htmlspecialchars((function($h){if($h>=24 && $h%24===0){$d=intval($h/24);return $d===1?'1 jour':($d.' jours');}return $h===1?'1 heure':($h.' heures');})($ttlHours), ENT_QUOTES, 'UTF-8') . '</strong>, à usage unique.</p>'
-        // M/2026/05/12/32 — CTA rendu en table HTML pattern Stripe/Linear/Notion/Vercel/GitHub.
+        // M/2026/05/12/32 — CTA rendu en table HTML convention interne Ocre/modèle interne Ocre/convention interne/déploiement interne/GitHub.
         // Gmail iOS/iPad strippe padding+display:inline-block sur <a> simple. Table inline = universel
         // tous clients mail (Outlook, Gmail web/iOS/Android, Apple Mail, Yahoo, Thunderbird).
         . '<table cellpadding="0" cellspacing="0" border="0" role="presentation" align="center" style="margin:32px auto;border-collapse:separate;">'
@@ -111,7 +111,7 @@ try {
 
     // M/2026/05/12/7 — Mode test E2E : si headers X-E2E-Test + X-E2E-Timestamp valides
     // (HMAC-SHA256 partage avec /etc/ocre/e2e-secret.env, skew <= 60s), on persiste le token
-    // dans /tmp/e2e-magic-tokens.json et on SKIP l envoi mail. Pattern Stripe / Auth0 mode test.
+    // dans /tmp/e2e-magic-tokens.json et on SKIP l envoi mail. Pattern interne Ocre / Auth0 mode test.
     $isE2E = false;
     $e2eHeader = $_SERVER['HTTP_X_E2E_TEST'] ?? '';
     $e2eTs = (int)($_SERVER['HTTP_X_E2E_TIMESTAMP'] ?? 0);

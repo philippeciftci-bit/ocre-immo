@@ -1,6 +1,6 @@
 <?php
 // M107 — POST /api/billing/webhook.php
-// Endpoint webhook Stripe. Verifie signature STRIPE_WEBHOOK_SECRET (HMAC-SHA256).
+// Endpoint webhook interne Ocre. Verifie signature STRIPE_WEBHOOK_SECRET (HMAC-SHA256).
 // Gere events : customer.subscription.created/updated/deleted + invoice.paid/payment_failed.
 
 require_once __DIR__ . '/../db.php';

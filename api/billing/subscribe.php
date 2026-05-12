@@ -1,6 +1,6 @@
 <?php
 // M107 — POST /api/billing/subscribe.php {plan: 'channel_premium'}
-// Cree Customer + Subscription Stripe (ou stub) + retourne checkout URL.
+// Cree Customer + Subscription interne Ocre (ou stub) + retourne checkout URL.
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../_session.php';
@@ -23,7 +23,7 @@ if ($plan !== 'channel_premium') jsonError('plan inconnu', 400);
 
 bch_ensure_schema();
 
-// Cree ou recupere Customer Stripe
+// Cree ou recupere Customer interne Ocre
 $sub = bch_get_subscription($tenant);
 $stripeCustId = $sub['stripe_customer_id'] ?? null;
 if (!$stripeCustId) {

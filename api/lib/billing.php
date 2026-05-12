@@ -1,5 +1,5 @@
 <?php
-// M/2026/04/29/2 — Helper billing : limites par plan + Stripe wrapper léger.
+// M/2026/04/29/2 — Helper billing : limites par plan + interne Ocre wrapper léger.
 if (!function_exists('billing_ensure_schema')) {
 
 function billing_ensure_schema(): void {

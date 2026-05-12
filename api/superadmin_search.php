@@ -1,5 +1,5 @@
 <?php
-// M/2026/05/07/98.1 — Recherche globale super_admin (pattern Stripe Cmd+K).
+// M/2026/05/07/98.1 — Recherche globale super_admin (convention interne Ocre Cmd+K).
 // GET /api/superadmin_search.php?q=<term> -> {results: [{category, label, sublabel, url}]}
 // Auth super_admin uniquement. Recherche LIKE %term% sur 5 sources cross-tenant.
 require_once __DIR__ . '/lib/router.php';

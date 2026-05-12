@@ -1,5 +1,5 @@
 <?php
-// M/2026/04/29/2 — Stripe webhook : signature + dispatch events vers subscriptions.
+// M/2026/04/29/2 — interne Ocre webhook : signature + dispatch events vers subscriptions.
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/lib/billing.php';
 require_once __DIR__ . '/admin/_audit.php';
@@ -10,7 +10,7 @@ $secret = $env['STRIPE_WEBHOOK_SECRET'] ?? '';
 $payload = file_get_contents('php://input');
 $sigHeader = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
 
-// Vérification signature (algo Stripe : t=<timestamp>,v1=<hmac>).
+// Vérification signature (algo interne Ocre : t=<timestamp>,v1=<hmac>).
 function verifyStripeSig(string $payload, string $header, string $secret, int $tolerance = 300): bool {
     if (!$secret) return false;
     $items = [];

@@ -1,5 +1,5 @@
 <?php
-// M_GLITCHTIP_INSTALL — Bootstrap Sentry PHP SDK pour backend Ocre (auth, app)
+// M_GLITCHTIP_INSTALL — structure CSS Ocre Sentry PHP SDK pour backend Ocre (auth, app)
 // Déploiement : /opt/ocre-auth/lib/sentry-init.php + /opt/ocre-app/api/lib/sentry-init.php
 // Inclusion : require_once en haut de chaque endpoint critique
 // Pré-requis : composer require sentry/sentry (dans /var/www/ocre-auth/ et /opt/ocre-app/)

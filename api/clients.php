@@ -671,7 +671,7 @@ switch ($action) {
 
     case 'archive': {
         // M/2026/05/12/27 — autorise archivage sur tous statuts (brouillon + enregistre + tous profils).
-        // M/2026/05/12/40 — Pattern Linear/Asana/GitHub Issues : IDEMPOTENT. Re-archive deja archive = 200 OK
+        // M/2026/05/12/40 — Pattern modèle d'état interne Ocre : IDEMPOTENT. Re-archive deja archive = 200 OK
         // avec already_archived:true (pas 400 "Deja archive"). Le frontend traite silencieux (la card est deja
         // invisible cote accueil). Status codes : 200 OK succes/no-op, 404 not_found, 500 erreur reelle.
         $id = (int)($input['id'] ?? 0);
