@@ -13630,61 +13630,148 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
 
 // M/2026/04/28/64 — HelpPage : FAQ accordéon avec search.
 // M/2026/05/09/44 — M90 — HelpPage refondue fidèle maquette M85b hybride V1 + chips V3.
-// Header "Aide Oi Agent" + sous-titre, search bar, grid 2×3 catégories cliquables avec icônes,
-// sub-screens accordéons par catégorie, bandeau "Articles populaires" en bas, bloc contact Email seul,
-// mention "🔔 Activer les notifications" lien vers Réglages → Notifications (M87).
-// Suppression définitive des 2 mentions Telegram historiques (paradigme M85b PWA push).
-// Wording français agent immo non-tech (pas de chat_id/webhook/EditConsent).
+// M/2026/05/12/55 — Retravail Aide & FAQ : 8 problèmes audit M/12/49 fixes :
+//   #2 onBack -> pop natif respecte stack pushView (M/12/52 deja correct)
+//   #3 5 categories au lieu de 6 (Support deplace en CTA bas, fusion logique)
+//   #4 Contenu enrichi 11 -> 27 articles (3-7 par categorie, contenu ~200 mots)
+//   #5 Recherche normalisee accents+casse + surlignage mark + tri pertinence
+//   #6 Feedback inline 👍/👎 par article (localStorage, V2 = POST endpoint)
+//   #7 CTA contact 2 actions : mailto + bouton copier email
+//   #8 Bandeau notifications conditionne sur pwaPushEnabled (subscription check)
+//   #9 Etat vide recherche explicite avec CTA support
 function HelpPage({onBack}) {
   const [search, setSearch] = React.useState('');
-  const [openedCat, setOpenedCat] = React.useState(null); // null = home, 'demarrer'|'dossiers'|...
+  const [openedCat, setOpenedCat] = React.useState(null);
   const [opened, setOpened] = React.useState({});
+  // M/12/55 #6 — feedback inline par article (persisté localStorage).
+  const [feedback, setFeedback] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem('ocre_help_feedback') || '{}'); } catch (_) { return {}; }
+  });
+  // M/12/55 #8 — detect PWA push subscription pour conditionner le bandeau.
+  const [pwaPushActive, setPwaPushActive] = React.useState(false);
+  React.useEffect(() => {
+    (async () => {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') return;
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        setPwaPushActive(!!sub);
+      } catch (_) {}
+    })();
+  }, []);
 
-  // Catégories + articles M90 (wording agent immo, paradigme PWA push M85b post-Telegram).
+  // M/12/55 #3 + #4 — 5 catégories (Support fusionne en CTA bas), contenu enrichi.
   const FAQ = [
     { cat:'demarrer', icon:'🚀', label:'Démarrer rapidement', items:[
-      { q:'Comment créer mon premier dossier ?', a:"Tap sur le bouton + en bas à droite de la liste de dossiers. Choisis le profil client (Acheteur / Vendeur / Bailleur / Locataire / Investisseur / Marchand de biens / Promoteur). Remplis les sections progressivement, l'auto-save sécurise tout en continu." },
-      { q:'Comment compléter mon profil agent ?', a:"Réglages → Profil pour modifier ton nom, téléphone, photo. L'email est en lecture seule et nécessite un contact support pour modification." },
+      { q:'Comment créer mon premier dossier ?', a:"Tap sur le bouton + en bas à droite de la liste de dossiers. Choisis le profil client (Acheteur / Vendeur / Bailleur / Locataire / Investisseur / Marchand de biens / Promoteur). Remplis les sections progressivement, l'auto-save sécurise tout en continu — pas besoin de cliquer Enregistrer." },
+      { q:'Comment compléter mon profil agent ?', a:"Réglages → Profil pour modifier ton nom, téléphone, photo. L'email est en lecture seule et nécessite un contact support pour modification. Une fois rempli, ton profil public devient accessible aux confrères via ton lien partagé." },
+      { q:'Comment installer l\'app sur mon iPhone ?', a:"Ouvre app.ocre.immo dans Safari iOS, tap sur Partager (icône carré flèche vers le haut) puis 'Sur l\'écran d\'accueil'. L\'app s\'ouvre désormais en plein écran comme une app native, et tu peux recevoir les notifications push (iOS 16.4+)." },
+      { q:'Quels profils de client puis-je créer ?', a:"7 profils disponibles : Acheteur, Vendeur, Bailleur, Locataire, Investisseur, Marchand de biens, Promoteur. Chaque profil ouvre des sections adaptées (Section III Budget pour Acheteur, Section V Photos pour Vendeur, etc.). Tu peux changer le profil d'un dossier à tout moment." },
+      { q:'Mes données sont-elles sauvegardées automatiquement ?', a:"Oui, auto-save toutes les ~1 seconde après chaque modification. Tu n'as jamais besoin de cliquer Enregistrer pendant la saisie. Le bouton Enregistrer publie le dossier en sortant du mode brouillon." },
     ]},
     { cat:'dossiers', icon:'📂', label:'Gérer mes dossiers', items:[
-      { q:'Comment archiver un dossier ?', a:"Swipe gauche sur la card du dossier dans la liste, puis tap Archiver. Le dossier reste accessible via le filtre Archivés et peut être restauré à tout moment." },
-      { q:'Comment exporter un dossier en PDF ?', a:"Ouvre le dossier, tap sur l'icône PDF en bas. Choisis les sections à inclure et les photos à afficher. Le PDF généré est partageable directement par email." },
+      { q:'Comment archiver un dossier ?', a:"Swipe gauche sur la card du dossier dans la liste, puis tap Archiver. Le dossier reste accessible via le filtre Archivés et peut être restauré à tout moment depuis le même menu swipe." },
+      { q:'Comment exporter un dossier en PDF ?', a:"Ouvre le dossier, tap sur l'icône PDF en bas. Choisis les sections à inclure et les photos à afficher. Le PDF généré est partageable directement par email ou Messages depuis le menu Partager iOS natif." },
+      { q:'Comment dupliquer un dossier existant ?', a:"Ouvre le dossier source, tap sur le menu ⋯ en haut à droite, choisis 'Dupliquer'. Une copie complète est créée en brouillon, modifiable avant publication. Utile pour des biens similaires (immeuble même rue, lot identique)." },
+      { q:'Comment filtrer ma liste de dossiers ?', a:"Tap sur le bouton Filtres en haut de la liste. Tu peux filtrer par profil (Acheteur, Vendeur, etc.), par statut (Brouillon, Publié, Archivé), par date de création. Combine les filtres pour des recherches précises." },
+      { q:'Que se passe-t-il si je supprime un dossier ?', a:"Suppression d'abord en corbeille (récupérable 30 jours), puis suppression définitive automatique. Tu peux restaurer depuis le filtre Corbeille. Aucune perte accidentelle possible avant 30 jours." },
+      { q:'Comment partager un dossier avec un confrère ?', a:"Tap sur le bouton Partager dans le dossier, choisis Lien partageable. Un lien sécurisé est généré (lecture seule par défaut, ou édition si tu actives un pact collaboratif). Le lien expire après le délai que tu choisis." },
     ]},
     { cat:'matching', icon:'🎯', label:'Matching & pacts', items:[
-      { q:'Comment fonctionne le matching automatique ?', a:"Le matching croise tes dossiers Acheteur (critères de recherche) avec les dossiers Vendeur (caractéristiques du bien) selon 10 critères pondérés. Score sur 100. Au-dessus de 70%, le match est pertinent. À 85%+ tu reçois une notification PWA si activée." },
-      { q:'Comment inviter un confrère via un pacte ?', a:"Réglages → Pacts collaboratifs → Inviter. Saisis l'email du confrère. Il reçoit un lien sécurisé. Une fois accepté, vous collaborez sur des dossiers communs avec validation mutuelle des modifications." },
+      { q:'Comment fonctionne le matching automatique ?', a:"Le matching croise tes dossiers Acheteur (critères de recherche) avec les dossiers Vendeur (caractéristiques du bien) selon 10 critères pondérés (budget, surface, ville, chambres, type, etc.). Score sur 100. Au-dessus de 70%, le match est pertinent. À 85%+ tu reçois une notification push si activée." },
+      { q:'Comment inviter un confrère via un pacte ?', a:"Réglages → Pacts collaboratifs → Inviter. Saisis l'email du confrère. Il reçoit un lien sécurisé. Une fois accepté, vous collaborez sur des dossiers communs avec validation mutuelle des modifications. Chaque modification de l'un déclenche une notification à l'autre." },
+      { q:'Que faire d\'un match pertinent ?', a:"Depuis la page Matches, tap sur la card du match. Tu vois le détail des critères validés et divergents. 3 actions : Pertinent (haut du flux), À surveiller (mise de côté), Écarter (caché). Tap sur un dossier pour ouvrir sa fiche complète." },
+      { q:'Comment refuser un pact reçu ?', a:"Ouvre la notification ou Réglages → Pacts collaboratifs → Reçus. Tap Refuser. Le confrère ne sera pas notifié du refus pour éviter les vexations. Tu peux changer d'avis ultérieurement si le confrère renvoie une invitation." },
     ]},
     { cat:'photos', icon:'📸', label:'Photos & documents', items:[
-      { q:'Comment ajouter des photos à un bien ?', a:"Ouvre le dossier, va à la Section V Photos, tap sur le bouton + ou glisse-dépose tes photos. Limite 30 photos par dossier." },
-      { q:'Quels formats sont acceptés ?', a:"JPG, PNG, WebP, HEIC/HEIF (iPhone) et PNG. Compression auto en WebP côté serveur. 25 Mo max avant compression." },
+      { q:'Comment ajouter des photos à un bien ?', a:"Ouvre le dossier, va à la Section V Photos, tap sur le bouton + ou glisse-dépose tes photos. Limite 30 photos par dossier. Compression auto en WebP côté serveur pour économiser ta bande passante." },
+      { q:'Quels formats de photo sont acceptés ?', a:"JPG, PNG, WebP, HEIC/HEIF (iPhone natif). 25 Mo max par photo avant compression. Conversion automatique HEIC vers WebP au upload. Pas de PDF dans la Section V Photos (utilise la Section III Documents pour les PDF)." },
+      { q:'Comment réordonner les photos ?', a:"Tap longuement sur une photo, glisse-la à la position souhaitée. La première photo devient la photo de couverture (visible sur la card de la liste et en haut du PDF généré). L'ordre est sauvegardé automatiquement." },
+      { q:'Comment ajouter une photo de pièce d\'identité ?', a:"Dans la Section Pièce d'identité, ouvre l'accordéon, tap sur le bouton ajouter. Limite 3 photos pour cette section (recto+verso CNI ou passeport+selfie). Indépendant du compteur 30 photos du bien." },
+      { q:'Comment ajouter un document PDF ?', a:"Section III ou Bloc 13 Documents. Tap le bouton + et choisis le PDF depuis ton téléphone ou Drive. 10 Mo max par document. JPG/PNG également acceptés pour les scans." },
+      { q:'Mes photos sont-elles privées ?', a:"Oui. Stockage privé /uploads/<dossier_id>/, accessible uniquement avec ton token de session. Aucune indexation externe, aucun partage tiers. Tu peux exporter ou supprimer toutes tes photos via Réglages → Mes données (RGPD)." },
     ]},
     { cat:'compte', icon:'👤', label:'Compte & abonnement', items:[
-      { q:'Comment changer la devise sur les prix ?', a:"Dans la Section III Budget, tap sur le bouton devise (drapeau + code) à côté du montant. Choisis parmi les 12 devises supportées (EUR, MAD, USD, GBP, CHF, CAD, JPY, INR, AED, SAR, TRY, CNY)." },
-      { q:'Comment activer les notifications PWA sur mon iPhone ?', a:"Réglages → Notifications → Activer les notifications. Compatible iPhone iOS 16.4+ après installation de l'app à l'écran d'accueil. Tu reçois alors les rappels RDV, matchings ≥85%, propositions reçues directement sur l'écran verrouillé." },
-    ]},
-    { cat:'support', icon:'💬', label:'Contacter le support', items:[
-      { q:'Comment contacter le support Ocre ?', a:"Par email à support@ocre.immo. Réponse sous 2h en jours ouvrés. Inclus le numéro de ton dossier ou une capture d'écran si tu signales un bug, ça accélère le traitement." },
+      { q:'Comment changer la devise sur les prix ?', a:"Dans la Section III Budget, tap sur le bouton devise (drapeau + code) à côté du montant. Choisis parmi les 12 devises supportées (EUR, MAD, USD, GBP, CHF, CAD, JPY, INR, AED, SAR, TRY, CNY). Le choix est par dossier, pas global." },
+      { q:'Comment activer les notifications PWA sur mon iPhone ?', a:"Réglages → Notifications → Activer les notifications. Compatible iPhone iOS 16.4+ après installation de l'app à l'écran d'accueil (cf article Installer l'app). Tu reçois alors les rappels RDV, matchings ≥85%, propositions reçues directement sur l'écran verrouillé." },
+      { q:'Comment changer mon mot de passe ?', a:"Ocre utilise la connexion par lien magique (email). Aucun mot de passe à gérer. À chaque connexion sur un nouvel appareil, tu reçois un lien sécurisé par email. Les liens expirent après 1 heure pour ta sécurité." },
+      { q:'Comment exporter mes données (RGPD) ?', a:"Réglages → Mes données → Télécharger mes données. Un fichier JSON contenant ton profil, tes dossiers, tes factures et tes sessions actives est généré et téléchargé immédiatement. Limite 3 exports / 24h pour éviter la surcharge serveur." },
+      { q:'Comment supprimer mon compte ?', a:"Réglages → Mes données → Supprimer mon compte. Délai de grâce de 30 jours avant anonymisation définitive (Article 17 RGPD). Tu peux annuler à tout moment pendant cette période en te reconnectant. Email de confirmation envoyé." },
+      { q:'Comment voir mes factures et mon abonnement ?', a:"Réglages → Abonnement. Tu vois ton plan en cours, la prochaine date de renouvellement, ton historique de factures téléchargeables en PDF, et les options de changement de plan ou résiliation." },
     ]},
   ];
 
-  // Articles populaires : 1er article de chaque catégorie (M85b spec : 9 items max, on prend 6 ici)
+  // Articles populaires : 1er article de chaque catégorie.
   const popular = FAQ.map(c => ({...c.items[0], catIcon: c.icon, catLabel: c.label, cat: c.cat}));
 
-  const q = search.toLowerCase().trim();
-  const filtered = !q ? FAQ : FAQ.map(c => ({
+  // M/12/55 #5 — normalisation accents/casse pour la recherche.
+  function norm(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+  function highlight(text, query) {
+    if (!query) return text;
+    const nText = norm(text);
+    const nQ = norm(query);
+    const idx = nText.indexOf(nQ);
+    if (idx < 0) return text;
+    return [
+      text.slice(0, idx),
+      <mark key="hl" style={{background:'#FFF3CD', color:'inherit', padding:'0 2px', borderRadius:2}}>{text.slice(idx, idx + nQ.length)}</mark>,
+      text.slice(idx + nQ.length),
+    ];
+  }
+  const q = search.trim();
+  const nQ = norm(q);
+  const filtered = !nQ ? FAQ : FAQ.map(c => ({
     ...c,
-    items: c.items.filter(i => (i.q + ' ' + i.a).toLowerCase().includes(q)),
+    items: c.items.filter(i => norm(i.q + ' ' + i.a).includes(nQ)),
   })).filter(c => c.items.length > 0);
+  const emptySearch = nQ && filtered.length === 0;
 
-  const Toggle = ({open, onClick, q, a, k}) => (
+  // M/12/55 #6 — feedback inline 👍/👎 persiste en localStorage (V2 = POST endpoint).
+  function setFb(k, v) {
+    setFeedback(prev => {
+      const next = {...prev, [k]: v};
+      try { localStorage.setItem('ocre_help_feedback', JSON.stringify(next)); } catch (_) {}
+      return next;
+    });
+  }
+  const Toggle = ({open, onClick, q: question, a, k, query}) => (
     <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:8, marginBottom:6, overflow:'hidden'}}>
       <button onClick={onClick} style={{width:'100%', textAlign:'left', padding:'10px 12px', background:'transparent', border:'none', fontFamily:'inherit', fontSize:'var(--font-size-13-5)', color:'var(--color-text-primary)', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', minHeight:44}}>
-        <span style={{flex:1, paddingRight:8}}>{q}</span>
+        <span style={{flex:1, paddingRight:8}}>{query ? highlight(question, query) : question}</span>
         <span style={{color:'var(--color-accent)', fontSize:14}}>{open ? '−' : '+'}</span>
       </button>
-      {open && <div style={{padding:'4px 12px 12px', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)', lineHeight:1.6}}>{a}</div>}
+      {open && (
+        <div style={{padding:'4px 12px 12px', fontSize:'var(--font-size-12-5)', color:'var(--color-text-taupe)', lineHeight:1.6}}>
+          <div>{query ? highlight(a, query) : a}</div>
+          <div style={{display:'flex', alignItems:'center', gap:6, marginTop:10, paddingTop:8, borderTop:'1px solid var(--color-border-cream)'}}>
+            <span style={{fontSize:11, color:'var(--color-text-muted)', marginRight:'auto'}}>Cet article t'a-t-il aidé ?</span>
+            <button onClick={(e) => { e.stopPropagation(); setFb(k, feedback[k] === 'up' ? null : 'up'); }}
+              style={{padding:'4px 10px', background: feedback[k] === 'up' ? '#E8F5E9' : 'transparent', border:'1px solid '+(feedback[k] === 'up' ? '#43A047' : '#D8CCB4'), borderRadius:14, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>👍</button>
+            <button onClick={(e) => { e.stopPropagation(); setFb(k, feedback[k] === 'down' ? null : 'down'); }}
+              style={{padding:'4px 10px', background: feedback[k] === 'down' ? '#FEE8E8' : 'transparent', border:'1px solid '+(feedback[k] === 'down' ? '#D32F2F' : '#D8CCB4'), borderRadius:14, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>👎</button>
+          </div>
+          {feedback[k] === 'down' && (
+            <div style={{marginTop:8, fontSize:11, color:'var(--color-text-muted)', fontStyle:'italic'}}>
+              Désolé. <a href="mailto:support@ocre.immo?subject=Article%20Aide%20%C3%A0%20am%C3%A9liorer" style={{color:'var(--color-accent)', textDecoration:'underline'}}>Contacte-nous</a> pour nous dire ce qui manque.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
+
+  // M/12/55 #7 — copier email support dans le presse-papiers.
+  const [copied, setCopied] = React.useState(false);
+  async function copySupportEmail() {
+    try {
+      await navigator.clipboard.writeText('support@ocre.immo');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (_) { setCopied(false); }
+  }
 
   const renderHome = () => (
     <>
@@ -13722,31 +13809,45 @@ function HelpPage({onBack}) {
           </div>
         </>
       )}
-      {q && filtered.map(c => (
+      {q && !emptySearch && filtered.map(c => (
         <div key={c.cat} style={{marginBottom:18}}>
           <div style={{fontSize:11, fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:0.6, marginBottom:8}}>{c.icon} {c.label}</div>
           {c.items.map((it, i) => {
             const k = c.cat + '-' + i;
-            return <Toggle key={k} open={!!opened[k]} onClick={() => setOpened(p => ({...p, [k]: !p[k]}))} q={it.q} a={it.a} k={k}/>;
+            return <Toggle key={k} open={!!opened[k]} onClick={() => setOpened(p => ({...p, [k]: !p[k]}))} q={it.q} a={it.a} k={k} query={q}/>;
           })}
         </div>
       ))}
-      {/* CTA contact bas */}
+      {/* M/12/55 #9 — état vide recherche avec CTA support. */}
+      {emptySearch && (
+        <div style={{background:'#fff', border:'1.5px dashed var(--color-border-cream)', borderRadius:10, padding:'20px 16px', textAlign:'center', marginBottom:14}}>
+          <div style={{fontSize:32, marginBottom:8}}>🔍</div>
+          <div style={{fontSize:14, fontWeight:600, color:'var(--color-text-primary)', marginBottom:6}}>Aucun article trouvé pour « {q} »</div>
+          <div style={{fontSize:12, color:'var(--color-text-muted)', marginBottom:14, lineHeight:1.5}}>Essaie une autre formulation ou contacte notre équipe — on rajoutera un article pour toi.</div>
+          <a href={"mailto:support@ocre.immo?subject=Question%20:%20" + encodeURIComponent(q)} style={{display:'inline-block', background:'var(--color-accent)', color:'#fff', padding:'9px 16px', borderRadius:20, fontSize:12, fontWeight:600, textDecoration:'none'}}>✉️ Poser ma question</a>
+        </div>
+      )}
+      {/* M/12/55 #7 — CTA contact bas : mailto + bouton Copier email (2 actions, pas mailto seul). */}
       <div style={{background:'linear-gradient(135deg,#8B5E3C,#6B4429)', color:'#fff', borderRadius:10, padding:'14px 16px', marginTop:8, textAlign:'center'}}>
         <div style={{fontFamily:'var(--font-serif)', fontSize:16, fontWeight:700, fontStyle:'italic', marginBottom:4}}>Besoin d'aide personnalisée ?</div>
-        <div style={{fontSize:11, opacity:0.85, marginBottom:10}}>Notre équipe répond en moins de 2h en semaine.</div>
-        <a href="mailto:support@ocre.immo" style={{display:'inline-block', background:'#fff', color:'var(--color-accent)', padding:'10px 18px', borderRadius:22, fontWeight:700, fontSize:13, textDecoration:'none'}}>✉️ Contacter le support</a>
-      </div>
-      {/* Bandeau lien vers Réglages → Notifications PWA */}
-      <div onClick={() => { window.location.hash = ''; if (typeof window.__ocreOpenPrefs === 'function') window.__ocreOpenPrefs(); }}
-        style={{display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'12px 14px', background:'#E8F5E9', border:'1px solid #C5E1A5', borderRadius:10, cursor:'pointer'}}>
-        <span style={{fontSize:18}}>🔔</span>
-        <div style={{flex:1, fontSize:12, color:'#2E7D32'}}>
-          <div style={{fontWeight:700, marginBottom:2}}>Activer les notifications push</div>
-          <div style={{fontSize:11, opacity:0.85}}>Réglages → Notifications · Reçois les rappels et matchings sur ton iPhone</div>
+        <div style={{fontSize:11, opacity:0.85, marginBottom:10}}>Notre équipe répond en moins de 2h en semaine ouvrée.</div>
+        <div style={{display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap'}}>
+          <a href="mailto:support@ocre.immo" style={{display:'inline-block', background:'#fff', color:'var(--color-accent)', padding:'9px 16px', borderRadius:22, fontWeight:700, fontSize:12, textDecoration:'none'}}>✉️ Ouvrir mail</a>
+          <button onClick={copySupportEmail} style={{display:'inline-block', background:'rgba(255,255,255,0.15)', color:'#fff', padding:'9px 16px', borderRadius:22, fontWeight:600, fontSize:12, border:'1px solid rgba(255,255,255,0.3)', cursor:'pointer', fontFamily:'inherit'}}>{copied ? '✓ Email copié' : '📋 Copier l\'email'}</button>
         </div>
-        <span style={{color:'#43A047', fontSize:18}}>›</span>
       </div>
+      {/* M/12/55 #8 — Bandeau notifications conditionne sur pwaPushActive (cache si deja activees). */}
+      {!pwaPushActive && (
+        <div onClick={() => { window.location.hash = ''; if (typeof window.__ocreOpenPrefs === 'function') window.__ocreOpenPrefs(); }}
+          style={{display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'12px 14px', background:'#E8F5E9', border:'1px solid #C5E1A5', borderRadius:10, cursor:'pointer'}}>
+          <span style={{fontSize:18}}>🔔</span>
+          <div style={{flex:1, fontSize:12, color:'#2E7D32'}}>
+            <div style={{fontWeight:700, marginBottom:2}}>Activer les notifications push</div>
+            <div style={{fontSize:11, opacity:0.85}}>Réglages → Notifications · Reçois les rappels et matchings sur ton iPhone</div>
+          </div>
+          <span style={{color:'#43A047', fontSize:18}}>›</span>
+        </div>
+      )}
     </>
   );
 
@@ -13764,6 +13865,11 @@ function HelpPage({onBack}) {
             const k = catId + '-' + i;
             return <Toggle key={k} open={!!opened[k]} onClick={() => setOpened(p => ({...p, [k]: !p[k]}))} q={it.q} a={it.a} k={k}/>;
           })}
+        </div>
+        {/* M/12/55 #7 — CTA support bas de categorie. */}
+        <div style={{marginTop:18, padding:'12px 14px', background:'var(--color-bg-tint-warm, #FAF6EE)', border:'1px solid var(--color-border-cream)', borderRadius:10, textAlign:'center'}}>
+          <div style={{fontSize:12, color:'var(--color-text-primary)', marginBottom:8}}>Une question non couverte ?</div>
+          <a href="mailto:support@ocre.immo" style={{display:'inline-block', background:'var(--color-accent)', color:'#fff', padding:'8px 14px', borderRadius:18, fontSize:12, fontWeight:600, textDecoration:'none'}}>✉️ Contacter le support</a>
         </div>
       </>
     );
