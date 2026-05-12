@@ -1,7 +1,7 @@
 <?php
 // M/2026/05/12/53 — RGPD Article 15+20 : export portabilite des donnees utilisateur.
 // V1 : retourne JSON download direct contenant profil + dossiers + factures + metadata.
-// V2 (futur) : packaging ZIP avec /uploads/ inclus + delivery email lien expirant 24h.
+// M/2026/05/13/1 — V2 : ajout format=zip (ZipArchive PHP + uploads inclus).
 require_once __DIR__ . '/db.php';
 setCorsHeaders();
 
@@ -9,10 +9,10 @@ $user = requireAuth();
 $uid = (int) $user['id'];
 
 $action = $_GET['action'] ?? 'request';
+$format = $_GET['format'] ?? 'json';
 
 if ($action === 'status') {
-    // Pas de queue async pour l instant : V1 export synchrone immediat.
-    jsonOk(['available' => true, 'mode' => 'sync_json_v1']);
+    jsonOk(['available' => true, 'mode' => 'sync_json_v1', 'formats' => ['json', 'zip']]);
 }
 
 if ($action !== 'request') jsonError('Action inconnue', 404);
@@ -84,8 +84,66 @@ $payload = [
     'sessions_actives' => $sessions,
 ];
 
-$filename = 'ocre-export-' . $uid . '-' . date('Ymd-His') . '.json';
+$dateStamp = date('Ymd-His');
 
+// M/2026/05/13/1 — Format ZIP : packaging avec profil/dossiers/factures + README + uploads photos.
+if ($format === 'zip') {
+    if (!class_exists('ZipArchive')) jsonError('ZipArchive non disponible sur ce serveur', 500);
+    $tmpZip = tempnam(sys_get_temp_dir(), 'ocre-rgpd-');
+    $zip = new ZipArchive();
+    if ($zip->open($tmpZip, ZipArchive::OVERWRITE) !== true) jsonError('Impossible de creer le ZIP', 500);
+
+    $zip->addFromString('metadata.json', json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $zip->addFromString('profil.json', json_encode($profil, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $zip->addFromString('dossiers.json', json_encode($dossiers, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    $zip->addFromString('factures.json', json_encode($factures, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $zip->addFromString('sessions_actives.json', json_encode($sessions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+    // Photos uploadees : repertoire /uploads/<dossier_id>/* pour chaque dossier de l utilisateur.
+    $uploadsRoot = realpath(__DIR__ . '/../uploads');
+    if ($uploadsRoot) {
+        foreach ($dossiers as $d) {
+            if (!is_array($d) || empty($d['id'])) continue;
+            $dossierDir = $uploadsRoot . '/' . (int) $d['id'];
+            if (!is_dir($dossierDir)) continue;
+            foreach (glob($dossierDir . '/*') ?: [] as $f) {
+                if (!is_file($f)) continue;
+                $rel = 'uploads/dossier_' . (int) $d['id'] . '/' . basename($f);
+                @$zip->addFile($f, $rel);
+            }
+        }
+    }
+
+    $zip->addFromString('README.txt',
+        "Export RGPD Ocre Immo\n" .
+        "=====================\n\n" .
+        "Genere le : " . date('Y-m-d H:i:s') . "\n" .
+        "Utilisateur ID : " . $uid . "\n\n" .
+        "Contenu :\n" .
+        "- metadata.json : informations sur cet export\n" .
+        "- profil.json : tes informations personnelles\n" .
+        "- dossiers.json : tous tes dossiers clients\n" .
+        "- factures.json : ton historique de facturation\n" .
+        "- sessions_actives.json : tes sessions de connexion actives\n" .
+        "- uploads/dossier_<id>/ : photos et documents uploadees par dossier\n\n" .
+        "Articles RGPD : 15 (droit d acces) + 20 (portabilite).\n" .
+        "Questions : support@ocre.immo\n"
+    );
+
+    $zip->close();
+
+    $filename = 'ocre-export-' . $uid . '-' . $dateStamp . '.zip';
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Content-Length: ' . filesize($tmpZip));
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    readfile($tmpZip);
+    @unlink($tmpZip);
+    exit;
+}
+
+// Default : JSON download direct.
+$filename = 'ocre-export-' . $uid . '-' . $dateStamp . '.json';
 header('Content-Type: application/json; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');

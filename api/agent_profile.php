@@ -54,6 +54,7 @@ function ensureSlug(array $u): string {
 function fetchProfile(int $uid): array {
     $st = db()->prepare("SELECT id, email, prenom, nom, role, is_admin,
         photo_url, slug, tagline, bio,
+        telephone, societe,
         telephone_pro, email_pro, whatsapp_pro,
         zones_intervention, specialites,
         carte_pro_numero, carte_pro_prefecture, carte_pro_date_fin,
@@ -106,7 +107,10 @@ switch ($action) {
         $fields = [];
         $params = [];
 
+        // M/2026/05/13/1 — Profil v2 : ajout prenom, nom, telephone (perso) + societe editables.
         $strCols = [
+            'prenom' => 100, 'nom' => 100,
+            'telephone' => 40, 'societe' => 255,
             'tagline' => 255, 'bio' => 2000,
             'telephone_pro' => 50, 'email_pro' => 191, 'whatsapp_pro' => 50,
             'carte_pro_numero' => 100, 'carte_pro_prefecture' => 191,
