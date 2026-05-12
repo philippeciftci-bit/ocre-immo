@@ -1498,15 +1498,22 @@ function useAutoSaveStatus() {
       const message = (e && e.detail && e.detail.message) || 'Echec sauvegarde';
       setState(s => ({...s, status: 'error', errorMessage: message}));
     }
+    // M/2026/05/12/36 — Au publish (brouillon -> enregistre), reset le badge a idle.
+    // La fiche n'est plus brouillon donc 'Brouillon enregistré' n'a plus de sens (Philippe brief).
+    function onPublished() {
+      setState({status: 'idle', lastSaveAt: null, errorMessage: null, tick: 0});
+    }
     window.addEventListener('ocre-draft-saving', onSaving);
     window.addEventListener('ocre-draft-saved', onSaved);
     window.addEventListener('ocre-draft-error', onError);
+    window.addEventListener('ocre-dossier-published', onPublished);
     // Tick toutes les 5s pour rafraichir le compteur "il y a Xs".
     const t = setInterval(() => setState(s => ({...s, tick: s.tick + 1})), 5000);
     return () => {
       window.removeEventListener('ocre-draft-saving', onSaving);
       window.removeEventListener('ocre-draft-saved', onSaved);
       window.removeEventListener('ocre-draft-error', onError);
+      window.removeEventListener('ocre-dossier-published', onPublished);
       clearInterval(t);
     };
   }, []);
@@ -23896,7 +23903,9 @@ function FormView(props) {
                   }
                   setD(prev => ({...prev, statut: 'enregistre', is_draft: 0}));
                   if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, statut: 'enregistre', is_draft: 0} : prev);
-                  showToast && showToast('Dossier enregistre');
+                  // M/2026/05/12/36 — fix orthographe + dispatch event pour masquer le badge 'Brouillon enregistré'.
+                  try { window.dispatchEvent(new CustomEvent('ocre-dossier-published', {detail: {id: editing.id, at: Date.now()}})); } catch (e) {}
+                  showToast && showToast('Dossier enregistré');
                 } catch (e) {
                   showToast && showToast('Erreur reseau');
                 }
