@@ -68,6 +68,15 @@ function dossierDir($dossier_id) {
 }
 
 function publicBase() {
+    // M/2026/05/12/34 — Bug racine miniatures invisibles : hardcoded app.ocre.immo 301-redirige
+    // vers vitrine ocre.immo (route /uploads inexistante a la racine). Les <img src> echouaient silencieusement.
+    // Fix : utilise le Host courant (tenant subdomain) qui sert /uploads/* correctement.
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] ?? '') === '443' ? 'https' : 'http';
+    // Whitelist : tenant subdomain *.ocre.immo (sauf app.ocre.immo redirect).
+    if ($host && preg_match('/^[a-z0-9][a-z0-9-]*\.ocre\.immo$/i', $host) && stripos($host, 'app.ocre.immo') !== 0) {
+        return $proto . '://' . $host . '/uploads';
+    }
     $base = defined('APP_URL') ? rtrim(APP_URL, '/') : 'https://app.ocre.immo';
     return $base . '/uploads';
 }

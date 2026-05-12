@@ -4373,11 +4373,11 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
             </div>
           </div>
           {/* Ligne 5 — Photos 3 miniatures max (refonte M/12/26). */}
-          {/* M/2026/05/12/33 — miniatures 2x plus petites : grid 3 cols a max-width 180px chacune,
-              aligne a gauche. Sur ecrans larges, conserve 3 cases compactes au lieu de gros carres. */}
+          {/* M/2026/05/12/34 — restaure dimensions pre-M/12/33 (annule volet 2 M/12/33 photos retrecies).
+              Grid 3 cols 1fr (cases prennent toute la largeur dispo, dimensions naturelles selon viewport). */}
           <div style={{marginTop:'var(--space-2)'}}>
             <div style={{fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-1)'}}>Photos pièce</div>
-            <div style={{display:'grid', gridTemplateColumns:'repeat(3, minmax(0, 180px))', gap:'var(--space-2)', justifyContent:'start'}}>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'var(--space-2)'}}>
               {/* Slots remplis */}
               {files.slice(0, PIECE_PHOTOS_MAX).map((f, i) => {
                 const img = isImage(f);
