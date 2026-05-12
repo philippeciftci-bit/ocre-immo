@@ -17395,6 +17395,10 @@ function PreferencesPage({onBack, showToast, currentUser}) {
         <Group>
           <Row icon="💳" iconBg="#6A1B9A" label="Abonnement" value="Gérer" onClick={() => setSubscreen('abonnement')}/>
         </Group>
+        <SectionTitle>Mes données (RGPD)</SectionTitle>
+        <Group>
+          <Row icon="📦" iconBg="#388E3C" label="Telecharger / Supprimer mes donnees" onClick={() => setSubscreen('rgpd')}/>
+        </Group>
         <SectionTitle>Aide & déconnexion</SectionTitle>
         <Group>
           <Row icon="🆘" iconBg="#F57F17" label="Aide & FAQ" onClick={() => { if (typeof window.__ocreOpenHelp === 'function') window.__ocreOpenHelp(); }}/>
@@ -17478,23 +17482,91 @@ function PreferencesPage({onBack, showToast, currentUser}) {
     </div>
   );
 
+  // M/2026/05/12/53 — Securite v1 : liste sessions actives + revoke (anti-stub).
+  const [sessions, setSessions] = React.useState(null);
+  const [sessionsBusy, setSessionsBusy] = React.useState(false);
+  async function loadSessions() {
+    setSessionsBusy(true);
+    try {
+      const r = await fetch('/api/sessions.php?action=list', {headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (r && r.ok) setSessions(r.sessions || []);
+    } catch (_) {}
+    setSessionsBusy(false);
+  }
+  React.useEffect(() => { if (subscreen === 'securite' && sessions === null) loadSessions(); }, [subscreen]);
+  async function revokeSession(id) {
+    if (!(await (window.__ocreAsk ? window.__ocreAsk({title:'Deconnecter cette session ?', message:'L appareil sera deconnecte immediatement.', confirmLabel:'Deconnecter', danger:true}) : Promise.resolve(true)))) return;
+    try {
+      const r = await fetch('/api/sessions.php?action=revoke', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()}, body: JSON.stringify({id})}).then(r => r.json());
+      if (r && r.ok) { showToast && showToast('Session deconnectee'); loadSessions(); }
+    } catch (e) { showToast && showToast('Erreur'); }
+  }
+  async function revokeOthers() {
+    if (!(await (window.__ocreAsk ? window.__ocreAsk({title:'Deconnecter toutes les autres sessions ?', message:'Cette session courante restera active.', confirmLabel:'Deconnecter les autres', danger:true}) : Promise.resolve(true)))) return;
+    try {
+      const r = await fetch('/api/sessions.php?action=revoke_all_others', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()}, body: '{}'}).then(r => r.json());
+      if (r && r.ok) { showToast && showToast((r.revoked_count || 0) + ' session(s) deconnectee(s)'); loadSessions(); }
+    } catch (e) { showToast && showToast('Erreur'); }
+  }
+  function fmtDate(s) {
+    if (!s) return '—';
+    try { const d = new Date(s); return d.toLocaleString('fr-FR', {dateStyle:'short', timeStyle:'short'}); } catch (_) { return s; }
+  }
   const renderSecurite = () => (
     <div style={{padding:'14px'}}>
       <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
         <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Sessions actives</div>
-        <div style={{fontSize:12, color:'var(--color-text-muted)', lineHeight:1.6}}>Cet appareil · iPhone Safari · session active depuis aujourd'hui</div>
-        <div style={{fontSize:11, color:'var(--color-text-muted)', fontStyle:'italic', marginTop:10}}>Listing détaillé multi-sessions + bouton "Déconnecter ailleurs" en mission ultérieure.</div>
+        {sessionsBusy && <div style={{fontSize:12, color:'var(--color-text-muted)'}}>Chargement…</div>}
+        {!sessionsBusy && sessions && sessions.length === 0 && <div style={{fontSize:12, color:'var(--color-text-muted)'}}>Aucune session active.</div>}
+        {!sessionsBusy && sessions && sessions.map(s => (
+          <div key={s.id} style={{display:'flex', alignItems:'center', gap:10, padding:'10px 0', borderBottom:'1px solid var(--color-border-cream)'}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13, fontWeight:600, color:'var(--color-text-primary)'}}>
+                {s.device}
+                {s.is_current && <span style={{marginLeft:8, fontSize:10, background:'#E8F5E9', color:'#2E7D32', padding:'2px 6px', borderRadius:6, fontWeight:700}}>CET APPAREIL</span>}
+              </div>
+              <div style={{fontSize:11, color:'var(--color-text-muted)', marginTop:2}}>IP {s.ip || '—'} · derniere activite {fmtDate(s.last_activity_at || s.created_at)}</div>
+            </div>
+            {!s.is_current && (
+              <button onClick={() => revokeSession(s.id)} style={{padding:'6px 10px', background:'transparent', color:'var(--color-error)', border:'1px solid var(--color-error)', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer'}}>Deconnecter</button>
+            )}
+          </div>
+        ))}
+        {!sessionsBusy && sessions && sessions.length > 1 && (
+          <button onClick={revokeOthers} style={{marginTop:10, padding:'8px 14px', background:'var(--color-error)', color:'#fff', border:'none', borderRadius:6, fontSize:12, fontWeight:600, cursor:'pointer'}}>Deconnecter les autres sessions</button>
+        )}
+      </div>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Mot de passe</div>
+        <div style={{fontSize:12, color:'var(--color-text-muted)', lineHeight:1.5}}>Ton compte utilise la connexion par lien magique (email). Aucun mot de passe a gerer.</div>
+      </div>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Authentification 2 facteurs</div>
+        <div style={{fontSize:12, color:'var(--color-text-muted)', lineHeight:1.5, marginBottom:8}}>A venir.</div>
+        <button disabled style={{padding:'7px 12px', background:'#F0E9DE', color:'#999', border:'1px solid #D8CCB4', borderRadius:14, fontSize:11, fontWeight:600, cursor:'not-allowed'}}>Activer la 2FA (a venir)</button>
       </div>
     </div>
   );
 
+  // M/2026/05/12/53 — Apparence v1 : application immediate data-theme sur <html> au change.
+  function applyTheme(theme) {
+    try {
+      const t = (theme === 'auto') ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('ocre_theme', theme);
+    } catch (_) {}
+  }
+  React.useEffect(() => {
+    const t = (prefs && prefs.appearance && prefs.appearance.theme) || localStorage.getItem('ocre_theme') || 'auto';
+    applyTheme(t);
+  }, [prefs && prefs.appearance && prefs.appearance.theme]);
   const renderApparence = () => (
     <div style={{padding:'14px'}}>
       <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
         <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:10}}>Apparence & langue</div>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--color-border-cream)'}}>
           <span style={{fontSize:13}}>Thème</span>
-          <select value={(prefs.appearance && prefs.appearance.theme) || 'auto'} onChange={e => update('appearance.theme', e.target.value)} style={{padding:6, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit'}}>
+          <select value={(prefs.appearance && prefs.appearance.theme) || 'auto'} onChange={e => { update('appearance.theme', e.target.value); applyTheme(e.target.value); }} style={{padding:6, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit'}}>
             <option value="light">Clair</option>
             <option value="dark">Sombre</option>
             <option value="auto">Auto</option>
@@ -17502,11 +17574,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
         </div>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid var(--color-border-cream)'}}>
           <span style={{fontSize:13}}>Densité</span>
-          <select value={(prefs.appearance && prefs.appearance.density) || 'normal'} onChange={e => update('appearance.density', e.target.value)} style={{padding:6, border:'1px solid #D8CCB4', borderRadius:6, fontFamily:'inherit'}}>
-            <option value="compact">Compacte</option>
-            <option value="normal">Normale</option>
-            <option value="spacious">Espacée</option>
-          </select>
+          <span style={{fontSize:11, color:'var(--color-text-muted)', fontStyle:'italic'}}>à venir</span>
         </div>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0'}}>
           <span style={{fontSize:13}}>Langue</span>
@@ -17516,6 +17584,85 @@ function PreferencesPage({onBack, showToast, currentUser}) {
             <option value="ar">العربية (à venir)</option>
           </select>
         </div>
+      </div>
+    </div>
+  );
+
+  // M/2026/05/12/53 — RGPD v1 : Export Article 15+20 + Suppression Article 17 (backend account_deletion.php).
+  const [rgpdStatus, setRgpdStatus] = React.useState(null);
+  const [rgpdBusy, setRgpdBusy] = React.useState(false);
+  async function loadRgpdStatus() {
+    try {
+      const r = await fetch('/api/account_deletion.php?action=status', {headers:{'X-Session-Token': token()}}).then(r => r.json());
+      if (r && r.ok) setRgpdStatus(r);
+    } catch (_) {}
+  }
+  React.useEffect(() => { if (subscreen === 'rgpd' && rgpdStatus === null) loadRgpdStatus(); }, [subscreen]);
+  async function downloadExport() {
+    try {
+      showToast && showToast('Generation du fichier en cours…');
+      const r = await fetch('/api/rgpd_export.php?action=request', {headers:{'X-Session-Token': token()}});
+      if (!r.ok) { showToast && showToast('Echec export (' + r.status + ')'); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ocre-export-' + Date.now() + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast && showToast('Telechargement pret');
+    } catch (e) { showToast && showToast('Erreur reseau'); }
+  }
+  async function requestDeletion() {
+    if (!(await (window.__ocreAsk ? window.__ocreAsk({
+      title:'Supprimer ton compte ?',
+      message:"Cette action programme la suppression definitive sous 30 jours. Tu peux annuler a tout moment pendant ce delai en te reconnectant.",
+      danger:true, confirmLabel:'Continuer'
+    }) : Promise.resolve(false)))) return;
+    // 2eme confirmation : taper son email (anti-clic accidentel).
+    const userEmail = (currentUser && currentUser.email) || '';
+    const typed = window.prompt('Pour confirmer, retape ton email : ' + userEmail);
+    if (typed !== userEmail) { showToast && showToast('Email different. Suppression annulee.'); return; }
+    setRgpdBusy(true);
+    try {
+      const r = await fetch('/api/account_deletion.php?action=request', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()}, body: JSON.stringify({})}).then(r => r.json());
+      if (r && r.ok) { showToast && showToast('Suppression programmee dans 30 jours. Email envoye.'); loadRgpdStatus(); }
+      else showToast && showToast((r && r.error) || 'Erreur');
+    } catch (e) { showToast && showToast('Erreur reseau'); }
+    setRgpdBusy(false);
+  }
+  async function cancelDeletion() {
+    setRgpdBusy(true);
+    try {
+      const r = await fetch('/api/account_deletion.php?action=cancel', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()}, body: JSON.stringify({})}).then(r => r.json());
+      if (r && r.ok) { showToast && showToast('Suppression annulee'); loadRgpdStatus(); }
+    } catch (e) { showToast && showToast('Erreur'); }
+    setRgpdBusy(false);
+  }
+  const renderRgpd = () => (
+    <div style={{padding:'14px'}}>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:6}}>📦 Telecharger mes donnees</div>
+        <div style={{fontSize:12, color:'var(--color-text-muted)', lineHeight:1.5, marginBottom:10}}>
+          Article 15 et 20 RGPD. Recupere un fichier JSON contenant ton profil, tes dossiers, tes factures et tes sessions actives.
+        </div>
+        <button onClick={downloadExport} style={{padding:'9px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer'}}>Telecharger mes donnees</button>
+      </div>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-error)', marginBottom:6}}>🗑️ Supprimer mon compte</div>
+        <div style={{fontSize:12, color:'var(--color-text-muted)', lineHeight:1.5, marginBottom:10}}>
+          Article 17 RGPD. Suppression definitive apres un delai de grace de 30 jours (retractation possible pendant cette periode).
+        </div>
+        {rgpdStatus && rgpdStatus.deletion_requested_at && (
+          <div style={{padding:'10px 12px', background:'#FEE8E8', border:'1px solid #F5B7B7', borderRadius:8, fontSize:12, color:'#7F1D1D', marginBottom:10}}>
+            <div style={{fontWeight:700, marginBottom:4}}>Suppression programmee</div>
+            <div>Anonymisation prevue dans {rgpdStatus.grace_remaining_days} jour(s).</div>
+            <button onClick={cancelDeletion} disabled={rgpdBusy} style={{marginTop:8, padding:'6px 12px', background:'#fff', color:'var(--color-accent)', border:'1px solid var(--color-accent)', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer'}}>Annuler la suppression</button>
+          </div>
+        )}
+        {(!rgpdStatus || !rgpdStatus.deletion_requested_at) && (
+          <button onClick={requestDeletion} disabled={rgpdBusy} style={{padding:'9px 14px', background:'var(--color-error)', color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor: rgpdBusy ? 'wait' : 'pointer'}}>Supprimer mon compte</button>
+        )}
       </div>
     </div>
   );
@@ -17536,7 +17683,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
   // Titre selon subscreen
   const TITRES = {
     home:'Réglages', notifs:'Notifications', profil:'Profil', securite:'Sécurité',
-    apparence:'Devise & langue', abonnement:'Abonnement',
+    apparence:'Devise & langue', abonnement:'Abonnement', rgpd:'Mes données',
   };
   const titre = TITRES[subscreen] || 'Réglages';
   const showSave = subscreen !== 'home';
@@ -17553,6 +17700,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
         {subscreen === 'securite' && renderSecurite()}
         {subscreen === 'apparence' && renderApparence()}
         {subscreen === 'abonnement' && renderAbonnement()}
+        {subscreen === 'rgpd' && renderRgpd()}
       </div>
     </div>
   );
