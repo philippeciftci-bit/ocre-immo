@@ -8,6 +8,16 @@
 require_once __DIR__ . '/lib/router.php';
 header('Content-Type: application/json; charset=utf-8');
 
+// M/2026/05/12/30 — CORS allow vitrine WP ocre.immo + auth.ocre.immo (volet manquant M/12/21).
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = ['https://ocre.immo', 'https://www.ocre.immo', 'https://auth.ocre.immo'];
+if (in_array($origin, $allowedOrigins, true)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Methods: GET, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type');
+}
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') { http_response_code(204); exit; }
+
 function jout(array $d, int $code = 200) {
     http_response_code($code);
     echo json_encode($d, JSON_UNESCAPED_UNICODE);
