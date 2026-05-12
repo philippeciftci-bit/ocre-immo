@@ -105,11 +105,37 @@ try {
         . '</div></body></html>';
     $text = "Ton lien Ocre · Oi " . ucfirst($targetApp) . "\n\nLien magique : $url\n\nSi tu n'as pas demandé ce lien, ignore cet email.\n— Ocre Immo";
 
+    // M/2026/05/12/7 — Mode test E2E : si headers X-E2E-Test + X-E2E-Timestamp valides
+    // (HMAC-SHA256 partage avec /etc/ocre/e2e-secret.env, skew <= 60s), on persiste le token
+    // dans /tmp/e2e-magic-tokens.json et on SKIP l envoi mail. Pattern Stripe / Auth0 mode test.
+    $isE2E = false;
+    $e2eHeader = $_SERVER['HTTP_X_E2E_TEST'] ?? '';
+    $e2eTs = (int)($_SERVER['HTTP_X_E2E_TIMESTAMP'] ?? 0);
+    if ($e2eHeader && $e2eTs && file_exists('/etc/ocre/e2e-secret.env')) {
+        $secret = trim((string)@file_get_contents('/etc/ocre/e2e-secret.env'));
+        if ($secret !== '' && abs(time() - $e2eTs) <= 60) {
+            $expected = hash_hmac('sha256', (string)$e2eTs, $secret);
+            if (hash_equals($expected, $e2eHeader)) {
+                $isE2E = true;
+                $tokensFile = '/tmp/e2e-magic-tokens.json';
+                $existing = is_file($tokensFile) ? @file_get_contents($tokensFile) : '';
+                $store = ($existing && ($d = json_decode($existing, true)) && is_array($d)) ? $d : [];
+                $store[$email] = ['token' => $token, 'url' => $url, 'app' => $targetApp, 'created_at' => time()];
+                @file_put_contents($tokensFile, json_encode($store), LOCK_EX);
+                @chmod($tokensFile, 0660);
+            }
+        }
+    }
     // M_OCRE_MAGIC_LINK_DIAG — logging fichier traçabilité OVH SMTP envois magic link
     $logFile = '/var/log/ocre-magic-link.log';
     @touch($logFile); @chmod($logFile, 0664);
-    $emailOk = @email_send($email, 'Ton lien Ocre · Oi ' . ucfirst($targetApp), $html, $text);
-    $logLine = '[' . date('c') . '] to=' . $email . ' app=' . $targetApp . ' user_id=' . $userId . ' token_id_short=' . substr($token, 0, 12) . ' email_send=' . ($emailOk ? 'TRUE' : 'FALSE') . ' ip=' . $ip . "\n";
+    if ($isE2E) {
+        $emailOk = false;
+        $logLine = '[' . date('c') . '] to=' . $email . ' app=' . $targetApp . ' user_id=' . $userId . ' token_id_short=' . substr($token, 0, 12) . ' email_send=SKIPPED_E2E ip=' . $ip . "\n";
+    } else {
+        $emailOk = @email_send($email, 'Ton lien Ocre · Oi ' . ucfirst($targetApp), $html, $text);
+        $logLine = '[' . date('c') . '] to=' . $email . ' app=' . $targetApp . ' user_id=' . $userId . ' token_id_short=' . substr($token, 0, 12) . ' email_send=' . ($emailOk ? 'TRUE' : 'FALSE') . ' ip=' . $ip . "\n";
+    }
     @file_put_contents($logFile, $logLine, FILE_APPEND);
 } catch (Throwable $e) {
     error_log('magic_request: ' . $e->getMessage());
