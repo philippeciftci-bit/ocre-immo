@@ -19616,30 +19616,37 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         return;
       }
       if (j && j.ok) {
-        // M/2026/05/07/101 — optimistic fade-out + onRemove (au lieu de window.location.reload()).
-        // M/2026/05/07/102 — onRemoveStart marque _removing IMMEDIATEMENT cote parent pour
-        // que le compteur Dossiers·N exclue ce dossier des le clic, sans attendre 200ms.
-        // M/2026/05/12/14 — Fix bug critique 3 swipe-archiver : reset explicite swipeX=0 pour
-        // eviter race condition useSwipeExclusive (pointerdown modal askConfirm = close swipe
-        // mais row stale a -72px residual). Reset assure cohérence visuelle pre fade-out.
+        // M/2026/05/12/40 — Pattern Linear/Asana/GitHub : 200 OK qu il s agisse d un succes reel ou d un noop
+        // idempotent (j.already_archived / j.already_unarchived). Dans les 2 cas la card doit disparaitre du flux
+        // pour matcher l'attente utilisateur (le dossier n'est plus ici).
         setSwipeX(0);
         if (props.onRemoveStart) props.onRemoveStart(c.id);
         setRemoving(true);
         setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);
-        // M/2026/05/12/25 — toast success silencieux pour confirmation visuelle.
-        if (typeof showOcreToast === 'function') showOcreToast(isRestore ? 'Dossier restaure' : 'Dossier archive');
+        if (j.noop) {
+          // Cas idempotent : etat deja a la cible. Pas de toast vert "Archive" (mensonge si deja archived).
+          // Toast info silencieux contextuel pour eviter "Deja archive" rouge anxiogene.
+          if (typeof showOcreToast === 'function') {
+            showOcreToast(isRestore ? 'Deja restaure' : 'Deja archive (etat synchronise)');
+          }
+        } else {
+          if (typeof showOcreToast === 'function') showOcreToast(isRestore ? 'Dossier restaure' : 'Dossier archive');
+        }
       } else {
-        // M/2026/05/12/14 — feedback erreur explicite (avant : noop silent).
+        // M/2026/05/12/40 — feedback erreur precis. Backend renvoie j.error ('not_found' / 'id requis' / ...).
+        // Status code informatif inclus pour diagnostic. Avant : toast generique 'Échec archivage'.
         try { setSwipeX(0); } catch (_) {}
-        const msg = (j && j.error) || 'Échec archivage';
+        const msg = (j && j.error) ? ('Echec archivage : ' + j.error) : ('Echec archivage (HTTP ' + r.status + ')');
         if (typeof showOcreToast === 'function') showOcreToast(msg);
         else alert(msg);
       }
     } catch (e) {
-      // M/2026/05/12/14 — feedback erreur reseau explicite.
+      // M/2026/05/12/40 — message reseau explicite avec cause (avant : 'Erreur reseau (archivage)' generique
+      // masquait les vraies erreurs JS. Pattern Linear : afficher la cause precise pour debug rapide).
       try { setSwipeX(0); } catch (_) {}
-      if (typeof showOcreToast === 'function') showOcreToast('Erreur reseau (archivage)');
-      else alert('Erreur reseau');
+      const cause = (e && e.message) ? e.message : (e && e.name) || 'inconnue';
+      if (typeof showOcreToast === 'function') showOcreToast('Erreur archivage : ' + cause);
+      else alert('Erreur archivage : ' + cause);
     }
   }
   async function doDelete(e) {

@@ -671,36 +671,50 @@ switch ($action) {
 
     case 'archive': {
         // M/2026/05/12/27 — autorise archivage sur tous statuts (brouillon + enregistre + tous profils).
-        // Garde-fou : refuse 400 si la fiche est deja dans l'etat target (no-op evite, anti-UX).
+        // M/2026/05/12/40 — Pattern Linear/Asana/GitHub Issues : IDEMPOTENT. Re-archive deja archive = 200 OK
+        // avec already_archived:true (pas 400 "Deja archive"). Le frontend traite silencieux (la card est deja
+        // invisible cote accueil). Status codes : 200 OK succes/no-op, 404 not_found, 500 erreur reelle.
         $id = (int)($input['id'] ?? 0);
         $archived = !empty($input['archived']) ? 1 : 0;
         if (!$id) jsonError('id requis');
-        // Pre-check etat courant pour refuser idempotent (re-archive deja archive = 400).
         $st = db()->prepare("SELECT archived FROM clients WHERE id = ? AND user_id = ? LIMIT 1");
         $st->execute([$id, $user['id']]);
         $row = $st->fetch();
-        if (!$row) jsonError('Introuvable', 404);
+        if (!$row) jsonError('not_found', 404);
         if ((int)$row['archived'] === $archived) {
-            jsonError($archived ? 'Deja archive' : 'Deja desarchive', 400);
+            jsonOk([
+                'id' => $id,
+                'archived' => (bool)$archived,
+                'already_archived' => (bool)$archived,
+                'already_unarchived' => !$archived,
+                'noop' => true,
+            ]);
         }
         $stmt = db()->prepare("UPDATE clients SET archived = ? WHERE id = ? AND user_id = ?");
         $stmt->execute([$archived, $id, $user['id']]);
-        jsonOk(['id' => $id, 'archived' => (bool)$archived]);
+        jsonOk([
+            'id' => $id,
+            'archived' => (bool)$archived,
+            'archived_at' => $archived ? date('c') : null,
+            'noop' => false,
+        ]);
     }
 
     case 'unarchive': {
         // V43 — alias action=unarchive pour désarchivage explicite. Equivaut à archive avec archived=0.
-        // M/2026/05/12/27 — meme garde-fou idempotent (deja desarchive = 400).
+        // M/2026/05/12/40 — idempotent : re-unarchive deja unarchive = 200 OK already_unarchived:true (pas 400).
         $id = (int)($input['id'] ?? 0);
         if (!$id) jsonError('id requis');
         $st = db()->prepare("SELECT archived FROM clients WHERE id = ? AND user_id = ? LIMIT 1");
         $st->execute([$id, $user['id']]);
         $row = $st->fetch();
-        if (!$row) jsonError('Introuvable', 404);
-        if ((int)$row['archived'] === 0) jsonError('Deja desarchive', 400);
+        if (!$row) jsonError('not_found', 404);
+        if ((int)$row['archived'] === 0) {
+            jsonOk(['id' => $id, 'archived' => false, 'already_unarchived' => true, 'noop' => true]);
+        }
         $stmt = db()->prepare("UPDATE clients SET archived = 0 WHERE id = ? AND user_id = ?");
         $stmt->execute([$id, $user['id']]);
-        jsonOk(['id' => $id, 'archived' => false]);
+        jsonOk(['id' => $id, 'archived' => false, 'noop' => false]);
     }
 
     // V17.1 fix-ux-3 — suggestions basées sur les saisies antérieures de l'utilisateur.
