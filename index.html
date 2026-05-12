@@ -19161,6 +19161,30 @@ function AdressePill({adresse, ville, cp, quartier, pays, lat, lng}) {
   );
 }
 
+// M/2026/05/12/25 — helper global showOcreToast pour feedback visuel depuis n importe quel scope.
+// Cree un element DOM en bas a droite, fade 3s, vert success / rouge erreur (auto-detect via mot-cles).
+function showOcreToast(msg, type) {
+  try {
+    if (!msg) return;
+    let el = document.getElementById('ocre-global-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ocre-global-toast';
+      el.style.cssText = 'position:fixed;bottom:88px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 14px rgba(0,0,0,.25);transition:opacity 200ms ease;font-family:DM Sans,sans-serif;max-width:90vw;text-align:center';
+      document.body.appendChild(el);
+    }
+    const m = String(msg).toLowerCase();
+    const isErr = type === 'error' || /(é|e)chec|erreur|invalide|impossible|refus|interdit|bloqu|introuvable|(é|e)chou|fail/.test(m);
+    el.textContent = msg;
+    el.style.background = isErr ? '#C0392B' : '#2E7D32';
+    el.style.color = '#fff';
+    el.style.opacity = '1';
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => { el.style.opacity = '0'; }, 3000);
+  } catch (e) {}
+}
+try { window.showOcreToast = showOcreToast; } catch (e) {}
+
 function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection, isGrouped, isFirstInGroup, isLastInGroup, ...props}) {
   const [telChooser, setTelChooser] = React.useState(false);
   // M/2026/04/29/46 — lightbox photos local au row.
@@ -19413,7 +19437,13 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   useSwipeExclusive(swipeX !== 0, () => setSwipeX(0), swipeRowRef);
   async function doArchive(e) {
     if (e) e.stopPropagation();
-    if (!c.id) return;
+    // M/2026/05/12/25 — feedback explicite pour dossier non-encore-en-DB (tmp-id ou null).
+    // Avant : return silent -> Philippe voyait "rien ne se passe".
+    if (!c.id || (typeof c.id === 'string' && String(c.id).startsWith('tmp-'))) {
+      if (typeof showOcreToast === 'function') showOcreToast('Enregistre d abord quelques champs (dossier pas encore cree en DB)');
+      else alert('Enregistre d abord quelques champs');
+      return;
+    }
     // M/2026/05/09/78 — toggle archive/restore selon etat courant.
     const isRestore = !!c.archived;
     const titleText = isRestore ? 'Restaurer ce dossier ?' : 'Archiver ce dossier ?';
@@ -19442,15 +19472,20 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         if (props.onRemoveStart) props.onRemoveStart(c.id);
         setRemoving(true);
         setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);
+        // M/2026/05/12/25 — toast success silencieux pour confirmation visuelle.
+        if (typeof showOcreToast === 'function') showOcreToast(isRestore ? 'Dossier restaure' : 'Dossier archive');
       } else {
         // M/2026/05/12/14 — feedback erreur explicite (avant : noop silent).
         try { setSwipeX(0); } catch (_) {}
-        if (typeof window.__ocreToast === 'function') window.__ocreToast((j && j.error) || 'Échec archivage');
+        const msg = (j && j.error) || 'Échec archivage';
+        if (typeof showOcreToast === 'function') showOcreToast(msg);
+        else alert(msg);
       }
     } catch (e) {
       // M/2026/05/12/14 — feedback erreur reseau explicite.
       try { setSwipeX(0); } catch (_) {}
-      if (typeof window.__ocreToast === 'function') window.__ocreToast('Erreur réseau');
+      if (typeof showOcreToast === 'function') showOcreToast('Erreur reseau (archivage)');
+      else alert('Erreur reseau');
     }
   }
   async function doDelete(e) {
