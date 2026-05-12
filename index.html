@@ -77,6 +77,27 @@
 })();
 </script>
 <script>
+// M/2026/05/12/21 — Boot-time fetch design tokens (3 etats champs) + injection dans :root style.
+// Fallback silencieux aux valeurs CSS par defaut si l API echoue. Cache navigateur 5min cote HTTP.
+(function() {
+  try {
+    fetch('/api/design-tokens.php', { cache: 'default', credentials: 'same-origin' })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(t) {
+        if (!t || typeof t !== 'object') return;
+        var root = document.documentElement;
+        var keys = ['color_field_empty', 'color_field_filled', 'color_field_invalid'];
+        keys.forEach(function(k) {
+          if (t[k] && /^#[A-Fa-f0-9]{3,6}$/.test(t[k])) {
+            root.style.setProperty('--' + k.replace(/_/g, '-'), t[k]);
+          }
+        });
+      })
+      .catch(function() { /* silent fallback : tokens.css defaults */ });
+  } catch (e) {}
+})();
+</script>
+<script>
 // M/2026/05/04/36 — Instrumentation client error logging vers /api/client_log.php.
 // Capture window.onerror + unhandledrejection + fetch failures. Heartbeat au boot.
 (function setupClientLogging() {

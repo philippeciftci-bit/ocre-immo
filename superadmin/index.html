@@ -278,6 +278,7 @@ body.drawer-open { overflow: hidden; }
       <button class="nav-item" data-section="magic"><span class="ico">✉️</span> Magic links</button>
       <button class="nav-item" data-section="modules"><span class="ico">🧩</span> Modules Oi</button>
       <button class="nav-item" data-section="display"><span class="ico">🎨</span> Affichage</button>
+      <button class="nav-item" data-section="apparence"><span class="ico">🖌️</span> Apparence</button>
       <button class="nav-item" data-section="audit"><span class="ico">📜</span> Audit log</button>
       <button class="nav-item" data-section="atelier"><span class="ico">🔧</span> Atelier</button>
       <div class="nav-separator"></div>
@@ -306,6 +307,26 @@ body.drawer-open { overflow: hidden; }
 <!-- ============== MODAL ROOT ============== -->
 <div id="modal-root"></div>
 
+<script>
+// M/2026/05/12/21 — Boot-time fetch design tokens (3 etats champs) + injection :root style.
+// Fallback silencieux aux defaults CSS si endpoint absent.
+(function() {
+  try {
+    fetch('/api/design-tokens.php', { cache: 'default' })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(t) {
+        if (!t || typeof t !== 'object') return;
+        var root = document.documentElement;
+        ['color_field_empty', 'color_field_filled', 'color_field_invalid'].forEach(function(k) {
+          if (t[k] && /^#[A-Fa-f0-9]{3,6}$/.test(t[k])) {
+            root.style.setProperty('--' + k.replace(/_/g, '-'), t[k]);
+          }
+        });
+      })
+      .catch(function() {});
+  } catch (e) {}
+})();
+</script>
 <script>
 // ====== Helpers ======
 const TOKEN_KEY = 'ocre_sa_token';
@@ -478,6 +499,7 @@ const SECTIONS = {
   magic:    { title: 'Magic links',   sub: 'Tokens envoyés (pending / consumed / expired)', render: renderMagicLinks },
   modules:  { title: 'Modules Oi',    sub: 'État des 7 modules visibles dans le hub', render: renderModules },
   display:  { title: "Paramètres d'affichage", sub: 'Format prix bi-devise · taux EUR/MAD · settings globaux SPA', render: renderDisplay },
+  apparence:{ title: 'Apparence',     sub: 'Couleurs des champs (3 états) · design tokens partagés vitrine + app + superadmin', render: renderApparence },
   audit:    { title: 'Audit log',     sub: 'Historique des actions super-admin', render: renderAudit },
   atelier:  { title: 'Atelier',       sub: 'Outils VPS · Live View CC + Monitoring + Backups', render: renderAtelier },
   danger:   { title: 'Zone danger',   sub: 'Opérations destructives avec double confirmation', render: renderDanger },
@@ -944,6 +966,111 @@ async function renderDisplay() {
   });
 }
 window.renderDisplay = renderDisplay;
+
+// ====== SECTION 5.5 — APPARENCE (design tokens) M/2026/05/12/21 ======
+// 3 color pickers pour vide/valide/invalide + section "Couleurs maître (à venir)" placeholder.
+// Save -> POST /api/design-tokens.php auth super_admin. Reset -> DELETE re-seed defaults.
+async function renderApparence() {
+  $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('apparence')">↻ Rafraîchir</button>`;
+  const r = await fetch('/api/design-tokens.php', { cache: 'no-store' });
+  const tokens = r.ok ? await r.json() : {};
+  const cur = {
+    empty: tokens.color_field_empty || '#FAF6F0',
+    filled: tokens.color_field_filled || '#E8F5E9',
+    invalid: tokens.color_field_invalid || '#FEE8E8',
+  };
+  $('#content-body').innerHTML = `
+    <div class="panel">
+      <div class="panel-head"><h2>Couleurs des champs (3 états)</h2></div>
+      <div class="panel-body" style="display:flex;flex-direction:column;gap:18px">
+        <p style="color:var(--color-text-brown);font-size:13px;margin:0">Règle universelle appliquée sur vitrine ocre.immo, app Oi Agent, panneau superadmin et futurs modules. Modifications visibles au prochain reload de chaque utilisateur (cache 5 min).</p>
+        ${['empty', 'filled', 'invalid'].map(k => {
+          const labels = { empty: 'Vide (cream neutre)', filled: 'Valide (vert clair)', invalid: 'Invalide (rouge clair)' };
+          const defaults = { empty: '#FAF6F0', filled: '#E8F5E9', invalid: '#FEE8E8' };
+          return `
+          <div class="apparence-row" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="min-width:200px"><b>${labels[k]}</b><br><span style="font-size:11.5px;color:var(--color-text-muted)">Défaut : <code>${defaults[k]}</code></span></div>
+            <input type="color" id="apparence-${k}" value="${cur[k]}" style="width:48px;height:36px;border:1px solid var(--color-border-medium);border-radius:6px;cursor:pointer;padding:2px">
+            <input type="text" id="apparence-${k}-hex" value="${cur[k]}" pattern="^#[A-Fa-f0-9]{6}$" maxlength="7" style="width:100px;font-family:monospace;font-size:13px;padding:6px 10px;border:1px solid var(--color-border-medium);border-radius:6px">
+            <div id="apparence-${k}-preview" style="flex:1;min-width:160px;padding:10px 14px;border:1.5px solid var(--color-border-strong);border-radius:8px;background:${cur[k]};font-size:13px;color:var(--color-text-primary);text-align:center;transition:background 200ms ease">Aperçu champ ${labels[k].toLowerCase()}</div>
+          </div>`;
+        }).join('')}
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="apparence-save-btn">💾 Enregistrer</button>
+          <button class="btn btn-ghost" id="apparence-reset-btn">↺ Réinitialiser aux valeurs par défaut</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="panel-head"><h2>Couleurs maître <span style="font-size:11px;color:var(--color-text-muted);font-weight:normal">(à venir)</span></h2></div>
+      <div class="panel-body">
+        <p style="color:var(--color-text-brown);font-size:13px;margin:0 0 12px">Couleurs principales de la marque (or, terre cuite, navy, fond crème). Modification disponible dans une future mise à jour.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+          ${[
+            { label: 'Or accent', hex: '#8B5E3C' },
+            { label: 'Ocre flamboyant', hex: '#C8783A' },
+            { label: 'Terre cuite', hex: '#A1573C' },
+            { label: 'Navy texte', hex: '#001D3D' },
+            { label: 'Crème vitrine', hex: '#FAF6F1' },
+            { label: 'Rouge alerte', hex: '#B91C1C' },
+          ].map(c => `<div style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--color-border-cream);border-radius:6px;background:#fff">
+            <div style="width:24px;height:24px;border-radius:4px;background:${c.hex};border:1px solid rgba(0,0,0,.08)"></div>
+            <div style="flex:1;min-width:0"><b style="font-size:12px">${c.label}</b><br><code style="font-size:11px;color:var(--color-text-muted)">${c.hex}</code></div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Sync color picker ↔ hex input + live preview
+  ['empty', 'filled', 'invalid'].forEach(k => {
+    const colorEl = $('#apparence-' + k);
+    const hexEl = $('#apparence-' + k + '-hex');
+    const previewEl = $('#apparence-' + k + '-preview');
+    colorEl.addEventListener('input', () => {
+      const v = colorEl.value;
+      hexEl.value = v;
+      previewEl.style.background = v;
+    });
+    hexEl.addEventListener('input', () => {
+      const v = hexEl.value;
+      if (/^#[A-Fa-f0-9]{6}$/.test(v)) {
+        colorEl.value = v;
+        previewEl.style.background = v;
+      }
+    });
+  });
+
+  $('#apparence-save-btn').onclick = async () => {
+    const payload = {
+      color_field_empty: $('#apparence-empty-hex').value,
+      color_field_filled: $('#apparence-filled-hex').value,
+      color_field_invalid: $('#apparence-invalid-hex').value,
+    };
+    try {
+      const r = maybeAuthError(await api('/api/design-tokens.php', { method: 'POST', body: payload }));
+      if (!r.ok) throw new Error(r.error || 'erreur');
+      // Apply immédiatement au superadmin lui-même.
+      const root = document.documentElement;
+      Object.keys(payload).forEach(k => root.style.setProperty('--' + k.replace(/_/g, '-'), payload[k]));
+      alert('✓ Couleurs enregistrées. Les utilisateurs verront les changements au prochain reload (cache 5 min).');
+    } catch (e) { alert('Erreur : ' + (e.message || e)); }
+  };
+  $('#apparence-reset-btn').onclick = () => {
+    openConfirm({
+      title: 'Réinitialiser les couleurs ?',
+      body: 'Les 3 couleurs reviendront aux valeurs par défaut Ocre (FAF6F0 / E8F5E9 / FEE8E8).',
+      confirmLabel: 'Réinitialiser', danger: false,
+      onConfirm: async () => {
+        const r = maybeAuthError(await api('/api/design-tokens.php', { method: 'DELETE' }));
+        if (!r.ok) throw new Error(r.error || 'erreur');
+        render('apparence');
+      }
+    });
+  };
+}
+window.renderApparence = renderApparence;
 
 // ====== SECTION 6 — AUDIT ======
 async function renderAudit() {

@@ -59,7 +59,11 @@
   --color-bg-tint-hover: #FFF3EC;    /* hover state ocre */
   --color-bg-tint-cream: #F4EEE6;    /* neutral cream chip/border bg */
   --color-bg-tint-soft: #FFFCF5;     /* filled state input (legacy, supersede par --color-field-filled M79) */
-  --color-field-filled: #E8F5E9;     /* M/2026/05/09/79 — vert clair Material green-50 : champ rempli ET valide */
+  /* M/2026/05/12/21 — Systeme universel 3 etats champs (vide / valide / invalide).
+     Tokens centralises, surcharge possible via /api/design-tokens.php au boot (panneau Apparence superadmin). */
+  --color-field-empty: #FAF6F0;      /* cream neutre, champ vide ou efface */
+  --color-field-filled: #E8F5E9;     /* M/2026/05/09/79 — Material green-50 : champ rempli ET valide */
+  --color-field-invalid: #FEE8E8;    /* M/2026/05/12/21 — Material red-50 : champ rempli format INVALIDE */
   /* M/2026/05/09/80 — alerte rouge unifiee (BROUILLON, Choisir un profil, futur). Var prete pour expose superadmin Apparence. */
   --color-alert: #B91C1C;
   --alert-border-style: dashed;
