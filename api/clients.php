@@ -124,7 +124,7 @@ switch ($action) {
         // V50 — soft-delete filter : masquer les deleted_at NOT NULL.
         $stmt = db()->prepare(
             "SELECT id, data, is_draft, archived, projet, is_investisseur, is_staged, promoted_at, updated_at,
-                    prenom, nom, societe_nom, tel, email, vertical, seed_id
+                    prenom, nom, societe_nom, tel, email, vertical, seed_id, custom_exchange_rate
              FROM clients WHERE user_id = ? AND is_staged = ? AND deleted_at IS NULL ORDER BY updated_at DESC, id DESC"
         );
         $stmt->execute([$user['id'], $staged ? 1 : 0]);
@@ -277,6 +277,8 @@ switch ($action) {
         $d['email'] = $r['email'];
         $d['vertical'] = $r['vertical'];
         $d['seed_id'] = $r['seed_id'] ?? null;
+        // M/2026/05/13/8 — DualCurrencyPair Variant B : custom_exchange_rate fiche.
+        $d['custom_exchange_rate'] = isset($r['custom_exchange_rate']) && $r['custom_exchange_rate'] !== null ? (float) $r['custom_exchange_rate'] : null;
         signClientPhotos($d);
         jsonOk(['client' => $d]);
     }
@@ -698,6 +700,26 @@ switch ($action) {
             'archived_at' => $archived ? date('c') : null,
             'noop' => false,
         ]);
+    }
+
+    // M/2026/05/13/8 — Endpoint dedie set_custom_rate (DualCurrencyPair Variant B).
+    // Met a jour clients.custom_exchange_rate (DECIMAL(10,6) NULL). Validation 0.01-1000 sinon NULL.
+    case 'set_custom_rate': {
+        $id = (int)($input['id'] ?? 0);
+        if (!$id) jsonError('id requis');
+        $raw = $input['custom_exchange_rate'] ?? null;
+        $rate = null;
+        if ($raw !== null && $raw !== '') {
+            $f = (float) $raw;
+            if (!is_finite($f) || $f < 0.01 || $f > 1000) jsonError('Taux invalide (doit etre entre 0.01 et 1000)', 400);
+            $rate = $f;
+        }
+        $chk = db()->prepare("SELECT id FROM clients WHERE id = ? AND user_id = ?");
+        $chk->execute([$id, $user['id']]);
+        if (!$chk->fetch()) jsonError('not_found', 404);
+        $stmt = db()->prepare("UPDATE clients SET custom_exchange_rate = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
+        $stmt->execute([$rate, $id, $user['id']]);
+        jsonOk(['id' => $id, 'custom_exchange_rate' => $rate]);
     }
 
     case 'unarchive': {

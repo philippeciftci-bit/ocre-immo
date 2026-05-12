@@ -8123,13 +8123,16 @@ async function m77FetchLiveRate(from, to) {
   return m77FallbackRate(from, to);
 }
 
-function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, rightCurrency, rateOverride, rateSource, onChange}) {
+function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, rightCurrency, rateOverride, rateSource, onChange, dossierCustomRate, isCustomActive}) {
   const _lc = leftCurrency || 'EUR';
   const _rc = rightCurrency || 'MAD';
   const [pickerSide, setPickerSide] = React.useState(null);
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [liveRate, setLiveRate] = React.useState(null);
   const [editorVal, setEditorVal] = React.useState('');
+  // M/2026/05/13/8 — Variant B branchement : lit window.__ocrePriceVariant au mount.
+  const _variant = (typeof window !== 'undefined' && window.__ocrePriceVariant === 'B') ? 'B' : 'A';
+  const _globalRate = (typeof window !== 'undefined' && typeof window.__ocreGlobalRate === 'number') ? window.__ocreGlobalRate : 10.84;
   React.useEffect(() => {
     let alive = true;
     if (rateSource !== 'manual') {
@@ -8137,7 +8140,15 @@ function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, r
     }
     return () => { alive = false; };
   }, [_lc, _rc, rateSource]);
-  const _rate = (rateSource === 'manual' && rateOverride > 0) ? Number(rateOverride) : (liveRate || m77FallbackRate(_lc, _rc));
+  // M/2026/05/13/8 — priorite : custom fiche (dossierCustomRate) > manual override > live > fallback.
+  let _rate;
+  if (typeof dossierCustomRate === 'number' && dossierCustomRate > 0 && _lc === 'EUR' && _rc === 'MAD') {
+    _rate = dossierCustomRate;
+  } else if (rateSource === 'manual' && rateOverride > 0) {
+    _rate = Number(rateOverride);
+  } else {
+    _rate = liveRate || m77FallbackRate(_lc, _rc);
+  }
   const _emit = (patch) => onChange && onChange({pairId, leftValue, rightValue, leftCurrency: _lc, rightCurrency: _rc, rateOverride, rateSource, ...patch});
   const onLeftAmount = (v) => {
     const n = Number(v);
@@ -8157,9 +8168,84 @@ function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, r
   const _isManual = rateSource === 'manual';
   const _flagBtn = {flexShrink:0, width:30, height:28, borderRadius:6, border:'1px solid #D6C7AC', background:'#FDF8F0', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:'var(--space-2px)', fontSize:'var(--font-size-sm)', padding:'0 4px'};
   const _input = {flex:1, minWidth:0, padding:'6px 8px', border:'1px solid #D6C7AC', borderRadius:6, fontSize:'var(--font-size-sm)', fontFamily:'inherit', background:'#fff', textAlign:'right'};
+
+  // M/2026/05/13/8 — Variant B layout : grid 3 cols 1fr 0.7fr 1fr + drapeau emoji filigrane background + col milieu tinted (ROADMAP L205).
+  const _isMobile = (typeof window !== 'undefined' && window.innerWidth < 600);
+  const _flagSize = _isMobile ? 44 : 56;
+  const _pad = _isMobile ? 42 : 56;
+  const _gap = _isMobile ? 6 : 8;
+  const _rateDifferent = Math.abs(_rate - _globalRate) > 0.001; // feedback visuel point ocre
+  function renderVariantB() {
+    return (
+      <div data-m77-pair={pairId} data-variant="B" style={{margin:'8px 0'}}>
+        {label && <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-6px)'}}>{label} {isCustomActive && <span style={{marginLeft:6, fontSize:'var(--font-size-9)', background:'var(--color-accent)', color:'#fff', padding:'1px 6px', borderRadius:10, fontWeight:700}}>TAUX PERSO</span>}</div>}
+        <div style={{display:'grid', gridTemplateColumns:'1fr 0.7fr 1fr', gap: _gap, alignItems:'center'}}>
+          {/* Col gauche : EUR avec filigrane */}
+          <div style={{position:'relative', padding: '8px ' + _pad + 'px 8px 10px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:8, overflow:'hidden'}}>
+            <span aria-hidden="true" style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{M77_CURR_FLAGS[_lc] || '🌐'}</span>
+            <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2}}>{_lc}</div>
+            <input type="number" inputMode="decimal" value={leftValue ?? ''} onChange={e => onLeftAmount(e.target.value)}
+              style={{width:'100%', border:'none', outline:'none', fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', padding:0, background:'transparent'}}
+              placeholder="0"/>
+          </div>
+          {/* Col milieu : taux editable tinted */}
+          <div style={{position:'relative', padding:'8px 10px', background:'var(--color-bg-tint-warm)', border:'1px solid #D6C7AC', borderRadius:8, textAlign:'center'}}>
+            <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginBottom:2}}>1 {_lc} =</div>
+            <button type="button" onClick={() => { setEditorVal(String(_rate.toFixed(4))); setEditorOpen(true); }}
+              style={{position:'relative', background:'transparent', border:'none', color:'var(--color-accent)', fontWeight:700, fontSize:'var(--font-size-13)', cursor:'pointer', fontFamily:'inherit', padding:0}}>
+              {Number(_rate).toFixed(_rate < 10 ? 4 : 2)}
+              {_rateDifferent && <span style={{display:'inline-block', width:6, height:6, borderRadius:'50%', background:'var(--color-accent)', marginLeft:6, verticalAlign:'middle'}} title="Taux different du global"/>}
+            </button>
+            <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginTop:2}}>{_rc}</div>
+          </div>
+          {/* Col droite : MAD avec filigrane */}
+          <div style={{position:'relative', padding: '8px 10px 8px ' + _pad + 'px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:8, overflow:'hidden'}}>
+            <span aria-hidden="true" style={{position:'absolute', left:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{M77_CURR_FLAGS[_rc] || '🌐'}</span>
+            <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2, textAlign:'right'}}>{_rc}</div>
+            <input type="number" inputMode="decimal" value={rightValue ?? ''} onChange={e => onRightAmount(e.target.value)}
+              style={{width:'100%', border:'none', outline:'none', fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', padding:0, background:'transparent', textAlign:'right'}}
+              placeholder="0"/>
+          </div>
+        </div>
+        {editorOpen && renderEditor()}
+      </div>
+    );
+  }
+
+  function renderEditor() {
+    return (
+      <div onClick={() => setEditorOpen(false)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.45)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-5)'}}>
+        <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', width:'100%', maxWidth:340, boxShadow:'0 8px 32px rgba(0,0,0,.18)'}}>
+          <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-lg)', fontWeight:700, color:'#2D2018', marginBottom:'var(--space-2)'}}>Taux {_lc} → {_rc}</div>
+          <input type="number" inputMode="decimal" step="0.0001" value={editorVal} onChange={e => setEditorVal(e.target.value)}
+            placeholder="Ex : 10.8400"
+            style={{width:'100%', padding:'10px 12px', border:'1.5px solid #D6C7AC', borderRadius:8, fontSize:'var(--font-size-sm)', fontFamily:'inherit', boxSizing:'border-box', marginBottom:'var(--space-10px)'}}/>
+          <div style={{display:'flex', gap:'var(--space-6px)', justifyContent:'flex-end', flexWrap:'wrap'}}>
+            <button type="button" onClick={() => setEditorOpen(false)} style={{padding:'8px 12px', background:'var(--color-bg-input)', color:'var(--color-accent)', border:'1.5px solid var(--color-border-subtle)', borderRadius:8, fontWeight:600, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+            <button type="button" onClick={async () => {
+              const r = await m77FetchLiveRate(_lc, _rc);
+              setLiveRate(r);
+              _emit({rateSource: 'live', rateOverride: null});
+              setEditorOpen(false);
+            }} style={{padding:'8px 12px', background:'var(--color-bg-input)', color:'var(--color-text-brown)', border:'1.5px solid var(--color-border-medium)', borderRadius:8, fontWeight:600, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>Taux LIVE</button>
+            <button type="button" onClick={() => {
+              const v = Number(editorVal);
+              if (!(v > 0) || v > 100000) { return; }
+              _emit({rateSource: 'manual', rateOverride: v});
+              setEditorOpen(false);
+            }} style={{padding:'8px 12px', background:'var(--color-text-brown)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>Utiliser ce taux</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Branchement : si setting Variant=B au boot, rendre Variant B sinon Variant A (legacy).
+  if (_variant === 'B') return renderVariantB();
+
   return (
-    <div data-m77-pair={pairId} style={{margin:'8px 0'}}>
-      {label && <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-6px)'}}>{label}</div>}
+    <div data-m77-pair={pairId} data-variant="A" style={{margin:'8px 0'}}>
+      {label && <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-6px)'}}>{label} {isCustomActive && <span style={{marginLeft:6, fontSize:'var(--font-size-9)', background:'var(--color-accent)', color:'#fff', padding:'1px 6px', borderRadius:10, fontWeight:700}}>TAUX PERSO</span>}</div>}
       <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) auto minmax(0,1fr)', gap:'var(--space-6px)', alignItems:'center'}}>
         <div style={{display:'flex', alignItems:'center', gap:'var(--space-1)', position:'relative'}}>
           <button type="button" onClick={() => setPickerSide(pickerSide === 'left' ? null : 'left')} style={_flagBtn} title={'Devise: ' + _lc}>
@@ -8199,31 +8285,7 @@ function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, r
           )}
         </div>
       </div>
-      {editorOpen && (
-        <div onClick={() => setEditorOpen(false)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.45)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-5)'}}>
-          <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', width:'100%', maxWidth:340, boxShadow:'0 8px 32px rgba(0,0,0,.18)'}}>
-            <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-lg)', fontWeight:700, color:'#2D2018', marginBottom:'var(--space-2)'}}>Taux {_lc} → {_rc}</div>
-            <input type="number" inputMode="decimal" step="0.0001" value={editorVal} onChange={e => setEditorVal(e.target.value)}
-              placeholder="Ex : 10.8400"
-              style={{width:'100%', padding:'10px 12px', border:'1.5px solid #D6C7AC', borderRadius:8, fontSize:'var(--font-size-sm)', fontFamily:'inherit', boxSizing:'border-box', marginBottom:'var(--space-10px)'}}/>
-            <div style={{display:'flex', gap:'var(--space-6px)', justifyContent:'flex-end', flexWrap:'wrap'}}>
-              <button type="button" onClick={() => setEditorOpen(false)} style={{padding:'8px 12px', background:'var(--color-bg-input)', color:'var(--color-accent)', border:'1.5px solid var(--color-border-subtle)', borderRadius:8, fontWeight:600, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
-              <button type="button" onClick={async () => {
-                const r = await m77FetchLiveRate(_lc, _rc);
-                setLiveRate(r);
-                _emit({rateSource: 'live', rateOverride: null});
-                setEditorOpen(false);
-              }} style={{padding:'8px 12px', background:'var(--color-bg-input)', color:'var(--color-text-brown)', border:'1.5px solid var(--color-border-medium)', borderRadius:8, fontWeight:600, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>Taux LIVE</button>
-              <button type="button" onClick={() => {
-                const v = Number(editorVal);
-                if (!(v > 0) || v > 100000) { return; }
-                _emit({rateSource: 'manual', rateOverride: v});
-                setEditorOpen(false);
-              }} style={{padding:'8px 12px', background:'var(--color-text-brown)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>Utiliser ce taux</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {editorOpen && renderEditor()}
     </div>
   );
 }
@@ -11959,6 +12021,20 @@ function App() {
           setAppSettings(st);
           // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : expose max_photos_per_dossier en global (lu par PhotoUpload).
           try { window.__ocreMaxPhotos = (typeof st.max_photos_per_dossier === 'number') ? st.max_photos_per_dossier : 30; } catch (_) {}
+        }
+        // M/2026/05/13/8 — DualCurrencyPair Variant B : boot fetch price_display_variant + exchange_rate_eur_mad globaux.
+        try {
+          const cfg = await fetch('/api/superadmin_app_settings.php?action=get', {cache: 'no-store'}).then(r => r.json());
+          if (cfg && cfg.ok && cfg.settings) {
+            window.__ocrePriceVariant = (cfg.settings.price_display_variant === 'B') ? 'B' : 'A';
+            window.__ocreGlobalRate = parseFloat(cfg.settings.exchange_rate_eur_mad) || 10.84;
+          } else {
+            window.__ocrePriceVariant = 'A';
+            window.__ocreGlobalRate = 10.84;
+          }
+        } catch (_) {
+          window.__ocrePriceVariant = 'A';
+          window.__ocreGlobalRate = 10.84;
         }
         const cl = await fetchWithTimeout(API + '/clients.php?action=list', {headers: {'X-Session-Token': token}}, 8000).then(r => r.json());
         if (cl && cl.ok) {
