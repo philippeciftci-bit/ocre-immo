@@ -17392,7 +17392,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
           <Row icon="🚪" iconBg="#455A64" label="Se déconnecter" dangerLabel onClick={() => { if (typeof window.__ocreLogout === 'function') window.__ocreLogout(); }}/>
         </Group>
         <div style={{padding:'18px 16px 30px', textAlign:'center', fontSize:10, color:'var(--color-text-muted)', fontStyle:'italic'}}>
-          Oi Agent · Tenant {(currentUser && currentUser.slug) || ''}
+          Oi Agent · Espace {(currentUser && currentUser.slug) || ''}
         </div>
       </>
     );
