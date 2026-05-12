@@ -133,7 +133,8 @@ if ($action === 'details') {
         'adresse' => trim(($get('street_number') ? $get('street_number') . ' ' : '') . $get('route')),
         'code_postal' => $get('postal_code'),
         'ville' => $get('locality') ?: $get('postal_town') ?: $get('administrative_area_level_2'),
-        'quartier' => $get('sublocality') ?: $get('neighborhood') ?: '',
+        // M/2026/05/12/9 — sublocality_level_1 prioritaire (vrais quartiers Paris, etc.) avant sublocality / neighborhood.
+        'quartier' => $get('sublocality_level_1') ?: $get('sublocality') ?: $get('neighborhood') ?: '',
         'pays' => strtoupper($get('country', 'short_name')),
         'pays_name' => $get('country'),
     ]);
