@@ -4316,20 +4316,14 @@ function PieceIdentiteBlock({d, set, dossierId, showToast}) {
   return (
     <div ref={wrapperRef} style={{borderLeft:'3px solid var(--color-accent)', paddingLeft:'var(--space-10px)', marginTop:'var(--space-14px)', marginBottom:'var(--space-10px)'}}>
       {/* M/2026/05/12/26 — Header accordeon cliquable (Apple HIG Disclosure Group). */}
-      {/* M/2026/05/12/33 — Style carte d'identite francaise miniature : bande tricolore verticale a gauche
-          (bleu/blanc/rouge fines) + bordure ocre + coins arrondis + typo serif Cormorant Garamond. */}
+      {/* M/2026/05/12/35 — Header sobre : RETIRE bande tricolore FR M/12/33 + width auto (bouton
+          ajuste au contenu, pas pleine largeur). Bordure or + typo serif italic navy conservees. */}
       <button type="button"
         onClick={() => setExpanded(e => !e)}
         aria-expanded={expanded}
         aria-controls="piece-identite-body"
-        style={{display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', minHeight:54, padding:'6px 12px 6px 0', background:'var(--color-bg-tint-warm)', border:'1.5px solid #C9A961', borderRadius:6, cursor:'pointer', fontFamily:'inherit', textAlign:'left', outline:'none', gap:10, boxShadow:'0 1px 2px rgba(0,0,0,0.05)'}}>
-        {/* Bande tricolore verticale fine (Drapeau FR : bleu / blanc / rouge) */}
-        <span aria-hidden="true" style={{display:'inline-flex', flexShrink:0, height:36, alignItems:'stretch', marginLeft:0, borderRadius:'4px 0 0 4px', overflow:'hidden'}}>
-          <span style={{width:3, background:'#002395'}}/>
-          <span style={{width:3, background:'#FFFFFF'}}/>
-          <span style={{width:3, background:'#ED2939'}}/>
-        </span>
-        <span style={{fontFamily:'"Cormorant Garamond", Georgia, serif', fontSize:'var(--font-size-15)', fontWeight:600, fontStyle:'italic', color:'#1D4E89', letterSpacing:.4, flex:1, lineHeight:1.1}}>Pièce d'identité</span>
+        style={{display:'inline-flex', alignItems:'center', width:'auto', padding:'8px 16px', background:'transparent', border:'1.5px solid #C9A961', borderRadius:8, cursor:'pointer', fontFamily:'inherit', textAlign:'left', outline:'none', gap:10}}>
+        <span style={{fontFamily:'"Cormorant Garamond", Georgia, serif', fontSize:'var(--font-size-15)', fontWeight:600, fontStyle:'italic', color:'#1D4E89', letterSpacing:.4, lineHeight:1.1}}>Pièce d'identité</span>
         <span aria-hidden="true" style={{color:'#1D4E89', fontSize:'var(--font-size-13)', transition:'transform 200ms ease', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', lineHeight:1, flexShrink:0}}>▼</span>
       </button>
       {expanded && (
