@@ -2,7 +2,7 @@
 // Conversion depuis killswitch v474 : on garde le SW REGISTERED (plus d'unregister à activate)
 // pour permettre la réception des push notifications PWA. Tous les fetchs restent en network-first
 // (pas de cache offline business — fallback minimal pour mode=navigate uniquement).
-const SW_VERSION = 'ocre-sw-v479.0-m12-fix-autosave-toggle-cards-fantomes';
+const SW_VERSION = 'ocre-sw-v480.0-m12-6-chip-archives-accueil';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

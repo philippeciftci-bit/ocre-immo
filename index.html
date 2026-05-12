@@ -18718,6 +18718,7 @@ function ListView(props) {
               'Bailleur':     {active:'#4A7856', bg:'#E4EFE4', border:'#B0CCB4', text:'#4A7856'},
               'Locataire':    {active:'#B8955A', bg:'#F5EFDF', border:'#D9C99C', text:'#8B6F2C'},
               'Curieux':      {active:'#6E6352', bg:'#ECEAE4', border:'#C4BFB0', text:'#6E6352'},
+              'Archivés':     {active:'#8B7355', bg:'#EFE7DA', border:'#C9B698', text:'#8B7355'},
             };
             function chipStyle(key, selected) {
               const p = PAL[key] || PAL['Tous'];
@@ -18727,12 +18728,19 @@ function ListView(props) {
             }
             const isAll = listFilter === null;
             const isDrafts = listFilter === '__drafts__';
+            // M/2026/05/12/6 — chip Archives dans la barre de filtres (avant : seul le bouton header le permettait).
+            const archivedCount = clients.filter(c => !!c.archived).length;
             return (
               <>
-                <button onClick={() => setListFilter(null)} style={chipStyle('Tous', isAll)}>Tous</button>
-                {drafts.length > 0 && (
+                <button onClick={() => { if (showArchives) setShowArchives(false); setListFilter(null); }} style={chipStyle('Tous', isAll && !showArchives)}>Tous</button>
+                {drafts.length > 0 && !showArchives && (
                   <button onClick={() => setListFilter(isDrafts ? null : '__drafts__')} style={chipStyle('Brouillons', isDrafts)}>
                     Brouillons<span style={{marginLeft:'var(--space-3px)', opacity:.8, fontWeight:500, fontSize:'var(--font-size-11)'}}>({drafts.length})</span>
+                  </button>
+                )}
+                {archivedCount > 0 && (
+                  <button onClick={() => { setShowArchives(!showArchives); setListFilter(null); }} style={chipStyle('Archivés', showArchives)}>
+                    Archivés<span style={{marginLeft:'var(--space-3px)', opacity:.8, fontWeight:500, fontSize:'var(--font-size-11)'}}>({archivedCount})</span>
                   </button>
                 )}
                 {/* M/2026/05/06/82.5 — pill WSC + popup SUPPRIMES (pivot M83 agents+pacts+matching). */}
