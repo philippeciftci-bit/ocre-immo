@@ -207,6 +207,14 @@ select:-webkit-autofill {
   --text-hint:var(--color-text-muted);
   --border-input:var(--color-border-medium);
   --border-subtle:var(--color-border-subtle);
+  /* M/2026/05/13/4 — Uniformization photos Phase 1 (audit M/13/3) */
+  /* Axe 2 : 3 tailles avatar utilisateur canoniques */
+  --avatar-sm:36px;   /* badges en ligne (futur) */
+  --avatar-md:64px;   /* Bandeau home, Profil Reglages (standard) */
+  --avatar-lg:120px;  /* AgentProfileView, Share card (profile page) */
+  /* Axe 4 : 2 styles de bordure photo standards */
+  --photo-border:1px solid var(--color-border-subtle);          /* defaut neutre */
+  --photo-border-accent:3px solid var(--color-accent);          /* mise en avant (share card) */
   --ocre-primary:var(--color-ocre-flamboyant);
   --ocre-brand:var(--color-accent);
   --ocre-bg-soft:var(--color-bg-tint-warm);
@@ -1278,6 +1286,18 @@ function photoSrc(p) {
   if (!p) return '';
   if (typeof p === 'string') return p;
   return p.url || '';
+}
+
+// M/2026/05/13/4 — Axe 3 audit M/13/3 : helper unique initiales 2 chars pour fallback avatar.
+// Garantit toujours 2 caracteres (prenom[0] + nom[0]). Si pas de nom : doubler prenom[1] ou prenom[0].
+// Si pas de prenom mais nom : nom[0]+nom[1]. Fallback ultime '??'.
+function getInitials(firstName, lastName) {
+  const f = (firstName || '').trim();
+  const l = (lastName || '').trim();
+  if (f && l) return (f[0] + l[0]).toUpperCase();
+  if (f) return (f[0] + (f[1] || f[0])).toUpperCase();
+  if (l) return (l[0] + (l[1] || l[0])).toUpperCase();
+  return '??';
 }
 
 // M/2026/04/30/11 — helper unique pour formater l adresse du bien (Section II Bloc 01).
@@ -11465,8 +11485,9 @@ function PublishPreviewModal({dossierId, onClose, onPublished, showToast}) {
             <div style={{background:'#FBF7EE', border:'1px solid #E0CDAE', borderRadius:10, padding:'12px 14px', marginTop:'var(--space-14px)'}}>
               <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontWeight:700, textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-2)'}}>Votre agent</div>
               <div style={{display:'flex', gap:'var(--space-3)', alignItems:'center'}}>
-                <div style={{width:60, height:60, borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: agentProfile.photo_url ? 'url(' + agentProfile.photo_url + ')' : 'none', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-22)', fontWeight:700}}>
-                  {!agentProfile.photo_url && ((agentProfile.prenom || '?')[0] + (agentProfile.nom || '')[0]).toUpperCase()}
+                {/* M/2026/05/13/4 — Axe 2 + 3 audit M/13/3 : 60 -> var(--avatar-md) + getInitials 2 chars */}
+                <div style={{width:'var(--avatar-md)', height:'var(--avatar-md)', borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: agentProfile.photo_url ? 'url(' + agentProfile.photo_url + ')' : 'none', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-22)', fontWeight:700}}>
+                  {!agentProfile.photo_url && getInitials(agentProfile.prenom, agentProfile.nom)}
                 </div>
                 <div style={{flex:1, minWidth:0}}>
                   <div style={{fontWeight:700, fontSize:'var(--font-size-sm)', color:'var(--color-text-primary)'}}>{agentProfile.prenom} {agentProfile.nom} <span style={{display:'inline-block', marginLeft:'var(--space-6px)', fontSize:'var(--font-size-9)', background:'var(--color-accent)', color:'#fff', padding:'1px 7px', borderRadius:10, fontWeight:700, letterSpacing:.4, verticalAlign:'middle'}}>AGENT OCRE</span></div>
@@ -14914,9 +14935,10 @@ function AgentProfileView({currentUser, onBack, showToast}) {
         <div className="ocre-card" style={{marginBottom:'var(--space-14px)'}}>
           <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-lg)', color:'var(--color-accent)', fontWeight:700, marginBottom:'var(--space-10px)'}}>Identité visuelle</div>
           <div style={{display:'flex', gap:'var(--space-14px)', alignItems:'center', marginBottom:'var(--space-3)'}}>
-            <div style={{width:120, height:120, borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-40)', fontWeight:700, cursor:'pointer', overflow:'hidden', flexShrink:0}}
+            {/* M/2026/05/13/4 — Axe 2 audit M/13/3 : 120 -> var(--avatar-lg) */}
+            <div style={{width:'var(--avatar-lg)', height:'var(--avatar-lg)', borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-40)', fontWeight:700, cursor:'pointer', overflow:'hidden', flexShrink:0}}
               onClick={() => document.getElementById('agent-photo-input').click()}>
-              {!p.photo_url && ((p.prenom || '?')[0] + (p.nom || '')[0]).toUpperCase()}
+              {!p.photo_url && getInitials(p.prenom, p.nom)}
             </div>
             <div style={{flex:1, minWidth:0}}>
               <button onClick={() => document.getElementById('agent-photo-input').click()} style={{width:'100%', padding:'9px 10px', background:'linear-gradient(135deg,var(--color-accent),var(--color-ocre-deep))', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:'var(--font-size-12-5)', cursor:'pointer', fontFamily:'inherit', marginBottom:'var(--space-6px)'}}>
@@ -15077,8 +15099,9 @@ function AgentPreviewModal({profile: p, onClose}) {
       </div>
       <div style={{maxWidth:600, margin:'0 auto', padding:'var(--space-5)'}}>
         <div style={{display:'flex', alignItems:'center', gap:'var(--space-14px)', marginBottom:'var(--space-14px)'}}>
-          <div style={{width:110, height:110, borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', flexShrink:0, border:'3px solid var(--color-accent)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-38)', fontWeight:700}}>
-            {!p.photo_url && ((p.prenom || '?')[0] + (p.nom || '')[0]).toUpperCase()}
+          {/* M/2026/05/13/4 — Axe 2 + 4 audit M/13/3 : 110 -> avatar-lg + 3px accent -> photo-border-accent */}
+          <div style={{width:'var(--avatar-lg)', height:'var(--avatar-lg)', borderRadius:'50%', background:'var(--color-accent) center/cover no-repeat', backgroundImage: p.photo_url ? 'url(' + p.photo_url + ')' : 'none', flexShrink:0, border:'var(--photo-border-accent)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontSize:'var(--font-size-38)', fontWeight:700}}>
+            {!p.photo_url && getInitials(p.prenom, p.nom)}
           </div>
           <div style={{flex:1, minWidth:0}}>
             <div style={{fontFamily:'var(--font-serif)', fontSize:'var(--font-size-2xl)', fontWeight:700, color:'var(--color-accent)'}}>{p.prenom} {p.nom}</div>
@@ -17464,7 +17487,8 @@ function PreferencesPage({onBack, showToast, currentUser}) {
   const renderHome = () => {
     const userName = (currentUser && (currentUser.prenom || currentUser.nom)) ? ((currentUser.prenom || '') + ' ' + (currentUser.nom || '')).trim() : 'Mon compte';
     const userEmail = (currentUser && currentUser.email) || '';
-    const userInitial = (userName || 'P').charAt(0).toUpperCase();
+    // M/2026/05/13/4 — Axe 3 audit M/13/3 : initiales 2 chars via getInitials helper.
+    const userInitial = getInitials(currentUser && currentUser.prenom, currentUser && currentUser.nom);
     const planLabel = (prefs && prefs.plan && prefs.plan.label) || 'PLAN PRO';
     const Row = ({icon, iconBg, label, value, valueClass, onClick, dangerLabel}) => (
       <div onClick={onClick} style={{display:'flex', alignItems:'center', padding:'12px 14px', minHeight:52, cursor:'pointer', gap:12, borderBottom:'1px solid var(--color-border-cream)'}}>
@@ -17480,7 +17504,8 @@ function PreferencesPage({onBack, showToast, currentUser}) {
       <>
         {/* Bandeau utilisateur */}
         <div style={{padding:'18px 16px 14px', background:'var(--color-bg-tint-warm, #FAF6EE)', display:'flex', alignItems:'center', gap:12, borderBottom:'1px solid var(--color-border-cream)'}}>
-          <div style={{width:50, height:50, borderRadius:'50%', background:'linear-gradient(135deg,#8B5E3C,#6B4429)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontStyle:'italic', fontWeight:700, fontSize:22, flexShrink:0}}>{userInitial}</div>
+          {/* M/2026/05/13/4 — Axe 2 audit M/13/3 : 50 -> var(--avatar-md) pour uniformiser */}
+          <div style={{width:'var(--avatar-md)', height:'var(--avatar-md)', borderRadius:'50%', background:'linear-gradient(135deg,#8B5E3C,#6B4429)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontStyle:'italic', fontWeight:700, fontSize:22, flexShrink:0}}>{userInitial}</div>
           <div>
             <div style={{fontFamily:'var(--font-serif)', fontSize:17, color:'var(--color-accent)', fontWeight:700, fontStyle:'italic', lineHeight:1.2, marginBottom:2}}>{userName}</div>
             <div style={{fontSize:11.5, color:'var(--color-text-muted)'}}>{userEmail}</div>
@@ -17639,8 +17664,9 @@ function PreferencesPage({onBack, showToast, currentUser}) {
         <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
           <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:12}}>Photo de profil</div>
           <div style={{display:'flex', alignItems:'center', gap:14}}>
-            <div style={{width:64, height:64, borderRadius:'50%', overflow:'hidden', background:'linear-gradient(135deg,#8B5E3C,#6B4429)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontStyle:'italic', fontWeight:700, fontSize:28, flexShrink:0}}>
-              {profil.photo_url ? <img src={profil.photo_url} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : ((profil.prenom || profil.email || 'P').charAt(0).toUpperCase())}
+            {/* M/2026/05/13/4 — Axe 2 + 3 audit M/13/3 : 64 -> var(--avatar-md) + getInitials 2 chars (fallback char1 du email si pas de nom) */}
+            <div style={{width:'var(--avatar-md)', height:'var(--avatar-md)', borderRadius:'50%', overflow:'hidden', background:'linear-gradient(135deg,#8B5E3C,#6B4429)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontFamily:'var(--font-serif)', fontStyle:'italic', fontWeight:700, fontSize:28, flexShrink:0}}>
+              {profil.photo_url ? <img src={profil.photo_url} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : getInitials(profil.prenom || (profil.email || 'P').charAt(0), profil.nom)}
             </div>
             <div>
               <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={e => uploadPhoto(e.target.files && e.target.files[0])} style={{display:'none'}}/>
