@@ -12249,7 +12249,7 @@ function App() {
       handleSaveLocal={handleSaveLocal} handleDelete={handleDelete}
       backToList={() => window.history.back()}
       toast={toast} showToast={showToast}
-      clients={clients} openExistingDossier={openClient}
+      clients={clients} setClients={setClients} openExistingDossier={openClient}
       initialExpandedSection={initialExpandedSection}
       initialFocus={initialFocus}
       openEditReview={(id) => { setSelectedEditId(id); pushView('edit_review'); }}
@@ -19304,11 +19304,23 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
         // M/2026/05/07/101 — optimistic fade-out + onRemove (au lieu de window.location.reload()).
         // M/2026/05/07/102 — onRemoveStart marque _removing IMMEDIATEMENT cote parent pour
         // que le compteur Dossiers·N exclue ce dossier des le clic, sans attendre 200ms.
+        // M/2026/05/12/14 — Fix bug critique 3 swipe-archiver : reset explicite swipeX=0 pour
+        // eviter race condition useSwipeExclusive (pointerdown modal askConfirm = close swipe
+        // mais row stale a -72px residual). Reset assure cohérence visuelle pre fade-out.
+        setSwipeX(0);
         if (props.onRemoveStart) props.onRemoveStart(c.id);
         setRemoving(true);
         setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);
+      } else {
+        // M/2026/05/12/14 — feedback erreur explicite (avant : noop silent).
+        try { setSwipeX(0); } catch (_) {}
+        if (typeof window.__ocreToast === 'function') window.__ocreToast((j && j.error) || 'Échec archivage');
       }
-    } catch (e) { /* noop */ }
+    } catch (e) {
+      // M/2026/05/12/14 — feedback erreur reseau explicite.
+      try { setSwipeX(0); } catch (_) {}
+      if (typeof window.__ocreToast === 'function') window.__ocreToast('Erreur réseau');
+    }
   }
   async function doDelete(e) {
     if (e) e.stopPropagation();
@@ -19542,9 +19554,17 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
                 {PROFILS_LABEL[profil] || (profil || '').toUpperCase()}
               </span>
             ) : (
-              <span className="alert-label" style={{flexShrink:0, marginLeft:'auto'}}>
+              // M/2026/05/12/14 — Fix bug majeur 4 : chip "Choisir un profil" cliquable depuis ClientRow.
+              // Ouvre la fiche + dispatch event pour highlight le profil picker au mount du form view.
+              <button type="button" className="alert-label"
+                onClick={e => {
+                  e.stopPropagation();
+                  if (onClick) onClick(e);
+                  try { window.dispatchEvent(new CustomEvent('ocre:focus-profil-picker', {detail: {clientId: c.id}})); } catch (_) {}
+                }}
+                style={{flexShrink:0, marginLeft:'auto', cursor:'pointer', border:'none', fontFamily:'inherit', padding:'3px 9px'}}>
                 Choisir un profil
-              </span>
+              </button>
             )}
             {/* M/2026/05/02/36 — M140.B livrable C : badge source d'annonce (Mandat/Partenaire/Veille).
                 Pas de badge si source_type absent (anti-régression dossiers existants). */}
@@ -21159,9 +21179,16 @@ function StageIHeaderBar({d, activeProfil, linkedDossiers, openExistingDossier, 
             {useAbbr ? (BADGES[activeProfil] || activeProfil.slice(0, 3).toUpperCase()) : (PROFILS_LABEL[activeProfil] || activeProfil.toUpperCase())}
           </span>
         ) : (
-          <span className="alert-label" style={{flexShrink:0}}>
+          // M/2026/05/12/14 — Fix bug majeur 5 : chip "Choisir un profil" cliquable depuis bandeau fiche.
+          // Dispatch event que FormView ecoute pour scroll + highlight le profil picker du Stage I.
+          <button type="button" className="alert-label"
+            onClick={e => {
+              e.stopPropagation();
+              try { window.dispatchEvent(new CustomEvent('ocre:focus-profil-picker', {detail: {fromBandeau: true}})); } catch (_) {}
+            }}
+            style={{flexShrink:0, cursor:'pointer', border:'none', fontFamily:'inherit', padding:'1px 6px'}}>
             Choisir un profil
-          </span>
+          </button>
         )}
         {/* Pills LIÉES */}
         {linkedDossiers.map(lc => {
@@ -21675,10 +21702,10 @@ function Section7({d, set}) {
 }
 
 function FormView(props) {
-  const {editing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
+  const {editing, setEditing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          isPromoteur, setIsPromoteur, isMarchandDeBiens, setIsMarchandDeBiens,
          handleSaveLocal, handleDelete, backToList, toast, showToast,
-         clients, openExistingDossier, initialExpandedSection, initialFocus,
+         clients, setClients, openExistingDossier, initialExpandedSection, initialFocus,
          promoteStaged, deleteStaged} = props;
   // M/2026/04/30/9 — auto-detection pays via IP en mode CREATION (editing null ou tmp-).
   // Hook reel attache plus bas apres declaration de setD/d (etat local du form).
@@ -23475,11 +23502,21 @@ function FormView(props) {
               if (!_hasRealId) { showToast && showToast("Saisis d'abord quelques champs"); return; }
               const targetState = !d.archived;
               if (!targetState) {
+                // M/2026/05/12/14 — Fix bug critique 2 : remplace window.location.reload() par mise a jour
+                // state React + backToList(). Garde showArchives actif. Pattern optimistic : la fiche
+                // disparait de la liste archives en cohérence avec archived=0 (pipeline filtre).
+                if (!(await askConfirm({title: 'Restaurer ce dossier ?', message: 'Le dossier reapparaîtra dans la liste principale.', danger:false, confirmLabel:'Restaurer'}))) return;
                 try {
                   const tk = localStorage.getItem('ocre_token') || '';
                   const r = await fetch(API + '/clients.php?action=unarchive', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({id: editing.id})});
                   const j = await r.json();
-                  if (j && j.ok) { commit('archived', false); showToast && showToast('Dossier désarchivé'); setTimeout(() => { window.location.reload(); }, 300); }
+                  if (j && j.ok) {
+                    commit('archived', false);
+                    if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: 0} : c));
+                    if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: 0} : prev);
+                    showToast && showToast('Dossier restauré');
+                    setTimeout(() => backToList && backToList(), 250);
+                  }
                   else showToast && showToast((j && j.error) || 'Échec désarchivage');
                 } catch (e) { showToast && showToast('Erreur réseau'); }
                 return;
@@ -23489,13 +23526,22 @@ function FormView(props) {
                 const tk = localStorage.getItem('ocre_token') || '';
                 const r = await fetch(API + '/clients.php?action=archive', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({id: editing.id, archived:1})});
                 const j = await r.json();
-                if (j && j.ok) { commit('archived', true); showToast && showToast('Dossier archivé'); setTimeout(() => backToList && backToList(), 250); }
+                if (j && j.ok) {
+                  commit('archived', true);
+                  // M/2026/05/12/14 — propagation state archived=1 (coherent listes brouillons/archives).
+                  if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: 1} : c));
+                  if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: 1} : prev);
+                  showToast && showToast('Dossier archivé');
+                  setTimeout(() => backToList && backToList(), 250);
+                }
                 else showToast && showToast((j && j.error) || 'Échec archivage');
               } catch (e) { showToast && showToast('Erreur réseau'); }
             };
             const onTrash = () => {
+              // M/2026/05/12/14 — Fix bug critique 1 : supprime le window.confirm() qui causait
+              // une double popup (window.confirm natif + askConfirm dans handleDelete = 3 clics).
+              // handleDelete gère son propre askConfirm modal.
               if (!_hasRealId) { showToast && showToast("Aucun dossier à supprimer"); return; }
-              if (!window.confirm('Supprimer définitivement ce dossier ?')) return;
               handleDelete(editing.id);
             };
             // M/2026/05/04/32 — flag M32_BOTTOMBAR_UNIFORM : ON = pill V2 universel SSOT.
