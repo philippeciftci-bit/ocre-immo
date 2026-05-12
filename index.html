@@ -2831,8 +2831,52 @@ function PhoneField({label, value, onChange, onBlur, residenceCountry='', style=
     const newDial = lookupDialByCountry(newCC);
     if (newDial) pushE164(newDial, localDigits);
   }
+  // M/2026/05/12/22 — parser intelligent : detecte indicatif present dans la saisie
+  // (autofill iPhone "+33 6 88 28 48 77" OU paste manuel "0033..." ou "+212...") et
+  // resync le selecteur pays + ne garde que le numero local dans le champ.
+  // Idempotent : si user retape +33 alors que selecteur deja FR, pas de doublon.
+  function detectIndicatifAndCountry(rawText) {
+    if (!rawText) return null;
+    const trimmed = String(rawText).trim();
+    // Detecte +<chiffres> ou 00<chiffres> au debut
+    const m = /^(?:\+|00)(\d{1,4})\s*(.*)$/.exec(trimmed);
+    if (!m) return null;
+    const indicatif = m[1];
+    const localPart = m[2] || '';
+    // Sorted by length desc pour matcher les indicatifs longs avant courts (ex: 1264 avant 1)
+    const sorted = [...DIAL_CODES].sort((a, b) => b.d.length - a.d.length);
+    let hit = sorted.find(dc => indicatif.startsWith(dc.d));
+    if (!hit) {
+      // Fallback : essaie via cache pays M111 (PAYS list)
+      const cache = (window.M111_COUNTRIES_CACHE && window.M111_COUNTRIES_CACHE.data) || PAYS;
+      hit = cache.find(p => String(p.dial || '').replace(/^\+/, '') === indicatif);
+      if (hit) hit = { c: hit.c, d: String(hit.dial || '').replace(/^\+/, '') };
+    }
+    if (!hit) return null;
+    // Reste = indicatif moins le code matche + localPart
+    const remainder = indicatif.slice(hit.d.length) + localPart;
+    return { country: hit.c, dial: hit.d, localPart: remainder.replace(/\D/g, '') };
+  }
   function handleLocal(e) {
-    const raw = e.target.value.replace(/\D/g, '').slice(0, 15);
+    // M/2026/05/12/22 — pre-parse pour detecter +indicatif et synchroniser le selecteur pays.
+    const rawInput = e.target.value;
+    const parsed = detectIndicatifAndCountry(rawInput);
+    if (parsed && parsed.country !== country) {
+      setCountry(parsed.country);
+      const cleanLocal = parsed.localPart.slice(0, 15);
+      setLocalDigits(cleanLocal);
+      pushE164(parsed.dial, cleanLocal);
+      return;
+    }
+    // Si parsed.country === country (idempotent : user a retape +33 alors qu on est deja FR)
+    if (parsed && parsed.country === country) {
+      const cleanLocal = parsed.localPart.slice(0, 15);
+      setLocalDigits(cleanLocal);
+      pushE164(parsed.dial, cleanLocal);
+      return;
+    }
+    // Pas d indicatif detecte -> comportement existant.
+    const raw = rawInput.replace(/\D/g, '').slice(0, 15);
     setLocalDigits(raw);
     pushE164(dial, raw);
   }
