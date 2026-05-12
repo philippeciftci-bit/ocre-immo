@@ -638,30 +638,166 @@ function openAuthSettings(userId, currentTtl, currentIdle) {
 window.openAuthSettings = openAuthSettings;
 
 // ====== SECTION 3 — SESSIONS ======
+// M/2026/05/12/18 — selection multiple + revoke bulk. Pattern Linear/Notion : checkbox column,
+// quick-select buttons, slide-in action bar, modal custom + optimistic fade-out + toast.
+let _sessionsSelected = new Set(); // tokens selectionnes (live)
+let _sessionsCache = []; // cache des sessions pour calcul filtres / re-render
+const _E2E_EMAIL_PATTERN = /m12-7-spec|e2e-test\+m12|e2e-fix-|e2e-toggle|e2e-ux-|e2e-finalisation/i;
+
+function _renderSessionsActionBar() {
+  const bar = $('#sessions-action-bar');
+  if (!bar) return;
+  const count = _sessionsSelected.size;
+  if (count === 0) { bar.classList.remove('visible'); bar.innerHTML = ''; return; }
+  bar.classList.add('visible');
+  bar.innerHTML = `<span class="bulk-count"><b>${count}</b> session${count > 1 ? 's' : ''} sélectionnée${count > 1 ? 's' : ''}</span>
+    <button class="btn btn-danger" id="bulk-revoke-btn">🗑 Révoquer la sélection</button>
+    <button class="btn btn-ghost" id="bulk-cancel-btn">Annuler la sélection</button>`;
+  $('#bulk-revoke-btn').onclick = bulkRevokeSelected;
+  $('#bulk-cancel-btn').onclick = () => { _sessionsSelected.clear(); _refreshSessionsCheckboxes(); _renderSessionsActionBar(); };
+}
+
+function _refreshSessionsCheckboxes() {
+  document.querySelectorAll('.session-row-checkbox').forEach(cb => {
+    cb.checked = _sessionsSelected.has(cb.dataset.token);
+  });
+  const master = $('#sessions-master-checkbox');
+  if (master) {
+    const total = _sessionsCache.length;
+    const sel = _sessionsSelected.size;
+    master.checked = sel === total && total > 0;
+    master.indeterminate = sel > 0 && sel < total;
+  }
+}
+
+window._toggleSessionCheckbox = function(token, checked) {
+  if (checked) _sessionsSelected.add(token); else _sessionsSelected.delete(token);
+  _refreshSessionsCheckboxes();
+  _renderSessionsActionBar();
+};
+
+window._toggleAllSessions = function(checked) {
+  _sessionsSelected.clear();
+  if (checked) _sessionsCache.forEach(s => _sessionsSelected.add(s.session_token || s.token));
+  _refreshSessionsCheckboxes();
+  _renderSessionsActionBar();
+};
+
+window._selectE2ESessions = function() {
+  _sessionsSelected.clear();
+  _sessionsCache.forEach(s => {
+    if (_E2E_EMAIL_PATTERN.test(s.email || '')) _sessionsSelected.add(s.session_token || s.token);
+  });
+  _refreshSessionsCheckboxes();
+  _renderSessionsActionBar();
+};
+
+async function bulkRevokeSelected() {
+  const tokens = Array.from(_sessionsSelected);
+  if (tokens.length === 0) return;
+  openConfirm({
+    title: `Révoquer ${tokens.length} session${tokens.length > 1 ? 's' : ''} ?`,
+    body: 'Les utilisateurs concernés seront déconnectés immédiatement. Cette action est irréversible.',
+    confirmLabel: 'Révoquer définitivement', danger: true,
+    onConfirm: async () => {
+      // Optimistic fade-out : marque les rows en fade avant le POST
+      tokens.forEach(t => {
+        const row = document.querySelector(`tr[data-token="${t}"]`);
+        if (row) row.style.cssText = 'opacity:0.35;pointer-events:none;transition:opacity 200ms ease';
+      });
+      const r = maybeAuthError(await api('/api/superadmin_sessions.php', {
+        method: 'POST',
+        body: { action: 'revoke_bulk', tokens: tokens }
+      }));
+      if (!r.ok) {
+        // Rollback : restaure les rows
+        tokens.forEach(t => {
+          const row = document.querySelector(`tr[data-token="${t}"]`);
+          if (row) row.style.cssText = '';
+        });
+        _showToast(`Erreur : ${r.error || 'révocation échouée'}`, 'error');
+        throw new Error(r.error || 'erreur');
+      }
+      // Slide-up disappear + reset state
+      tokens.forEach(t => {
+        const row = document.querySelector(`tr[data-token="${t}"]`);
+        if (row) {
+          row.style.cssText = 'opacity:0;max-height:0;transform:translateY(-8px);transition:all 300ms ease';
+          setTimeout(() => row.remove(), 320);
+        }
+      });
+      _sessionsSelected.clear();
+      const msg = `${r.revoked_count} session${r.revoked_count > 1 ? 's' : ''} révoquée${r.revoked_count > 1 ? 's' : ''}` + (r.excluded_self > 0 ? ` (${r.excluded_self} exclue auto-protection)` : '');
+      _showToast(msg, 'success');
+      setTimeout(() => render('sessions'), 400);
+    }
+  });
+}
+
+function _showToast(msg, type) {
+  let el = $('#sessions-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sessions-toast';
+    el.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:10000;box-shadow:0 4px 14px rgba(0,0,0,.2);transition:opacity 200ms ease';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.background = type === 'error' ? '#C0392B' : '#2E7D32';
+  el.style.color = '#fff';
+  el.style.opacity = '1';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.opacity = '0'; }, 3000);
+}
+
 async function renderSessions() {
   $('#section-actions').innerHTML = `<button class="btn btn-ghost btn-sm" onclick="render('sessions')">↻ Rafraîchir</button>`;
   const r = maybeAuthError(await api('/api/superadmin_sessions.php?action=list'));
   const sessions = r.sessions || [];
+  _sessionsCache = sessions;
+  _sessionsSelected.clear();
   if (sessions.length === 0) {
     $('#content-body').innerHTML = `<div class="panel"><div class="empty-state">Aucune session active.</div></div>`; return;
   }
-  const rows = sessions.map(s => `<tr>
+  const rows = sessions.map(s => {
+    const tok = s.session_token || s.token || '';
+    const tokEsc = String(tok).replace(/"/g, '&quot;');
+    return `<tr data-token="${tokEsc}">
+    <td style="width:34px;text-align:center"><input type="checkbox" class="session-row-checkbox" data-token="${tokEsc}" onchange="window._toggleSessionCheckbox('${tokEsc}', this.checked)"></td>
     <td><b>${esc(s.email || ('user ' + s.user_id))}</b></td>
-    ${tokenCell(s.session_token || s.token)}
+    ${tokenCell(tok)}
     <td class="cell-mono">${esc(s.ip || '—')}</td>
     ${uaCell(s.user_agent)}
     <td class="cell-mono">${fmtDate(s.created_at)}</td>
     <td class="cell-mono">${fmtDate(s.expires_at || s.last_seen)}</td>
-    <td class="cell-actions"><button class="btn btn-danger btn-sm" onclick="revokeSession(${JSON.stringify(s.session_token || s.token || '').replace(/"/g, '&quot;')})">Révoquer</button></td>
-  </tr>`).join('');
-  $('#content-body').innerHTML = `<div class="panel">
-    <div class="panel-head"><h2>Sessions actives (${sessions.length})</h2></div>
-    <div class="panel-body no-pad"><div class="dt-wrap"><table class="dt"><thead><tr><th>User</th><th>Token</th><th>IP</th><th>Appareil</th><th>Créée</th><th>Expire</th><th style="text-align:right">Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+    <td class="cell-actions"><button class="btn btn-danger btn-sm" onclick="revokeSession(${JSON.stringify(tok).replace(/"/g, '&quot;')})">Révoquer</button></td>
+  </tr>`;
+  }).join('');
+  $('#content-body').innerHTML = `<style>
+    #sessions-action-bar { display:none; align-items:center; gap:12px; padding:10px 14px; background:#FFF3E0; border:1px solid #FFB74D; border-radius:8px; margin-bottom:12px; transform:translateY(-12px); opacity:0; transition:all 200ms ease-out; }
+    #sessions-action-bar.visible { display:flex; transform:translateY(0); opacity:1; }
+    #sessions-action-bar .bulk-count { flex:1; font-size:13px; color:#5C4A3A; }
+    .sessions-quick-select { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  </style>
+  <div class="panel">
+    <div class="panel-head" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <h2 style="margin-right:auto">Sessions actives (${sessions.length})</h2>
+      <div class="sessions-quick-select">
+        <button class="btn btn-ghost btn-sm" onclick="window._toggleAllSessions(true)">Tout sélectionner</button>
+        <button class="btn btn-ghost btn-sm" onclick="window._selectE2ESessions()">Sélectionner sessions test E2E</button>
+        <button class="btn btn-ghost btn-sm" onclick="window._toggleAllSessions(false)">Tout désélectionner</button>
+      </div>
+    </div>
+    <div id="sessions-action-bar"></div>
+    <div class="panel-body no-pad"><div class="dt-wrap"><table class="dt"><thead><tr>
+      <th style="width:34px;text-align:center"><input type="checkbox" id="sessions-master-checkbox" onchange="window._toggleAllSessions(this.checked)"></th>
+      <th>Utilisateur</th><th>Token</th><th>IP</th><th>Appareil</th><th>Créée</th><th>Expire</th><th style="text-align:right">Action</th>
+    </tr></thead><tbody>${rows}</tbody></table></div></div>
   </div>`;
 }
 async function revokeSession(token) {
   if (!token) return;
-  openConfirm({ title: 'Révoquer cette session ?', body: 'Le user sera déconnecté immédiatement.', confirmLabel: 'Révoquer', danger: true,
+  openConfirm({ title: 'Révoquer cette session ?', body: "L'utilisateur sera déconnecté immédiatement.", confirmLabel: 'Révoquer', danger: true,
     onConfirm: async () => {
       const r = maybeAuthError(await api('/api/superadmin_sessions.php', { method: 'POST', body: { action: 'force_logout', session_token: token } }));
       if (!r.ok) throw new Error(r.error || 'erreur');

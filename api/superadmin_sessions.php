@@ -95,4 +95,36 @@ if ($action === 'logout_all_except_me') {
     jout(['ok' => true, 'deleted' => $n]);
 }
 
+// M/2026/05/12/18 — revoke_bulk : DELETE multi-rows en transaction. Payload {tokens: [...]}
+// Garde-fous : tokens vide -> 400, > 200 -> 400, exclusion silencieuse session courante.
+if ($action === 'revoke_bulk') {
+    $tokens = $input['tokens'] ?? null;
+    if (!is_array($tokens) || count($tokens) === 0) jout(['ok' => false, 'error' => 'tokens array required (non-empty)'], 400);
+    if (count($tokens) > 200) jout(['ok' => false, 'error' => 'bulk limit exceeded (max 200 tokens per request)'], 400);
+    $currentToken = (string)($_SERVER['HTTP_X_SESSION_TOKEN'] ?? '');
+    $valid = [];
+    $excludedSelf = 0;
+    foreach ($tokens as $t) {
+        $t = (string)$t;
+        if (!preg_match('/^[a-f0-9]{32,128}$/', $t)) continue;
+        if ($t === $currentToken) { $excludedSelf++; continue; }
+        $valid[] = $t;
+    }
+    if (count($valid) === 0) jout(['ok' => true, 'revoked_count' => 0, 'excluded_self' => $excludedSelf, 'failed_count' => count($tokens) - $excludedSelf]);
+    try {
+        $meta->beginTransaction();
+        $placeholders = implode(',', array_fill(0, count($valid), '?'));
+        $del = $meta->prepare("DELETE FROM sessions WHERE token IN ($placeholders)");
+        $del->execute($valid);
+        $deleted = $del->rowCount();
+        $meta->commit();
+    } catch (Throwable $e) {
+        if ($meta->inTransaction()) $meta->rollBack();
+        jout(['ok' => false, 'error' => 'transaction failed: ' . $e->getMessage()], 500);
+    }
+    @file_put_contents($LOG, "[" . date('c') . "] sa#" . $user['id'] . " revoke_bulk deleted=$deleted excluded_self=$excludedSelf requested=" . count($tokens) . "\n", FILE_APPEND);
+    @shell_exec('/root/bin/notify --project ocre --priority warning --phase warn --mission-id ' . escapeshellarg('SUPERADMIN-SESSIONS/' . time()) . ' --title ' . escapeshellarg('[OCRE] Revoke bulk sessions') . ' --body ' . escapeshellarg("$deleted sessions revoquees (excluded_self=$excludedSelf) by sa=" . $user['email']) . ' >/dev/null 2>&1 &');
+    jout(['ok' => true, 'revoked_count' => $deleted, 'excluded_self' => $excludedSelf, 'failed_count' => count($tokens) - $deleted - $excludedSelf]);
+}
+
 jout(['ok' => false, 'error' => 'unknown action: ' . $action], 400);
