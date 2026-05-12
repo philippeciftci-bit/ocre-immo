@@ -1288,6 +1288,40 @@ function photoSrc(p) {
   return p.url || '';
 }
 
+// M/2026/05/13/14 — Photos Phase 2 Axe 1 : composant <PhotoTile> reutilisable (audit M/13/3).
+// Props : src, alt, size ('sm'|'md'|'lg'|number), shape ('circle'|'square'|'rounded'),
+//         fallback ({initials, bgColor, icon}), lazy, accent, onClick.
+// Lazy loading natif, fallback initiales/icon, lightbox auto si onClick+src.
+function PhotoTile({src, alt, size, shape, fallback, lazy, accent, onClick, style}) {
+  const _sizeMap = {sm: 36, md: 64, lg: 120};
+  const _px = (typeof size === 'number') ? size : (_sizeMap[size] || 64);
+  const _shape = shape || 'square';
+  const _radius = _shape === 'circle' ? '50%' : (_shape === 'rounded' ? 10 : 8);
+  const _border = accent ? 'var(--photo-border-accent)' : 'var(--photo-border)';
+  const _bg = (fallback && fallback.bgColor) || 'var(--color-bg-tint-warm, #F4ECE3)';
+  const _wrapStyle = {
+    width: _px, height: _px, borderRadius: _radius, border: _border, background: _bg,
+    overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: '#fff', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 700,
+    fontSize: Math.round(_px * 0.4), flexShrink: 0, cursor: onClick ? 'pointer' : 'default',
+    position: 'relative', ...style,
+  };
+  const handleClick = (e) => { if (onClick) onClick(e); };
+  return (
+    <div style={_wrapStyle} onClick={handleClick} role={onClick ? 'button' : undefined}>
+      {src ? (
+        <img src={src} alt={alt || ''} loading={lazy === false ? 'eager' : 'lazy'}
+          style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
+          onError={(e) => { e.target.style.display = 'none'; }}/>
+      ) : (fallback && fallback.icon) ? (
+        fallback.icon
+      ) : (
+        <span aria-hidden="true">{(fallback && fallback.initials) || '?'}</span>
+      )}
+    </div>
+  );
+}
+
 // M/2026/05/13/4 — Axe 3 audit M/13/3 : helper unique initiales 2 chars pour fallback avatar.
 // Garantit toujours 2 caracteres (prenom[0] + nom[0]). Si pas de nom : doubler prenom[1] ou prenom[0].
 // Si pas de prenom mais nom : nom[0]+nom[1]. Fallback ultime '??'.
@@ -12103,6 +12137,11 @@ function App() {
           // M/2026/05/05/29 — M-Photos-HardCap-30-Reglable : expose max_photos_per_dossier en global (lu par PhotoUpload).
           try { window.__ocreMaxPhotos = (typeof st.max_photos_per_dossier === 'number') ? st.max_photos_per_dossier : 30; } catch (_) {}
         }
+        // M/2026/05/13/14 — Photos Phase 2 Axe 5 : boot fetch limites upload centralisees.
+        try {
+          const limCfg = await fetch('/api/upload_limits.php', {cache: 'force-cache'}).then(r => r.json());
+          if (limCfg && limCfg.ok) window.__ocreUploadLimits = limCfg.limits;
+        } catch (_) {}
         // M/2026/05/13/8 — DualCurrencyPair Variant B : boot fetch price_display_variant + exchange_rate_eur_mad globaux.
         try {
           const cfg = await fetch('/api/superadmin_app_settings.php?action=get', {cache: 'no-store'}).then(r => r.json());
