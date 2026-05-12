@@ -26,5 +26,5 @@ www-ocre est membre du group `ocre-secrets` (gid 1000) → peut lire en HTTP.
 [2026-05-10T13:59:27] to=philippe.ciftci@gmail.com app=agent user_id=11 email_send=TRUE   (après fix)
 ```
 
-## ZERO Resend confirmé
+## ZERO trace service externe confirmé
 Backend auth.ocre.immo magic link 100% OVH SMTP exclusif (`stream_socket_client SSL ssl0.ovh.net:465`).

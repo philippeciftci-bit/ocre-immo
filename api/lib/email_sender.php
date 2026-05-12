@@ -1,13 +1,12 @@
 <?php
-// M/2026/05/08/31 — Wrapper email PHPMailer + OVH SMTP authentifié EXCLUSIF.
-// Décision Philippe 2026-05-08 : Resend abandonné définitivement, OVH uniquement.
-// Pas de fallback "best effort" silencieux : si OVH SMTP échoue, le code retourne
-// ok=false avec error détaillé → l'appelant déclenche _alert_email_failure pour
+// M/2026/05/13/9 — Wrapper email PHPMailer + OVH SMTP authentifie (ssl0.ovh.net:465).
+// Pas de fallback "best effort" silencieux : si OVH SMTP echoue, le code retourne
+// ok=false avec error detaille → l'appelant declenche _alert_email_failure pour
 // notifier le super-admin (Telegram + log + dashboard pending-activations).
 //
 // Configuration : api/_smtp_config.php (gitignored, perms 600 root:www-data).
 // Template committable : api/_smtp_config.example.php.
-// Pré-requis DNS (déjà OK sur ocre.immo) : SPF (mx.ovh.com), DKIM, DMARC.
+// Pre-requis DNS (deja OK sur ocre.immo) : SPF (mx.ovh.com), DKIM, DMARC.
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception as PHPMailerException;

@@ -1,12 +1,13 @@
 <?php
-// V18.42 — Emailing transactionnel via Resend API.
-// sendEmail() envoie + logge dans email_logs. Templates brandés OCRE immo.
+// M/2026/05/13/9 — Emailing transactionnel via OVH SMTP (PHPMailer wrapper).
+// sendEmail() envoie via send_mail() (api/lib/email_sender.php) + logge dans email_logs.
+// Templates brandés Oi Agent / Ocre Immo.
 
 require_once __DIR__ . '/db.php';
-@require_once __DIR__ . '/_smtp_config.php';
+require_once __DIR__ . '/lib/email_sender.php';
 
 function emailEnabled(): bool {
-    return defined('SMTP_PROVIDER') && defined('SMTP_API_KEY') && SMTP_API_KEY;
+    return is_readable(__DIR__ . '/_smtp_config.php');
 }
 
 function ensureEmailSchema(): void {
@@ -57,7 +58,7 @@ function userAllowsEmails(string $email): bool {
 }
 
 /**
- * Envoie un email via Resend. Retourne ['ok'=>bool, 'id'=>?string, 'error'=>?string].
+ * Envoie un email via OVH SMTP. Retourne ['ok'=>bool, 'id'=>?string, 'error'=>?string].
  * @param string $to       destinataire
  * @param string $subject  sujet
  * @param string $html     corps HTML complet
@@ -78,37 +79,14 @@ function sendEmail(string $to, string $subject, string $html, string $template =
         return ['ok' => false, 'error' => 'Opt-out user'];
     }
 
-    $payload = [
-        'from'     => SMTP_FROM_NAME . ' <' . SMTP_FROM_ADDRESS . '>',
-        'to'       => [$to],
-        'subject'  => $subject,
-        'html'     => $html,
-        'reply_to' => defined('SMTP_REPLY_TO') ? SMTP_REPLY_TO : SMTP_FROM_ADDRESS,
-    ];
+    $r = send_mail($to, $subject, $html);
 
-    $ch = curl_init('https://api.resend.com/emails');
-    curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 10,
-        CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . SMTP_API_KEY,
-            'Content-Type: application/json',
-        ],
-        CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
-    ]);
-    $body = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-
-    if ($err || $code < 200 || $code >= 300) {
-        $errMsg = $err ?: ('HTTP ' . $code . ' ' . substr((string) $body, 0, 200));
+    if (!$r['ok']) {
+        $errMsg = (string)$r['error'];
         logEmail($to, $template, $subject, 'failed', null, $errMsg, $userId, $meta);
-        return ['ok' => false, 'error' => $errMsg, 'http_code' => $code];
+        return ['ok' => false, 'error' => $errMsg];
     }
-    $resp = json_decode((string) $body, true);
-    $id = $resp['id'] ?? null;
+    $id = $r['message_id'] ?? null;
     logEmail($to, $template, $subject, 'sent', $id, null, $userId, $meta);
     return ['ok' => true, 'id' => $id];
 }
