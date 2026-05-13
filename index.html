@@ -13953,6 +13953,173 @@ function DictationView({onBack, onCreated, showToast, toast, clients, openClient
 // V18.40 — Dashboard admin : métriques + users + actions (unlock / reset_password / suspend /
 // impersonate / logs) + admin_logs. Nécessite user.is_admin=true (requireAdmin côté backend).
 
+// M/2026/05/13/21 — Frontend 2FA TOTP : section Reglages > Securite + modal d'enroll + verif/disable.
+function TwoFactorSection({showToast, token}) {
+  const [enabled, setEnabled] = React.useState(null);
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const tk = () => (typeof token === 'function' ? token() : (localStorage.getItem('ocre_token') || ''));
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/2fa.php?action=status', {headers:{'X-Session-Token': tk()}}).then(r => r.json());
+        if (r && r.ok) setEnabled(!!r.enabled);
+      } catch (_) { setEnabled(false); }
+    })();
+  }, []);
+  function onDone(newEnabled) { setEnabled(newEnabled); setModalOpen(false); }
+  return (
+    <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14}}>
+      <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Authentification 2 facteurs</div>
+      {enabled === null && <div style={{fontSize:12, color:'var(--color-text-muted)'}}>Chargement…</div>}
+      {enabled === true && (
+        <>
+          <div style={{fontSize:12, color:'var(--color-text-taupe)', lineHeight:1.5, marginBottom:10}}>
+            <span style={{display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#43A047', marginRight:6}}/>
+            2FA active. A chaque connexion, un code 6 chiffres genere par ton app authenticator te sera demande.
+          </div>
+          <button onClick={() => setModalOpen(true)} style={{padding:'7px 12px', background:'transparent', color:'var(--color-error)', border:'1px solid var(--color-error)', borderRadius:14, fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Desactiver la 2FA</button>
+        </>
+      )}
+      {enabled === false && (
+        <>
+          <div style={{fontSize:12, color:'var(--color-text-taupe)', lineHeight:1.5, marginBottom:10}}>
+            Renforce la securite de ton compte avec une app authenticator (Google Authenticator, Authy, 1Password).
+          </div>
+          <button onClick={() => setModalOpen(true)} style={{padding:'7px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:14, fontSize:11.5, fontWeight:600, cursor:'pointer', fontFamily:'inherit'}}>Activer la 2FA</button>
+        </>
+      )}
+      {modalOpen && <Setup2FAModal initialEnabled={!!enabled} onClose={(newEn) => onDone(newEn !== undefined ? newEn : enabled)} showToast={showToast} token={tk}/>}
+    </div>
+  );
+}
+
+function Setup2FAModal({initialEnabled, onClose, showToast, token}) {
+  const [step, setStep] = React.useState(initialEnabled ? 'disable' : 'intro');
+  const [busy, setBusy] = React.useState(false);
+  const [secretText, setSecretText] = React.useState('');
+  const [otpauthUrl, setOtpauthUrl] = React.useState('');
+  const [code, setCode] = React.useState('');
+  const [backupCodes, setBackupCodes] = React.useState([]);
+  const [password, setPassword] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
+  const codeRef = React.useRef(null);
+
+  React.useEffect(() => { if (step === 'verify' && codeRef.current) codeRef.current.focus(); }, [step]);
+  React.useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape' && step !== 'verify' && step !== 'codes') onClose(initialEnabled); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [step]);
+
+  async function doEnroll() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/2fa.php?action=enroll', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()}, body: '{}'}).then(r => r.json());
+      if (r && r.ok) { setSecretText(r.secret_text); setOtpauthUrl(r.otpauth_url); setStep('qr'); }
+      else showToast && showToast((r && r.error) || 'Erreur enroll');
+    } catch (e) { showToast && showToast('Erreur reseau'); }
+    setBusy(false);
+  }
+  async function doVerify() {
+    const clean = (code || '').replace(/\s+/g, '');
+    if (!/^\d{6}$/.test(clean)) { showToast && showToast('Saisis 6 chiffres'); return; }
+    setBusy(true);
+    try {
+      const r = await fetch('/api/2fa.php?action=verify', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()}, body: JSON.stringify({code: clean})}).then(r => r.json());
+      if (r && r.ok) { setBackupCodes(r.backup_codes || []); setStep('codes'); }
+      else { showToast && showToast('Code invalide'); setCode(''); }
+    } catch (e) { showToast && showToast('Erreur reseau'); }
+    setBusy(false);
+  }
+  async function doDisable() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/2fa.php?action=disable', {method:'POST', headers:{'Content-Type':'application/json', 'X-Session-Token': token()}, body: JSON.stringify({password})}).then(r => r.json());
+      if (r && r.ok) { showToast && showToast('2FA desactivee'); onClose(false); }
+      else showToast && showToast((r && r.error) || 'Mot de passe incorrect');
+    } catch (e) { showToast && showToast('Erreur reseau'); }
+    setBusy(false);
+  }
+  async function copyAllCodes() {
+    try { await navigator.clipboard.writeText(backupCodes.join('\n')); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch (_) {}
+  }
+
+  const _overlay = {position:'fixed', inset:0, background:'rgba(20,15,10,.55)', zIndex:9200, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-4)'};
+  const _box = {background:'#fff', borderRadius:14, padding:'20px 18px', width:'100%', maxWidth:380, boxShadow:'0 8px 32px rgba(0,0,0,.22)', maxHeight:'90vh', overflowY:'auto'};
+  const _title = {fontFamily:'var(--font-serif)', fontSize:18, fontWeight:700, color:'var(--color-accent)', marginBottom:10};
+  const _close = {position:'absolute', top:6, right:8, background:'transparent', border:'none', fontSize:24, color:'var(--color-text-muted)', cursor:'pointer'};
+
+  return (
+    <div onClick={() => step !== 'verify' && step !== 'codes' && onClose(initialEnabled)} style={_overlay}>
+      <div onClick={e => e.stopPropagation()} style={{..._box, position:'relative'}}>
+        {(step !== 'verify' && step !== 'codes') && <button onClick={() => onClose(initialEnabled)} style={_close}>×</button>}
+        {step === 'intro' && (
+          <>
+            <div style={_title}>Activer la 2FA</div>
+            <div style={{fontSize:13, color:'var(--color-text-taupe)', lineHeight:1.6, marginBottom:14}}>
+              Renforce la securite de ton compte. A chaque connexion, un code 6 chiffres genere par une app authenticator (Google Authenticator, Authy, 1Password) sera demande en plus du mot de passe.
+            </div>
+            <button onClick={doEnroll} disabled={busy} style={{width:'100%', padding:'11px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>{busy ? '…' : 'Demarrer l activation'}</button>
+          </>
+        )}
+        {step === 'qr' && (
+          <>
+            <div style={_title}>Scanner le QR code</div>
+            <div style={{fontSize:12, color:'var(--color-text-taupe)', marginBottom:10}}>Scanne le QR code avec ton app authenticator, ou saisis manuellement la cle.</div>
+            <div style={{textAlign:'center', marginBottom:12}}>
+              <img src={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(otpauthUrl)} alt="QR 2FA" style={{width:200, height:200, borderRadius:8, background:'#fff', border:'1px solid var(--color-border-cream)'}} onError={(e) => { e.target.style.display = 'none'; }}/>
+            </div>
+            <div style={{fontSize:11, color:'var(--color-text-muted)', marginBottom:4}}>Cle secrete (saisie manuelle) :</div>
+            <div style={{padding:'8px 10px', background:'#F4ECE3', border:'1px solid var(--color-border-cream)', borderRadius:6, fontFamily:'monospace', fontSize:12, wordBreak:'break-all', marginBottom:14, color:'var(--color-text-primary)'}}>{secretText}</div>
+            <button onClick={() => setStep('verify')} style={{width:'100%', padding:'11px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>Suivant</button>
+          </>
+        )}
+        {step === 'verify' && (
+          <>
+            <div style={_title}>Verification</div>
+            <div style={{fontSize:12, color:'var(--color-text-taupe)', marginBottom:10}}>Saisis le code 6 chiffres affiche dans ton app.</div>
+            <input ref={codeRef} type="text" inputMode="numeric" pattern="[0-9]*" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="123 456"
+              style={{width:'100%', padding:'14px 12px', border:'1.5px solid var(--color-border-strong)', borderRadius:8, fontFamily:'monospace', fontSize:22, textAlign:'center', letterSpacing:'0.4em', marginBottom:12, boxSizing:'border-box'}}/>
+            <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+              <button onClick={() => setStep('qr')} disabled={busy} style={{padding:'9px 16px', background:'#fff', color:'var(--color-text-primary)', border:'1px solid var(--color-border-strong)', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Retour</button>
+              <button onClick={doVerify} disabled={busy || code.length !== 6} style={{padding:'9px 16px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:12, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit', opacity: (busy || code.length !== 6) ? 0.5 : 1}}>{busy ? '…' : 'Verifier'}</button>
+            </div>
+          </>
+        )}
+        {step === 'codes' && (
+          <>
+            <div style={_title}>2FA activee ! Tes codes de secours</div>
+            <div style={{fontSize:12, color:'var(--color-text-taupe)', marginBottom:12, lineHeight:1.5}}>
+              <b>Note ces codes des maintenant.</b> Chaque code n est utilisable qu une fois. Si tu perds ton telephone, ils permettent de te reconnecter.
+            </div>
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14, padding:12, background:'#F4ECE3', borderRadius:8, border:'1px solid var(--color-border-cream)'}}>
+              {backupCodes.map((c, i) => (
+                <div key={i} style={{fontFamily:'monospace', fontSize:13, color:'var(--color-text-primary)', textAlign:'center', padding:'4px 0', userSelect:'all'}}>{c}</div>
+              ))}
+            </div>
+            <button onClick={copyAllCodes} style={{width:'100%', padding:'9px 14px', background:'#fff', color:'var(--color-accent)', border:'1px solid var(--color-accent)', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', marginBottom:8}}>{copied ? '✓ Codes copies' : '📋 Copier tous les codes'}</button>
+            <button onClick={() => { showToast && showToast('2FA activee'); onClose(true); }} style={{width:'100%', padding:'11px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>J ai note mes codes</button>
+          </>
+        )}
+        {step === 'disable' && (
+          <>
+            <div style={_title}>Desactiver la 2FA</div>
+            <div style={{fontSize:12, color:'var(--color-text-taupe)', marginBottom:10}}>Confirme avec ton mot de passe pour desactiver.</div>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe"
+              style={{width:'100%', padding:'10px 12px', border:'1px solid var(--color-border-strong)', borderRadius:6, fontFamily:'inherit', fontSize:13, marginBottom:14, boxSizing:'border-box'}}/>
+            <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+              <button onClick={() => onClose(initialEnabled)} disabled={busy} style={{padding:'9px 16px', background:'#fff', color:'var(--color-text-primary)', border:'1px solid var(--color-border-strong)', borderRadius:8, fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button onClick={doDisable} disabled={busy} style={{padding:'9px 16px', background:'var(--color-error)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:12, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit'}}>{busy ? '…' : 'Desactiver'}</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // M/2026/04/28/64 — HelpPage : FAQ accordéon avec search.
 // M/2026/05/09/44 — M90 — HelpPage refondue fidèle maquette M85b hybride V1 + chips V3.
 // M/2026/05/12/55 — Retravail Aide & FAQ : 8 problèmes audit M/12/49 fixes :
@@ -18162,11 +18329,8 @@ function PreferencesPage({onBack, showToast, currentUser}) {
         <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Mot de passe</div>
         <div style={{fontSize:12, color:'var(--color-text-muted)', lineHeight:1.5}}>Ton compte utilise la connexion par lien magique (email). Aucun mot de passe a gerer.</div>
       </div>
-      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14}}>
-        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:8}}>Authentification 2 facteurs</div>
-        <div style={{fontSize:12, color:'var(--color-text-muted)', lineHeight:1.5, marginBottom:8}}>A venir.</div>
-        <button disabled style={{padding:'7px 12px', background:'#F0E9DE', color:'#999', border:'1px solid #D8CCB4', borderRadius:14, fontSize:11, fontWeight:600, cursor:'not-allowed'}}>Activer la 2FA (a venir)</button>
-      </div>
+      {/* M/2026/05/13/21 — Frontend 2FA TOTP : Setup2FAModal cable */}
+      <TwoFactorSection showToast={showToast} token={token}/>
     </div>
   );
 
