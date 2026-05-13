@@ -9280,62 +9280,76 @@ function S3PopinQuiPaie({value, transactionType, onChange, onClose}) {
 }
 
 // S3ActeurRow — ligne acteur générique. State local activePopup garantit single-popup-open.
-// M/2026/05/13/52 — SSOT charte devises : PriceField2ColDisplay = variante read-only
-// du composant PriceField2Col (Variant B en prod). Mêmes styles inline EXACTS pour
-// drapeaux, padding, border, fond, pill rate central. Differences :
-// - Pas d'input editable (spans avec valeurs calculees passees en props)
-// - Pill rate central onClick -> ouvre RatePopup2Col (popup unifie M/13/40+M/13/44)
-// Utilise par S3ActeurRow + M53FraisAgenceMulti total + FraisNotaireBlock2Col total.
-function PriceField2ColDisplay({label, leftValue, rightValue, forceUpdate, themeColor}) {
+// M/2026/05/13/54 — SSOT charte devises VRAIE : PriceField2ColDisplay clone EXACTEMENT
+// Variant A de PriceField2Col (le rendu en prod sur Liquide/Prix plancher/Budget).
+// Container UNIFIE _row arrondi + drapeau EUR carre beige + pill rate central avec
+// num/✏️/badge + drapeau MAD carre beige. Spans au lieu d'inputs (read-only).
+// Tous les styles inline copies a l'IDENTIQUE depuis PriceField2Col Variant A.
+function PriceField2ColDisplay({label, leftValue, rightValue, forceUpdate}) {
   const cur = getCurrencyV5State() || {left:'EUR', right:'MAD', rate:11};
   const [ratePopOpen, setRatePopOpen] = React.useState(false);
-  const isManual = !!(cur && cur._manual);
+  const isManual = !!(cur && cur.manualRate);
   if (!cur.left || !cur.right || cur.left === cur.right) {
-    // Mono-devise : affichage simple sans pill rate.
     return (
       <div style={{display:'flex', alignItems:'center', gap:6}}>
         {label && <span style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600}}>{label}</span>}
-        <span style={{fontSize:'var(--font-size-13)', fontWeight:700, color: themeColor || 'var(--color-text-brown)', fontVariantNumeric:'tabular-nums'}}>{fmtNumV5(Math.round(Number(leftValue) || 0))} {CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
+        <span style={{fontSize:'var(--font-size-13)', fontWeight:700, color:'var(--color-text-brown)', fontVariantNumeric:'tabular-nums'}}>{fmtNumV5(Math.round(Number(leftValue) || 0))} {CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
       </div>
     );
   }
-  const _isMobile = (typeof window !== 'undefined' && window.innerWidth < 600);
-  const _flagSize = _isMobile ? 44 : 56;
-  const _pad = _isMobile ? 42 : 56;
-  const _gap = _isMobile ? 6 : 8;
-  const numLeft = Math.round(Number(leftValue) || 0);
-  const numRight = Math.round(Number(rightValue) || 0);
+  // Styles copies a l'IDENTIQUE depuis PriceField2Col Variant A (lignes 8662-8689).
+  const _rowBorder = '#D6C7AC';
+  const _rowBg = '#fff';
+  const _row = {display:'flex', alignItems:'center', background:_rowBg, border:'1.5px solid '+_rowBorder, borderRadius:9, padding:0, position:'relative'};
+  const _sideLeft = {display:'flex', alignItems:'center', minHeight:44, gap:2, minWidth:0, flex:1, padding:'0 0 0 4px'};
+  const _sideRight = {display:'flex', alignItems:'center', minHeight:44, gap:2, minWidth:0, flex:1, padding:'0 4px 0 0'};
+  const _displayVal = {flex:1, fontSize:13.5, fontWeight:600, background:'transparent', minWidth:0, width:'100%', padding:'6px 1px', fontFamily:'inherit', color:'var(--color-text-primary)', fontVariantNumeric:'tabular-nums', textAlign:'right'};
+  const _displayValR = {...(_displayVal), textAlign:'right'};
+  const _curBtn = {display:'inline-flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:28, minHeight:44, padding:'2px 3px', background:'var(--color-bg-tint-warm)', border:'1px solid transparent', borderRadius:6, flexShrink:0, gap:0, lineHeight:1, userSelect:'none', fontFamily:'inherit'};
+  const _curFlag = {fontSize:12, lineHeight:1};
+  const _curCode = {fontSize:10, fontWeight:500, color:'var(--color-text-brown)', marginTop:2};
+  const _rateBg = isManual ? '#FBE7CB' : 'var(--color-bg-tint-warm)';
+  const _rateBorderColor = isManual ? '#C77D2D' : 'transparent';
+  const _rateBtn = {display:'inline-flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:44, minWidth:44, padding:'1px 3px', background: _rateBg, border:'1.5px solid '+_rateBorderColor, borderRadius:6, cursor:'pointer', flexShrink:0, gap:0, lineHeight:1, margin:'0 3px', fontFamily:'inherit'};
+  const _rateNum = {fontSize:12, fontWeight:700, color: isManual ? '#C77D2D' : 'var(--color-text-brown)', fontVariantNumeric:'tabular-nums'};
+  const _ratePencil = {fontSize:8, opacity:.55, marginTop:1};
+  const _rateBadge = isManual
+    ? {fontSize:7.5, fontWeight:800, color:'#fff', background:'#C77D2D', letterSpacing:'0.04em', marginTop:1, lineHeight:1, padding:'1px 4px', borderRadius:6}
+    : {fontSize:7.5, fontWeight:700, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginTop:1, lineHeight:1};
   return (
-    <div data-variant="B-display" style={{marginBottom:'var(--space-1)'}}>
+    <div data-variant="A-display" style={{marginBottom:'var(--space-2)'}}>
       {label && (
         <div style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600, marginBottom:'var(--space-1)'}}>{label}</div>
       )}
-      <div style={{display:'grid', gridTemplateColumns:'1fr 0.7fr 1fr', gap: _gap, alignItems:'center'}}>
-        {/* GAUCHE : drapeau opacite + valeur read-only */}
-        <div style={{position:'relative', padding:'8px '+_pad+'px 8px 10px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:8, overflow:'hidden'}}>
-          <span aria-hidden="true" style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
-          <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2}}>{cur.left}</div>
-          <div style={{fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', fontVariantNumeric:'tabular-nums'}}>{fmtNumV5(numLeft) || '0'}</div>
+      <div style={_row}>
+        {/* GAUCHE : [span val read-only][devise V_A2] */}
+        <div style={_sideLeft}>
+          <span style={_displayVal}>{fmtNumV5(Math.round(Number(leftValue) || 0)) || '0'}</span>
+          <div style={_curBtn} aria-label={'Devise gauche : ' + cur.left}>
+            <span style={_curFlag}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+            <span style={_curCode}>{cur.left}</span>
+          </div>
         </div>
-        {/* CENTRE : pill rate cliquable -> RatePopup2Col */}
+        {/* MILIEU : pill rate cliquable -> RatePopup2Col */}
         <button type="button"
           onClick={(e) => { e.stopPropagation(); setRatePopOpen(true); }}
+          style={_rateBtn}
           title="Taux de change : Frankfurter auto ou saisie manuelle"
-          style={{position:'relative', padding:'8px 10px', background: isManual ? '#FBE7CB' : 'var(--color-bg-tint-warm)', border:'1px solid '+(isManual ? '#C77D2D' : '#D6C7AC'), borderRadius:8, textAlign:'center', cursor:'pointer', fontFamily:'inherit'}}>
-          <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginBottom:2}}>1 {cur.left} =</div>
-          <span style={{color: isManual ? '#C77D2D' : 'var(--color-text-brown)', fontWeight:700, fontSize:'var(--font-size-13)', fontVariantNumeric:'tabular-nums'}}>
-            {Number(cur.rate).toFixed(cur.rate < 10 ? 4 : 2)}
-          </span>
-          <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginTop:2}}>{cur.right}</div>
+          aria-label="Taux de change">
+          <span style={_rateNum}>{Number(cur.rate).toFixed(cur.rate < 10 ? 4 : 2)}</span>
+          <span style={_ratePencil}>✏️</span>
+          <span style={_rateBadge}>{isManual ? 'MANUEL' : 'AUTO'}</span>
         </button>
-        {/* DROITE : drapeau opacite + valeur read-only */}
-        <div style={{position:'relative', padding:'8px 10px 8px '+_pad+'px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:8, overflow:'hidden'}}>
-          <span aria-hidden="true" style={{position:'absolute', left:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
-          <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2, textAlign:'right'}}>{cur.right}</div>
-          <div style={{fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', fontVariantNumeric:'tabular-nums', textAlign:'right'}}>{fmtNumV5(numRight) || '0'}</div>
+        {ratePopOpen && <RatePopup2Col onClose={() => setRatePopOpen(false)} forceUpdate={forceUpdate || (() => {})}/>}
+        {/* DROITE : [devise V_A2][span val read-only] */}
+        <div style={_sideRight}>
+          <div style={_curBtn} aria-label={'Devise droite : ' + cur.right}>
+            <span style={_curFlag}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+            <span style={_curCode}>{cur.right}</span>
+          </div>
+          <span style={_displayValR}>{fmtNumV5(Math.round(Number(rightValue) || 0)) || '0'}</span>
         </div>
       </div>
-      {ratePopOpen && <RatePopup2Col onClose={() => setRatePopOpen(false)} forceUpdate={forceUpdate || (() => {})}/>}
     </div>
   );
 }
