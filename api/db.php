@@ -11,7 +11,13 @@ if (DEBUG) {
 
 function setCorsHeaders() {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    if (in_array($origin, ALLOWED_ORIGINS, true)) {
+    // M/2026/05/13/73 — WebKit Safari iOS applique preflight CORS meme en same-origin quand
+    // un custom header (X-Session-Token) est present. ALLOWED_ORIGINS ne listait que
+    // app.ocre.immo + ocre.immo + www.ocre.immo. Les sous-domaines <slug>.ocre.immo des
+    // espaces de travail (wsp) n'etaient PAS allowed -> WebKit refusait fetch avec
+    // "access control checks" -> archivage casse sur iPhone Safari. Chromium plus laxiste
+    // (same-origin sans preflight strict) passait. Fix : regex pour les sous-domaines.
+    if (in_array($origin, ALLOWED_ORIGINS, true) || preg_match('#^https://[a-z0-9-]+\.ocre\.immo$#', (string)$origin)) {
         header('Access-Control-Allow-Origin: ' . $origin);
     }
     header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
