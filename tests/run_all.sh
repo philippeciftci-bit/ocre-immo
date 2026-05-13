@@ -75,6 +75,16 @@ done
 END=$(date +%s)
 DURATION=$((END - START))
 
+# M/2026/05/13/53 — Verrou 3 SSOT : check_ssot avant resume. Si fail, on incremente
+# TOTAL_FAIL (smoke FAIL) + log le composant interdit.
+if [ -x "$(dirname "$0")/check_ssot.sh" ]; then
+  echo "" | tee -a "$LOG"
+  echo "[check_ssot] verrou SSOT M53" | tee -a "$LOG"
+  if ! "$(dirname "$0")/check_ssot.sh" 2>&1 | tee -a "$LOG"; then
+    TOTAL_FAIL=$((TOTAL_FAIL + 1))
+  fi
+fi
+
 echo "" | tee -a "$LOG"
 echo "=== RÉSULTAT : $TOTAL_PASS pass · $TOTAL_FAIL fail · ${DURATION}s ===" | tee -a "$LOG"
 

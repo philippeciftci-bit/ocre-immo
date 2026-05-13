@@ -1,0 +1,74 @@
+#!/bin/bash
+# M/2026/05/13/53 — Verrou 2 SSOT : refuse les commits qui ajoutent un nouveau
+# composant React avec mots-cles currency/rate/price/amount/devise/taux/EUR/MAD
+# sans le declarer prealablement dans COMPONENT_REGISTRY.md.
+#
+# Bypass exceptionnel one-shot : ALLOW_NEW_CURRENCY_COMPONENT=1 git commit ...
+#
+# Activation : git config core.hooksPath .githooks (cf README repo).
+
+set -uo pipefail
+
+KEYWORDS="Currency|Rate|Price|Amount|Devise|Taux|EUR|MAD"
+REGISTRY="$(git rev-parse --show-toplevel)/COMPONENT_REGISTRY.md"
+
+# Fichiers AJOUTES ou MODIFIES (le diff sur fichiers existants peut introduire un
+# nouveau composant aussi - on couvre A + M, pas seulement A).
+COMPONENT_FILES=$(git diff --cached --name-only --diff-filter=AM 2>/dev/null | grep -E '\.(jsx?|tsx?|html)$' || true)
+if [ -z "$COMPONENT_FILES" ]; then
+  exit 0
+fi
+
+# Extraire les noms de composants AJOUTES dans la diff (lignes commencant par +
+# mais pas par +++) qui declarent un nouveau symbole React.
+NEW_DECLS=$(git diff --cached -- $COMPONENT_FILES 2>/dev/null \
+  | grep -E '^\+[^+]' \
+  | grep -hE '^\+\s*(const|function|class)\s+[A-Z][a-zA-Z0-9]*' \
+  | grep -iE "$KEYWORDS" || true)
+
+if [ -z "$NEW_DECLS" ]; then
+  exit 0
+fi
+
+# Extraire les noms (PascalCase) declares
+NEW_COMPS=$(echo "$NEW_DECLS" | grep -oE "\b[A-Z][a-zA-Z0-9]*" | sort -u)
+
+if [ ! -f "$REGISTRY" ]; then
+  echo "❌ BLOQUÉ : COMPONENT_REGISTRY.md absent du repo. Mission M/2026/05/13/53 incomplete."
+  exit 1
+fi
+
+BLOCKED=""
+for COMP in $NEW_COMPS; do
+  # Filtre faux positifs : ignorer les mots-cles qui matchent le pattern mais
+  # ne sont pas des composants currency (ex: PrincePopUp - 'Price' matche par
+  # erreur sur 'Prince'). On ne retient que les composants qui contiennent
+  # explicitement les mots-cles SSOT.
+  if ! echo "$COMP" | grep -qiE "$KEYWORDS"; then
+    continue
+  fi
+  if ! grep -qE "^\s*[-*]\s*✅\s*\`?$COMP\`?(\s|$)" "$REGISTRY"; then
+    BLOCKED="$BLOCKED $COMP"
+  fi
+done
+
+if [ -n "$BLOCKED" ]; then
+  if [ "${ALLOW_NEW_CURRENCY_COMPONENT:-0}" = "1" ]; then
+    echo "⚠️  BYPASS one-shot autorise : composants$BLOCKED hors registre."
+    echo "    Penser a mettre a jour COMPONENT_REGISTRY.md dans ce meme commit."
+    exit 0
+  fi
+  echo ""
+  echo "❌ BLOQUÉ (verrou SSOT M/2026/05/13/53) :"
+  for c in $BLOCKED; do
+    echo "    composant '$c' non liste dans COMPONENT_REGISTRY.md"
+  done
+  echo ""
+  echo "Actions possibles :"
+  echo "  1. Reutiliser un composant ✅ deja liste dans COMPONENT_REGISTRY.md"
+  echo "  2. Ajouter le nouveau composant au registre dans CE meme commit"
+  echo "  3. Bypass exceptionnel (one-shot) : ALLOW_NEW_CURRENCY_COMPONENT=1 git commit ..."
+  exit 1
+fi
+
+exit 0
