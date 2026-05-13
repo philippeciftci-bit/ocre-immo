@@ -15,7 +15,6 @@ $kpis = [
     'total_users_anonymized' => (int)(q($meta, "SELECT COUNT(*) c FROM users WHERE anonymized_at IS NOT NULL")['c'] ?? 0),
     'new_users_24h' => (int)(q($meta, "SELECT COUNT(*) c FROM users WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 DAY)")['c'] ?? 0),
     'active_sessions_24h' => (int)(q($meta, "SELECT COUNT(DISTINCT user_id) c FROM auth_sessions WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 DAY) AND revoked_at IS NULL")['c'] ?? 0),
-    'total_2fa_enabled' => (int)(q($meta, "SELECT COUNT(*) c FROM users WHERE totp_enabled = 1")['c'] ?? 0),
 ];
 
 // Tenants : compte DBs ocre_wsp_*.

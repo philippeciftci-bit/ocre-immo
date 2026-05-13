@@ -11,7 +11,7 @@ $meta = new PDO('mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4', D
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 ]);
-$st = $meta->prepare("SELECT id, email, prenom, nom, role, totp_enabled FROM users WHERE id = ? LIMIT 1");
+$st = $meta->prepare("SELECT id, email, prenom, nom, role FROM users WHERE id = ? LIMIT 1");
 $st->execute([(int)($data['user_id'] ?? 0)]);
 $u = $st->fetch();
 if (!$u) { sso_clear_cookie(); http_response_code(401); echo json_encode(['ok' => false, 'error' => 'user_not_found']); exit; }

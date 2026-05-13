@@ -1,7 +1,7 @@
 <?php
 // M/2026/05/13/19 — Superadmin M96 : auth guard whitelist email.
 // V1 : verifie session user normale + email whitelist /etc/ocre/superadmin_emails.
-// V2 reporte : 2FA TOTP enforcement obligatoire + IP whitelist + session courte 30min idle.
+// V2 reporte : IP whitelist + session courte 30min idle.
 require_once __DIR__ . '/db.php';
 
 function superadmin_or_403(): array {

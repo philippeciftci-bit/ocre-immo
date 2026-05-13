@@ -25,7 +25,6 @@ upsert($meta, $date, 'new_signups_24h', (int)q1($meta, "SELECT COUNT(*) FROM use
 upsert($meta, $date, 'total_users_active', (int)q1($meta, "SELECT COUNT(*) FROM users WHERE COALESCE(anonymized_at,'') = '' AND COALESCE(is_suspended,0) = 0"), $LOG);
 upsert($meta, $date, 'total_users_pending_deletion', (int)q1($meta, "SELECT COUNT(*) FROM users WHERE deletion_requested_at IS NOT NULL AND anonymized_at IS NULL"), $LOG);
 upsert($meta, $date, 'total_users_anonymized', (int)q1($meta, "SELECT COUNT(*) FROM users WHERE anonymized_at IS NOT NULL"), $LOG);
-upsert($meta, $date, 'total_2fa_enabled', (int)q1($meta, "SELECT COUNT(*) FROM users WHERE totp_enabled = 1"), $LOG);
 
 // Tenants
 $dbs = $admin->query("SHOW DATABASES LIKE 'ocre_wsp_%'")->fetchAll(PDO::FETCH_COLUMN);

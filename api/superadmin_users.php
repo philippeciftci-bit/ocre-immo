@@ -1,5 +1,5 @@
 <?php
-// M/2026/05/13/19 — Superadmin gestion utilisateurs : list + get + suspend + reactivate + force_logout + disable_2fa.
+// M/2026/05/13/19 — Superadmin gestion utilisateurs : list + get + suspend + reactivate + force_logout.
 require_once __DIR__ . '/superadmin_lib.php';
 $admin = superadmin_or_403();
 header('Content-Type: application/json');
@@ -13,12 +13,12 @@ if ($action === 'list') {
     $limit = min(200, max(10, (int)($_GET['limit'] ?? 50)));
     $offset = max(0, (int)($_GET['offset'] ?? 0));
     if ($q) {
-        $st = $meta->prepare("SELECT id, email, prenom, nom, role, is_suspended, totp_enabled, deletion_requested_at, anonymized_at, last_login_at, created_at FROM users WHERE email LIKE ? OR prenom LIKE ? OR nom LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?");
+        $st = $meta->prepare("SELECT id, email, prenom, nom, role, is_suspended, deletion_requested_at, anonymized_at, last_login_at, created_at FROM users WHERE email LIKE ? OR prenom LIKE ? OR nom LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?");
         $like = '%' . $q . '%';
         $st->bindValue(1, $like); $st->bindValue(2, $like); $st->bindValue(3, $like);
         $st->bindValue(4, $limit, PDO::PARAM_INT); $st->bindValue(5, $offset, PDO::PARAM_INT);
     } else {
-        $st = $meta->prepare("SELECT id, email, prenom, nom, role, is_suspended, totp_enabled, deletion_requested_at, anonymized_at, last_login_at, created_at FROM users ORDER BY id DESC LIMIT ? OFFSET ?");
+        $st = $meta->prepare("SELECT id, email, prenom, nom, role, is_suspended, deletion_requested_at, anonymized_at, last_login_at, created_at FROM users ORDER BY id DESC LIMIT ? OFFSET ?");
         $st->bindValue(1, $limit, PDO::PARAM_INT); $st->bindValue(2, $offset, PDO::PARAM_INT);
     }
     $st->execute();
@@ -62,11 +62,6 @@ if ($action === 'force_logout') {
     $st->execute([$uid]);
     superadmin_log('user.force_logout', 'user', (string)$uid, ['count' => $st->rowCount()]);
     echo json_encode(['ok' => true, 'revoked' => $st->rowCount()]); exit;
-}
-if ($action === 'disable_2fa') {
-    $meta->prepare("UPDATE users SET totp_enabled = 0, totp_secret = NULL, totp_backup_codes = NULL WHERE id = ?")->execute([$uid]);
-    superadmin_log('user.disable_2fa', 'user', (string)$uid);
-    echo json_encode(['ok' => true]); exit;
 }
 if ($action === 'cancel_deletion') {
     $meta->prepare("UPDATE users SET deletion_requested_at = NULL WHERE id = ?")->execute([$uid]);
