@@ -13057,7 +13057,7 @@ function App() {
   <div style={{paddingTop: (ssoBannerVisible ? 32 : 0) + (impersonation ? 40 : 0), height:'100%'}}>
   {view === 'list' ? (
     <ListView
-      clients={clients} country={country} setCountry={setCountry}
+      clients={clients} setClients={setClients} country={country} setCountry={setCountry}
       showArchives={showArchives} setShowArchives={setShowArchives}
       userMenu={userMenu} setUserMenu={setUserMenu}
       currentUser={currentUser} logout={logout}
@@ -19945,7 +19945,7 @@ function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCo
 }
 
 function ListView(props) {
-  const {clients, country, setCountry, showArchives, setShowArchives,
+  const {clients, setClients, country, setCountry, showArchives, setShowArchives,
          userMenu, setUserMenu, currentUser, logout,
          activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          listFilter, setListFilter, listSearch, setListSearch,
