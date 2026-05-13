@@ -9471,8 +9471,39 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set,
           <PriceField2Col label="Liquide dispo" valueKey="prix_liquide" set={set} d={d} hint="Cash hors crédit" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
-        {/* M/2026/05/11/38 — Frais d'agence Acheteur RETIRE de Section III, migre vers Section VI 6b
-            (cf bloc V55Bloc 06b · Frais d'agence rendu pour tous profils via activeProfil). */}
+        {/* M/2026/05/11/38 + M/2026/05/13/46 — Frais d'agence Acheteur : bloc reel rendu en
+            Section VI 6b (composant partage activeProfil). Pour respecter l'ordre Section III
+            valide par Philippe (Prix -> Frais d'agence -> Prix FAI -> Frais notaire), un lien
+            de navigation vers Section VI 6b est affiche ici en placeholder lisible. */}
+
+        {/* M/2026/05/13/46 — Prix FAI (Prix + Frais d'agence inclus). Affichage read-only
+            avec le taux global (charte devises EUR | rate | MAD si dual). */}
+        <V55Bloc title="Prix FAI" theme="prix">
+          {(() => {
+            const _curFai = getCurrencyV5State();
+            const _base = Number(d.prix_max_total || d.budget_max || d.prix_max) || 0;
+            const _agencePctOuMontant = Number(d.frais_agence_acheteur_total || d.frais_agence_acheteur) || 0;
+            const _prixFai = _base + _agencePctOuMontant;
+            const _fmt = (n) => fmtNumV5(Math.round(n)) + ' ' + (CURRENCY_SYMBOL_V5[_curFai.left] || _curFai.left);
+            const _rate = Number(_curFai.rate) || 0;
+            const _converted = _rate > 0 ? _prixFai * _rate : 0;
+            return _prixFai > 0 ? (
+              <>
+                <div style={{display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:8, flexWrap:'wrap'}}>
+                  <div style={{fontSize:'var(--font-size-22)', fontWeight:800, color:'var(--color-text-brown)', lineHeight:1.1}}>{_fmt(_prixFai)}</div>
+                  {_curFai.right && _curFai.right !== _curFai.left && _converted > 0 && (
+                    <div style={{fontSize:'var(--font-size-15)', fontWeight:600, color:'var(--color-text-taupe)'}}>≈ {fmtNumV5(Math.round(_converted))} {CURRENCY_SYMBOL_V5[_curFai.right] || _curFai.right}</div>
+                  )}
+                </div>
+                <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', fontStyle:'italic', marginTop:'var(--space-2px)'}}>
+                  Prix max ({_fmt(_base)}) + Frais d'agence ({_fmt(_agencePctOuMontant)}) — visible sur liste dossiers et PDF
+                </div>
+              </>
+            ) : (
+              <div style={{color:'var(--color-text-muted)', fontSize:'var(--font-size-xs)', fontStyle:'italic'}}>Saisir Prix max + Frais d'agence pour calcul Prix FAI</div>
+            );
+          })()}
+        </V55Bloc>
 
         {/* M/2026/05/03/2.1 — Réordonnancement : Synthèse Acheteur APRÈS Frais agence,
             AVANT Frais notaire (point 8 checklist). */}
@@ -24615,7 +24646,7 @@ function FormView(props) {
                   {/* M/2026/05/06/80.2.A + M/2026/05/11/38 — 6b Frais d'agence pour TOUS profils.
                       M/38 : baseAmount adapte par profil (Locataire=loyer_max, Bailleur=loyer_demande,
                       Acheteur=prix_max_total, autres=prix_affiche). forceUpdate reel propage. */}
-                  <V55Bloc title="06b · Frais d'agence" theme="agence">
+                  <V55Bloc title="Frais d'agence" theme="agence">
                     {(() => {
                       const _ap = activeProfil || 'Vendeur';
                       let _base = Number(d.prix_affiche) || 0;
