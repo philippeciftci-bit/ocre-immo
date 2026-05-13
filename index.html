@@ -8985,7 +8985,8 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
 
 // M/2026/05/13/57 — Reduit a 3 pills + 1 Libre sur meme ligne (suppression 2.5, 3, 8).
 const S3_PCT_PRESETS = [2, 5, 10];
-const S3_FORFAIT_PRESETS = [5000, 10000, 15000, 20000, 25000];
+// M/2026/05/13/60 — S3_FORFAIT_PRESETS supprime franche : montants forfait variables selon
+// bien (1000 sur loyer, 5000 sur vente). Champ Libre seul desormais.
 
 const S3_THEME_COLORS = {
   navy:  {border:'var(--color-info)', bg:'#EFF4FA', label:'var(--color-info)', chip:'var(--color-info)'},
@@ -9071,12 +9072,10 @@ function S3PopinMode({mode, value, baseAmount, onChange, onClose, themeColor='na
           </div>
         </div>
       ) : (
-        <div style={{display:'flex', flexWrap:'wrap', gap:'var(--space-5px)', marginBottom:'var(--space-7px)'}}>
-          {S3_FORFAIT_PRESETS.map(f => (
-            <div key={f} onClick={() => setForVal(String(f))} style={chipStyle(forNum === f)}>{fmtNumV5(f)}</div>
-          ))}
-          <div style={{...chipStyle(false), padding:'var(--space-0)', border:'1px solid #D6C7AC', display:'flex', alignItems:'center'}}>
-            <input type="text" inputMode="numeric" value={forVal} onChange={e => setForVal(e.target.value)} placeholder="Libre" style={{border:'none', outline:'none', fontSize:'var(--font-size-11)', padding:'5px 7px', width:80, fontFamily:'inherit', background:'transparent'}}/>
+        // M/2026/05/13/60 — Onglet FORFAIT : champ Libre seul pleine largeur. Pills chiffres supprimes franche.
+        <div style={{marginBottom:'var(--space-7px)'}}>
+          <div style={{padding:'var(--space-0)', border:'1px solid #D6C7AC', borderRadius:11, display:'flex', alignItems:'center', background:'#fff'}}>
+            <input type="text" inputMode="numeric" value={forVal} onChange={e => setForVal(e.target.value)} placeholder="Libre" style={{border:'none', outline:'none', fontSize:'var(--font-size-11)', padding:'8px 12px', width:'100%', fontFamily:'inherit', background:'transparent'}}/>
           </div>
         </div>
       )}
