@@ -8452,36 +8452,130 @@ function CurrencyBar3Pills({forceUpdate}) {
   );
 }
 
-// Modal 2 cols : Officiel cliquable / Manuel input + preview, bouton Appliquer.
+// M/2026/05/13/40 — Currency popup : Frankfurter v2 cache MySQL + mode manuel
+// + snapshot horodate. Refonte RatePopup2Col -> popup unifie spec :
+// - Taux courant + source + heure (italique petit)
+// - Bouton "Rafraichir maintenant" -> re-fetch refresh=1
+// - Bouton "Saisir manuellement" -> input -> badge passe a MANUEL #E67E22
+// - Bouton "Revenir au taux auto" (visible seulement en mode manuel)
+// - Tap backdrop close
 function RatePopup2Col({onClose, forceUpdate}) {
   const cur = getCurrencyV5State();
   const officialRate = getOfficialRateV5(cur.left, cur.right);
-  const [manual, setManual] = React.useState(String(Number(cur.rate || officialRate).toFixed(4)));
-  const manualNum = parseNumV5(manual);
-  const apply = (rate) => {
-    setCurrencyV5State({rate: rate}, forceUpdate);
+  const [rate, setRate] = React.useState(Number(cur.rate || officialRate));
+  const [source, setSource] = React.useState('');
+  const [fetchedAt, setFetchedAt] = React.useState('');
+  const [isStale, setIsStale] = React.useState(false);
+  const [isManual, setIsManual] = React.useState(!!(cur && cur._manual));
+  const [manualEdit, setManualEdit] = React.useState(false);
+  const [manualVal, setManualVal] = React.useState(String(Number(cur.rate || officialRate).toFixed(4)));
+  const [loading, setLoading] = React.useState(false);
+
+  async function fetchRate(refresh) {
+    if (!cur.left || !cur.right || cur.left === cur.right) return;
+    setLoading(true);
+    try {
+      const r = await fetch('/api/exchange_rate.php?from=' + encodeURIComponent(cur.left) + '&to=' + encodeURIComponent(cur.right) + (refresh ? '&refresh=1' : '')).then(x => x.json());
+      if (r && r.ok && r.rate > 0) {
+        setRate(Number(r.rate));
+        setSource(r.source || 'Frankfurter/BCE');
+        setFetchedAt(r.fetched_at || '');
+        setIsStale(!!r.is_stale);
+      }
+    } catch (_) {}
+    setLoading(false);
+  }
+
+  React.useEffect(() => { if (!isManual) fetchRate(false); /* eslint-disable-next-line */ }, []);
+
+  function applyAuto() {
+    setIsManual(false);
+    setManualEdit(false);
+    setCurrencyV5State({rate: rate, _manual: false, _rateSource: source || 'frankfurter_auto', _rateFetchedAt: fetchedAt || new Date().toISOString()}, forceUpdate);
     onClose();
-  };
+  }
+  function applyManual() {
+    const v = parseFloat(String(manualVal).replace(',', '.'));
+    if (!isFinite(v) || v <= 0 || v > 100000) return;
+    setIsManual(true);
+    setCurrencyV5State({rate: v, _manual: true, _rateSource: 'manual', _rateFetchedAt: new Date().toISOString()}, forceUpdate);
+    onClose();
+  }
+  function restoreAuto() {
+    setIsManual(false);
+    setManualEdit(false);
+    fetchRate(true).then(() => {
+      setCurrencyV5State({rate: rate, _manual: false, _rateSource: 'frankfurter_auto', _rateFetchedAt: new Date().toISOString()}, forceUpdate);
+    });
+  }
+
+  const fetchedLabel = fetchedAt ? new Date(fetchedAt).toLocaleString('fr-FR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '—';
+
   return (
-    <div onClick={onClose} style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(26,18,8,0.55)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-4)'}}>
-      <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:14, padding:'var(--space-18px)', maxWidth:420, width:'100%', boxShadow:'0 8px 24px rgba(0,0,0,0.2)', boxSizing:'border-box'}}>
-        <h3 style={{margin:'0 0 12px', fontSize:'var(--font-size-15)', fontWeight:700, color:'var(--color-text-primary)', fontFamily:'var(--font-serif)'}}>Taux 1 {cur.left} → {cur.right}</h3>
-        <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:'var(--space-10px)', marginBottom:'var(--space-14px)'}}>
-          <div onClick={() => apply(officialRate)} style={{padding:'10px 8px', borderRadius:10, background:'var(--color-bg-tint-warm)', border:'1.5px solid var(--color-border-medium)', cursor:'pointer', textAlign:'center'}}>
-            <div style={{fontSize:'var(--font-size-10)', fontWeight:700, color:'var(--color-accent)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-1)'}}>Officiel</div>
-            <div style={{fontSize:'var(--font-size-lg)', fontWeight:800, color:'var(--color-text-brown)'}}>{officialRate.toFixed(4)}</div>
-            <div style={{fontSize:'var(--font-size-9-5)', color:'var(--color-text-muted)', fontStyle:'italic', marginTop:'var(--space-3px)'}}>Tap pour appliquer</div>
-          </div>
-          <div style={{padding:'10px 8px', borderRadius:10, background:'#fff', border:'1.5px solid #D6C7AC'}}>
-            <div style={{fontSize:'var(--font-size-10)', fontWeight:700, color:'var(--color-accent)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-1)', textAlign:'center'}}>Manuel</div>
-            <input type="number" step="0.01" value={manual} onChange={e => setManual(e.target.value)} style={{width:'100%', padding:'6px 8px', border:'1px solid #D6C7AC', borderRadius:6, fontSize:'var(--font-size-sm)', fontWeight:700, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box', color:'var(--color-text-primary)', background:'var(--color-bg-tint-soft)'}}/>
-            <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontStyle:'italic', marginTop:'var(--space-5px)', textAlign:'center'}}>1 {cur.left} = {manualNum > 0 ? manualNum.toFixed(2) : '—'} {cur.right}</div>
-          </div>
+    <div onClick={onClose} role="dialog" aria-label="Taux de change"
+      style={{position:'fixed', inset:0, background:'rgba(26,18,8,0.55)', zIndex:200,
+              display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-4)'}}>
+      <div onClick={e => e.stopPropagation()}
+        style={{background:'#FAF6EE', borderRadius:14, padding:'18px 18px 16px',
+                maxWidth:340, width:'100%', boxShadow:'0 8px 24px rgba(0,0,0,0.22)',
+                border:'1px solid #D9C7A8', boxSizing:'border-box', fontFamily:'inherit'}}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10}}>
+          <div style={{fontSize:11, fontWeight:700, color:'#6F4E37', textTransform:'uppercase', letterSpacing:.6}}>Taux 1 {cur.left} = {cur.right}</div>
+          <span style={{padding:'2px 7px', borderRadius:999, fontSize:10, fontWeight:700, letterSpacing:.4,
+                        background: isManual ? '#E67E22' : '#6F4E37', color:'#fff'}}>
+            {isManual ? 'MANUEL' : 'AUTO'}
+          </span>
         </div>
-        <div style={{display:'flex', gap:'var(--space-2)', justifyContent:'flex-end'}}>
-          <button type="button" onClick={onClose} style={{padding:'8px 14px', border:'1.5px solid #D6C7AC', borderRadius:8, background:'#fff', color:'var(--color-text-brown)', fontWeight:600, fontSize:'var(--font-size-13)', cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
-          <button type="button" onClick={() => apply(manualNum > 0 ? manualNum : officialRate)} style={{padding:'8px 14px', border:'none', borderRadius:8, background:'var(--color-accent)', color:'#fff', fontWeight:700, fontSize:'var(--font-size-13)', cursor:'pointer', fontFamily:'inherit'}}>Appliquer</button>
+        <div style={{fontSize:24, fontWeight:800, color:'#3D2818', textAlign:'center', marginBottom:4}}>
+          1 {cur.left} = {Number(rate).toFixed(rate < 10 ? 4 : 2)} {cur.right}
         </div>
+        <div style={{fontSize:11, color:'#8B7355', fontStyle:'italic', textAlign:'center', marginBottom:14}}>
+          {isManual ? 'Saisi manuellement' : (source || 'Frankfurter/BCE') + ' — ' + fetchedLabel}
+          {isStale && <span style={{color:'#C0392B', marginLeft:6}}>(cache)</span>}
+        </div>
+
+        {manualEdit ? (
+          <div style={{marginBottom:12}}>
+            <label style={{display:'block', fontSize:11, fontWeight:600, color:'#6F4E37', marginBottom:5, letterSpacing:.3}}>Taux 1 {cur.left} = X {cur.right}</label>
+            <input type="number" step="0.0001" autoFocus value={manualVal} onChange={e => setManualVal(e.target.value)}
+              style={{width:'100%', padding:'10px 12px', border:'1.5px solid #D9C7A8', borderRadius:8, fontSize:16,
+                      fontWeight:700, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box',
+                      color:'#3D2818', background:'#fff'}}/>
+            <div style={{display:'flex', gap:8, marginTop:10}}>
+              <button type="button" onClick={() => setManualEdit(false)} style={{flex:1, padding:'9px 12px', border:'1.5px solid #D9C7A8', borderRadius:8, background:'#fff', color:'#6F4E37', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+              <button type="button" onClick={applyManual} style={{flex:1, padding:'9px 12px', border:'none', borderRadius:8, background:'#E67E22', color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>Appliquer manuel</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{display:'flex', flexDirection:'column', gap:8}}>
+            <button type="button" onClick={() => fetchRate(true)} disabled={loading || isManual}
+              style={{padding:'10px 12px', border:'1.5px solid #D9C7A8', borderRadius:8, background:'#fff',
+                      color: isManual ? '#A89580' : '#6F4E37', fontWeight:600, fontSize:13,
+                      cursor: isManual ? 'not-allowed' : 'pointer', fontFamily:'inherit',
+                      opacity: isManual ? 0.55 : 1}}>
+              {loading ? 'Mise à jour…' : 'Rafraîchir maintenant'}
+            </button>
+            <button type="button" onClick={() => { setManualVal(String(Number(rate).toFixed(4))); setManualEdit(true); }}
+              style={{padding:'10px 12px', border:'1.5px solid #E67E22', borderRadius:8, background:'#fff',
+                      color:'#E67E22', fontWeight:600, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+              Saisir manuellement
+            </button>
+            {isManual && (
+              <button type="button" onClick={restoreAuto}
+                style={{padding:'10px 12px', border:'none', borderRadius:8, background:'#6F4E37',
+                        color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                Revenir au taux auto
+              </button>
+            )}
+            {!isManual && (
+              <button type="button" onClick={applyAuto}
+                style={{padding:'10px 12px', border:'none', borderRadius:8, background:'#6F4E37',
+                        color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit'}}>
+                Appliquer
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
