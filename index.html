@@ -9638,6 +9638,24 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set,
           <PriceField2Col label="Liquide" valueKey="prix_liquide" set={set} d={d} hint="Partie cash hors compta" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
+        {/* M/2026/05/13/48 — Bloc Frais d'agence Vendeur/Promoteur/MarchandBiens : deplace ici
+            depuis Section VI 6b. baseAmount = prix_affiche. */}
+        <V55Bloc title="Frais d'agence" theme="agence">
+          {(() => {
+            const _ap = activeProfil || 'Vendeur';
+            let _base = Number(d.prix_affiche) || 0;
+            if (_ap === 'Acheteur' || _ap === 'Investisseur') _base = Number(d.prix_max_total || d.budget_max || d.prix_max) || 0;
+            else if (_ap === 'Locataire') _base = Number(d.loyer_max) || 0;
+            else if (_ap === 'Bailleur') _base = Number(d.loyer_demande) || 0;
+            return (
+              <M53FraisAgenceMulti d={d} set={set}
+                baseAmount={_base}
+                profil={_ap}
+                forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
+            );
+          })()}
+        </V55Bloc>
+
         {_isFR && (
           <V55Bloc title="Diagnostics obligatoires (DDT)" theme="agence">
             <V55Field label="DPE classe énergie" type="select" value={d.fr_dpe_classe} onChange={v => set('fr_dpe_classe', v)}
@@ -24643,24 +24661,10 @@ function FormView(props) {
                 <div style={{padding:'12px 14px', display:'flex', flexDirection:'column', gap:'var(--space-2)'}}>
                   {/* M/2026/05/06/80.1 — 6a Mandat juridique migre depuis Section III V55Bloc. */}
                   <M80MandatBlock d={d} set={set}/>
-                  {/* M/2026/05/06/80.2.A + M/2026/05/11/38 — 6b Frais d'agence pour TOUS profils.
-                      M/38 : baseAmount adapte par profil (Locataire=loyer_max, Bailleur=loyer_demande,
-                      Acheteur=prix_max_total, autres=prix_affiche). forceUpdate reel propage. */}
-                  <V55Bloc title="Frais d'agence" theme="agence">
-                    {(() => {
-                      const _ap = activeProfil || 'Vendeur';
-                      let _base = Number(d.prix_affiche) || 0;
-                      if (_ap === 'Acheteur' || _ap === 'Investisseur') _base = Number(d.prix_max_total || d.budget_max || d.prix_max) || 0;
-                      else if (_ap === 'Locataire') _base = Number(d.loyer_max) || 0;
-                      else if (_ap === 'Bailleur') _base = Number(d.loyer_demande) || 0;
-                      return (
-                        <M53FraisAgenceMulti d={d} set={set}
-                          baseAmount={_base}
-                          profil={_ap}
-                          forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
-                      );
-                    })()}
-                  </V55Bloc>
+                  {/* M/2026/05/13/48 — V55Bloc 6b Frais d'agence DEPLACE en Section III (apres Prix,
+                      avant Prix FAI) pour Acheteur/Investisseur + Vendeur/Promoteur/MarchandBiens.
+                      Bailleur et Locataire conservent leur bloc dedie "Honoraires (de) location"
+                      (equivalent fonctionnel). */}
                   {/* M/2026/05/06/80.3 — 6c Prix de vente affiche : composant migre depuis Section III. */}
                   <M80PrixVenteBlock d={d}/>
                 </div>
