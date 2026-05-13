@@ -8983,9 +8983,10 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
     <S3CardRound>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'var(--space-2)', paddingBottom:'var(--space-6px)', borderBottom:'1px solid var(--color-success)40'}}>
         <span style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.4}}>Frais notaire — total global</span>
-        <div style={{display:'flex', gap:'var(--space-6px)', alignItems:'center'}}>
+        {/* M/2026/05/13/51 — Pattern charte : EUR · taux · MAD (badge cliquable RatePopup2Col). */}
+        <div style={{display:'flex', gap:'var(--space-2px)', alignItems:'center'}}>
           <span style={{fontSize:'var(--font-size-13)', fontWeight:800, color:'var(--color-success)'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
-          <span style={{fontSize:'var(--font-size-11)', color:'var(--color-success)'}}>·</span>
+          <RateBadgeInline forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
           <span style={{fontSize:'var(--font-size-13)', fontWeight:800, color:'var(--color-success)'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
         </div>
       </div>
@@ -9093,9 +9094,10 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
     <S3CardRound style={{background:'transparent', border:'none', padding:'var(--space-0)', marginBottom:'var(--space-0)'}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'var(--space-2)', paddingBottom:'var(--space-6px)', borderBottom:'1px solid var(--color-info)40'}}>
         <span style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-info)', textTransform:'uppercase', letterSpacing:.4}}>Total global</span>
-        <div style={{display:'flex', gap:'var(--space-6px)', alignItems:'center'}}>
+        {/* M/2026/05/13/51 — Pattern charte : EUR · taux · MAD (badge cliquable RatePopup2Col). */}
+        <div style={{display:'flex', gap:'var(--space-2px)', alignItems:'center'}}>
           <span style={{fontSize:'var(--font-size-13)', fontWeight:800, color:'var(--color-info)'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
-          <span style={{fontSize:'var(--font-size-11)', color:'var(--color-info)'}}>·</span>
+          <RateBadgeInline forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
           <span style={{fontSize:'var(--font-size-13)', fontWeight:800, color:'var(--color-info)'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
         </div>
       </div>
@@ -9276,6 +9278,32 @@ function S3PopinQuiPaie({value, transactionType, onChange, onClose}) {
 }
 
 // S3ActeurRow — ligne acteur générique. State local activePopup garantit single-popup-open.
+// M/2026/05/13/51 — RateBadgeInline : badge taux cliquable inline (charte devises mini).
+// Affiche "rate AUTO/MANUEL" et ouvre RatePopup2Col au tap, conformement au pattern unifie.
+function RateBadgeInline({forceUpdate, size = 'sm'}) {
+  const cur = getCurrencyV5State() || {left:'EUR', right:'MAD', rate:11};
+  const [open, setOpen] = React.useState(false);
+  const isManual = !!(cur && cur._manual);
+  if (!cur.left || !cur.right || cur.left === cur.right) return null;
+  const isLg = size === 'lg';
+  const fsRate = isLg ? 12 : 10.5;
+  const fsBadge = isLg ? 8 : 7;
+  return (
+    <React.Fragment>
+      <button type="button" onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        title="Voir et modifier le taux de change"
+        style={{display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px',
+                background: isManual ? '#FBE7CB' : 'var(--color-bg-tint-warm)',
+                border:'1px solid '+(isManual ? '#C77D2D' : 'var(--color-border-medium)'),
+                borderRadius:10, cursor:'pointer', fontFamily:'inherit', lineHeight:1, flexShrink:0}}>
+        <span style={{fontSize:fsRate, fontWeight:700, color: isManual ? '#C77D2D' : 'var(--color-text-brown)', fontVariantNumeric:'tabular-nums'}}>{Number(cur.rate).toFixed(cur.rate < 10 ? 4 : 2)}</span>
+        <span style={{fontSize:fsBadge, fontWeight:800, color: isManual ? '#C77D2D' : 'var(--color-text-muted)', letterSpacing:.4}}>{isManual ? 'MANUEL' : 'AUTO'}</span>
+      </button>
+      {open && <RatePopup2Col onClose={() => setOpen(false)} forceUpdate={forceUpdate || (() => {})}/>}
+    </React.Fragment>
+  );
+}
+
 function S3ActeurRow({name, mode, value, payePar, onModeChange, onPayeParChange, onRemove, onNameChange, themeColor='navy', baseAmount, transactionType='vente'}) {
   const t = S3_THEME_COLORS[themeColor] || S3_THEME_COLORS.navy;
   const [activePopup, setActivePopup] = React.useState(null); // 'mode' | 'who' | null
@@ -9302,13 +9330,15 @@ function S3ActeurRow({name, mode, value, payePar, onModeChange, onPayeParChange,
           <div onClick={onRemove} style={{width:24, height:24, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background:'#FCEFEC', color:'var(--color-error)', fontSize:'var(--font-size-13)', fontWeight:700, cursor:'pointer', flexShrink:0, lineHeight:1}} aria-label="Supprimer">×</div>
         )}
       </div>
-      <div style={{display:'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap:'var(--space-5px)', marginBottom:'var(--space-5px)'}}>
-        <div style={{display:'flex', alignItems:'center', gap:'var(--space-1)', height:32, padding:'0 8px', border:'1px solid '+t.border, borderRadius:6, background:'#fff', color:'var(--color-text-primary)', fontSize:'var(--font-size-xs)', fontWeight:600, boxSizing:'border-box', overflow:'hidden'}}>
+      {/* M/2026/05/13/51 — Pattern charte devises : [drapeau EUR | montant] [badge taux] [drapeau MAD | montant]. */}
+      <div style={{display:'flex', alignItems:'center', gap:'var(--space-3px)', marginBottom:'var(--space-5px)'}}>
+        <div style={{flex:1, minWidth:0, display:'flex', alignItems:'center', gap:'var(--space-1)', height:32, padding:'0 8px', border:'1px solid '+t.border, borderRadius:6, background:'#fff', color:'var(--color-text-primary)', fontSize:'var(--font-size-xs)', fontWeight:600, boxSizing:'border-box', overflow:'hidden'}}>
           <span style={{fontSize:'var(--font-size-13)', flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
           <span style={{flex:1, textAlign:'right', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(Math.round(computedLeft))}</span>
           <span style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
         </div>
-        <div style={{display:'flex', alignItems:'center', gap:'var(--space-1)', height:32, padding:'0 8px', border:'1px solid '+t.border, borderRadius:6, background:'#fff', color:'var(--color-text-primary)', fontSize:'var(--font-size-xs)', fontWeight:600, boxSizing:'border-box', overflow:'hidden'}}>
+        <RateBadgeInline forceUpdate={() => onModeChange && onModeChange(mode === 'pct' ? 'pct' : 'forfait', value)}/>
+        <div style={{flex:1, minWidth:0, display:'flex', alignItems:'center', gap:'var(--space-1)', height:32, padding:'0 8px', border:'1px solid '+t.border, borderRadius:6, background:'#fff', color:'var(--color-text-primary)', fontSize:'var(--font-size-xs)', fontWeight:600, boxSizing:'border-box', overflow:'hidden'}}>
           <span style={{fontSize:'var(--font-size-13)', flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
           <span style={{flex:1, textAlign:'right', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(Math.round(computedRight))}</span>
           <span style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right] || cur.right}</span>
