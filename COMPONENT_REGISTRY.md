@@ -8,8 +8,9 @@ Référence : M/2026/05/13/53 — 4 verrous SSOT anti-récidive doublons.
 
 - ✅ `PriceField2Col` (Variant B, M40-M44) — édition
 - ✅ `PriceField2ColDisplay` — read-only (créé M52 après nettoyage RateBadgeInline doublon M51)
-- ✅ `DualCurrencyPair` (legacy M/2026/05/06/77, dépréciation à planifier) — détecté par M53 dans index.html mais 0 usage actif visible. À supprimer dans une mission séparée si confirmé orphelin par Philippe.
 - ❌ Toute autre implémentation = **INTERDITE**
+
+Historique : `DualCurrencyPair` (M/2026/05/06/77) supprimé franche en M/2026/05/13/59 (0 usage actif, 167 lignes retirées d'`index.html`).
 
 ## Usage : Rate popup (taux change AUTO/MANUEL)
 
