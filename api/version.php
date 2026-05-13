@@ -10,4 +10,4 @@ header('Pragma: no-cache');
 header('Expires: 0');
 header('Access-Control-Allow-Origin: *');
 
-echo 'm14-3-1778712558';
+echo '__BUILD_VERSION__';
