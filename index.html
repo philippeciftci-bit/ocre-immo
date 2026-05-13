@@ -19888,7 +19888,7 @@ function ListView(props) {
         onOpenCalendrier={() => props.openCalendrier && props.openCalendrier()}
         onOpenMatches={() => props.openMatches && props.openMatches()}
         toggleSearch={toggleSearch}
-        onOpenArchives={() => setShowArchives(true)}
+        onOpenArchives={() => { setShowArchives(true); setListFilter(null); }}
         onOpenHelp={() => props.openHelp && props.openHelp()}
         onOpenPreferences={() => props.openPreferences && props.openPreferences()}
         onOpenExport={() => props.openExport && props.openExport()}
