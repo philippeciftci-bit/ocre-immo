@@ -9197,7 +9197,11 @@ function S3PopinMode({mode, value, baseAmount, onChange, onClose, themeColor='na
   const safeRate = Number(cur.rate) > 0 ? Number(cur.rate) : 11;
   const initTab = (mode === 'forfait') ? 'forfait' : 'pct';
   const [tab, setTab] = React.useState(initTab);
-  const [pctVal, setPctVal] = React.useState(initTab === 'pct' ? String(value || '').replace('.', ',') : '');
+  // M/2026/05/13/58 — si la valeur courante est un preset (2/5/10), laisser le Libre input vide
+  // pour afficher placeholder "Libre" (le pill preset correspondant est highlight chipStyle).
+  const _initPctRaw = initTab === 'pct' ? String(value || '').replace('.', ',') : '';
+  const _initPctNum = parseFloat(String(value || '').replace(',', '.')) || 0;
+  const [pctVal, setPctVal] = React.useState(S3_PCT_PRESETS.includes(_initPctNum) ? '' : _initPctRaw);
   const [forVal, setForVal] = React.useState(initTab === 'forfait' ? String(value || '') : '');
   const ref = React.useRef(null);
   useS3OutsideClose(ref, true, onClose);
