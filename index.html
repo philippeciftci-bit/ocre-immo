@@ -88,6 +88,46 @@
 //
 // Approche: monkey-patch window.fetch (transparent, zero regression sur
 // existing call sites). window.apiCall expose pour nouveau code.
+// M/2026/05/14/9 (M/83) — Enum codes erreur normalises pour anti-fatigue alerting.
+window.OCRE_ERROR_CODES = window.OCRE_ERROR_CODES || {
+  JS_RUNTIME: 'JS_RUNTIME',                // ReferenceError, TypeError JS local
+  API_500: 'API_500',                      // backend crash
+  API_4XX: 'API_4XX',                      // auth, validation, not found generique
+  AUTH_FAILURE: 'AUTH_FAILURE',            // token expire / invalide / 401-403
+  SCHEMA_DRIFT: 'SCHEMA_DRIFT',            // 503 SCHEMA_DRIFT (M/2026/05/14/2 V_B)
+  NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',      // fetch fail, abort
+  CORS_BLOCKED: 'CORS_BLOCKED',            // header A-C-A-O manquant
+  UNHANDLED_REJECTION: 'UNHANDLED_REJECTION', // catch global window
+};
+
+// Helper externe pour les composants qui veulent logger sans passer par apiCall.
+// Usage: window.ocreLogError('JS_RUNTIME', 'missing_prop', { prop: 'X', component: 'Y' })
+window.ocreLogError = window.ocreLogError || function(code, sub, details) {
+  try {
+    var slug = '';
+    var m = location.hostname.match(/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/);
+    if (m) slug = m[1];
+    var uid = 0;
+    try { uid = parseInt(localStorage.getItem('ocre_user_id') || '0', 10); } catch (e) {}
+    fetch('/api/log_client_error.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        url: 'ocreLogError:' + (sub || ''),
+        status: 0,
+        body_snippet: JSON.stringify(details || {}).slice(0, 500),
+        user_id: uid,
+        wsp_slug: slug,
+        ua: navigator.userAgent.slice(0, 250),
+        ts: new Date().toISOString(),
+        request_id: '',
+        error_code: code || 'JS_RUNTIME'
+      })
+    }).catch(function() {});
+  } catch (e) {}
+};
+
 (function() {
   if (window.__ocreApiCallInstalled) return;
   window.__ocreApiCallInstalled = true;
@@ -19940,6 +19980,17 @@ function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCo
 }
 
 function ListView(props) {
+  // M/2026/05/14/9 (M/83) — Validation runtime des props critiques.
+  // Bug racine M/2026/05/14/3 = setClients absent du destructure -> ReferenceError
+  // silencieuse au swipe Archiver. Ce check transforme une regression en log
+  // diagnostiquable au lieu d un crash silencieux. Toute future regression de
+  // ce type sera capturee par /api/log_client_error.php.
+  if (typeof props.setClients !== 'function') {
+    console.error('[OCRE/M83] Prop critique manquante: setClients dans ListView');
+    try {
+      if (window.ocreLogError) window.ocreLogError('JS_RUNTIME', 'missing_prop', { prop: 'setClients', component: 'ListView' });
+    } catch (e) {}
+  }
   const {clients, setClients, country, setCountry, showArchives, setShowArchives,
          userMenu, setUserMenu, currentUser, logout,
          activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,

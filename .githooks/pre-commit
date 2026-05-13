@@ -71,4 +71,27 @@ if [ -n "$BLOCKED" ]; then
   exit 1
 fi
 
+# M/2026/05/14/9 (M/83) — Verrou 5 : lint no-undef sur index.html.
+# Bloque commit si index.html introduit une ReferenceError (genre "Can't find
+# variable: setClients" capture en M/2026/05/14/3). Bypass: OCRE_LINT_BYPASS=1.
+INDEX_CHANGED=$(git diff --cached --name-only | grep -E '^index\.html$' || true)
+if [[ -n "$INDEX_CHANGED" && -x /root/bin/ocre-lint.sh ]]; then
+  if [[ "${OCRE_LINT_BYPASS:-0}" == "1" ]]; then
+    echo "[ocre-lint] BYPASS (OCRE_LINT_BYPASS=1)"
+  else
+    REPO_INDEX="$(git rev-parse --show-toplevel)/index.html"
+    if ! /root/bin/ocre-lint.sh "$REPO_INDEX" >&2; then
+      echo "" >&2
+      echo "[ocre-lint] COMMIT BLOQUE : no-undef errors detectees dans index.html." >&2
+      echo "[ocre-lint] Voir /tmp/ocre-lint-output.txt pour le detail." >&2
+      echo "[ocre-lint] Bypass exceptionnel : OCRE_LINT_BYPASS=1 git commit ..." >&2
+      /root/bin/notify --project ocre --priority warning \
+        --title "Commit ocre-immo bloque par lint" \
+        --body "no-undef detectees dans index.html. Voir /tmp/ocre-lint-output.txt" \
+        >/dev/null 2>&1 || true
+      exit 1
+    fi
+  fi
+fi
+
 exit 0
