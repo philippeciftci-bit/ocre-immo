@@ -9471,10 +9471,22 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set,
           <PriceField2Col label="Liquide dispo" valueKey="prix_liquide" set={set} d={d} hint="Cash hors crédit" forceUpdate={forceUpdate}/>
         </V55Bloc>
 
-        {/* M/2026/05/11/38 + M/2026/05/13/46 — Frais d'agence Acheteur : bloc reel rendu en
-            Section VI 6b (composant partage activeProfil). Pour respecter l'ordre Section III
-            valide par Philippe (Prix -> Frais d'agence -> Prix FAI -> Frais notaire), un lien
-            de navigation vers Section VI 6b est affiche ici en placeholder lisible. */}
+        {/* M/2026/05/13/48 — Bloc Frais d'agence Acheteur/Investisseur : deplace ici depuis Section VI 6b. */}
+        <V55Bloc title="Frais d'agence" theme="agence">
+          {(() => {
+            const _ap = activeProfil || 'Acheteur';
+            let _base = Number(d.prix_affiche) || 0;
+            if (_ap === 'Acheteur' || _ap === 'Investisseur') _base = Number(d.prix_max_total || d.budget_max || d.prix_max) || 0;
+            else if (_ap === 'Locataire') _base = Number(d.loyer_max) || 0;
+            else if (_ap === 'Bailleur') _base = Number(d.loyer_demande) || 0;
+            return (
+              <M53FraisAgenceMulti d={d} set={set}
+                baseAmount={_base}
+                profil={_ap}
+                forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
+            );
+          })()}
+        </V55Bloc>
 
         {/* M/2026/05/13/46 — Prix FAI (Prix + Frais d'agence inclus). Affichage read-only
             avec le taux global (charte devises EUR | rate | MAD si dual). */}
