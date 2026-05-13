@@ -81,10 +81,26 @@ echo "=== RÉSULTAT : $TOTAL_PASS pass · $TOTAL_FAIL fail · ${DURATION}s ===" 
 # Trap teardown s'occupe du cleanup automatiquement.
 
 if [ "$TOTAL_FAIL" -gt 0 ] && [ -x /root/bin/notify ]; then
-    /root/bin/notify --project ocre --priority warning \
-        --title "Smoke tests : $TOTAL_FAIL echecs" \
-        --body "Tests automatises Ocre Immo : $TOTAL_PASS pass $TOTAL_FAIL fail. Voir /var/log/ocre-smoke-tests.log" \
-        >/dev/null 2>&1 || true
+    # M/2026/05/13/50 — Baseline hash : ne notifier QUE si état changé vs dernier run.
+    # Override 24h : si même état mais >24h sans notif, force ré-alerte (sanity check).
+    SMOKE_BASELINE=/var/lib/atelier/smoke-baseline.txt
+    mkdir -p "$(dirname "$SMOKE_BASELINE")"
+    SMOKE_NOW=$(date +%s)
+    # LIST_FAILED_TESTS = noms des smoke/*.sh ayant échoué (extrait du log courant).
+    LIST_FAILED_TESTS=$(grep -E "^\[.*\]$" "$LOG" 2>/dev/null | head -50 | tr '\n' ',' | head -c 500)
+    CURRENT_HASH=$(echo "${TOTAL_FAIL}:${LIST_FAILED_TESTS}" | md5sum | cut -d' ' -f1)
+    LAST_HASH=$(cat "$SMOKE_BASELINE" 2>/dev/null || echo "")
+    LAST_TIME=$(stat -c %Y "$SMOKE_BASELINE" 2>/dev/null || echo 0)
+    AGE=$((SMOKE_NOW - LAST_TIME))
+    if [ "$CURRENT_HASH" = "$LAST_HASH" ] && [ "$AGE" -lt 86400 ]; then
+        echo "smoke-baseline: skip notif (état identique, age=${AGE}s < 24h)" | tee -a "$LOG"
+    else
+        echo "$CURRENT_HASH" > "$SMOKE_BASELINE"
+        /root/bin/notify --project ocre --priority warning \
+            --title "Smoke tests : $TOTAL_FAIL echecs" \
+            --body "Tests automatises Ocre Immo : $TOTAL_PASS pass $TOTAL_FAIL fail. Voir /var/log/ocre-smoke-tests.log" \
+            >/dev/null 2>&1 || true
+    fi
     exit 1
 fi
 
