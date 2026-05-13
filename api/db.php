@@ -9,6 +9,9 @@ if (DEBUG) {
     if (LOG_ERRORS) ini_set('log_errors', '1');
 }
 
+// M/2026/05/14/2 — Correlation ID middleware deplace dans config.php pour
+// couverture systematique (health.php n'inclut pas db.php).
+
 function setCorsHeaders() {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
     // M/2026/05/13/73 — WebKit Safari iOS applique preflight CORS meme en same-origin quand
@@ -32,6 +35,7 @@ function setCorsHeaders() {
 
 function db() {
     static $pdo = null;
+    static $schemaChecked = false;
     if ($pdo !== null) return $pdo;
     $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
     try {
@@ -43,6 +47,35 @@ function db() {
     } catch (PDOException $e) {
         $msg = DEBUG ? ('DB: ' . $e->getMessage()) : 'Service indisponible';
         jsonError($msg, 503);
+    }
+    // M/2026/05/14/2 — Schema contract: verifier _schema_migrations a la
+    // premiere connexion. Si la version courante < SCHEMA_VERSION_REQUIRED,
+    // retourner 503 SCHEMA_DRIFT (le cron ocre-schema-audit.sh rattrape sous 10 min).
+    if (!$schemaChecked && defined('SCHEMA_VERSION_REQUIRED')) {
+        $schemaChecked = true;
+        try {
+            $cur = $pdo->query("SELECT MAX(name) AS v FROM _schema_migrations")->fetch();
+            $current = $cur && $cur['v'] ? (string)$cur['v'] : 'V000';
+            $required = SCHEMA_VERSION_REQUIRED;
+            // Comparaison strict: V001 < V011 lexicographique OK (zero-pad).
+            if (strcmp($current, $required) < 0) {
+                jsonError('SCHEMA_DRIFT', 503, [
+                    'required' => $required,
+                    'current'  => $current,
+                    'wsp'      => defined('OCRE_WSP_SLUG') ? OCRE_WSP_SLUG : '',
+                    'action'   => 'ocre-migrate.sh ' . (defined('OCRE_WSP_SLUG') ? OCRE_WSP_SLUG : '<slug>'),
+                ]);
+            }
+        } catch (Throwable $e) {
+            // _schema_migrations absente: drift critique (wsp non-migre).
+            jsonError('SCHEMA_DRIFT', 503, [
+                'required' => SCHEMA_VERSION_REQUIRED,
+                'current'  => 'ABSENT',
+                'wsp'      => defined('OCRE_WSP_SLUG') ? OCRE_WSP_SLUG : '',
+                'action'   => 'ocre-migrate.sh ' . (defined('OCRE_WSP_SLUG') ? OCRE_WSP_SLUG : '<slug>'),
+                'detail'   => '_schema_migrations table missing',
+            ]);
+        }
     }
     return $pdo;
 }

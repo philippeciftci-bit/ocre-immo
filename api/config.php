@@ -38,3 +38,55 @@ define('DEBUG',false);
 define('LOG_ERRORS',true);
 
 define('ALLOWED_ORIGINS',['https://app.ocre.immo','https://ocre.immo','https://www.ocre.immo']);
+
+// M/2026/05/14/2 — Schema contract.
+// Version cible attendue dans `_schema_migrations` du wsp. Bumper a chaque
+// nouvelle migration ajoutee dans /opt/ocre-app/migrations/versions/.
+// db.php verifie la version a chaque connexion wsp et retourne 503
+// SCHEMA_DRIFT si la version courante est inferieure.
+define('SCHEMA_VERSION_REQUIRED', 'V011');
+
+// Slug courant (deduit ci-dessus) - expose pour d'autres modules (correlation, monitoring).
+define('OCRE_WSP_SLUG', $_v20_slug);
+
+// M/2026/05/14/2 — Correlation ID end-to-end.
+// Capte X-Request-Id du front (ou genere) + ecrit ligne JSON /var/log/ocre/requests.log
+// au shutdown. error_log() prefixe avec [req=...] pour grep facile.
+if (!defined('OCRE_REQUEST_ID')) {
+    $_rid = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
+    if (!$_rid || !preg_match('/^[a-zA-Z0-9._:-]{6,80}$/', $_rid)) {
+        $_rid = 'srv-' . dechex((int)(microtime(true) * 1000)) . '-' . bin2hex(random_bytes(4));
+    }
+    define('OCRE_REQUEST_ID', $_rid);
+    define('OCRE_REQUEST_START', microtime(true));
+    @header('X-Request-Id: ' . OCRE_REQUEST_ID);
+    @ini_set('error_prepend_string', '[req=' . OCRE_REQUEST_ID . '] ');
+}
+
+function _ocreRequestLogger() {
+    if (!defined('OCRE_REQUEST_ID')) return;
+    $duration_ms = (int) round((microtime(true) - OCRE_REQUEST_START) * 1000);
+    $status = http_response_code();
+    $entry = [
+        'ts' => date('c'),
+        'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+        'url' => substr($_SERVER['REQUEST_URI'] ?? '', 0, 500),
+        'wsp' => defined('OCRE_WSP_SLUG') ? OCRE_WSP_SLUG : '',
+        'user_id' => $GLOBALS['_ocre_current_user_id'] ?? 0,
+        'request_id' => OCRE_REQUEST_ID,
+        'status' => is_int($status) ? $status : 0,
+        'duration_ms' => $duration_ms,
+        'remote_ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+        'host' => $_SERVER['HTTP_HOST'] ?? '',
+    ];
+    $err = error_get_last();
+    if ($err && in_array($err['type'] ?? 0, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        $entry['php_error'] = substr(($err['message'] ?? '') . ' @ ' . ($err['file'] ?? '') . ':' . ($err['line'] ?? ''), 0, 400);
+    }
+    $logDir = '/var/log/ocre';
+    if (!is_dir($logDir)) @mkdir($logDir, 0775, true);
+    @file_put_contents($logDir . '/requests.log',
+        json_encode($entry, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n",
+        FILE_APPEND | LOCK_EX);
+}
+register_shutdown_function('_ocreRequestLogger');

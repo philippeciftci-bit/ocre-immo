@@ -29,7 +29,15 @@ $entry = [
     'wsp_slug'     => isset($input['wsp_slug'])     ? substr((string)$input['wsp_slug'], 0, 80)      : '',
     'ua'           => isset($input['ua'])           ? substr((string)$input['ua'], 0, 250)           : '',
     'client_ts'    => isset($input['ts'])           ? substr((string)$input['ts'], 0, 32)            : '',
+    // M/2026/05/14/2 — correlation ID + error_code
+    'request_id'   => isset($input['request_id'])   ? substr((string)$input['request_id'], 0, 80)    : '',
+    'error_code'   => isset($input['error_code'])   ? substr((string)$input['error_code'], 0, 60)    : '',
 ];
+
+// SCHEMA_DRIFT = priority HIGH (escalade differente du warning par defaut).
+if (($entry['error_code'] ?? '') === 'SCHEMA_DRIFT') {
+    $entry['_priority_hint'] = 'high';
+}
 
 $logDir = '/var/log/ocre';
 if (!is_dir($logDir)) @mkdir($logDir, 0775, true);

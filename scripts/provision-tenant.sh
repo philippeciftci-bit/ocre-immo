@@ -41,6 +41,17 @@ SLUG=$(echo "$SLUG" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
 [[ -z "$SLUG" ]] && { echo "Slug invalide" >&2; exit 1; }
 [[ "$WS_TYPE" =~ ^(wsp|wsc)$ ]] || { echo "type invalide (wsp|wsc): $WS_TYPE" >&2; exit 1; }
 
+# M/2026/05/14/2 — Reservation slug "staging-*" pour environnement factice E2E.
+# Refus creation utilisateur reel (display_name + email) sur ce prefixe sauf
+# si flag --allow-staging explicite. Le wsp staging-001 est gere par
+# /root/bin/ocre-staging-reset.sh + /root/bin/ocre-staging-seed.sh.
+if [[ "$SLUG" == staging-* && "${ALLOW_STAGING_PROVISION:-0}" != "1" ]]; then
+  echo "ERROR: slug '$SLUG' reserve a l environnement staging factice." >&2
+  echo "  Utiliser ALLOW_STAGING_PROVISION=1 $0 $SLUG [...] pour bypass," >&2
+  echo "  ou /root/bin/ocre-staging-reset.sh pour reinitialiser." >&2
+  exit 4
+fi
+
 ROOT_PWD=$(cat /root/.secrets/mysql-root.pwd)
 
 if [[ -z "$OWNER_UID" ]]; then

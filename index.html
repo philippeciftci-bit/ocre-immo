@@ -77,33 +77,58 @@
 })();
 </script>
 <script>
-// M/2026/05/14/1 — apiCall wrapper + monkey-patch fetch pour erreurs visibles.
-// Volet 2 stabilisation: tout fetch vers /api/* est intercepte.
+// M/2026/05/14/1 — apiCall wrapper + monkey-patch fetch (erreurs visibles).
+// M/2026/05/14/2 — Ajouts : SCHEMA_DRIFT 503 special-case + correlation ID X-Request-Id.
 //   2xx              -> normal
 //   401/403          -> redirect /?session-expired
-//   4xx              -> toast "Action refusee" + throw
-//   5xx              -> toast critique rouge + POST /api/log_client_error.php + throw
-//   timeout/network  -> toast "Connexion perdue" + retry x2 exponential backoff
-// Approche: monkey-patch window.fetch (transparent pour tous les call sites
-// existants, 25k lignes index.html, zero regression). window.apiCall expose
-// aussi pour nouveau code explicite.
+//   4xx              -> toast warning + throw
+//   5xx SCHEMA_DRIFT -> toast non-dismissable "Mise a niveau" + log priority high
+//   5xx autre        -> toast critique avec request_id 8-chars + log + throw
+//   timeout/network  -> toast "Connexion perdue" + retry x2 backoff
+//
+// Approche: monkey-patch window.fetch (transparent, zero regression sur
+// existing call sites). window.apiCall expose pour nouveau code.
 (function() {
   if (window.__ocreApiCallInstalled) return;
   window.__ocreApiCallInstalled = true;
   var originalFetch = window.fetch.bind(window);
 
-  function showToast(level, msg) {
+  function genRequestId() {
     try {
-      if (typeof window.__ocreToast === 'function') return window.__ocreToast(level, msg);
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
     } catch (e) {}
-    // Fallback minimal : div fixed bottom red/orange/green selon level.
+    // Fallback (Safari iOS < 15.4 ne supporte pas randomUUID)
+    return 'r' + Date.now().toString(16) + '-' + Math.random().toString(16).slice(2, 10);
+  }
+
+  function showToast(level, msg, opts) {
+    opts = opts || {};
+    try {
+      if (typeof window.__ocreToast === 'function') return window.__ocreToast(level, msg, opts);
+    } catch (e) {}
     try {
       var bg = level === 'critical' ? '#B00020' : level === 'warning' ? '#A95B1C' : '#2A1810';
       var d = document.createElement('div');
-      d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:' + bg + ';color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-family:system-ui,sans-serif;max-width:90vw;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.25)';
-      d.textContent = msg;
+      d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:' + bg + ';color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-family:system-ui,sans-serif;max-width:90vw;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.25);cursor:' + (opts.requestId ? 'pointer' : 'default');
+      var line1 = document.createElement('div');
+      line1.textContent = msg;
+      d.appendChild(line1);
+      if (opts.requestId) {
+        var line2 = document.createElement('div');
+        line2.style.cssText = 'margin-top:6px;font-size:11px;opacity:0.85';
+        var rid8 = String(opts.requestId).slice(0, 8);
+        line2.textContent = 'Code: ' + rid8 + '. Tap pour copier.';
+        d.appendChild(line2);
+        d.addEventListener('click', function() {
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(opts.requestId);
+            line2.textContent = 'Code copie: ' + rid8;
+          } catch (e) {}
+        });
+      }
       document.body && document.body.appendChild(d);
-      setTimeout(function() { try { d.remove(); } catch (e) {} }, 5000);
+      var ttl = opts.persist ? 600000 : 5000;
+      setTimeout(function() { try { d.remove(); } catch (e) {} }, ttl);
     } catch (e) {}
   }
 
@@ -121,7 +146,7 @@
     } catch (e) { return 0; }
   }
 
-  function logServerError(url, status, bodySnippet) {
+  function logServerError(url, status, bodySnippet, requestId, errorCode) {
     try {
       originalFetch('/api/log_client_error.php', {
         method: 'POST',
@@ -134,13 +159,28 @@
           user_id: getCurrentUserId(),
           wsp_slug: getWspSlug(),
           ua: navigator.userAgent.slice(0, 250),
-          ts: new Date().toISOString()
+          ts: new Date().toISOString(),
+          request_id: requestId || '',
+          error_code: errorCode || ''
         })
       }).catch(function() {});
     } catch (e) {}
   }
 
   function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+  function injectRequestId(opts, requestId) {
+    opts = opts || {};
+    var headers = opts.headers || {};
+    // Normalize: support Headers object or plain object
+    if (headers instanceof Headers) {
+      headers.set('X-Request-Id', requestId);
+    } else {
+      headers['X-Request-Id'] = requestId;
+    }
+    opts.headers = headers;
+    return opts;
+  }
 
   async function doFetchWithRetry(url, opts) {
     var attempt = 0;
@@ -153,17 +193,41 @@
         lastErr = e;
         attempt++;
         if (attempt < 3) {
-          await sleep(300 * Math.pow(2, attempt - 1)); // 300ms, 600ms
+          await sleep(300 * Math.pow(2, attempt - 1));
         }
       }
     }
     throw lastErr;
   }
 
-  // apiCall - haut niveau, retourne le body JSON (ou texte) directement.
+  function handle5xx(urlStr, resp, requestId) {
+    resp.clone().text().then(function(t) {
+      var bodyText = t || '';
+      var errCode = '';
+      var schemaDrift = false;
+      try {
+        var j = JSON.parse(bodyText);
+        errCode = j.error || '';
+        if (errCode === 'SCHEMA_DRIFT') schemaDrift = true;
+      } catch (e) {}
+      if (schemaDrift) {
+        showToast('warning', 'Mise a niveau en cours. Reconnecte-toi dans 1 minute.', { persist: true, requestId: requestId });
+      } else {
+        showToast('critical', 'Erreur serveur. L equipe est notifiee.', { requestId: requestId });
+      }
+      logServerError(urlStr, resp.status, bodyText, requestId, errCode);
+    }).catch(function() {
+      showToast('critical', 'Erreur serveur. L equipe est notifiee.', { requestId: requestId });
+      logServerError(urlStr, resp.status, '', requestId, '');
+    });
+  }
+
+  // window.apiCall - haut niveau, retourne body JSON direct, throw sur erreur.
   window.apiCall = async function(url, opts) {
     opts = opts || {};
     if (!opts.credentials) opts.credentials = 'same-origin';
+    var requestId = genRequestId();
+    opts = injectRequestId(opts, requestId);
     try {
       var resp = await doFetchWithRetry(url, opts);
       var ct = resp.headers.get('content-type') || '';
@@ -179,12 +243,11 @@
       if (resp.status >= 400 && resp.status < 500) {
         var msg = 'requete invalide';
         try { var j = JSON.parse(bodyText); msg = j.message || j.error || msg; } catch (e) {}
-        showToast('warning', 'Action refusee : ' + msg);
+        showToast('warning', 'Action refusee : ' + msg, { requestId: requestId });
         throw new Error('http ' + resp.status);
       }
       if (resp.status >= 500) {
-        showToast('critical', 'Erreur serveur. L equipe est notifiee.');
-        logServerError(url, resp.status, bodyText);
+        handle5xx(url, resp, requestId);
         throw new Error('http ' + resp.status);
       }
       return bodyText;
@@ -192,61 +255,41 @@
       if (e && e.message && (e.message.indexOf('http ') === 0 || e.message === 'session expired')) {
         throw e;
       }
-      showToast('warning', 'Connexion perdue. Reessayer.');
+      showToast('warning', 'Connexion perdue. Reessayer.', { requestId: requestId });
       throw e;
     }
   };
 
-  // Monkey-patch fetch : applique le traitement d erreur uniquement pour /api/*
-  // sans modifier le contrat (retourne toujours un Response).
+  // Monkey-patch fetch : intercept transparent /api/*.
   window.fetch = function(url, opts) {
     var urlStr = (typeof url === 'string') ? url : (url && url.url) || '';
     var isApi = urlStr.indexOf('/api/') >= 0 || urlStr.indexOf('/api?') >= 0 || /^https?:\/\/[^/]+\/api\//.test(urlStr);
-    // Skip pour log_client_error pour eviter boucle infinie.
     if (urlStr.indexOf('/api/log_client_error.php') >= 0 || urlStr.indexOf('/api/version.php') >= 0) {
       return originalFetch(url, opts);
     }
     if (!isApi) return originalFetch(url, opts);
 
+    var requestId = genRequestId();
+    opts = injectRequestId(opts || {}, requestId);
+
     return doFetchWithRetry(url, opts).then(function(resp) {
       if (resp.status === 401 || resp.status === 403) {
-        // Laisse le code appelant gerer (certains testent deja status === 401).
         return resp;
       }
       if (resp.status >= 500) {
-        showToast('critical', 'Erreur serveur. L equipe est notifiee.');
-        // Clone pour ne pas consommer le body original.
-        resp.clone().text().then(function(t) {
-          logServerError(urlStr, resp.status, t);
-        }).catch(function() {});
+        handle5xx(urlStr, resp, requestId);
       }
       return resp;
     }).catch(function(e) {
-      showToast('warning', 'Connexion perdue. Reessayer.');
+      showToast('warning', 'Connexion perdue. Reessayer.', { requestId: requestId });
       throw e;
     });
   };
 
-  // Hooks erreurs JS globales.
   window.addEventListener('unhandledrejection', function(e) {
     var msg = e && e.reason && (e.reason.message || String(e.reason)) || 'erreur JS';
-    if (msg.indexOf('http ') === 0 || msg === 'session expired') return; // deja gere
-    try {
-      originalFetch('/api/log_client_error.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          url: 'unhandledrejection',
-          status: 0,
-          body_snippet: msg.slice(0, 500),
-          user_id: getCurrentUserId(),
-          wsp_slug: getWspSlug(),
-          ua: navigator.userAgent.slice(0, 250),
-          ts: new Date().toISOString()
-        })
-      }).catch(function() {});
-    } catch (e2) {}
+    if (msg.indexOf('http ') === 0 || msg === 'session expired') return;
+    logServerError('unhandledrejection', 0, msg, genRequestId(), 'unhandledrejection');
   });
 })();
 </script>
