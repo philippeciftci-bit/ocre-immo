@@ -8983,11 +8983,12 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
     <S3CardRound>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'var(--space-2)', paddingBottom:'var(--space-6px)', borderBottom:'1px solid var(--color-success)40'}}>
         <span style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.4}}>Frais notaire — total global</span>
-        {/* M/2026/05/13/51 — Pattern charte : EUR · taux · MAD (badge cliquable RatePopup2Col). */}
-        <div style={{display:'flex', gap:'var(--space-2px)', alignItems:'center'}}>
-          <span style={{fontSize:'var(--font-size-13)', fontWeight:800, color:'var(--color-success)'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
-          <RateBadgeInline forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
-          <span style={{fontSize:'var(--font-size-13)', fontWeight:800, color:'var(--color-success)'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
+        {/* M/2026/05/13/52 — SSOT PriceField2ColDisplay : pattern charte unifie. */}
+        <div style={{flex:'1 1 auto', minWidth:0}}>
+          <PriceField2ColDisplay
+            leftValue={totalLeft}
+            rightValue={totalRight}
+            forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
         </div>
       </div>
       {acteurs.length === 0 && (
@@ -9094,11 +9095,12 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
     <S3CardRound style={{background:'transparent', border:'none', padding:'var(--space-0)', marginBottom:'var(--space-0)'}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'var(--space-2)', paddingBottom:'var(--space-6px)', borderBottom:'1px solid var(--color-info)40'}}>
         <span style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-info)', textTransform:'uppercase', letterSpacing:.4}}>Total global</span>
-        {/* M/2026/05/13/51 — Pattern charte : EUR · taux · MAD (badge cliquable RatePopup2Col). */}
-        <div style={{display:'flex', gap:'var(--space-2px)', alignItems:'center'}}>
-          <span style={{fontSize:'var(--font-size-13)', fontWeight:800, color:'var(--color-info)'}}>{fmtNumV5(totalLeft) || '—'} {CURRENCY_SYMBOL_V5[cur.left]}</span>
-          <RateBadgeInline forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
-          <span style={{fontSize:'var(--font-size-13)', fontWeight:800, color:'var(--color-info)'}}>{fmtNumV5(totalRight) || '—'} {CURRENCY_SYMBOL_V5[cur.right]}</span>
+        {/* M/2026/05/13/52 — SSOT PriceField2ColDisplay : pattern charte unifie. */}
+        <div style={{flex:'1 1 auto', minWidth:0}}>
+          <PriceField2ColDisplay
+            leftValue={totalLeft}
+            rightValue={totalRight}
+            forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
         </div>
       </div>
       {acteurs.length === 0 && (
@@ -9278,29 +9280,63 @@ function S3PopinQuiPaie({value, transactionType, onChange, onClose}) {
 }
 
 // S3ActeurRow — ligne acteur générique. State local activePopup garantit single-popup-open.
-// M/2026/05/13/51 — RateBadgeInline : badge taux cliquable inline (charte devises mini).
-// Affiche "rate AUTO/MANUEL" et ouvre RatePopup2Col au tap, conformement au pattern unifie.
-function RateBadgeInline({forceUpdate, size = 'sm'}) {
+// M/2026/05/13/52 — SSOT charte devises : PriceField2ColDisplay = variante read-only
+// du composant PriceField2Col (Variant B en prod). Mêmes styles inline EXACTS pour
+// drapeaux, padding, border, fond, pill rate central. Differences :
+// - Pas d'input editable (spans avec valeurs calculees passees en props)
+// - Pill rate central onClick -> ouvre RatePopup2Col (popup unifie M/13/40+M/13/44)
+// Utilise par S3ActeurRow + M53FraisAgenceMulti total + FraisNotaireBlock2Col total.
+function PriceField2ColDisplay({label, leftValue, rightValue, forceUpdate, themeColor}) {
   const cur = getCurrencyV5State() || {left:'EUR', right:'MAD', rate:11};
-  const [open, setOpen] = React.useState(false);
+  const [ratePopOpen, setRatePopOpen] = React.useState(false);
   const isManual = !!(cur && cur._manual);
-  if (!cur.left || !cur.right || cur.left === cur.right) return null;
-  const isLg = size === 'lg';
-  const fsRate = isLg ? 12 : 10.5;
-  const fsBadge = isLg ? 8 : 7;
+  if (!cur.left || !cur.right || cur.left === cur.right) {
+    // Mono-devise : affichage simple sans pill rate.
+    return (
+      <div style={{display:'flex', alignItems:'center', gap:6}}>
+        {label && <span style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600}}>{label}</span>}
+        <span style={{fontSize:'var(--font-size-13)', fontWeight:700, color: themeColor || 'var(--color-text-brown)', fontVariantNumeric:'tabular-nums'}}>{fmtNumV5(Math.round(Number(leftValue) || 0))} {CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
+      </div>
+    );
+  }
+  const _isMobile = (typeof window !== 'undefined' && window.innerWidth < 600);
+  const _flagSize = _isMobile ? 44 : 56;
+  const _pad = _isMobile ? 42 : 56;
+  const _gap = _isMobile ? 6 : 8;
+  const numLeft = Math.round(Number(leftValue) || 0);
+  const numRight = Math.round(Number(rightValue) || 0);
   return (
-    <React.Fragment>
-      <button type="button" onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-        title="Voir et modifier le taux de change"
-        style={{display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px',
-                background: isManual ? '#FBE7CB' : 'var(--color-bg-tint-warm)',
-                border:'1px solid '+(isManual ? '#C77D2D' : 'var(--color-border-medium)'),
-                borderRadius:10, cursor:'pointer', fontFamily:'inherit', lineHeight:1, flexShrink:0}}>
-        <span style={{fontSize:fsRate, fontWeight:700, color: isManual ? '#C77D2D' : 'var(--color-text-brown)', fontVariantNumeric:'tabular-nums'}}>{Number(cur.rate).toFixed(cur.rate < 10 ? 4 : 2)}</span>
-        <span style={{fontSize:fsBadge, fontWeight:800, color: isManual ? '#C77D2D' : 'var(--color-text-muted)', letterSpacing:.4}}>{isManual ? 'MANUEL' : 'AUTO'}</span>
-      </button>
-      {open && <RatePopup2Col onClose={() => setOpen(false)} forceUpdate={forceUpdate || (() => {})}/>}
-    </React.Fragment>
+    <div data-variant="B-display" style={{marginBottom:'var(--space-1)'}}>
+      {label && (
+        <div style={{fontSize:'var(--font-size-11)', color:'#5C5550', fontWeight:600, marginBottom:'var(--space-1)'}}>{label}</div>
+      )}
+      <div style={{display:'grid', gridTemplateColumns:'1fr 0.7fr 1fr', gap: _gap, alignItems:'center'}}>
+        {/* GAUCHE : drapeau opacite + valeur read-only */}
+        <div style={{position:'relative', padding:'8px '+_pad+'px 8px 10px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:8, overflow:'hidden'}}>
+          <span aria-hidden="true" style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
+          <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2}}>{cur.left}</div>
+          <div style={{fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', fontVariantNumeric:'tabular-nums'}}>{fmtNumV5(numLeft) || '0'}</div>
+        </div>
+        {/* CENTRE : pill rate cliquable -> RatePopup2Col */}
+        <button type="button"
+          onClick={(e) => { e.stopPropagation(); setRatePopOpen(true); }}
+          title="Taux de change : Frankfurter auto ou saisie manuelle"
+          style={{position:'relative', padding:'8px 10px', background: isManual ? '#FBE7CB' : 'var(--color-bg-tint-warm)', border:'1px solid '+(isManual ? '#C77D2D' : '#D6C7AC'), borderRadius:8, textAlign:'center', cursor:'pointer', fontFamily:'inherit'}}>
+          <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginBottom:2}}>1 {cur.left} =</div>
+          <span style={{color: isManual ? '#C77D2D' : 'var(--color-text-brown)', fontWeight:700, fontSize:'var(--font-size-13)', fontVariantNumeric:'tabular-nums'}}>
+            {Number(cur.rate).toFixed(cur.rate < 10 ? 4 : 2)}
+          </span>
+          <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginTop:2}}>{cur.right}</div>
+        </button>
+        {/* DROITE : drapeau opacite + valeur read-only */}
+        <div style={{position:'relative', padding:'8px 10px 8px '+_pad+'px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:8, overflow:'hidden'}}>
+          <span aria-hidden="true" style={{position:'absolute', left:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
+          <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2, textAlign:'right'}}>{cur.right}</div>
+          <div style={{fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', fontVariantNumeric:'tabular-nums', textAlign:'right'}}>{fmtNumV5(numRight) || '0'}</div>
+        </div>
+      </div>
+      {ratePopOpen && <RatePopup2Col onClose={() => setRatePopOpen(false)} forceUpdate={forceUpdate || (() => {})}/>}
+    </div>
   );
 }
 
@@ -9330,20 +9366,11 @@ function S3ActeurRow({name, mode, value, payePar, onModeChange, onPayeParChange,
           <div onClick={onRemove} style={{width:24, height:24, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', background:'#FCEFEC', color:'var(--color-error)', fontSize:'var(--font-size-13)', fontWeight:700, cursor:'pointer', flexShrink:0, lineHeight:1}} aria-label="Supprimer">×</div>
         )}
       </div>
-      {/* M/2026/05/13/51 — Pattern charte devises : [drapeau EUR | montant] [badge taux] [drapeau MAD | montant]. */}
-      <div style={{display:'flex', alignItems:'center', gap:'var(--space-3px)', marginBottom:'var(--space-5px)'}}>
-        <div style={{flex:1, minWidth:0, display:'flex', alignItems:'center', gap:'var(--space-1)', height:32, padding:'0 8px', border:'1px solid '+t.border, borderRadius:6, background:'#fff', color:'var(--color-text-primary)', fontSize:'var(--font-size-xs)', fontWeight:600, boxSizing:'border-box', overflow:'hidden'}}>
-          <span style={{fontSize:'var(--font-size-13)', flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.left] || '🌐'}</span>
-          <span style={{flex:1, textAlign:'right', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(Math.round(computedLeft))}</span>
-          <span style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.left] || cur.left}</span>
-        </div>
-        <RateBadgeInline forceUpdate={() => onModeChange && onModeChange(mode === 'pct' ? 'pct' : 'forfait', value)}/>
-        <div style={{flex:1, minWidth:0, display:'flex', alignItems:'center', gap:'var(--space-1)', height:32, padding:'0 8px', border:'1px solid '+t.border, borderRadius:6, background:'#fff', color:'var(--color-text-primary)', fontSize:'var(--font-size-xs)', fontWeight:600, boxSizing:'border-box', overflow:'hidden'}}>
-          <span style={{fontSize:'var(--font-size-13)', flexShrink:0}} aria-hidden="true">{CURRENCY_FLAG_V5[cur.right] || '🌐'}</span>
-          <span style={{flex:1, textAlign:'right', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{fmtNumV5(Math.round(computedRight))}</span>
-          <span style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontWeight:600, flexShrink:0}}>{CURRENCY_SYMBOL_V5[cur.right] || cur.right}</span>
-        </div>
-      </div>
+      {/* M/2026/05/13/52 — SSOT charte devises : PriceField2ColDisplay (variante read-only de PriceField2Col Variant B). */}
+      <PriceField2ColDisplay
+        leftValue={computedLeft}
+        rightValue={computedRight}
+        forceUpdate={() => onModeChange && onModeChange(mode === 'pct' ? 'pct' : 'forfait', value)}/>
       {activePopup === 'mode' && (
         <S3PopinMode mode={mode} value={numVal} baseAmount={base} themeColor={themeColor}
           onChange={({mode: m, value: v}) => { onModeChange && onModeChange(m, v); }}
