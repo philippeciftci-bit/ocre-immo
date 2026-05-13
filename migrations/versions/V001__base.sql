@@ -6,10 +6,12 @@
 SET FOREIGN_KEY_CHECKS=0;
 
 -- Table de suivi migrations elle-meme (créée AVANT les autres pour que ocre-migrate puisse logger).
+-- M/2026/05/14/7 — colonne checksum SHA256 (CHAR(64)) ajoutee pour detection drift fichier source.
 CREATE TABLE IF NOT EXISTS `_schema_migrations` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(160) NOT NULL,
   `applied_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `checksum` char(64) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

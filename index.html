@@ -182,22 +182,17 @@
     return opts;
   }
 
+  // M/2026/05/14/7 — Retry exclusivement sur erreurs RESEAU (fetch throw avant
+  // response). JAMAIS sur 5xx : une 5xx = bug serveur, retry duplique l'ecriture
+  // et masque le probleme. Max 1 retry (2 attempts), delai fixe 500ms.
   async function doFetchWithRetry(url, opts) {
-    var attempt = 0;
-    var lastErr = null;
-    while (attempt < 3) {
-      try {
-        var resp = await originalFetch(url, opts);
-        return resp;
-      } catch (e) {
-        lastErr = e;
-        attempt++;
-        if (attempt < 3) {
-          await sleep(300 * Math.pow(2, attempt - 1));
-        }
-      }
+    try {
+      return await originalFetch(url, opts);
+    } catch (e) {
+      // Erreur reseau : 1 seul retry apres 500ms.
+      await sleep(500);
+      return await originalFetch(url, opts);
     }
-    throw lastErr;
   }
 
   function handle5xx(urlStr, resp, requestId) {

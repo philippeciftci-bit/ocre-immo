@@ -16,6 +16,9 @@ $checks = [
     'schema_version_required' => defined('SCHEMA_VERSION_REQUIRED') ? SCHEMA_VERSION_REQUIRED : '',
     'schema_version_current' => null,
     'schema_status' => 'unknown',
+    // M/2026/05/14/7 — liste des versions presentes dans /opt/ocre-app/migrations/versions/
+    // mais ABSENTES dans _schema_migrations du wsp courant. Vide si tout est applique.
+    'migrations_pending' => [],
     'clients_count' => null,
 ];
 
@@ -29,14 +32,43 @@ try {
     try {
         $cur = $pdo->query("SELECT MAX(name) AS v FROM _schema_migrations")->fetch();
         $checks['schema_version_current'] = $cur['v'] ?? null;
+        // Liste des versions appliquees (set).
+        $appliedStmt = $pdo->query("SELECT name FROM _schema_migrations");
+        $applied = [];
+        foreach ($appliedStmt->fetchAll() as $r) { $applied[$r['name']] = true; }
+
+        // Scan repertoire versions et collecte les non-appliquees.
+        $versionsDir = '/opt/ocre-app/migrations/versions';
+        $pending = [];
+        if (is_dir($versionsDir)) {
+            $files = scandir($versionsDir);
+            sort($files);
+            foreach ($files as $f) {
+                if (!preg_match('/^(V[0-9]+__.*)\.sql$/', $f, $m)) continue;
+                $vname = $m[1];
+                if (!isset($applied[$vname])) $pending[] = $vname;
+            }
+        }
+        $checks['migrations_pending'] = $pending;
+
+        // Logique fine status:
+        //   OK       : 0 pending et current >= required
+        //   DRIFT    : 1-2 pending OU current < required en retard de 1-2
+        //   CRITICAL : 3+ pending OU table _schema_migrations absente
         if (defined('SCHEMA_VERSION_REQUIRED') && $checks['schema_version_current']) {
-            $checks['schema_status'] = (strcmp($checks['schema_version_current'], SCHEMA_VERSION_REQUIRED) < 0)
-                ? 'DRIFT' : 'OK';
+            $nPending = count($pending);
+            if ($nPending === 0 && strcmp($checks['schema_version_current'], SCHEMA_VERSION_REQUIRED) >= 0) {
+                $checks['schema_status'] = 'OK';
+            } elseif ($nPending >= 3) {
+                $checks['schema_status'] = 'CRITICAL';
+            } else {
+                $checks['schema_status'] = 'DRIFT';
+            }
         } else {
             $checks['schema_status'] = 'ABSENT';
         }
     } catch (Throwable $e) {
-        $checks['schema_status'] = 'ABSENT';
+        $checks['schema_status'] = 'CRITICAL';
     }
     try {
         $cnt = $pdo->query("SELECT COUNT(*) AS c FROM clients")->fetch();
