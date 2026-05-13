@@ -19839,7 +19839,7 @@ function ListView(props) {
   function renderGroup(g) {
     if (g.dossiers.length === 1) {
       const c = g.dossiers[0];
-      return <ClientRow key={'s-'+c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)} openDossierPdf={props.openDossierPdf} onRemoveStart={(rid) => setClients(prev => prev.map(x => x.id === rid ? {...x, _removing: true} : x))} onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}/>;
+      return <ClientRow key={'s-'+c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)} openDossierPdf={props.openDossierPdf} onRemoveStart={(rid) => setClients(prev => prev.map(x => x.id === rid ? {...x, _removing: true} : x))} onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))} onArchiveOptimistic={(rid, archived) => setClients(prev => prev.map(x => x.id === rid ? {...x, archived} : x))}/>;
     }
     return (
       <div key={'g-'+g.ids.join('-')} className="dossier-group"
@@ -20483,36 +20483,36 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       title: titleText, message: msgText,
       danger: false, confirmLabel: isRestore ? 'Restaurer' : 'Archiver',
     }))) { setSwipeX(0); return; }
+    // M/2026/05/13/67 — Optimistic update : retire immediatement de la liste source
+    // (accueil ou Archives selon isRestore). Le filtre archivedFiltered = clients.filter
+    // (c => !!c.archived === showArchives) deplacera la card a la bonne liste instantanement.
+    // Rollback si erreur API.
+    const newArchived = isRestore ? 0 : 1;
+    const prevArchived = c.archived;
+    setSwipeX(0);
+    if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, newArchived);
     try {
       const token = localStorage.getItem('ocre_token') || '';
       const r = await fetch(API + '/clients.php?action=archive', {
         method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
-        body: JSON.stringify({id: c.id, archived: isRestore ? 0 : 1}),
+        body: JSON.stringify({id: c.id, archived: newArchived}),
       });
       // M/2026/05/12/27 — gestion explicite 401 + r.json() defensif (response peut etre HTML/empty si redirect auth).
       if (r.status === 401) {
-        try { setSwipeX(0); } catch (_) {}
+        if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, prevArchived);
         if (typeof showOcreToast === 'function') showOcreToast('Session expiree, reconnexion necessaire');
         try { localStorage.removeItem('ocre_token'); window.location = '/login/?expired=1'; } catch (_) {}
         return;
       }
       let j = null;
       try { j = await r.json(); } catch (_jsonErr) {
-        try { setSwipeX(0); } catch (_) {}
+        if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, prevArchived);
         if (typeof showOcreToast === 'function') showOcreToast('Reponse serveur invalide (status ' + r.status + ')');
         return;
       }
       if (j && j.ok) {
-        // M/2026/05/12/40 — Pattern modèle interne Ocre/interne/GitHub : 200 OK qu il s agisse d un succes reel ou d un noop
-        // idempotent (j.already_archived / j.already_unarchived). Dans les 2 cas la card doit disparaitre du flux
-        // pour matcher l'attente utilisateur (le dossier n'est plus ici).
-        setSwipeX(0);
-        if (props.onRemoveStart) props.onRemoveStart(c.id);
-        setRemoving(true);
-        setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);
+        // State deja a jour grace a l'optimistic update. Just toast.
         if (j.noop) {
-          // Cas idempotent : etat deja a la cible. Pas de toast vert "Archive" (mensonge si deja archived).
-          // Toast info silencieux contextuel pour eviter "Deja archive" rouge anxiogene.
           if (typeof showOcreToast === 'function') {
             showOcreToast(isRestore ? 'Deja restaure' : 'Deja archive (etat synchronise)');
           }
@@ -20520,17 +20520,15 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
           if (typeof showOcreToast === 'function') showOcreToast(isRestore ? 'Dossier restaure' : 'Dossier archive');
         }
       } else {
-        // M/2026/05/12/40 — feedback erreur precis. Backend renvoie j.error ('not_found' / 'id requis' / ...).
-        // Status code informatif inclus pour diagnostic. Avant : toast generique 'Échec archivage'.
-        try { setSwipeX(0); } catch (_) {}
+        // ROLLBACK : remettre archived a la valeur precedente.
+        if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, prevArchived);
         const msg = (j && j.error) ? ('Echec archivage : ' + j.error) : ('Echec archivage (HTTP ' + r.status + ')');
         if (typeof showOcreToast === 'function') showOcreToast(msg);
         else alert(msg);
       }
     } catch (e) {
-      // M/2026/05/12/40 — message reseau explicite avec cause (avant : 'Erreur reseau (archivage)' generique
-      // masquait les vraies erreurs JS. Pattern modèle interne Ocre : afficher la cause precise pour debug rapide).
-      try { setSwipeX(0); } catch (_) {}
+      // ROLLBACK reseau/JS : remettre archived a la valeur precedente.
+      if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, prevArchived);
       const cause = (e && e.message) ? e.message : (e && e.name) || 'inconnue';
       if (typeof showOcreToast === 'function') showOcreToast('Erreur archivage : ' + cause);
       else alert('Erreur archivage : ' + cause);
