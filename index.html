@@ -20877,35 +20877,43 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   const wrapperMargin = isGrouped ? 0 : 10;
   return (
     <div ref={swipeRowRef} style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent', transition:'opacity 200ms ease-out, transform 200ms ease-out, max-height 220ms ease-out, margin-bottom 220ms ease-out', opacity: removing ? 0 : 1, transform: removing ? 'translateX(-30px)' : 'none', maxHeight: removing ? 0 : '600px', marginBottom: removing ? 0 : wrapperMargin, pointerEvents: removing ? 'none' : 'auto'}}>
-      {/* M/2026/05/09/78 — Swipe contextuel: si !archived (accueil) -> [Archiver] + [PDF].
-          Si archived (page Archives) -> [Restaurer] + [Suppr. definitivement] (modale durcie). */}
+      {/* M/2026/05/09/78 + M/2026/05/14/10 — Swipe contextuel UNIFIE: meme composant rond
+          46x46 + mini-label que vue Tous, applique aussi a vue Archives. Couleurs
+          semantiques conservees (rouge --color-error pour Suppr, vert #2D7A3E pour
+          Restaurer). Plus de slot fantome : 2 ronds dans le meme container. */}
       {c.archived ? (
-        <>
-          <button type="button"
-            onClick={e => { e.stopPropagation(); if (swipeX <= -60) doDelete(e); }}
-            disabled={swipeX > -60}
-            title="Supprimer définitivement"
-            style={{position:'absolute', right:40, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'var(--color-error)', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
-              <path d="M10 11v6"/><path d="M14 11v6"/>
-              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-            </svg>
-            <span>SUPPR.</span>
-          </button>
-          <button type="button"
-            onClick={e => { e.stopPropagation(); if (swipeX <= -60) doArchive(e); }}
-            disabled={swipeX > -60}
-            title="Restaurer"
-            style={{position:'absolute', right:0, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#2D7A3E', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 14 4 9 9 4"/>
-              <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
-            </svg>
-            <span>RESTAURER</span>
-          </button>
-        </>
+        <div style={{position:'absolute', right:8, top:0, bottom:0, width:56, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', opacity: swipeX <= -36 ? 1 : 0, transition:'opacity 200ms ease', pointerEvents: swipeX <= -36 ? 'auto' : 'none'}}>
+          <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px'}}>
+            <button type="button"
+              onClick={e => { e.stopPropagation(); if (swipeX <= -36) doDelete(e); }}
+              disabled={swipeX > -36}
+              aria-label="Supprimer definitivement"
+              title="Supprimer définitivement"
+              style={{width:46, height:46, borderRadius:'50%', background:'var(--color-error)', color:'#fff', border:'none', display:'inline-flex', alignItems:'center', justifyContent:'center', cursor: swipeX <= -36 ? 'pointer' : 'default', padding:0, boxShadow:'0 1px 3px rgba(0,0,0,0.12)'}}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/>
+                <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </button>
+            <span style={{fontFamily:'DM Sans, sans-serif', fontSize:'9px', fontWeight:600, color:'#7A6A52', letterSpacing:'0.03em', lineHeight:1.1}}>Suppr.</span>
+          </div>
+          <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px'}}>
+            <button type="button"
+              onClick={e => { e.stopPropagation(); if (swipeX <= -36) doArchive(e); }}
+              disabled={swipeX > -36}
+              aria-label="Restaurer"
+              title="Restaurer"
+              style={{width:46, height:46, borderRadius:'50%', background:'#2D7A3E', color:'#fff', border:'none', display:'inline-flex', alignItems:'center', justifyContent:'center', cursor: swipeX <= -36 ? 'pointer' : 'default', padding:0, boxShadow:'0 1px 3px rgba(0,0,0,0.12)'}}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 14 4 9 9 4"/>
+                <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+              </svg>
+            </button>
+            <span style={{fontFamily:'DM Sans, sans-serif', fontSize:'9px', fontWeight:600, color:'#7A6A52', letterSpacing:'0.03em', lineHeight:1.1}}>Restaurer</span>
+          </div>
+        </div>
       ) : (
         /* M/2026/05/09/82 — accueil: 2 ronds 46x46 empiles verticalement + mini-labels (Option B iOS Messages). */
         <div style={{position:'absolute', right:8, top:0, bottom:0, width:56, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', opacity: swipeX <= -36 ? 1 : 0, transition:'opacity 200ms ease', pointerEvents: swipeX <= -36 ? 'auto' : 'none'}}>
