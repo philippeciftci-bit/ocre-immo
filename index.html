@@ -19156,34 +19156,35 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
 // V18.36 — OcreLogo variante 1 (validée Philippe preview-logo-v5) : ciel blanc haut → crème
 // intermédiaire → terre ocre bas. O Cormorant ocre cohérent "OCRE", i Caveat noir cohérent
 // "immo". Pas de box-shadow qui assombrirait le ciel blanc.
-function OcreLogo({size = 36}) {
+// M/2026/05/13/37 — Refonte logo Oi (carre 40, degrade 135deg ocre profond -> ocre tabac,
+// "Oi" Cormorant 600/20 #FFF8E8, "i" italic 500).
+function OcreLogo({size = 40}) {
   return (
     <div data-ocre-logo="1"
          role="button"
          aria-label="Ouvrir le sélecteur d'espaces"
          tabIndex={0}
          style={{
-      width: size, height: size, borderRadius: 8,
-      border: '2px solid var(--color-accent)',
-      background: 'linear-gradient(to bottom, #FFFFFF 0%, #F5E8D1 40%, var(--color-accent) 100%)',
+      width: size, height: size, borderRadius: 9,
+      background: 'linear-gradient(135deg, #C7A074 0%, #8B6232 100%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0, gap: Math.max(1, Math.round(size * 0.05)),
+      flexShrink: 0, gap: 1,
       cursor: 'pointer',
     }}>
       <span style={{
         fontFamily: '"Cormorant Garamond", serif',
-        fontWeight: 700,
-        fontSize: Math.round(size * 0.52),
-        color: 'var(--color-accent)',
+        fontWeight: 600,
+        fontSize: 20,
+        color: '#FFF8E8',
         lineHeight: 1,
       }}>O</span>
       <span style={{
-        fontFamily: '"Caveat", cursive',
+        fontFamily: '"Cormorant Garamond", serif',
+        fontStyle: 'italic',
         fontWeight: 500,
-        fontSize: Math.round(size * 0.67),
-        color: '#0D0A08',
+        fontSize: 20,
+        color: '#FFF8E8',
         lineHeight: 1,
-        marginTop: Math.round(size * 0.03),
       }}>i</span>
     </div>
   );
@@ -19192,27 +19193,25 @@ function OcreLogo({size = 36}) {
 // V18.19 — titre bi-typo. "OCRE" Cormorant ocre bold + "immo" Caveat noir manuscrit.
 // M/2026/05/06/84 — TestBadge supprime (mode test/agent supprime, une seule DB par tenant).
 function TestBadge() { return null; }
+// M/2026/05/13/37 — Wordmark OCRE Cormorant 600/19 #6F4E37 + immo Caveat italic 500/18 #6F4E37.
 function OcreTitle() {
   return (
-    <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
-      <div style={{display: 'flex', alignItems: 'baseline', gap: 3, justifyContent: 'center'}}>
-        <span style={{
-          fontFamily: '"Cormorant Garamond", serif',
-          fontWeight: 700,
-          fontSize: 20,
-          letterSpacing: 1.5,
-          color: 'var(--color-accent)',
-        }}>OCRE</span>
-        <span style={{
-          fontFamily: '"Caveat", cursive',
-          fontWeight: 400,
-          fontSize: 23,
-          color: 'var(--color-text-primary)',
-          marginLeft: 2,
-          lineHeight: 1,
-        }}>immo</span>
-      </div>
-      <TestBadge/>
+    <div style={{display:'flex', alignItems:'baseline', gap: 3}}>
+      <span style={{
+        fontFamily: '"Cormorant Garamond", serif',
+        fontWeight: 600,
+        fontSize: 19,
+        color: '#6F4E37',
+        lineHeight: 1,
+      }}>OCRE</span>
+      <span style={{
+        fontFamily: '"Caveat", cursive',
+        fontStyle: 'italic',
+        fontWeight: 500,
+        fontSize: 18,
+        color: '#6F4E37',
+        lineHeight: 1,
+      }}>immo</span>
     </div>
   );
 }
@@ -19336,17 +19335,116 @@ function OcreLogoButton() {
   );
 }
 
-function Header({left, center, right}) {
-  // V20 — wordmark central décoratif (non-interactif). V20Switcher déclenché uniquement
-  // par tap sur l'icône logo "Oi" (OcreLogo) avec data-ocre-logo="1" via délégation
-  // document-level dans v20-bridge.js. L'ancien userMenu (Préférences sync / Mon profil
-  // public / Vue tableau / Déconnexion) est supprimé pour MVP v20.
+// M/2026/05/13/37 — Header unifie Oi Agent : logo + wordmark a gauche, 4 actions
+// circulaires a droite (Calendrier+badge, Cible+badge, Loupe, Hamburger).
+// Le sous-header a 7 icones (cloche/calendrier/upload/download/archive/help/settings)
+// est supprime ; ses actions migrent dans le menu hamburger.
+function HeaderRoundBtn({onClick, title, ariaLabel, badge, children}) {
   return (
-    <div style={{background:'#fff', borderBottom:'1px solid var(--border-subtle)', padding:'6px 16px', position:'sticky', top:0, zIndex:10}}>
-      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--space-10px)', position:'relative'}}>
-        <div style={{flexShrink:0}}>{left}</div>
-        <div style={{textAlign:'center', flex:1, minWidth:0}}>{center}</div>
-        <div style={{flexShrink:0}}>{right}</div>
+    <button type="button" onClick={onClick} title={title} aria-label={ariaLabel || title}
+      style={{position:'relative', width:38, height:38, borderRadius:'50%',
+              border:'1px solid #D9C7A8', background:'#FAF6EE', color:'#6F4E37',
+              display:'inline-flex', alignItems:'center', justifyContent:'center',
+              cursor:'pointer', fontFamily:'inherit', flexShrink:0, padding:0}}>
+      {children}
+      {badge > 0 && (
+        <span style={{position:'absolute', top:-3, right:-3, minWidth:18, height:18,
+                      padding:'0 5px', background:'#C0392B', color:'#fff',
+                      borderRadius:9, fontSize:10.5, fontWeight:700, fontFamily:'inherit',
+                      border:'2px solid #fff',
+                      display:'inline-flex', alignItems:'center', justifyContent:'center', lineHeight:1}}>
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function HeaderHamburgerMenu({onClose, onArchives, onHelp, onPreferences, onExport, onLogout}) {
+  function pick(cb) { return () => { onClose(); if (cb) cb(); }; }
+  const itemStyle = {display:'flex', alignItems:'center', gap:11, width:'100%', padding:'11px 14px',
+                     background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit',
+                     fontSize:14, fontWeight:500, color:'#3D2818', textAlign:'left',
+                     borderRadius:8};
+  const iconProps = {width:17, height:17, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor',
+                     strokeWidth:2, strokeLinecap:'round', strokeLinejoin:'round'};
+  return (
+    <React.Fragment>
+      <div onClick={onClose}
+           style={{position:'fixed', inset:0, background:'transparent', zIndex:50}}/>
+      <div role="menu"
+           style={{position:'absolute', top:'calc(100% + 6px)', right:8, zIndex:51,
+                   minWidth:228, background:'#fff', border:'1px solid rgba(139,98,50,0.18)',
+                   borderRadius:12, boxShadow:'0 12px 28px rgba(61,40,24,0.18)',
+                   padding:6, fontFamily:'inherit',
+                   transformOrigin:'top right',
+                   animation:'ocreMenuSlideDown 0.16s cubic-bezier(.2,.7,.2,1)'}}>
+        <style>{`@keyframes ocreMenuSlideDown { from { opacity:0; transform: translateY(-6px) scale(0.98); } to { opacity:1; transform: translateY(0) scale(1); } }`}</style>
+        <button type="button" onClick={pick(onArchives)} style={itemStyle}>
+          <svg {...iconProps}><rect x="2" y="4" width="20" height="5" rx="2"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>
+          Archives
+        </button>
+        <button type="button" onClick={pick(onHelp)} style={itemStyle}>
+          <svg {...iconProps}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Aide
+        </button>
+        <button type="button" onClick={pick(onPreferences)} style={itemStyle}>
+          <svg {...iconProps}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Réglages
+        </button>
+        <button type="button" onClick={pick(onExport)} style={itemStyle}>
+          <svg {...iconProps}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Exporter
+        </button>
+        <div style={{height:1, background:'rgba(139,98,50,0.15)', margin:'6px 4px'}}/>
+        <button type="button" onClick={pick(onLogout)} style={{...itemStyle, color:'#C0392B'}}>
+          <svg {...iconProps}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Déconnexion
+        </button>
+      </div>
+    </React.Fragment>
+  );
+}
+
+function Header({
+  todayCount = 0, matchesCount = 0,
+  onOpenCalendrier, onOpenMatches,
+  toggleSearch,
+  onOpenArchives, onOpenHelp, onOpenPreferences, onOpenExport,
+  logout,
+}) {
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  return (
+    <div style={{background:'#fff', borderBottom:'1px solid var(--border-subtle)',
+                 padding:'10px 14px', position:'sticky', top:0, zIndex:10}}>
+      <div style={{display:'flex', alignItems:'center', gap:10, position:'relative'}}>
+        <OcreLogo size={40}/>
+        <div style={{flex:1, minWidth:0}}>
+          <OcreTitle/>
+        </div>
+        <div data-header-actions="1" style={{display:'flex', alignItems:'center', gap:8, flexShrink:0, position:'relative'}}>
+          <HeaderRoundBtn onClick={onOpenCalendrier} title="Calendrier" badge={todayCount}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </HeaderRoundBtn>
+          <HeaderRoundBtn onClick={onOpenMatches} title="Matchs IA détectés" badge={matchesCount}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
+          </HeaderRoundBtn>
+          <HeaderRoundBtn onClick={toggleSearch} title="Rechercher un dossier">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </HeaderRoundBtn>
+          <HeaderRoundBtn onClick={() => setMenuOpen(v => !v)} title="Menu" ariaLabel="Ouvrir le menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </HeaderRoundBtn>
+          {menuOpen && (
+            <HeaderHamburgerMenu
+              onClose={() => setMenuOpen(false)}
+              onArchives={onOpenArchives}
+              onHelp={onOpenHelp}
+              onPreferences={onOpenPreferences}
+              onExport={onOpenExport}
+              onLogout={logout}/>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -19745,53 +19843,21 @@ function ListView(props) {
           L1 logo + 2 icones primaires (cible badge + recherche) 36px
           Separateur 1px var(--color-border-light)
           L2 sous-barre scrollable horizontale 7 icones 32px (notifs, calendrier, share, export, archives, aide, settings + super-admin si applicable). */}
+      {/* M/2026/05/13/37 — Header unifie : actions migrees du sous-header supprime
+          (cloche/partage/super-admin sortis ; calendrier/cible/loupe en boutons
+          directs ; archives/aide/reglages/exporter/deconnexion dans hamburger). */}
       <Header
-        left={<OcreLogo size={36}/>}
-        center={<OcreTitle/>}
-        right={
-          <div data-header-actions="1" style={{display:'flex', alignItems:'center', gap:'var(--space-2)'}}>
-            <TargetWithBadge title="Matchs détectés" count={matchesById ? Object.keys(matchesById).length : 0} onClick={() => props.openMatches && props.openMatches()}/>
-            <PillIconButton icon={
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-            } title={showSearch ? 'Fermer la recherche' : 'Rechercher un dossier'}
-              active={showSearch || !!listSearch}
-              onClick={toggleSearch}/>
-          </div>
-        }
-        userMenu={userMenu} setUserMenu={setUserMenu} currentUser={currentUser} logout={logout} openPrefs={openPrefs} openAgentProfile={openAgentProfile} openSheet={props.openSheet}
+        todayCount={(typeof window !== 'undefined' && window.__ocreTodayCount) || 0}
+        matchesCount={matchesById ? Object.keys(matchesById).length : 0}
+        onOpenCalendrier={() => props.openCalendrier && props.openCalendrier()}
+        onOpenMatches={() => props.openMatches && props.openMatches()}
+        toggleSearch={toggleSearch}
+        onOpenArchives={() => setShowArchives(true)}
+        onOpenHelp={() => props.openHelp && props.openHelp()}
+        onOpenPreferences={() => props.openPreferences && props.openPreferences()}
+        onOpenExport={() => props.openExport && props.openExport()}
+        logout={logout}
       />
-      <div data-header-subbar="1" className="ocre-header-subbar"
-        style={{position:'sticky', top:'auto', zIndex:9, background:'#fff',
-                borderTop:'1px solid var(--color-border-light)', borderBottom:'1px solid var(--border-subtle)',
-                padding:'6px 12px', display:'flex', alignItems:'center', gap:'var(--space-2)',
-                overflowX:'auto', WebkitOverflowScrolling:'touch'}}>
-        <NotifBellWithBadge onClick={() => props.openNotifs && props.openNotifs()}/>
-        <PillIconButton title="Calendrier" onClick={() => props.openCalendrier && props.openCalendrier()}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}/>
-        <PillIconButton icon={<ShareIcon size={16}/>} title="Partager mes dossiers"
-          onClick={() => props.openSharePlaceholder && props.openSharePlaceholder()}/>
-        <PillIconButton title="Exporter mes données" onClick={() => props.openExport && props.openExport()}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}/>
-        <PillIconButton icon={
-          showArchives ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="20" y1="12" x2="4" y2="12"/><polyline points="10 18 4 12 10 6"/>
-            </svg>
-          ) : <ArchiveIcon size={16} color="currentColor"/>
-        } title={showArchives ? 'Retour aux contacts' : 'Voir les archives'}
-          active={showArchives}
-          onClick={() => setShowArchives(!showArchives)}/>
-        <PillIconButton title="Aide & FAQ" onClick={() => props.openHelp && props.openHelp()}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>}/>
-        <PillIconButton title="Réglages" onClick={() => props.openPreferences && props.openPreferences()}
-          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>}/>
-        {currentUser && currentUser.role === 'super_admin' && (
-          <PillIconButton title="Super-admin" onClick={() => props.openSuperAdmin && props.openSuperAdmin()}
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>}/>
-        )}
-      </div>
 
       {/* V18.19 — SearchBar factorisée (partagée main/archives/downloads). */}
       <SearchBar open={showSearch} value={searchInput} onChange={setSearchInput}
@@ -19928,7 +19994,7 @@ function ListView(props) {
         if (_flagM32) {
           return (
             <OcreBottomBar buttons={[
-              { key:'down', icon: BB_ICONS.DOWNLOAD, label:'Telech.' + (stagedCount > 0 ? ' (' + stagedCount + ')' : ''), onClick: () => props.openDownloads && props.openDownloads(), title:'Telechargements' },
+              { key:'import', icon: BB_ICONS.IMPORT, label:'Importer' + (stagedCount > 0 ? ' (' + stagedCount + ')' : ''), onClick: () => props.openDownloads && props.openDownloads(), title:'Importer un fichier' },
               { key:'audio', icon: BB_ICONS.MIC, label:'Audio', onClick: () => props.openDictation && props.openDictation(), title:'Dicter un dossier' },
               { key:'grid', icon: BB_ICONS.GRID, label:'Tableau', onClick: () => props.openSheet && props.openSheet(), separatorAfter: true, title:'Vue tableau' },
               { key:'new', icon: BB_ICONS.PLUS, label:'Nouveau', onClick: openNew, accent:'gold', title:'Saisir un dossier' },
@@ -22458,6 +22524,8 @@ const BB_ICONS = {
   ARCHIVE: '<rect x="2" y="4" width="20" height="5" rx="2"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
   TRASH: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
   DOWNLOAD: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+  // M/2026/05/13/37 — Importer : document avec fleche descendante (file-down lucide). Apporter depuis l'exterieur.
+  IMPORT: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/>',
   MIC: '<rect x="9" y="2" width="6" height="13" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>',
   GRID: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>',
   PLUS: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
