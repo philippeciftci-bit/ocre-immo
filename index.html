@@ -23267,7 +23267,10 @@ function FormView(props) {
     markUserAction();
     const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
     setD(next);
-    const _hasRealId = !!(editingIdRef.current && !String(editingIdRef.current).startsWith('tmp-'));
+    // M/2026/05/13/71 — editingIdRef est defini dans App scope, pas accessible ici en
+    // closure stricte. Fallback sur editing.id (passe en prop). Sans ce fix, ReferenceError
+    // "editingIdRef is not defined" jete dans commit() au tap bouton -> bloque archivage swipe.
+    const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
     if (!_hasRealId && allFieldsEmpty(next)) return; // M104 — bouton ✅ no-op sur dossier vide
     handleSaveLocal(next);
   }
@@ -23381,7 +23384,9 @@ function FormView(props) {
   useEffect(() => {
     return () => {
       try {
-        const did = editingIdRef.current;
+        // M/2026/05/13/71 — fallback editing.id au lieu de editingIdRef.current
+        // (variable App scope inaccessible dans FormView closure).
+        const did = editing && editing.id;
         if (!did || String(did).startsWith('tmp-')) return;
         const data = latestRef.current || {};
         if (!allFieldsEmpty(data)) return;
