@@ -500,11 +500,15 @@ header('Content-Type: text/html; charset=utf-8');
     .page { box-shadow: none; margin: 0; }
   }
 
-  /* Ribbon header commun */
-  .ribbon { padding: 11px 0 8px; border-bottom: .5px solid var(--gold-deep); text-align: center; flex: none; }
+  /* Ribbon header commun. M/2026/05/13/38 : badge Oi (logo branding) en tete. */
+  .ribbon { padding: 11px 0 8px; border-bottom: .5px solid var(--gold-deep); flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+  .ribbon .brand-row { display: flex; align-items: center; justify-content: center; gap: 9px; }
+  .ribbon .oi-badge { width: 22px; height: 22px; border-radius: 5px; background: linear-gradient(135deg, #C7A074 0%, #8B6232 100%); display: inline-flex; align-items: center; justify-content: center; gap: 1px; font-family: 'Cormorant Garamond', Georgia, serif; line-height: 1; flex-shrink: 0; }
+  .ribbon .oi-badge .o { font-weight: 600; font-size: 11.5px; color: #FFF8E8; }
+  .ribbon .oi-badge .i { font-style: italic; font-weight: 500; font-size: 11.5px; color: #FFF8E8; }
   .ribbon .b { font-style: italic; font-size: 14.5px; letter-spacing: 5px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; }
-  .ribbon .small { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold-deep); margin-top: 3px; font-weight: 500; }
-  .ribbon .ref { font-style: italic; font-size: 9.5px; letter-spacing: 1.5px; color: var(--gold-deep); margin-top: 3px; }
+  .ribbon .small { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; }
+  .ribbon .ref { font-style: italic; font-size: 9.5px; letter-spacing: 1.5px; color: var(--gold-deep); }
 
   /* Photos style commun */
   .ph {
@@ -635,7 +639,7 @@ header('Content-Type: text/html; charset=utf-8');
   <!-- ====================== PAGE 1 — Belles Demeures Variante A ====================== -->
   <section class="page" data-page="1"<?= _pdfPageDisabledAttr($_pdfPagesState, 'p1', $_isPdfPreview) ?>>
     <header class="ribbon">
-      <div class="b">OCRE Immo</div>
+      <div class="brand-row"><span class="oi-badge"><span class="o">O</span><span class="i">i</span></span><div class="b">OCRE Immo</div></div>
       <div class="small">Marrakech &middot; Gueliz</div>
       <div class="ref">Réf. <?= h($ref) ?> &middot; Page de présentation</div>
     </header>
@@ -734,7 +738,7 @@ header('Content-Type: text/html; charset=utf-8');
   <!-- ====================== PAGE 2 — Caractéristiques détaillées ====================== -->
   <section class="page" data-page="2"<?= _pdfPageDisabledAttr($_pdfPagesState, 'p2', $_isPdfPreview) ?>>
     <header class="ribbon">
-      <div class="b">OCRE Immo</div>
+      <div class="brand-row"><span class="oi-badge"><span class="o">O</span><span class="i">i</span></span><div class="b">OCRE Immo</div></div>
       <div class="small">Marrakech &middot; Gueliz</div>
       <div class="ref">Réf. <?= h($ref) ?> &middot; Page de détails</div>
     </header>
@@ -840,7 +844,7 @@ header('Content-Type: text/html; charset=utf-8');
   <!-- ====================== PAGE 3 — Album photo (15 photos · 5 rangees · M/60) ====================== -->
   <section class="page" data-page="3"<?= _pdfPageDisabledAttr($_pdfPagesState, 'p3', $_isPdfPreview) ?>>
     <header class="ribbon">
-      <div class="b">OCRE Immo</div>
+      <div class="brand-row"><span class="oi-badge"><span class="o">O</span><span class="i">i</span></span><div class="b">OCRE Immo</div></div>
       <div class="small">Marrakech &middot; Gueliz</div>
       <div class="ref">Réf. <?= h($ref) ?> &middot; Page des photos</div>
     </header>

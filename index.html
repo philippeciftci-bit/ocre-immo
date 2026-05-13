@@ -19158,12 +19158,21 @@ function PrefsView({currentUser, onBack, showToast, toast}) {
 // "immo". Pas de box-shadow qui assombrirait le ciel blanc.
 // M/2026/05/13/37 — Refonte logo Oi (carre 40, degrade 135deg ocre profond -> ocre tabac,
 // "Oi" Cormorant 600/20 #FFF8E8, "i" italic 500).
+// M/2026/05/13/38 — Tap = retour home systematique. La popup "Espaces de travail"
+// (v20-bridge.js openSwitcher) est supprimee : redondante avec le menu hamburger.
 function OcreLogo({size = 40}) {
+  const goHome = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    try { window.location.href = '/'; } catch (_) {}
+  };
   return (
     <div data-ocre-logo="1"
          role="button"
-         aria-label="Ouvrir le sélecteur d'espaces"
+         aria-label="Retour à l'accueil"
          tabIndex={0}
+         onClick={goHome}
+         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') goHome(e); }}
          style={{
       width: size, height: size, borderRadius: 9,
       background: 'linear-gradient(135deg, #C7A074 0%, #8B6232 100%)',

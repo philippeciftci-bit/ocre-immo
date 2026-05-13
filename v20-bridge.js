@@ -150,66 +150,9 @@
     });
   }
 
-  // === Switcher overlay (tap logo) ===
-  // M/2026/05/06/84 — refonte simplifie : un seul mode par tenant (suppression
-  // mode test). Switcher liste WS perso + WSc partages, plus de WS test rouge.
-  function openSwitcher() {
-    const wsp = state.workspaces.filter(w => w.type === 'wsp');
-    const wsc = state.workspaces.filter(w => w.type === 'wsc' && w.pact_active);
-    const cur = state.ctx ? state.ctx.workspace.slug : '';
-    const u = state.ctx && state.ctx.user ? state.ctx.user : {};
-    let userFirstname = u.firstname || u.first_name || u.prenom || '';
-    if (!userFirstname && u.display_name) userFirstname = String(u.display_name).split(' ')[0];
-    if (!userFirstname && u.email) userFirstname = String(u.email).split('@')[0];
-    if (!userFirstname) userFirstname = '';
-
-    const goto = (slug) => {
-      location.href = `https://${slug}.ocre.immo/`;
-    };
-
-    const sep = () => el('div', { style: 'border-top:1px solid #E5DCC4;margin:14px 0' });
-    const children = [];
-    wsp.forEach(w => {
-      const active = (w.slug === cur);
-      let labelNode;
-      if (userFirstname) {
-        labelNode = el('strong', {}, 'WS ' + userFirstname);
-      } else {
-        labelNode = el('strong', { style: 'font-style:italic;color:#8B7F6E' }, 'Mon espace');
-      }
-      children.push(
-        el('div', {
-          class: 'v20-row v20-ws-row' + (active ? ' active' : ''),
-          onclick: () => goto(w.slug),
-        }, labelNode)
-      );
-    });
-    if (wsc.length) {
-      children.push(sep());
-      wsc.forEach(w => {
-        const others = (w.other_members || [])
-          .map(m => (typeof m === 'string' ? m : (m && (m.firstname || m.display_name || m.email))))
-          .filter(Boolean)
-          .map(s => String(s).split(' ')[0])
-          .sort((a, b) => a.localeCompare(b, 'fr'));
-        const label = others.length ? ('WS ' + others.join(', ')) : 'WS partage';
-        const active = (w.slug === cur);
-        children.push(
-          el('div', {
-            class: 'v20-row v20-ws-row' + (active ? ' active' : ''),
-            onclick: () => goto(w.slug),
-          }, el('strong', {}, label))
-        );
-      });
-    }
-    children.push(
-      el('div', { style: 'margin-top:18px;padding-top:14px;border-top:1px solid #E5DDC8' },
-        el('button', { class: 'v20-cta-secondary', onclick: logout }, 'Se déconnecter'))
-    );
-
-    const body = el('div', {}, ...children);
-    overlay('Espaces de travail', null, body);
-  }
+  // M/2026/05/13/38 — Switcher overlay supprime (popup "Espaces de travail / Mon
+  // espace / Se deconnecter"). Tap Oi gere par React onClick dans OcreLogo
+  // (window.location.href='/'). Deconnexion deplacee dans le menu hamburger header.
 
   function logout() {
     apiFetch('/api/auth_v20.php?action=logout', { method: 'POST' }).then(() => {
@@ -588,19 +531,11 @@
 
   }
 
-  // Délégation event document-level : robuste face au remount React.
-  document.addEventListener('click', (e) => {
-    const target = e.target.closest('[data-ocre-logo], .topbar-title, .site-logo');
-    if (target && state.ctx) {
-      e.preventDefault();
-      e.stopPropagation();
-      openSwitcher();
-    }
-  }, true);
+  // M/2026/05/13/38 — Delegation click sur logo supprimee. Tap = onClick React direct
+  // dans OcreLogo (window.location.href='/'). Plus de popup espaces.
 
   window.OcreV20 = {
     refresh,
-    openSwitcher,
     openCreatePartnership,
     openShareDossier,
     openRequestRupture,
@@ -610,8 +545,6 @@
     openSharePartnersSheet,
     state,
   };
-  // Alias debug : Philippe peut appeler openV20Switcher() depuis console Safari.
-  window.openV20Switcher = openSwitcher;
 
   // Heartbeat presence si on est sur un dossier
   setInterval(() => {
