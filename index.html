@@ -19341,12 +19341,19 @@ function Header({left, center, right}) {
   // par tap sur l'icône logo "Oi" (OcreLogo) avec data-ocre-logo="1" via délégation
   // document-level dans v20-bridge.js. L'ancien userMenu (Préférences sync / Mon profil
   // public / Vue tableau / Déconnexion) est supprimé pour MVP v20.
+  // M/2026/05/13/26 — Bouton "Tous mes outils" -> launcher app.ocre.immo (meme onglet).
   return (
     <div style={{background:'#fff', borderBottom:'1px solid var(--border-subtle)', padding:'6px 16px', position:'sticky', top:0, zIndex:10}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--space-10px)', position:'relative'}}>
         <div style={{flexShrink:0}}>{left}</div>
         <div style={{textAlign:'center', flex:1, minWidth:0}}>{center}</div>
-        <div style={{flexShrink:0}}>{right}</div>
+        <div style={{flexShrink:0, display:'flex', gap:8, alignItems:'center'}}>
+          <a href="https://app.ocre.immo/" data-ocre-launcher="1" aria-label="Tous mes outils" title="Tous mes outils Ocre" style={{display:'inline-flex', alignItems:'center', gap:5, padding:'5px 10px', border:'1px solid var(--border-subtle)', borderRadius:14, fontSize:11.5, fontWeight:600, color:'#8B5E3C', background:'#fff', textDecoration:'none', fontFamily:'inherit', lineHeight:1}}>
+            <span aria-hidden style={{fontSize:13, lineHeight:1}}>⊞</span>
+            <span style={{whiteSpace:'nowrap'}}>Outils</span>
+          </a>
+          {right}
+        </div>
       </div>
     </div>
   );

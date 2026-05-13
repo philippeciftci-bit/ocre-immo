@@ -56,3 +56,29 @@ function sso_get_cookie(): ?array {
     if (!$raw) return null;
     return sso_cookie_decode($raw);
 }
+
+// M/2026/05/13/26 — Helper greffe activation : INSERT sso_sessions + lazy populate
+// user_tenants + setcookie HMAC en un appel. PDO ocre_meta fourni par l'appelant.
+function sso_emit_cookie(PDO $meta, int $userId, string $email, string $userSlug, string $ip = '', string $ua = '', int $ttlSec = 7 * 86400): string {
+    $sessionToken = bin2hex(random_bytes(32));
+    $meta->prepare(
+        "INSERT INTO sso_sessions (session_token, user_id, ip_address, user_agent, expires_at, last_seen_at)
+         VALUES (?,?,?,?, DATE_ADD(NOW(), INTERVAL 7 DAY), NOW())"
+    )->execute([$sessionToken, $userId, $ip, substr($ua, 0, 500)]);
+    if ($userSlug !== '' && preg_match('/^[a-z0-9-]+$/', $userSlug)) {
+        $meta->prepare("INSERT IGNORE INTO user_tenants (user_id, tenant_slug, role) VALUES (?,?,?)")
+            ->execute([$userId, $userSlug, 'owner']);
+    }
+    $tSt = $meta->prepare("SELECT tenant_slug FROM user_tenants WHERE user_id = ? ORDER BY tenant_slug");
+    $tSt->execute([$userId]);
+    $tenants = array_column($tSt->fetchAll(PDO::FETCH_ASSOC), 'tenant_slug');
+    sso_set_cookie([
+        'session_token' => $sessionToken,
+        'user_id' => $userId,
+        'email' => $email,
+        'tenants' => $tenants,
+        'current_tenant' => $tenants[0] ?? ($userSlug !== '' ? $userSlug : null),
+        'iat' => time(),
+    ], $ttlSec);
+    return $sessionToken;
+}

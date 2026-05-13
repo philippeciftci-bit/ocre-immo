@@ -123,6 +123,23 @@ try {
     exit;
 }
 
+// M/2026/05/13/26 — Greffe SSO M118 : pose AUSSI cookie ocre_sso Domain=.ocre.immo
+// (un seul appel sso_emit_cookie). En plus, sans toucher au flow ci-dessus.
+// Silencieux : si la greffe SSO echoue, l'activation reste valide (session locale OK).
+try {
+    require_once __DIR__ . '/sso/sso_lib.php';
+    sso_emit_cookie(
+        $pdo,
+        (int)$user['id'],
+        (string)$user['email'],
+        (string)($user['slug'] ?? ''),
+        $_SERVER['REMOTE_ADDR'] ?? '',
+        $_SERVER['HTTP_USER_AGENT'] ?? ''
+    );
+} catch (Throwable $e) {
+    @error_log('[agents_set_password] sso_emit_failed user_id=' . $user['id'] . ' err=' . $e->getMessage());
+}
+
 // M/2026/05/08/56 — redirect vers subdomain tenant <slug>.ocre.immo (DNS wildcard *.ocre.immo).
 // Sur app.ocre.immo nginx route fallback "ozkan" → DB ocre_wsp_ozkan inexistante → 503 boucle SPA.
 // Le subdomain résout le slug correctement → nginx route vers ocre_wsp_<slug> → DB tenant trouvée.
