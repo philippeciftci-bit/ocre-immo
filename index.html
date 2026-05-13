@@ -8581,73 +8581,10 @@ function RatePopup2Col({onClose, forceUpdate}) {
   );
 }
 
-// M/2026/05/13/10 — CustomExchangeRateField : input taux perso fiche utilisateur (DualCurrencyPair Variant B).
-// PUT vers clients.php?action=set_custom_rate (validation 0.01-1000 backend + null = utilise taux global).
-function CustomExchangeRateField({d, set, dossierId, showToast}) {
-  const initial = (d && d.custom_exchange_rate > 0) ? String(d.custom_exchange_rate) : '';
-  const [val, setVal] = React.useState(initial);
-  const [busy, setBusy] = React.useState(false);
-  const [savedTick, setSavedTick] = React.useState(0);
-  const _globalRate = (typeof window !== 'undefined' && typeof window.__ocreGlobalRate === 'number') ? window.__ocreGlobalRate : 10.84;
-  React.useEffect(() => { setVal((d && d.custom_exchange_rate > 0) ? String(d.custom_exchange_rate) : ''); }, [d && d.custom_exchange_rate]);
-  async function save(newRaw) {
-    if (!dossierId) { showToast && showToast('Enregistre d abord quelques champs'); return; }
-    const trimmed = (newRaw || '').toString().trim().replace(',', '.');
-    let rate = null;
-    if (trimmed !== '') {
-      const f = parseFloat(trimmed);
-      if (!isFinite(f) || f < 0.01 || f > 1000) { showToast && showToast('Taux invalide (0.01 a 1000)'); return; }
-      rate = f;
-    }
-    setBusy(true);
-    try {
-      const tk = localStorage.getItem('ocre_token') || '';
-      const r = await fetch('/api/clients.php?action=set_custom_rate', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json', 'X-Session-Token': tk},
-        body: JSON.stringify({id: dossierId, custom_exchange_rate: rate}),
-      }).then(r => r.json());
-      if (r && r.ok) {
-        set('custom_exchange_rate', rate, {commit: true});
-        setSavedTick(t => t + 1);
-        showToast && showToast(rate === null ? 'Taux perso retire' : 'Taux perso applique');
-      } else {
-        showToast && showToast((r && r.error) || 'Echec');
-      }
-    } catch (e) { showToast && showToast('Erreur reseau'); }
-    setBusy(false);
-  }
-  const isActive = d && d.custom_exchange_rate > 0;
-  return (
-    <div style={{marginBottom:'var(--space-2)', padding:'10px 12px', background: isActive ? '#FFF6EE' : '#FAF6F0', border:'1px solid '+(isActive ? 'var(--color-accent)' : '#E5DCC9'), borderRadius:8}}>
-      <div style={{display:'flex', alignItems:'center', gap:'var(--space-6px)', flexWrap:'wrap'}}>
-        <div style={{flex:'1 1 200px', minWidth:0}}>
-          <div style={{fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-1)'}}>
-            Taux de change personnalisé {isActive && <span style={{marginLeft:6, fontSize:'var(--font-size-9)', background:'var(--color-accent)', color:'#fff', padding:'1px 6px', borderRadius:10, fontWeight:700}}>ACTIF</span>}
-          </div>
-          <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-taupe)', lineHeight:1.4}}>
-            {isActive ? `Ce taux remplace le global (${_globalRate.toFixed(2)}) sur ce dossier.` : `Laisse vide pour utiliser le taux global (${_globalRate.toFixed(2)}).`}
-          </div>
-        </div>
-        <div style={{display:'flex', alignItems:'center', gap:'var(--space-2px)'}}>
-          <input
-            type="text" inputMode="decimal"
-            value={val}
-            onChange={e => setVal(e.target.value)}
-            onBlur={() => { if (val !== initial) save(val); }}
-            placeholder={_globalRate.toFixed(2)}
-            disabled={busy}
-            style={{width:90, padding:'8px 10px', border:'1px solid var(--color-border-strong)', borderRadius:6, fontFamily:'inherit', fontSize:'var(--font-size-sm)', textAlign:'right', fontVariantNumeric:'tabular-nums'}}/>
-          {isActive && (
-            <button type="button" disabled={busy} onClick={() => { setVal(''); save(''); }}
-              title="Retirer le taux perso"
-              style={{padding:'7px 10px', background:'transparent', color:'var(--color-error)', border:'1px solid var(--color-error)', borderRadius:6, fontSize:11, fontWeight:600, cursor: busy ? 'wait' : 'pointer', fontFamily:'inherit'}}>×</button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+// M/2026/05/13/41 — Champ CustomExchangeRateField supprime franche (UI input taux perso
+// dans III. Budget retiree par decision Philippe 13/05 14:55). Snapshot taux gere via
+// popup compacte sur badge AUTO/MANUEL (RatePopup2Col M/13/40).
+// La colonne DB custom_exchange_rate reste pour retro-compat des fiches existantes.
 
 // PriceField2Col — fidélité PIXEL PRÈS à maquette M74 V3 (validée Philippe).
 // V3 : centre = 3 niveaux verticaux ("10,84" 12px / ✏️ 8px / "AUTO" 7.5px), gap 4px inter-blocs via
@@ -8661,6 +8598,8 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
   const [pickerSide, setPickerSide] = React.useState(null);
   const [rateEditing, setRateEditing] = React.useState(false);
   const [rateDraft, setRateDraft] = React.useState('');
+  // M/2026/05/13/41 — Popup taux unifie (Rafraichir / Saisir manuellement / Revenir auto).
+  const [ratePopOpen, setRatePopOpen] = React.useState(false);
   const rateInputRef = React.useRef(null);
   React.useEffect(() => {
     function onDocClick() { setPickerSide(null); }
@@ -8802,11 +8741,14 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
         {/* MILIEU V3 : 3 lignes empilées (num / pencil / badge), gap 0, margin 0 4px */}
         <button type="button" onClick={(e) => {
             e.stopPropagation();
-            if (e.target.dataset && e.target.dataset.badge === 'manual') return;
-            if (!rateEditing) { setRateDraft(Number(rate).toFixed(rate < 10 ? 4 : 2)); setRateEditing(true); }
+            // M/2026/05/13/41 — Tap bouton "X.XX AUTO/MANUEL" -> ouvre popup compacte
+            // (Rafraichir / Saisir manuellement). Garde edition inline via long press
+            // sur le chiffre uniquement (badge / pencil ouvrent la popup).
+            if (rateEditing) return;
+            setRatePopOpen(true);
           }}
           style={_rateBtn}
-          title={isManual ? 'Cliquer sur MANUEL pour revenir au taux automatique' : 'Cliquer pour modifier le taux'}
+          title="Taux de change : Frankfurter auto ou saisie manuelle"
           aria-label="Taux de change">
           {rateEditing ? (
             <input ref={rateInputRef} type="text" inputMode="decimal" value={rateDraft}
@@ -8822,11 +8764,12 @@ function PriceField2Col({label, valueKey, set, d, hint, warn, forceUpdate}) {
               {_isCustomRate
                 ? <span data-badge="perso" style={_rateBadge}>PERSO</span>
                 : (isManual
-                  ? <span data-badge="manual" onClick={restoreAuto} style={_rateBadge}>MANUEL</span>
+                  ? <span data-badge="manual" style={_rateBadge}>MANUEL</span>
                   : <span style={_rateBadge}>AUTO</span>)}
             </>
           )}
         </button>
+        {ratePopOpen && <RatePopup2Col onClose={() => setRatePopOpen(false)} forceUpdate={forceUpdate}/>}
         {/* DROITE : [devise V_A2][input] */}
         <div style={_sideRight}>
           <button type="button" onClick={(e) => { e.stopPropagation(); setPickerSide(pickerSide === 'right' ? null : 'right'); }} style={_curBtn} title={CURRENCY_NAMES_V5[cur.right] || cur.right} aria-label={'Devise droite : ' + cur.right}>
@@ -9494,8 +9437,8 @@ function SectionFinanciereV55({activeProfil, isInvestisseur, profilType, d, set,
               hint={_isTN ? 'TN : étrangers libres en zone touristique, autorisation gouverneur ailleurs' : 'DZ : restrictions importantes pour non-résidents'}/>
           </V55Bloc>
         )}
-        {/* M/2026/05/13/10 — Finition Variant B : champ taux perso fiche utilisateur. */}
-        <CustomExchangeRateField d={d} set={set} dossierId={d.id} showToast={showToast}/>
+        {/* M/2026/05/13/10 + M/2026/05/13/41 — Champ taux perso retire : derive UI annulee.
+            Le taux est gere via popup compacte sur le badge AUTO/MANUEL du bouton de change. */}
         <V55Bloc title="Prix" theme="prix">
           <PriceField2Col label="Budget min" valueKey="budget_min" set={set} d={d} forceUpdate={forceUpdate}/>
           <PriceField2Col label="Budget max" valueKey="budget_max" set={set} d={d} hint={_warnMax ? '⚠ Budget max < Budget min' : (
