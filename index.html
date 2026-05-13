@@ -77,6 +77,180 @@
 })();
 </script>
 <script>
+// M/2026/05/14/1 — apiCall wrapper + monkey-patch fetch pour erreurs visibles.
+// Volet 2 stabilisation: tout fetch vers /api/* est intercepte.
+//   2xx              -> normal
+//   401/403          -> redirect /?session-expired
+//   4xx              -> toast "Action refusee" + throw
+//   5xx              -> toast critique rouge + POST /api/log_client_error.php + throw
+//   timeout/network  -> toast "Connexion perdue" + retry x2 exponential backoff
+// Approche: monkey-patch window.fetch (transparent pour tous les call sites
+// existants, 25k lignes index.html, zero regression). window.apiCall expose
+// aussi pour nouveau code explicite.
+(function() {
+  if (window.__ocreApiCallInstalled) return;
+  window.__ocreApiCallInstalled = true;
+  var originalFetch = window.fetch.bind(window);
+
+  function showToast(level, msg) {
+    try {
+      if (typeof window.__ocreToast === 'function') return window.__ocreToast(level, msg);
+    } catch (e) {}
+    // Fallback minimal : div fixed bottom red/orange/green selon level.
+    try {
+      var bg = level === 'critical' ? '#B00020' : level === 'warning' ? '#A95B1C' : '#2A1810';
+      var d = document.createElement('div');
+      d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:' + bg + ';color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-family:system-ui,sans-serif;max-width:90vw;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.25)';
+      d.textContent = msg;
+      document.body && document.body.appendChild(d);
+      setTimeout(function() { try { d.remove(); } catch (e) {} }, 5000);
+    } catch (e) {}
+  }
+
+  function getWspSlug() {
+    try {
+      var m = location.hostname.match(/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/);
+      return m ? m[1] : '';
+    } catch (e) { return ''; }
+  }
+
+  function getCurrentUserId() {
+    try {
+      var s = localStorage.getItem('ocre_user_id');
+      return s ? parseInt(s, 10) : 0;
+    } catch (e) { return 0; }
+  }
+
+  function logServerError(url, status, bodySnippet) {
+    try {
+      originalFetch('/api/log_client_error.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          url: String(url).slice(0, 500),
+          status: status,
+          body_snippet: String(bodySnippet || '').slice(0, 500),
+          user_id: getCurrentUserId(),
+          wsp_slug: getWspSlug(),
+          ua: navigator.userAgent.slice(0, 250),
+          ts: new Date().toISOString()
+        })
+      }).catch(function() {});
+    } catch (e) {}
+  }
+
+  function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
+
+  async function doFetchWithRetry(url, opts) {
+    var attempt = 0;
+    var lastErr = null;
+    while (attempt < 3) {
+      try {
+        var resp = await originalFetch(url, opts);
+        return resp;
+      } catch (e) {
+        lastErr = e;
+        attempt++;
+        if (attempt < 3) {
+          await sleep(300 * Math.pow(2, attempt - 1)); // 300ms, 600ms
+        }
+      }
+    }
+    throw lastErr;
+  }
+
+  // apiCall - haut niveau, retourne le body JSON (ou texte) directement.
+  window.apiCall = async function(url, opts) {
+    opts = opts || {};
+    if (!opts.credentials) opts.credentials = 'same-origin';
+    try {
+      var resp = await doFetchWithRetry(url, opts);
+      var ct = resp.headers.get('content-type') || '';
+      var bodyText = '';
+      try { bodyText = await resp.clone().text(); } catch (e) {}
+      if (resp.status >= 200 && resp.status < 300) {
+        return ct.indexOf('application/json') >= 0 && bodyText ? JSON.parse(bodyText) : bodyText;
+      }
+      if (resp.status === 401 || resp.status === 403) {
+        window.location.href = '/?session-expired';
+        throw new Error('session expired');
+      }
+      if (resp.status >= 400 && resp.status < 500) {
+        var msg = 'requete invalide';
+        try { var j = JSON.parse(bodyText); msg = j.message || j.error || msg; } catch (e) {}
+        showToast('warning', 'Action refusee : ' + msg);
+        throw new Error('http ' + resp.status);
+      }
+      if (resp.status >= 500) {
+        showToast('critical', 'Erreur serveur. L equipe est notifiee.');
+        logServerError(url, resp.status, bodyText);
+        throw new Error('http ' + resp.status);
+      }
+      return bodyText;
+    } catch (e) {
+      if (e && e.message && (e.message.indexOf('http ') === 0 || e.message === 'session expired')) {
+        throw e;
+      }
+      showToast('warning', 'Connexion perdue. Reessayer.');
+      throw e;
+    }
+  };
+
+  // Monkey-patch fetch : applique le traitement d erreur uniquement pour /api/*
+  // sans modifier le contrat (retourne toujours un Response).
+  window.fetch = function(url, opts) {
+    var urlStr = (typeof url === 'string') ? url : (url && url.url) || '';
+    var isApi = urlStr.indexOf('/api/') >= 0 || urlStr.indexOf('/api?') >= 0 || /^https?:\/\/[^/]+\/api\//.test(urlStr);
+    // Skip pour log_client_error pour eviter boucle infinie.
+    if (urlStr.indexOf('/api/log_client_error.php') >= 0 || urlStr.indexOf('/api/version.php') >= 0) {
+      return originalFetch(url, opts);
+    }
+    if (!isApi) return originalFetch(url, opts);
+
+    return doFetchWithRetry(url, opts).then(function(resp) {
+      if (resp.status === 401 || resp.status === 403) {
+        // Laisse le code appelant gerer (certains testent deja status === 401).
+        return resp;
+      }
+      if (resp.status >= 500) {
+        showToast('critical', 'Erreur serveur. L equipe est notifiee.');
+        // Clone pour ne pas consommer le body original.
+        resp.clone().text().then(function(t) {
+          logServerError(urlStr, resp.status, t);
+        }).catch(function() {});
+      }
+      return resp;
+    }).catch(function(e) {
+      showToast('warning', 'Connexion perdue. Reessayer.');
+      throw e;
+    });
+  };
+
+  // Hooks erreurs JS globales.
+  window.addEventListener('unhandledrejection', function(e) {
+    var msg = e && e.reason && (e.reason.message || String(e.reason)) || 'erreur JS';
+    if (msg.indexOf('http ') === 0 || msg === 'session expired') return; // deja gere
+    try {
+      originalFetch('/api/log_client_error.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          url: 'unhandledrejection',
+          status: 0,
+          body_snippet: msg.slice(0, 500),
+          user_id: getCurrentUserId(),
+          wsp_slug: getWspSlug(),
+          ua: navigator.userAgent.slice(0, 250),
+          ts: new Date().toISOString()
+        })
+      }).catch(function() {});
+    } catch (e2) {}
+  });
+})();
+</script>
+<script>
 // M/2026/05/12/21 — Boot-time fetch design tokens (3 etats champs) + injection dans :root style.
 // Fallback silencieux aux valeurs CSS par defaut si l API echoue. Cache navigateur 5min cote HTTP.
 (function() {

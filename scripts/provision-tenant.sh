@@ -70,6 +70,15 @@ FLUSH PRIVILEGES;
 
 mysql -uroot -p"$ROOT_PWD" --database="${DB_AGENT}" < "$SCHEMA"
 
+# M/2026/05/14/1 — Pipeline migrations idempotent: applique versions/V*.sql
+# manquantes immediatement apres le snapshot canonique, et logue dans
+# _schema_migrations. Skip si script absent (fallback graceful).
+if [[ -x /root/bin/ocre-migrate.sh ]]; then
+  OCRE_MIGRATE_SKIP_BACKUP=1 /root/bin/ocre-migrate.sh "${DB_AGENT}" || {
+    echo "WARN: ocre-migrate.sh a echoue sur ${DB_AGENT} (continuer quand meme)" >&2
+  }
+fi
+
 mysql -uroot -p"$ROOT_PWD" --database="${DB_AGENT}" -e "
   INSERT IGNORE INTO users (id, email, active)
   VALUES (${OWNER_UID}, 'local@${SLUG}', 1);
