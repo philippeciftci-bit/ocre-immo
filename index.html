@@ -24692,44 +24692,48 @@ function FormView(props) {
               if (!_hasRealId) { showToast && showToast("Enregistrez d'abord le dossier"); return; }
               if (props.openDossierPdf) props.openDossierPdf(editing.id);
             };
+            // M/2026/05/13/70 — Optimistic update sur onArchive FormView (bottombar). Avant
+            // M67 corrigeait ClientRow.doArchive (swipe accueil) mais pas ce handler bottombar.
+            // Le bug Philippe = clic Archiver depuis fiche -> setClients update APRES await
+            // fetch -> backToList kick avant que React re-render -> liste accueil ne reflete pas
+            // le changement. Fix : setClients + setEditing AVANT fetch, rollback si erreur.
             const onArchive = async () => {
               if (!_hasRealId) { showToast && showToast("Saisis d'abord quelques champs"); return; }
-              const targetState = !d.archived;
-              if (!targetState) {
-                // M/2026/05/12/14 — Fix bug critique 2 : remplace window.location.reload() par mise a jour
-                // state React + backToList(). Garde showArchives actif. Pattern optimistic : la fiche
-                // disparait de la liste archives en cohérence avec archived=0 (pipeline filtre).
-                if (!(await askConfirm({title: 'Restaurer ce dossier ?', message: 'Le dossier reapparaîtra dans la liste principale.', danger:false, confirmLabel:'Restaurer'}))) return;
-                try {
-                  const tk = localStorage.getItem('ocre_token') || '';
-                  const r = await fetch(API + '/clients.php?action=unarchive', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({id: editing.id})});
-                  const j = await r.json();
-                  if (j && j.ok) {
-                    commit('archived', false);
-                    if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: 0} : c));
-                    if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: 0} : prev);
-                    showToast && showToast('Dossier restauré');
-                    setTimeout(() => backToList && backToList(), 250);
-                  }
-                  else showToast && showToast((j && j.error) || 'Échec désarchivage');
-                } catch (e) { showToast && showToast('Erreur réseau'); }
-                return;
-              }
-              if (!(await askConfirm({title: 'Archiver ce dossier ?', message: 'Le dossier sera retiré de la liste principale mais restera accessible dans Archives. Tu pourras le restaurer à tout moment.', danger:false, confirmLabel:'Archiver'}))) return;
+              const isRestore = !!d.archived;
+              const newArchived = isRestore ? 0 : 1;
+              const prevArchived = d.archived;
+              const titleAsk = isRestore ? 'Restaurer ce dossier ?' : 'Archiver ce dossier ?';
+              const msgAsk = isRestore
+                ? 'Le dossier reapparaîtra dans la liste principale.'
+                : 'Le dossier sera retiré de la liste principale mais restera accessible dans Archives. Tu pourras le restaurer à tout moment.';
+              if (!(await askConfirm({title: titleAsk, message: msgAsk, danger: false, confirmLabel: isRestore ? 'Restaurer' : 'Archiver'}))) return;
+              // OPTIMISTIC : update setClients + setEditing + commit AVANT fetch.
+              commit('archived', !!newArchived);
+              if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: newArchived} : c));
+              if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: newArchived} : prev);
               try {
                 const tk = localStorage.getItem('ocre_token') || '';
-                const r = await fetch(API + '/clients.php?action=archive', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({id: editing.id, archived:1})});
+                const endpoint = isRestore ? '/clients.php?action=unarchive' : '/clients.php?action=archive';
+                const body = isRestore ? {id: editing.id} : {id: editing.id, archived: 1};
+                const r = await fetch(API + endpoint, {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify(body)});
                 const j = await r.json();
                 if (j && j.ok) {
-                  commit('archived', true);
-                  // M/2026/05/12/14 — propagation state archived=1 (coherent listes brouillons/archives).
-                  if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: 1} : c));
-                  if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: 1} : prev);
-                  showToast && showToast('Dossier archivé');
+                  showToast && showToast(isRestore ? 'Dossier restauré' : 'Dossier archivé');
                   setTimeout(() => backToList && backToList(), 250);
+                } else {
+                  // ROLLBACK : remettre prev value
+                  commit('archived', !!prevArchived);
+                  if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: prevArchived} : c));
+                  if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: prevArchived} : prev);
+                  showToast && showToast((j && j.error) || (isRestore ? 'Échec désarchivage' : 'Échec archivage'));
                 }
-                else showToast && showToast((j && j.error) || 'Échec archivage');
-              } catch (e) { showToast && showToast('Erreur réseau'); }
+              } catch (e) {
+                // ROLLBACK reseau
+                commit('archived', !!prevArchived);
+                if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: prevArchived} : c));
+                if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: prevArchived} : prev);
+                showToast && showToast('Erreur réseau');
+              }
             };
             const onTrash = () => {
               // M/2026/05/12/14 — Fix bug critique 1 : supprime le window.confirm() qui causait
@@ -25022,6 +25026,11 @@ function FormView(props) {
                   danger: false,
                   confirmLabel: 'Archiver',
                 }))) return;
+                // M/2026/05/13/70 — Optimistic update + setClients propagation.
+                const prevArchA = d.archived;
+                commit('archived', true);
+                if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: 1} : c));
+                if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: 1} : prev);
                 try {
                   const token = localStorage.getItem('ocre_token') || '';
                   const r = await fetch(API + '/clients.php?action=archive', {
@@ -25030,13 +25039,20 @@ function FormView(props) {
                   });
                   const j = await r.json();
                   if (j && j.ok) {
-                    commit('archived', true);
                     showToast && showToast('Dossier archivé');
                     setTimeout(() => backToList && backToList(), 250);
                   } else {
+                    commit('archived', !!prevArchA);
+                    if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: prevArchA} : c));
+                    if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: prevArchA} : prev);
                     showToast && showToast((j && j.error) || 'Échec archivage');
                   }
-                } catch (e) { showToast && showToast('Erreur réseau'); }
+                } catch (e) {
+                  commit('archived', !!prevArchA);
+                  if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: prevArchA} : c));
+                  if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: prevArchA} : prev);
+                  showToast && showToast('Erreur réseau');
+                }
               }}
               title={(editing && editing.id && !String(editing.id).startsWith('tmp-')) ? (d.archived ? 'Désarchiver' : 'Archiver') : "Saisis quelques champs pour activer l'archivage"}
               style={{flex:'1 1 0', minWidth:0, height:40, padding:'var(--space-0)',
