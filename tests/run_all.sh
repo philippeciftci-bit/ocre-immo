@@ -58,6 +58,14 @@ if [ -z "$SMOKE_TENANT_SLUG" ] || [ -z "$SMOKE_ADMIN_TOKEN" ]; then
 fi
 echo "[setup OK] slug=$SMOKE_TENANT_SLUG user_id=$SMOKE_USER_ID" | tee -a "$LOG"
 
+# M/2026/05/14/5 — Applique le pipeline migrations idempotent sur le tenant
+# ephemere pour que _schema_migrations soit peuple. Sans ca, db.php (M/80
+# volet B) refuse les requetes avec 503 SCHEMA_DRIFT.
+if [ -x /root/bin/ocre-migrate.sh ]; then
+    echo "[migrate ephemere]" | tee -a "$LOG"
+    OCRE_MIGRATE_SKIP_BACKUP=1 /root/bin/ocre-migrate.sh "$SMOKE_TENANT_SLUG" 2>&1 | tail -3 | tee -a "$LOG" || true
+fi
+
 # 3. Run smoke tests.
 for f in smoke/[0-9]*.sh; do
     name=$(basename "$f" .sh)
