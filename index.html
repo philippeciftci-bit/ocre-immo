@@ -19856,7 +19856,8 @@ function ListView(props) {
               onClick={() => openClient(c)}
               openDossierPdf={props.openDossierPdf}
               onRemoveStart={(rid) => setClients(prev => prev.map(x => x.id === rid ? {...x, _removing: true} : x))}
-              onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}/>
+              onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}
+              onArchiveOptimistic={(rid, archived) => setClients(prev => prev.map(x => x.id === rid ? {...x, archived} : x))}/>
           </div>
         ))}
       </div>
