@@ -1990,6 +1990,45 @@ function isLightboxLocked() {
   return !!(typeof document !== 'undefined' && document.body && document.body.dataset.ocreLightboxCount);
 }
 
+// M/2026/05/14/38 — useBodyScrollLock : body-scroll-lock pattern iOS Safari safe.
+// overflow:hidden seul ne bloque PAS le scroll iOS Safari. Pattern requis :
+// position:fixed + top:-scrollY + width:100% sur body. Restore scrollY au unlock.
+// Compteur de stack pour gerer nested locks (dropdown dans modale).
+function useBodyScrollLock(active) {
+  React.useEffect(() => {
+    if (!active) return;
+    const cur = parseInt(document.body.dataset.ocreScrollLockCount || '0', 10) || 0;
+    let scrollY = 0;
+    if (cur === 0) {
+      scrollY = window.scrollY || window.pageYOffset || 0;
+      document.body.dataset.ocreScrollLockY = String(scrollY);
+      document.body.style.position = 'fixed';
+      document.body.style.top = '-' + scrollY + 'px';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    }
+    document.body.dataset.ocreScrollLockCount = String(cur + 1);
+    return () => {
+      const c = parseInt(document.body.dataset.ocreScrollLockCount || '0', 10) || 0;
+      const next = Math.max(0, c - 1);
+      if (next === 0) {
+        const y = parseInt(document.body.dataset.ocreScrollLockY || '0', 10) || 0;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        delete document.body.dataset.ocreScrollLockCount;
+        delete document.body.dataset.ocreScrollLockY;
+        window.scrollTo(0, y);
+      } else {
+        document.body.dataset.ocreScrollLockCount = String(next);
+      }
+    };
+  }, [active]);
+}
+
 // M/2026/04/30/4 — useSwipeExclusive : meme pattern que usePopoverAutoClose mais
 // pour les swipes ClientRow. 1 SEUL swipe ouvert a la fois (Mail iOS pattern).
 // Dispatch ocre-swipe-open quand on ouvre, ecoute pour fermer si autre s'ouvre.
@@ -3924,29 +3963,12 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
   const debounceRef = React.useRef(null);
   const token = () => localStorage.getItem('ocre_token') || '';
 
-  // M/2026/05/12/24 — scroll lock body pendant que le dropdown autocomplete est ouvert.
-  // Pattern champ adresse interne Ocre / Google Places Autocomplete / Mapbox Geocoder : empeche le
-  // scrollIntoView natif Safari iOS qui pousse la page vers le bas a l ouverture du clavier.
-  // Capture scrollY a l ouverture, restaure au close si la page a derive.
-  const _scrollYRef = React.useRef(0);
-  React.useEffect(() => {
-    if (open) {
-      _scrollYRef.current = window.scrollY || window.pageYOffset || 0;
-      document.body.style.overflow = 'hidden';
-      // Pattern interne Ocre : detecte les scrolls non sollicites pendant 500ms apres l ouverture
-      const startY = _scrollYRef.current;
-      const tid = setTimeout(() => {
-        const dy = (window.scrollY || 0) - startY;
-        if (Math.abs(dy) > 5) window.scrollTo(0, startY); // restaure si Safari a scrolle > 5px
-      }, 300);
-      return () => {
-        clearTimeout(tid);
-        document.body.style.overflow = '';
-      };
-    } else {
-      document.body.style.overflow = '';
-    }
-  }, [open]);
+  // M/2026/05/14/38 — scroll lock declenche des le focus de l input (pas seulement
+  // a l ouverture du dropdown). iOS Safari peut deja avoir scrolle avant que
+  // suggestions arrivent (delay debounce 300ms). useBodyScrollLock applique
+  // position:fixed + top:-scrollY (overflow:hidden seul ne marche PAS sur iOS).
+  const [focused, setFocused] = React.useState(false);
+  useBodyScrollLock(focused || open);
 
   function handleChange(e) {
     const raw = e.target.value;
@@ -4063,7 +4085,9 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
   return (
     <div style={{marginBottom:'var(--space-10px)', position:'relative', ...style}}>
       {label && <label style={{display:'block', fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', marginBottom:'var(--space-1)', textTransform:'uppercase', letterSpacing:.4}}>{label}</label>}
-      <input type="text" value={value || ''} onChange={handleChange} onFocus={() => (suggestions.length > 0) && setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 200)}
+      <input type="text" value={value || ''} onChange={handleChange}
+        onFocus={() => { setFocused(true); if (suggestions.length > 0) setOpen(true); }}
+        onBlur={() => setTimeout(() => { setOpen(false); setFocused(false); }, 200)}
         placeholder={placeholder} autoComplete={autoComplete} name={name} autoCapitalize="words" autoCorrect="off"
         style={{width:'100%', boxSizing:'border-box', height:40, padding:'0 11px', borderRadius:8, fontSize:'var(--font-size-sm)', outline:'none', fontFamily:'inherit', color:'var(--color-text-primary)',
                 ...(filled ? FIELD_FILLED : FIELD_EMPTY)}}/>
@@ -4989,12 +5013,8 @@ function PhotoLightbox({photos, startIndex = 0, onClose}) {
   // (scroll-snap iOS) vers le swipe-delete card sous-jacente quand on insiste apres
   // la derniere photo.
   useLightboxLock(true);
-  // Body scroll lock
-  React.useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
+  // M/2026/05/14/38 — body-scroll-lock pattern iOS Safari (position:fixed + top:-scrollY).
+  useBodyScrollLock(true);
   // Esc keydown
   React.useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose && onClose(); }
@@ -5847,10 +5867,9 @@ function useIsMobile() {
 // M/2026/04/30/16 — useLightboxLock pour empecher le swipe-delete card sous-jacente.
 function BottomSheet({title, onClose, children}) {
   useLightboxLock(true);
-  React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
-  }, []);
+  // M/2026/05/14/38 — body-scroll-lock pattern iOS Safari (position:fixed + top:-scrollY).
+  // overflow:hidden seul ne bloquait pas le scroll sur Safari iOS, page sautait en bas.
+  useBodyScrollLock(true);
   return (
     <div className="bsheet-overlay" onClick={onClose}>
       <div className="bsheet" onClick={e => e.stopPropagation()}>

@@ -2,7 +2,7 @@
 // Conversion depuis killswitch v474 : on garde le SW REGISTERED (plus d'unregister à activate)
 // pour permettre la réception des push notifications PWA. Tous les fetchs restent en network-first
 // (pas de cache offline business — fallback minimal pour mode=navigate uniquement).
-const SW_VERSION = 'ocre-sw-v563.0-m14-37-documents-collapsed';
+const SW_VERSION = 'ocre-sw-v564.0-m14-38-scroll-lock-ios';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
