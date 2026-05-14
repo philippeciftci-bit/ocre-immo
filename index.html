@@ -384,7 +384,59 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
   send({type:'heartbeat', msg:'client_logging_active', url: location.href});
 })();
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<script>
+// M/2026/05/14/45 — keyboard dismiss iOS Safari au scroll + cleanup fantome visuel.
+// Probleme : clavier reste affiche quand user scroll, fantome visuel apres dismiss.
+// Solution Mistral validee : scroll listener -> activeElement.blur() si INPUT/TEXTAREA
+// + reflow translateZ pour tuer le fantome iOS.
+// interactive-widget=resizes-content au meta viewport (geree separement) gere le resize layout.
+(function setupKeyboardDismiss() {
+  if (window.__ocreKbDismiss) return;
+  window.__ocreKbDismiss = true;
+  var lastScrollY = 0;
+  function isTextInput(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    if (tag === 'TEXTAREA') return true;
+    if (tag === 'INPUT') {
+      var t = (el.type || 'text').toLowerCase();
+      // types qui ouvrent clavier texte (exclu checkbox/radio/button/range/color/file)
+      return ['text','search','email','tel','url','password','number'].indexOf(t) !== -1;
+    }
+    return false;
+  }
+  function dismissIfTextInput() {
+    var el = document.activeElement;
+    if (!isTextInput(el)) return;
+    try { el.blur(); } catch (e) {}
+    // M/14/45 — force reflow pour tuer fantome iOS Safari apres blur.
+    try {
+      document.body.style.transform = 'translateZ(0)';
+      requestAnimationFrame(function() { document.body.style.transform = ''; });
+    } catch (e) {}
+  }
+  // Scroll handler : declenche dismiss si delta significatif (> 8px) pour eviter
+  // false-positive sur scroll natif input lui-meme.
+  window.addEventListener('scroll', function() {
+    var dy = Math.abs((window.scrollY || 0) - lastScrollY);
+    lastScrollY = window.scrollY || 0;
+    if (dy > 8) dismissIfTextInput();
+  }, { passive: true, capture: true });
+  // visualViewport API : detecte resize clavier ferme (event 'resize')
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function() {
+      // si viewport revenu a > 90% height window -> clavier ferme -> reflow
+      try {
+        if (window.visualViewport.height / window.innerHeight > 0.9) {
+          document.body.style.transform = 'translateZ(0)';
+          requestAnimationFrame(function() { document.body.style.transform = ''; });
+        }
+      } catch (e) {}
+    });
+  }
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#8B5E3C">
