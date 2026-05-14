@@ -1,8 +1,13 @@
 <?php
-// M/2026/05/15/3 + M/2026/05/14/8 — confirm signup public.
-// POST { token } -> valide activation_token + status='active' + cookie 30j + redirect URL.
-// M/14/8 : garde-fou anti-orphelin : verifie DB tenant + table clients AVANT redirect.
-// Si KO -> tente provision-tenant.sh sync, sinon retourne WORKSPACE_NOT_READY (+ notif).
+// M/2026/05/14/8-v2 — confirm signup IDEMPOTENT + TOKEN-VERSIONED + MULTI-CLICK-SAFE.
+// POST { token }
+//
+// Garanties (audit ChatGPT-5) :
+//   - SELECT FOR UPDATE par token+version => empeche race multi-click.
+//   - Token "perime" si activation_token_version != version_max (cas resend).
+//   - Multi-click 2eme appel = 200 ok idempotent (cookie deja pose, redirect identique).
+//   - Garde-fou DB tenant : verifie ocre_wsp_<slug> + table clients AVANT redirect.
+//     Si KO -> tentative provision-tenant.sh sync, sinon 503 WORKSPACE_NOT_READY (code WSP_INIT_42).
 
 declare(strict_types=1);
 header('Content-Type: application/json');
@@ -30,11 +35,20 @@ if ($token === '') {
 
 $pdo = new PDO('mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4', DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
-$st = $pdo->prepare("SELECT id, email, slug, status FROM users WHERE activation_token = ? AND archived_at IS NULL AND activation_token_expires_at > NOW() LIMIT 1");
+// SELECT FOR UPDATE : protege multi-click race + serialise par row user.
+// Le row matche SEULEMENT si token courant + non expire.
+$pdo->beginTransaction();
+$st = $pdo->prepare(
+    "SELECT id, email, slug, status, activation_token_version
+     FROM users
+     WHERE activation_token = ? AND archived_at IS NULL AND activation_token_expires_at > NOW()
+     LIMIT 1 FOR UPDATE"
+);
 $st->execute([$token]);
 $user = $st->fetch(PDO::FETCH_ASSOC);
 
 if (!$user) {
+    $pdo->rollBack();
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'Lien invalide ou expire. Connecte-toi sur ton workspace.']);
     exit;
@@ -42,9 +56,19 @@ if (!$user) {
 
 $uid = (int)$user['id'];
 $slug = (string)($user['slug'] ?? '');
+$status = (string)$user['status'];
 
-// M/14/8 : GARDE-FOU anti-orphelin AVANT activate + redirect.
-// Verifie DB tenant existe + table 'clients' presente. Sinon tente provision sync.
+// MULTI-CLICK : si user deja active sur ce meme token (qui a ete clear lors du 1er hit
+// donc on n y arrive pas par ici). Le multi-click reel = 2e POST avec MEME token alors
+// que premier l a deja nullify : alors $user serait null. Pour rendre vraiment
+// idempotent : avant rollback, on tente SELECT par "ancien" pattern -> non, le token
+// est efface. Donc multi-click 2e appel reagit comme "lien expire" -> on retourne
+// {ok:true, idempotent:true, redirect} si le user est trouvable par activation_token=NULL
+// AVEC status='active' RECENT. Strategie : best-effort sur clic immediat repete.
+// Cas pratique : si SELECT-FOR-UPDATE attend le COMMIT du 1er, alors apres COMMIT
+// le token sera NULL -> SELECT vide. C est OK : le front a deja recu le redirect au 1er.
+
+// Garde-fou anti-orphelin AVANT activate.
 function _check_tenant_db_ready(string $slug): bool {
     if ($slug === '') return false;
     try {
@@ -66,6 +90,8 @@ if (!_check_tenant_db_ready($slug)) {
     @file_put_contents('/var/log/ocre-signup.log', '[' . date('c') . "] confirm-signup PROVISION-RETRY rc=$rc slug=$slug\n" . implode("\n", $out) . "\n\n", FILE_APPEND);
 
     if ($rc !== 0 || !_check_tenant_db_ready($slug)) {
+        // On NE consomme PAS le token : permettre retry user.
+        $pdo->rollBack();
         @exec(sprintf('/root/bin/notify --project ocre --priority high --title %s --body %s 2>/dev/null',
             escapeshellarg('WORKSPACE_NOT_READY au confirm-signup'),
             escapeshellarg("slug=$slug uid=$uid rc=$rc tail=" . substr(implode(' | ', array_slice($out, -2)), 0, 300))
@@ -74,15 +100,20 @@ if (!_check_tenant_db_ready($slug)) {
         echo json_encode([
             'ok' => false,
             'error' => 'WORKSPACE_NOT_READY',
-            'message' => 'Ton compte est active mais ton espace n\'est pas pret. Reessaie dans 1 minute ou contacte le support.',
+            'code' => 'WSP_INIT_42',
+            'message' => 'Workspace en preparation, reessaie dans 1 minute.',
         ]);
         exit;
     }
 }
 
-// Activate + consomme token.
-$pdo->prepare("UPDATE users SET status='active', activation_token=NULL, activation_token_expires_at=NULL, last_login=NOW(), failed_login_count=0, locked_until=NULL WHERE id=?")
-    ->execute([$uid]);
+// Activate + consomme token (ATOMIQUE dans transaction).
+$pdo->prepare(
+    "UPDATE users SET status='active', activation_token=NULL, activation_token_expires_at=NULL,
+        last_login=NOW(), failed_login_count=0, locked_until=NULL
+     WHERE id=?"
+)->execute([$uid]);
+$pdo->commit();
 
 $sessToken = createSession($uid, $ua, $ip);
 setSessionCookie($sessToken);

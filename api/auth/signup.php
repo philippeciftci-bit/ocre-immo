@@ -1,16 +1,18 @@
 <?php
-// M/2026/05/14/8 — signup public IDEMPOTENT + ATOMIQUE (refonte M/14/75).
+// M/2026/05/14/8-v2 — signup public IDEMPOTENT + TRANSACTIONNEL + TOKEN-VERSIONED.
 // POST { email, prenom, nom, societe?, telephone, password, cgu, rgpd }
 //
-// CAS GERES (anti-orphelins) :
-//   1. email inconnu   -> INSERT pending + provision-tenant.sh + mail confirmation
-//   2. email existe + status='active'                 -> 409 ACCOUNT_EXISTS (front oriente login)
-//   3. email existe + status='pending_activation'     -> regenere activation_token,
-//                                                         RESEND mail vers MEME slug,
-//                                                         pas de nouveau INSERT, pas de provision
+// GARANTIES (audit ChatGPT-5) :
+//   - UNIQUE(email) côté SQL (index uniq_email existant) -> doublon impossible.
+//   - activation_token_version INT incremente a chaque token (rend l ancien token invalide).
+//   - Slug IMMUTABLE : calcule UNE fois a la creation, jamais re-genere.
+//   - SELECT FOR UPDATE dans transaction -> race condition double-click protege.
+//   - Rollback atomique sur provision fail : DELETE user + DROP DB partielle + notif.
 //
-// Sur echec provision-tenant.sh : ROLLBACK DELETE user + DROP DATABASE partielle +
-// notif Telegram Philippe + 500 PROVISION_FAILED. Aucun user laisse a moitie.
+// FLOW :
+//   1. nouveau email      -> INSERT pending_activation + COMMIT + provision-tenant.sh + mail
+//   2. email + active     -> 409 ACCOUNT_EXISTS (front oriente login)
+//   3. email + pending    -> regen token + version++ + RESEND mail vers MEME slug (pas d INSERT)
 
 declare(strict_types=1);
 header('Content-Type: application/json');
@@ -56,7 +58,7 @@ if ($strengthErr !== null) {
 $pdo = new PDO('mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4', DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 password_auth_rate_limit_init($pdo);
 
-// Rate-limit signup configurable + whitelist IP dev (M/15/5).
+// Rate-limit signup configurable + whitelist IP dev.
 $rateMax = defined('RATE_LIMIT_SIGNUP_MAX') ? RATE_LIMIT_SIGNUP_MAX : 5;
 $rateWin = defined('RATE_LIMIT_SIGNUP_WINDOW_SEC') ? RATE_LIMIT_SIGNUP_WINDOW_SEC : 600;
 $whitelist = defined('RATE_LIMIT_WHITELIST') ? RATE_LIMIT_WHITELIST : [];
@@ -72,88 +74,117 @@ if (!in_array($ip, $whitelist, true)) {
 
 $signupLog = '/var/log/ocre-signup.log';
 
-// CAS 2 + 3 : email deja en base ?
-$st = $pdo->prepare("SELECT id, email, slug, status FROM users WHERE email=? LIMIT 1");
-$st->execute([$email]);
-$existing = $st->fetch(PDO::FETCH_ASSOC);
+// === Transaction + SELECT FOR UPDATE (anti race condition) ===
+$pdo->beginTransaction();
+try {
+    $st = $pdo->prepare("SELECT id, email, slug, status FROM users WHERE email=? LIMIT 1 FOR UPDATE");
+    $st->execute([$email]);
+    $existing = $st->fetch(PDO::FETCH_ASSOC);
 
-if ($existing) {
-    $uid = (int)$existing['id'];
-    $slug = (string)$existing['slug'];
-    $status = (string)$existing['status'];
+    if ($existing) {
+        $uid = (int)$existing['id'];
+        $slug = (string)$existing['slug']; // IMMUTABLE — on garde toujours.
+        $status = (string)$existing['status'];
 
-    if ($status === 'active') {
-        // CAS 2 : compte deja actif -> oriente login.
-        password_auth_rate_log($pdo, 'signup_public', $email, $ip, false, $ua);
-        http_response_code(409);
-        echo json_encode([
-            'ok' => false,
-            'error' => 'ACCOUNT_EXISTS',
-            'message' => 'Ton compte existe deja. Connecte-toi.'
-        ]);
-        exit;
-    }
-
-    if ($status === 'pending_activation') {
-        // CAS 3 : retry signup pending -> regenere token, resend MEME slug.
-        // Update password_hash aussi (user a peut-etre saisi un nouveau MDP).
-        $newToken = bin2hex(random_bytes(32));
-        $newHash = password_auth_hash($password);
-        try {
-            $pdo->prepare("UPDATE users SET activation_token=?, activation_token_expires_at=DATE_ADD(NOW(), INTERVAL 24 HOUR), password_hash=?, password_set_at=NOW(), prenom=?, nom=?, display_name=?, telephone=?, societe=? WHERE id=?")
-                ->execute([$newToken, $newHash, $prenom, $nom, trim($prenom . ' ' . $nom), $telephone, $societe, $uid]);
-        } catch (Throwable $e) {
-            http_response_code(500);
-            echo json_encode(['ok' => false, 'error' => 'UPDATE pending fail: ' . substr($e->getMessage(), 0, 120)]);
+        if ($status === 'active') {
+            $pdo->rollBack();
+            password_auth_rate_log($pdo, 'signup_public', $email, $ip, false, $ua);
+            http_response_code(409);
+            echo json_encode(['ok' => false, 'error' => 'ACCOUNT_EXISTS', 'message' => 'Ton compte existe deja. Connecte-toi.']);
             exit;
         }
-        password_auth_rate_log($pdo, 'signup_public', $email, $ip, true, $ua);
-        @file_put_contents($signupLog, '[' . date('c') . "] signup-public RESEND uid=$uid slug=$slug email=$email ip=$ip\n", FILE_APPEND);
 
-        $activationUrl = "https://auth.ocre.immo/confirm-signup.html?token={$newToken}";
-        $subject = 'Renvoi de ton lien d\'activation Ocre Immo';
-        $html = ocre_signup_welcome_email_html(
-            $prenom,
-            $activationUrl,
-            'Activer mon compte',
-            'Renvoi de ton lien d\'activation',
-            'Voici un nouveau lien pour activer ton compte. Le precedent a ete invalide.<br><span style="font-size:13px;color:#6B5642">Lien valide 24 heures.</span>'
-        );
-        @ocre_send_email($email, $subject, $html);
+        if ($status === 'pending_activation') {
+            // CAS resend : nouveau token + version++ + reset expires 7j. Slug INCHANGE.
+            $newToken = bin2hex(random_bytes(32));
+            $newHash = password_auth_hash($password);
+            $pdo->prepare(
+                "UPDATE users
+                 SET activation_token=?, activation_token_version=activation_token_version+1,
+                     activation_token_expires_at=DATE_ADD(NOW(), INTERVAL 7 DAY),
+                     password_hash=?, password_set_at=NOW(),
+                     prenom=?, nom=?, display_name=?, telephone=?, societe=?
+                 WHERE id=?"
+            )->execute([$newToken, $newHash, $prenom, $nom, trim($prenom . ' ' . $nom), $telephone, $societe, $uid]);
+            $pdo->commit();
 
-        echo json_encode([
-            'ok' => true,
-            'resent' => true,
-            'message' => 'Un nouveau mail d\'activation vient d\'etre envoye. Verifie ta boite.',
-            'slug' => $slug,
-        ]);
+            password_auth_rate_log($pdo, 'signup_public', $email, $ip, true, $ua);
+            @file_put_contents($signupLog, '[' . date('c') . "] signup-public RESEND uid=$uid slug=$slug email=$email ip=$ip\n", FILE_APPEND);
+
+            $activationUrl = "https://auth.ocre.immo/confirm-signup.html?token={$newToken}";
+            $html = ocre_signup_welcome_email_html(
+                $prenom,
+                $activationUrl,
+                'Activer mon compte',
+                'Renvoi de ton lien d\'activation',
+                'Voici un nouveau lien pour activer ton compte. Le precedent a ete invalide.<br><span style="font-size:13px;color:#6B5642">Lien valide 7 jours.</span>'
+            );
+            @ocre_send_email($email, 'Renvoi de ton lien d\'activation Ocre Immo', $html);
+
+            echo json_encode([
+                'ok' => true,
+                'resent' => true,
+                'message' => 'Un nouveau mail d\'activation vient d\'etre envoye. Verifie ta boite.',
+                'slug' => $slug,
+            ]);
+            exit;
+        }
+
+        $pdo->rollBack();
+        http_response_code(409);
+        echo json_encode(['ok' => false, 'error' => 'ACCOUNT_LOCKED', 'message' => 'Statut compte incompatible. Contacte le support.']);
         exit;
     }
 
-    // Tout autre status (suspended, deleted...) -> on bloque par securite.
-    http_response_code(409);
-    echo json_encode(['ok' => false, 'error' => 'ACCOUNT_LOCKED', 'message' => 'Statut compte incompatible. Contacte le support.']);
-    exit;
-}
+    // === CAS NOUVEAU EMAIL : INSERT pending puis exec provision HORS transaction ===
+    $baseSlug = preg_replace('/[^a-z0-9-]/', '', strtolower(preg_replace('/\s+/', '-', $prenom . '-' . $nom))) ?: 'agent';
+    $baseSlug = substr($baseSlug, 0, 30);
+    $slug = $baseSlug . '-' . substr(bin2hex(random_bytes(2)), 0, 4);
+    $activationToken = bin2hex(random_bytes(32));
+    $passwordHash = password_auth_hash($password);
 
-// CAS 1 : nouveau compte.
-$baseSlug = preg_replace('/[^a-z0-9-]/', '', strtolower(preg_replace('/\s+/', '-', $prenom . '-' . $nom))) ?: 'agent';
-$baseSlug = substr($baseSlug, 0, 30);
-$slug = $baseSlug . '-' . substr(bin2hex(random_bytes(2)), 0, 4);
-$activationToken = bin2hex(random_bytes(32));
-$passwordHash = password_auth_hash($password);
-
-try {
     $ins = $pdo->prepare(
-        "INSERT INTO users (email, prenom, nom, display_name, slug, telephone, role, status, activation_token, activation_token_expires_at, password_hash, password_set_at, cgu_accepted_at, cgu_version_accepted, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'agent', 'pending_activation', ?, DATE_ADD(NOW(), INTERVAL 24 HOUR), ?, NOW(), NOW(), '1.0', NOW())"
+        "INSERT INTO users (email, prenom, nom, display_name, slug, telephone, societe, role, status, activation_token, activation_token_version, activation_token_expires_at, password_hash, password_set_at, cgu_accepted_at, cgu_version_accepted, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'agent', 'pending_activation', ?, 1, DATE_ADD(NOW(), INTERVAL 7 DAY), ?, NOW(), NOW(), '1.0', NOW())"
     );
-    $ins->execute([$email, $prenom, $nom, trim($prenom . ' ' . $nom), $slug, $telephone, $activationToken, $passwordHash]);
+    $ins->execute([$email, $prenom, $nom, trim($prenom . ' ' . $nom), $slug, $telephone, $societe ?: null, $activationToken, $passwordHash]);
     $newUid = (int)$pdo->lastInsertId();
-    if ($societe !== '') {
-        $pdo->prepare("UPDATE users SET societe=? WHERE id=?")->execute([$societe, $newUid]);
-    }
+    $pdo->commit();
 } catch (Throwable $e) {
+    if ($pdo->inTransaction()) { $pdo->rollBack(); }
+    // Race condition perdue : un autre POST concurrent a INSERT en premier.
+    // Codes possibles : 1062 (ER_DUP_ENTRY uniq_email), 1213 (ER_LOCK_DEADLOCK), 40001 (serialization).
+    // Strategie : re-SELECT le row vainqueur + UPDATE token + RESEND (semantique idempotente).
+    $sqlErr = (int)($e->errorInfo[1] ?? 0);
+    if (($e instanceof PDOException) && in_array($sqlErr, [1062, 1213], true)) {
+        try {
+            $pdo2 = $pdo;
+            $pdo2->beginTransaction();
+            $st = $pdo2->prepare("SELECT id, slug, status FROM users WHERE email=? FOR UPDATE");
+            $st->execute([$email]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row && $row['status'] === 'pending_activation') {
+                $newToken = bin2hex(random_bytes(32));
+                $newHash = password_auth_hash($password);
+                $pdo2->prepare(
+                    "UPDATE users SET activation_token=?, activation_token_version=activation_token_version+1,
+                       activation_token_expires_at=DATE_ADD(NOW(), INTERVAL 7 DAY), password_hash=?, password_set_at=NOW()
+                     WHERE id=?"
+                )->execute([$newToken, $newHash, (int)$row['id']]);
+                $pdo2->commit();
+
+                $activationUrl = "https://auth.ocre.immo/confirm-signup.html?token={$newToken}";
+                $html = ocre_signup_welcome_email_html($prenom, $activationUrl, 'Activer mon compte', 'Bienvenue sur Ocre Immo',
+                    'Confirme ton email pour activer ton compte.<br><span style="font-size:13px;color:#6B5642">Lien valide 7 jours.</span>');
+                @ocre_send_email($email, 'Confirme ton inscription Ocre Immo', $html);
+
+                @file_put_contents($signupLog, '[' . date('c') . "] signup-public RACE-LOSER resent uid={$row['id']} slug={$row['slug']} email=$email\n", FILE_APPEND);
+                echo json_encode(['ok' => true, 'resent' => true, 'message' => 'Mail d\'activation envoye. Verifie ta boite.', 'slug' => $row['slug']]);
+                exit;
+            }
+            $pdo2->rollBack();
+        } catch (Throwable $e2) { if ($pdo->inTransaction()) { $pdo->rollBack(); } }
+    }
     http_response_code(500);
     echo json_encode(['ok' => false, 'error' => 'INSERT user fail: ' . substr($e->getMessage(), 0, 120)]);
     exit;
@@ -161,14 +192,14 @@ try {
 
 password_auth_rate_log($pdo, 'signup_public', $email, $ip, true, $ua);
 
-// Provision tenant SYNC (rollback total si rc!=0)
+// === HORS transaction : provision-tenant.sh (peut etre long). Rollback compensatoire si KO.
 $cmd = sprintf('sudo /opt/ocre-app/scripts/provision-tenant.sh %s %d 2>&1', escapeshellarg($slug), $newUid);
 $provisionOut = []; $provisionRc = 0;
 @exec($cmd, $provisionOut, $provisionRc);
 @file_put_contents($signupLog, '[' . date('c') . "] signup-public NEW slug=$slug uid=$newUid rc=$provisionRc\n" . implode("\n", $provisionOut) . "\n\n", FILE_APPEND);
 
 if ($provisionRc !== 0) {
-    // ROLLBACK ATOMIQUE : DROP DB partielle + DELETE meta + notif Philippe.
+    // ROLLBACK COMPENSATOIRE : DROP DB partielle + DELETE meta + notif Telegram.
     try {
         $dbName = 'ocre_wsp_' . $slug;
         $rootPwd = trim(@file_get_contents('/root/.secrets/mysql-root.pwd') ?: '');
@@ -187,7 +218,6 @@ if ($provisionRc !== 0) {
         $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$newUid]);
     } catch (Throwable $e) {}
 
-    // Notif Philippe (best-effort, ne pas bloquer la reponse user).
     $notifBody = "Provision failed slug=$slug uid=$newUid rc=$provisionRc tail=" . implode(' | ', array_slice($provisionOut, -3));
     @exec(sprintf('/root/bin/notify --project ocre --priority high --title %s --body %s 2>/dev/null',
         escapeshellarg('PROVISION_FAILED signup public'),
@@ -203,17 +233,15 @@ if ($provisionRc !== 0) {
     exit;
 }
 
-// Email confirmation (lien magic-link 24h)
 $activationUrl = "https://auth.ocre.immo/confirm-signup.html?token={$activationToken}";
-$subject = 'Confirme ton inscription Ocre Immo';
 $html = ocre_signup_welcome_email_html(
     $prenom,
     $activationUrl,
     'Activer mon compte',
     'Bienvenue sur Ocre Immo',
-    'Confirme ton email pour activer ton compte et acceder a ton espace Oi Agent.<br><span style="font-size:13px;color:#6B5642">Lien valide 24 heures.</span>'
+    'Confirme ton email pour activer ton compte et acceder a ton espace Oi Agent.<br><span style="font-size:13px;color:#6B5642">Lien valide 7 jours.</span>'
 );
-@ocre_send_email($email, $subject, $html);
+@ocre_send_email($email, 'Confirme ton inscription Ocre Immo', $html);
 
 echo json_encode([
     'ok' => true,
