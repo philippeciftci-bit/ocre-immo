@@ -24946,8 +24946,8 @@ function FormView(props) {
                  // pas de reset prix - 1B traitera ces aspects). Pas de stopPropagation sur button
                  // suffisant : le onClick parent du wrapper header (onToggle) se declenche aussi sur
                  // tap exterieur du bouton.
-                 // M/2026/05/06/71 — Section 1 : titre fixe "1. Client" + sélecteur profil verrouillé hors brouillon.
-                 const _titleStage1 = '1. Client';
+                 // M/2026/05/06/71 + M/2026/05/14/36 — Section 1 : titre fixe "Client" (numerotation supprimee M/14/34 oubliee) + sélecteur profil verrouillé hors brouillon.
+                 const _titleStage1 = 'Client';
                  const _isBrouillon1A = (d.statut === 'brouillon') || (!d.statut && (d.is_draft === 1 || d.is_draft === true));
                  const _isPrincipal1A = ['Acheteur','Vendeur','Bailleur','Locataire','Promoteur','MarchandBiens','Investisseur'].includes(activeProfil);
                  const _profilColor1A = _isPrincipal1A ? (PROFILS[activeProfil] || 'var(--color-accent)') : '#A89882';
