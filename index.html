@@ -483,6 +483,104 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
     });
   }
 })();
+// DEBUG M/14/52 TEMP - instrumentation scroll autofill iOS. A retirer apres diag.
+// Scope : exbattat-a312 uniquement. Trace focusin/input/change/blur sur inputs adresse
+// + scroll + visualViewport.resize pendant 10s post-focus. POST /api/debug-scroll-log.php.
+(function setupScrollDebugM52() {
+  if (window.__ocreScrollDbg) return;
+  window.__ocreScrollDbg = true;
+  if (!location.hostname || location.hostname.indexOf('exbattat-a312') === -1) return;
+  var sessionId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  var activeUntil = 0;
+  function tenantSlug() {
+    var h = location.hostname || '';
+    return h.split('.')[0] || 'unknown';
+  }
+  function send(evt, extra) {
+    try {
+      var payload = {
+        session: sessionId,
+        ts: Math.round(performance.now()),
+        evt: evt,
+        scrollY: Math.round(window.scrollY || 0),
+        innerHeight: window.innerHeight,
+        vvH: window.visualViewport ? Math.round(window.visualViewport.height) : null,
+        vvOY: window.visualViewport ? Math.round(window.visualViewport.offsetTop) : null,
+      };
+      if (extra) for (var k in extra) payload[k] = extra[k];
+      var blob = new Blob([JSON.stringify(payload)], {type: 'application/json'});
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/debug-scroll-log.php?_t=' + encodeURIComponent(tenantSlug()), blob);
+      } else {
+        fetch('/api/debug-scroll-log.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-Tenant': tenantSlug()},
+          body: JSON.stringify(payload),
+          keepalive: true,
+        }).catch(function() {});
+      }
+    } catch (e) {}
+  }
+  function isAddressInput(el) {
+    if (!el || el.tagName !== 'INPUT') return false;
+    var ac = (el.getAttribute('autocomplete') || '').toLowerCase();
+    var nm = (el.getAttribute('name') || '').toLowerCase();
+    if (ac.indexOf('street-address') !== -1) return true;
+    if (nm.indexOf('street-address') !== -1) return true;
+    if (nm === 'address-line1' || nm === 'address-line2') return true;
+    return false;
+  }
+  function targetInfo(el) {
+    return {
+      name: el.getAttribute('name') || '',
+      ac: el.getAttribute('autocomplete') || '',
+      val: (el.value || '').slice(0, 30),
+    };
+  }
+  document.addEventListener('focusin', function(e) {
+    if (!isAddressInput(e.target)) return;
+    activeUntil = performance.now() + 10000;
+    send('focusin', targetInfo(e.target));
+  }, true);
+  document.addEventListener('input', function(e) {
+    if (!isAddressInput(e.target)) return;
+    activeUntil = performance.now() + 10000;
+    var ti = targetInfo(e.target);
+    ti.inputType = e.inputType || '';
+    send('input', ti);
+  }, true);
+  document.addEventListener('change', function(e) {
+    if (!isAddressInput(e.target)) return;
+    send('change', targetInfo(e.target));
+  }, true);
+  document.addEventListener('focusout', function(e) {
+    if (!isAddressInput(e.target)) return;
+    send('blur', targetInfo(e.target));
+  }, true);
+  var lastScrollLog = 0;
+  window.addEventListener('scroll', function() {
+    var now = performance.now();
+    if (now > activeUntil) return;
+    if (now - lastScrollLog < 50) return;
+    lastScrollLog = now;
+    send('scroll');
+  }, { passive: true, capture: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function() {
+      if (performance.now() > activeUntil) return;
+      send('vv-resize');
+    });
+    window.visualViewport.addEventListener('scroll', function() {
+      var now = performance.now();
+      if (now > activeUntil) return;
+      if (now - lastScrollLog < 50) return;
+      lastScrollLog = now;
+      send('vv-scroll');
+    });
+  }
+  // Boot tag pour distinguer les sessions dans le log.
+  send('boot', {ua: (navigator.userAgent || '').slice(0, 80)});
+})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes">
