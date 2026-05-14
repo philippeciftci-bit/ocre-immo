@@ -201,13 +201,23 @@
   }
 
   function api(opts, path, body) {
+    // M/2026/05/14/78 — error verbeux Safari iOS (Load failed = TypeError generique).
     return fetch(opts.apiBase + path, {
       method: 'POST',
       credentials: 'include',
       mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body || {})
-    }).then(function(r) { return r.json(); });
+    }).then(function(r) {
+      if (!r.ok && r.status !== 400 && r.status !== 401 && r.status !== 409) {
+        throw new Error('HTTP ' + r.status + ' ' + r.statusText);
+      }
+      return r.json().catch(function(e) { throw new Error('JSON parse fail (status ' + r.status + ')'); });
+    }).catch(function(err) {
+      var msg = err && err.message ? err.message : String(err);
+      var name = err && err.name ? err.name : 'Error';
+      throw new Error(name + ' : ' + msg + ' (' + path + ')');
+    });
   }
 
   function pwdStrength(p) {
