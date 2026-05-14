@@ -332,7 +332,12 @@ $('form-forgot').addEventListener('submit', async e => {
   } finally { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
 });
 
+// M/2026/05/14/76 — lecture ?email=xxx depuis vitrine signup-popup.php pour pre-remplir.
 const qs = new URLSearchParams(location.search);
+const emailParam = qs.get('email');
+if (emailParam && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailParam)) {
+  $('email').value = emailParam.toLowerCase();
+}
 if (qs.get('step') && STEPS.indexOf(qs.get('step')) >= 0) show(qs.get('step'));
 else show('email');
 </script>
