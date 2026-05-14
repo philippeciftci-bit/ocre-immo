@@ -438,17 +438,33 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
 <style>
 /* M/2026/05/12/11 — Volet A : override jaune autofill iOS Safari par vert clair --color-field-filled.
    box-shadow inset 1000px (convention interne Ocre/Apple/design Ocre). transition 5000s = hack standard pour
-   forcer la persistance du style override (sinon Safari reapplique le jaune au focus). */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active,
-textarea:-webkit-autofill,
-select:-webkit-autofill {
+   forcer la persistance du style override (sinon Safari reapplique le jaune au focus).
+   M/2026/05/14/41 — scope l override aux fields VRAIMENT remplis ([value]:not([value=""])).
+   Cas Apple Personal Card autoComplete=organization (Raison sociale, etc.) : Safari applique le
+   pseudo-class :-webkit-autofill brievement meme si la valeur n est pas validee dans le state React,
+   le box-shadow vert persistait via transition 5000s -> pill verte alors que React value="".
+   Fix : si value="" -> force --color-bg-input (FIELD_EMPTY neutre), sinon --color-field-filled (vert). */
+input:-webkit-autofill:not([value=""]),
+input:-webkit-autofill:hover:not([value=""]),
+input:-webkit-autofill:focus:not([value=""]),
+input:-webkit-autofill:active:not([value=""]),
+textarea:-webkit-autofill:not([value=""]),
+select:-webkit-autofill:not([value=""]) {
   -webkit-text-fill-color: var(--color-text-primary, #2b2316) !important;
   -webkit-box-shadow: 0 0 0 1000px var(--color-field-filled, #E8F5E9) inset !important;
   box-shadow: 0 0 0 1000px var(--color-field-filled, #E8F5E9) inset !important;
   caret-color: var(--color-text-primary, #2b2316);
+  transition: background-color 5000s ease-in-out 0s;
+}
+/* M/2026/05/14/41 — Champ vide (React value="") avec autofill pseudo-class residuel : force neutre. */
+input:-webkit-autofill[value=""],
+input:-webkit-autofill:hover[value=""],
+input:-webkit-autofill:focus[value=""],
+input:-webkit-autofill:active[value=""],
+textarea:-webkit-autofill[value=""],
+select:-webkit-autofill[value=""] {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-bg-input, #FDFAF7) inset !important;
+  box-shadow: 0 0 0 1000px var(--color-bg-input, #FDFAF7) inset !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
