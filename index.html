@@ -25054,14 +25054,15 @@ function FormView(props) {
           <div style={{display:'flex', gap:'var(--space-6px)', marginBottom:'var(--space-3)'}}>
             {['Particulier', 'Société'].map(t => (
               <button key={t} onClick={() => {
-                /* M/2026/05/12/3 — Recopie prenom/nom au toggle Particulier<->Societe (no-ecrase).
-                   set() declenche l'auto-save existant. N'ecrase JAMAIS un champ destination deja rempli. */
+                /* M/2026/05/12/3 + M/2026/05/14/39 — Recopie bidirectionnelle prenom/nom au toggle
+                   Particulier<->Societe avec commit DB. Ne ecrase JAMAIS un champ destination deja
+                   rempli. Auto-save persiste via {commit:true}. */
                 if (t === 'Société') {
-                  if (!d.representant_prenom && d.prenom) set('representant_prenom', d.prenom);
-                  if (!d.representant_nom && d.nom) set('representant_nom', d.nom);
+                  if (!d.representant_prenom && d.prenom) set('representant_prenom', d.prenom, {commit: true});
+                  if (!d.representant_nom && d.nom) set('representant_nom', d.nom, {commit: true});
                 } else if (t === 'Particulier') {
-                  if (!d.prenom && d.representant_prenom) set('prenom', d.representant_prenom);
-                  if (!d.nom && d.representant_nom) set('nom', d.representant_nom);
+                  if (!d.prenom && d.representant_prenom) set('prenom', d.representant_prenom, {commit: true});
+                  if (!d.nom && d.representant_nom) set('nom', d.representant_nom, {commit: true});
                 }
                 setProfilType(t); commit('profil_type', t);
               }}
@@ -25209,14 +25210,19 @@ function FormView(props) {
               </div>
               {/* L3 Représentant légal (sub-head + 3 cols Prénom / Nom / Fonction) */}
               <div style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.6, marginTop:'var(--space-2)', marginBottom:'var(--space-1)', fontWeight:700, fontFamily:'inherit'}}>Représentant légal</div>
-              <div className="row-trio">
-                <Field label="Prénom contact" value={d.representant_prenom} onChange={v => set('representant_prenom', v)}
+              {/* M/2026/05/14/39 — restructure row-trio (3 col) -> row-pair Prenom/Nom (2 col)
+                  + Fonction full-width. Aligne les labels du representant legal avec le reste
+                  des rows 2-col (L1 Forme/Raison, L2 SIRET/N° societe, L6 Tel/Email).
+                  Labels 'Prenom contact' -> 'Prenom' et 'Nom contact' -> 'Nom' (sub-head
+                  'Representant legal' deja explicite, suffixe contact redondant). */}
+              <div className="row-pair">
+                <Field label="Prénom" value={d.representant_prenom} onChange={v => set('representant_prenom', v)}
                   autoComplete="section-rep given-name" name="rep-given-name" autoCapitalize="words"/>
-                <Field label="Nom contact" value={d.representant_nom} onChange={v => set('representant_nom', v)}
+                <Field label="Nom" value={d.representant_nom} onChange={v => set('representant_nom', v)}
                   autoComplete="section-rep family-name" name="rep-family-name" autoCapitalize="words"/>
-                <Field label="Fonction" value={d.representant_fonction} onChange={v => set('representant_fonction', v)}
-                  autoComplete="organization-title" name="organization-title"/>
               </div>
+              <Field label="Fonction" value={d.representant_fonction} onChange={v => set('representant_fonction', v)}
+                autoComplete="organization-title" name="organization-title"/>
               {/* M/2026/05/02/11 — M122 : layout cible Section I Société
                   L1 [Pays | Adresse société] · L2 [Ville | CP]. Cohérent avec Particulier. */}
               <div style={{display:'grid', gridTemplateColumns:'auto 1fr', gap:'var(--space-2)', marginBottom:'var(--space-10px)', alignItems:'flex-end'}}>
