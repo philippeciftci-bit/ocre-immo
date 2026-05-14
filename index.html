@@ -592,6 +592,20 @@ select:-webkit-autofill {
     --pill-gap: var(--space-2px);
   }
 }
+/* M/2026/05/14/33 — Toolbar bas fiche 6 boutons (Retour/Scanner/PDF/Enregistrer/Archiver/Supprimer)
+   doit tenir sur 1 SEULE ligne sur iPhone 390px. flex-wrap:nowrap explicit + reduction min-width et
+   label-size sur ecrans < 480px. min-width:0 permet aux boutons de se reduire equitablement. */
+.pill{flex-wrap:nowrap;flex-shrink:1}
+.pill-btn{flex:1 1 auto;min-width:0}
+@media (max-width:480px){
+  :root{
+    --pill-btn-min-width:36px;
+    --pill-label-size:8.5px;
+    --pill-padding: var(--space-1) 6px 8px;
+    --pill-gap: 1px;
+  }
+  .pill-btn .pill-label{font-size:8.5px;letter-spacing:0.15px}
+}
 .ocre-bb-wrap{position:fixed;left:0;right:0;bottom:0;padding:'var(--space-0)' var(--ocre-bb-side-margin) var(--ocre-bb-bottom-offset);display:flex;justify-content:center;pointer-events:none;z-index:50}
 .ocre-bb-pill{pointer-events:auto;background:var(--ocre-bb-bg);color:var(--ocre-bb-fg);border-radius:var(--ocre-bb-radius);box-shadow:var(--ocre-bb-shadow);padding:var(--ocre-bb-padding-y) var(--ocre-bb-padding-x);display:flex;align-items:center;justify-content:space-around;width:100%;max-width:var(--ocre-bb-max-width)}
 .ocre-bb-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;background:none;border:none;color:var(--ocre-bb-fg);cursor:pointer;padding: var(--space-1) 4px;font-family:inherit;flex:1;min-width:0}
