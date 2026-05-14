@@ -116,9 +116,11 @@ if ($provisionRc !== 0) {
 }
 
 // Email canonical confirmation (lien magic-link 24h pour confirmer email + activer)
-// M/2026/05/15/3 — confirm-signup (PAS setup-password : le MDP est deja hashe en DB).
-// User a saisi MDP dans popup signup. Email confirme juste son email + active le compte.
-$activationUrl = "https://{$slug}.ocre.immo/confirm-signup.html?token={$activationToken}";
+// M/2026/05/15/3 + M/2026/05/15/4 — confirm-signup sur auth.ocre.immo (same-origin /api/auth/).
+// Workspace subdomain wildcard n a pas /api/auth/* (reserve auth-ocre vhost). Page activation
+// donc servie depuis auth.ocre.immo. Cookie .ocre.immo (M/14/66) marche cross-subdomain.
+// Redirect final vers workspace dans confirm_signup.php response.
+$activationUrl = "https://auth.ocre.immo/confirm-signup.html?token={$activationToken}";
 $subject = 'Confirme ton inscription Ocre Immo';
 $html = ocre_signup_welcome_email_html(
     $prenom,

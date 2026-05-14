@@ -2,7 +2,7 @@
 // Conversion depuis killswitch v474 : on garde le SW REGISTERED (plus d'unregister à activate)
 // pour permettre la réception des push notifications PWA. Tous les fetchs restent en network-first
 // (pas de cache offline business — fallback minimal pour mode=navigate uniquement).
-const SW_VERSION = 'ocre-sw-v594.0-m15-3-confirm-signup';
+const SW_VERSION = 'ocre-sw-v595.0-m15-4-confirm-signup-domain';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
