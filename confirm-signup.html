@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#3D2818">
+<meta name="robots" content="noindex,nofollow">
+<title>Activation · Ocre Immo</title>
+<link rel="icon" href="/icons/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --cream:#FAF6F1; --brown:#3D2818; --brown-soft:#6B5642; --ocre:#8B5A3C; --gold:#D4A256; --line:#E5DAC6; --red:#C62828; }
+*,*::before,*::after { box-sizing: border-box; }
+html, body { margin:0; padding:0; height:100%; }
+body { font-family: 'DM Sans', -apple-system, sans-serif; background: var(--cream); color: var(--brown); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.card { max-width: 460px; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 36px 30px; box-shadow: 0 20px 60px rgba(60,40,24,0.10); text-align: center; }
+.brand { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600; font-size: 38px; color: var(--ocre); margin-bottom: 8px; }
+.brand span { color: var(--gold); }
+h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600; font-size: 24px; color: var(--brown); margin: 16px 0 8px; }
+.sub { font-size: 14px; color: var(--brown-soft); margin-bottom: 24px; line-height: 1.5; }
+.spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid var(--line); border-top-color: var(--ocre); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.error { color: var(--red); font-size: 14px; margin-top: 12px; }
+.btn { display: inline-block; padding: 13px 22px; background: var(--ocre); color: #fff; text-decoration: none; font-weight: 700; border-radius: 12px; margin-top: 18px; font-family: inherit; border: none; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">Oc<span>re</span></div>
+  <div id="loading">
+    <div class="spinner"></div>
+    <h1>Activation de ton compte...</h1>
+    <div class="sub">Patiente quelques secondes.</div>
+  </div>
+  <div id="error" style="display:none">
+    <h1>Lien expiré ou invalide</h1>
+    <div class="sub">Ton lien d'activation n'est plus valable. Connecte-toi sur ton workspace.</div>
+    <a id="error-link" class="btn" href="/">Aller au workspace</a>
+  </div>
+</div>
+<script>
+(function() {
+  var qs = new URLSearchParams(location.search);
+  var token = qs.get('token') || '';
+  if (!token) { document.getElementById('loading').style.display='none'; document.getElementById('error').style.display=''; return; }
+  fetch('/api/auth/confirm_signup.php', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ token: token })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (!d.ok) throw new Error(d.error || 'Activation echec');
+    try { if (d.session_token) localStorage.setItem('ocre_token', d.session_token); } catch (_) {}
+    location.replace(d.redirect || '/');
+  }).catch(function() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display = '';
+  });
+})();
+</script>
+</body>
+</html>

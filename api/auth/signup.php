@@ -116,14 +116,16 @@ if ($provisionRc !== 0) {
 }
 
 // Email canonical confirmation (lien magic-link 24h pour confirmer email + activer)
-$activationUrl = "https://{$slug}.ocre.immo/setup-password.html?token={$activationToken}";
-$subject = 'Bienvenue sur Ocre Immo — Active ton compte';
+// M/2026/05/15/3 — confirm-signup (PAS setup-password : le MDP est deja hashe en DB).
+// User a saisi MDP dans popup signup. Email confirme juste son email + active le compte.
+$activationUrl = "https://{$slug}.ocre.immo/confirm-signup.html?token={$activationToken}";
+$subject = 'Confirme ton inscription Ocre Immo';
 $html = ocre_signup_welcome_email_html(
     $prenom,
     $activationUrl,
     'Activer mon compte',
     'Bienvenue sur Ocre Immo',
-    'Ton compte est cree. Clique sur le bouton pour valider ton email et acceder a ton workspace personnel.<br><span style="font-size:13px;color:#6B5642">Lien valide 24 heures.</span>'
+    'Confirme ton email pour activer ton compte et acceder a ton espace Oi Agent.<br><span style="font-size:13px;color:#6B5642">Lien valide 24 heures.</span>'
 );
 @ocre_send_email($email, $subject, $html);
 
