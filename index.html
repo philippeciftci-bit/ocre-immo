@@ -15,7 +15,7 @@
      Garantie : Philippe ne touche JAMAIS son cache. -->
 <script>
 (function() {
-  var APP_VERSION = '__BUILD_VERSION__';
+  var APP_VERSION = '82643df-1778779316';
   if (APP_VERSION === '__BUILD_' + 'VERSION__') return;
 
   function purgeAndReload() {
@@ -515,17 +515,17 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
      globalement. tokens.json symetrique servi par /api/design_tokens.php pour future UI no-code. -->
 <link rel="stylesheet" href="/styles/tokens.css">
 <!-- M/2026/05/07/88 — Favicon Oi cross-vhosts (path /favicon/ + manifest tenant). V19 paths conserves comme alias retro-compat dans /opt/ocre-app/ direct. -->
-<link rel="icon" type="image/svg+xml" href="/favicon/oi-logo.svg">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon-180x180.png">
-<link rel="manifest" href="/favicon/site-tenant.webmanifest">
+<link rel="icon" type="image/svg+xml" >
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/icons/manifest.json">
 <!-- M/2026/05/07/115 — Splash screens iOS PWA (fond Albatre via background_color manifest).
      iOS Safari utilise l icone + le background_color, ces media queries flag les devices courants. -->
-<link rel="apple-touch-startup-image" href="/favicon/apple-touch-icon-180x180.png" media="(device-width: 375px) and (device-height: 667px)">
-<link rel="apple-touch-startup-image" href="/favicon/apple-touch-icon-180x180.png" media="(device-width: 390px) and (device-height: 844px)">
-<link rel="apple-touch-startup-image" href="/favicon/apple-touch-icon-180x180.png" media="(device-width: 414px) and (device-height: 896px)">
-<link rel="apple-touch-startup-image" href="/favicon/apple-touch-icon-180x180.png" media="(device-width: 428px) and (device-height: 926px)">
+<link rel="apple-touch-startup-image" href="/icons/apple-touch-icon.png" media="(device-width: 375px) and (device-height: 667px)">
+<link rel="apple-touch-startup-image" href="/icons/apple-touch-icon.png" media="(device-width: 390px) and (device-height: 844px)">
+<link rel="apple-touch-startup-image" href="/icons/apple-touch-icon.png" media="(device-width: 414px) and (device-height: 896px)">
+<link rel="apple-touch-startup-image" href="/icons/apple-touch-icon.png" media="(device-width: 428px) and (device-height: 926px)">
 <meta name="apple-mobile-web-app-title" content="Oi Agent">
 <meta name="description" content="Oi Agent — CRM immobilier professionnel pour agents (gestion clients, biens, dossiers, planning, matching).">
 <!-- V18.49 — OpenGraph + Twitter Card complets -->
