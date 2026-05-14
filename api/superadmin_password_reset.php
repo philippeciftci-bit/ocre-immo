@@ -41,7 +41,8 @@ try {
         . '<h1 style="font-family:\'Cormorant Garamond\',Georgia,serif;font-style:italic;color:#8B5E3C;font-weight:500;margin:0 0 12px;font-size:28px;">Réinitialisation mot de passe super-admin</h1>'
         . '<p style="font-size:15px;line-height:1.5;">Bonjour <b>' . $prenom . '</b>,</p>'
         . '<p style="font-size:15px;line-height:1.5;">Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe (lien valide 1 heure).</p>'
-        . '<p style="text-align:center;margin:28px 0;"><a href="' . $url . '" style="display:inline-block;padding:14px 32px;background:#8B5E3C;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">Réinitialiser mon mot de passe</a></p>'
+        // M/2026/05/14/64 — bouton spec canonical M/14/63 (Philippe).
+        . '<p style="text-align:center;margin:24px 0"><a href="' . $url . '" style="display:inline-block;padding:14px 24px;background:#8B5A3C;color:#ffffff;text-decoration:none;border-radius:10px;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:1.2">Réinitialiser mon mot de passe</a></p>'
         . '<p style="font-size:12px;color:#999;line-height:1.5;">Si vous n\'avez pas demandé cette réinitialisation, ignorez cet email — votre mot de passe actuel reste inchangé.</p>'
         . '<p style="font-size:11px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">Ocre Immo · contact@ocre.immo</p>'
         . '</div></body></html>';

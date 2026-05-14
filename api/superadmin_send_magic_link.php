@@ -72,8 +72,9 @@ $html = '<html><body style="font-family:-apple-system,sans-serif;color:#3a2e22;b
     . '<p>Bonjour' . ($safePrenom !== '' ? ' <b>' . $safePrenom . '</b>' : '') . ',</p>'
     . '<p>Voici votre lien d\'accès au dashboard super-admin Ocre Immo.</p>'
     . '<p style="font-style:italic;color:#6B5E4A;">Lien valide 24 heures.</p>'
-    . '<p style="margin:28px 0;text-align:center;">'
-    . '<a href="' . $url . '" style="display:inline-block;padding:14px 24px;background:#8B5E3C;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;">Accéder au dashboard</a></p>'
+    // M/2026/05/14/64 — bouton spec canonical M/14/63 (Philippe).
+    . '<p style="text-align:center;margin:24px 0">'
+    . '<a href="' . $url . '" style="display:inline-block;padding:14px 24px;background:#8B5A3C;color:#ffffff;text-decoration:none;border-radius:10px;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:1.2">Accéder au dashboard</a></p>'
     . '<p style="font-size:12px;color:#999;">Si le bouton ne fonctionne pas : <span style="word-break:break-all;">' . $url . '</span></p>'
     . '</div></body></html>';
 

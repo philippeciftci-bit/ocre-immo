@@ -102,9 +102,11 @@ if ($action === 'resend') {
         . '<h1 style="font-family:\'Cormorant Garamond\',Georgia,serif;font-style:italic;color:#8B5E3C;font-weight:500;margin:0 0 12px;font-size:28px;">Bienvenue sur Oi Agent</h1>'
         . '<p style="font-size:15px;line-height:1.5;">Bonjour <b>' . $safePrenom . '</b>,</p>'
         . '<p style="font-size:15px;line-height:1.5;">Voici votre nouveau lien d\'activation (lien valide 48 heures) :</p>'
-        . '<table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" style="margin:28px auto;">'
-        . '<tr><td bgcolor="#10B981" style="border-radius:10px;background-color:#10B981;mso-padding-alt:14px 32px;">'
-        . '<a href="' . $url . '" target="_blank" style="display:inline-block;padding:14px 32px;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;border:1px solid #10B981;line-height:1.2;">Activer mon compte</a>'
+        // M/2026/05/14/64 — bouton spec canonical M/14/63 (Philippe). Avant : VERT #10B981 +
+        // border 1px (divergent). Table wrapper conserve pour robustesse Gmail iOS.
+        . '<table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" style="margin:24px auto;border-collapse:separate">'
+        . '<tr><td bgcolor="#8B5A3C" style="border-radius:10px;background-color:#8B5A3C;padding:14px 24px;">'
+        . '<a href="' . $url . '" target="_blank" style="display:inline-block;background-color:#8B5A3C;color:#ffffff;text-decoration:none;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:1.2">Activer mon compte</a>'
         . '</td></tr></table>'
         . '<p style="font-size:11px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">Oi Agent — un produit Ocre · contact@ocre.immo</p>'
         . '</div></body></html>';
