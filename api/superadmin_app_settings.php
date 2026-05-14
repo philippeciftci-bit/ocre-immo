@@ -56,6 +56,7 @@ if ($action === 'set' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $WHITELIST = [
         'price_display_variant' => ['A', 'B'],
         'exchange_rate_eur_mad' => null, // numeric check below
+        'autofill_pill_colors'  => null, // JSON object {bg,border,text} 3 hex colors, validated below
     ];
     if (!array_key_exists($key, $WHITELIST)) asj(['ok' => false, 'error' => 'unknown_key'], 400);
     if ($WHITELIST[$key] !== null && !in_array($value, $WHITELIST[$key], true)) asj(['ok' => false, 'error' => 'invalid_value', 'allowed' => $WHITELIST[$key]], 400);
@@ -63,6 +64,20 @@ if ($action === 'set' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $f = (float) $value;
         if ($f <= 0 || $f > 100) asj(['ok' => false, 'error' => 'invalid_rate'], 400);
         $value = (string) $f;
+    }
+    // M/2026/05/14/32 — validation autofill_pill_colors : JSON object 3 fields hex couleurs.
+    if ($key === 'autofill_pill_colors') {
+        $obj = json_decode($value, true);
+        if (!is_array($obj) || !isset($obj['bg'], $obj['border'], $obj['text'])) {
+            asj(['ok' => false, 'error' => 'invalid_value', 'detail' => 'expected JSON {bg,border,text}'], 400);
+        }
+        $hex = '/^#[0-9A-Fa-f]{3,8}$/';
+        foreach (['bg', 'border', 'text'] as $f) {
+            if (!preg_match($hex, $obj[$f])) {
+                asj(['ok' => false, 'error' => 'invalid_color', 'detail' => $f . ' must match #RGB|#RRGGBB|#RRGGBBAA'], 400);
+            }
+        }
+        $value = json_encode($obj);
     }
 
     try {

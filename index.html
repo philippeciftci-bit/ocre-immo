@@ -1367,8 +1367,14 @@ const CHAUFFAGE_TYPES = ['Électrique','Gaz','Fioul','Bois / pellets','Pompe à 
 const TITRE_STATUTS_MA = ['Titré','Réquisition','Melkia','Autre'];
 const AUTHENTICITE_RIAD = ['Authentique','Rénové','Néo-riad'];
 
-// M/2026/05/09/79 — fond vert clair vert clair Ocre pour champs remplis ET valides (var --color-field-filled).
-const FIELD_FILLED = {border:'1.5px solid var(--color-border-strong)', background:'var(--color-field-filled)'};
+// M/2026/05/09/79 + M/2026/05/14/32 — fond vert clair Ocre pour champs remplis ET valides.
+// 3 vars CSS configurables via Dashboard admin (Pill autofill) + fallback aux vars existantes
+// pour back-compat zero regression.
+const FIELD_FILLED = {
+  border:'1.5px solid var(--color-field-filled-border, var(--color-border-strong))',
+  background:'var(--color-field-filled)',
+  color:'var(--color-field-filled-text, var(--color-text-primary))',
+};
 const FIELD_EMPTY  = {border:'1.5px solid var(--color-border-subtle)', background:'var(--color-bg-input)'};
 
 // M/2026/04/30/14 — Cadastre Phase 1 : Maroc lien externe ANCFCC.
@@ -12707,12 +12713,25 @@ function App() {
           const limCfg = await fetch('/api/upload_limits.php', {cache: 'force-cache'}).then(r => r.json());
           if (limCfg && limCfg.ok) window.__ocreUploadLimits = limCfg.limits;
         } catch (_) {}
-        // M/2026/05/13/8 — DualCurrencyPair Variant B : boot fetch price_display_variant + exchange_rate_eur_mad globaux.
+        // M/2026/05/13/8 + M/2026/05/14/32 — DualCurrencyPair Variant B + autofill_pill_colors.
         try {
           const cfg = await fetch('/api/superadmin_app_settings.php?action=get', {cache: 'no-store'}).then(r => r.json());
           if (cfg && cfg.ok && cfg.settings) {
             window.__ocrePriceVariant = (cfg.settings.price_display_variant === 'B') ? 'B' : 'A';
             window.__ocreGlobalRate = parseFloat(cfg.settings.exchange_rate_eur_mad) || 10.84;
+            // M/2026/05/14/32 — Pill autofill custom (Dashboard admin). 3 vars CSS injectees runtime
+            // si presentes. Sinon fallback vert defaut (--color-field-filled = #E8F5E9 / FIELD_FILLED border + text fallbacks).
+            if (cfg.settings.autofill_pill_colors) {
+              try {
+                const pill = (typeof cfg.settings.autofill_pill_colors === 'string')
+                  ? JSON.parse(cfg.settings.autofill_pill_colors)
+                  : cfg.settings.autofill_pill_colors;
+                if (pill && pill.bg)     document.documentElement.style.setProperty('--color-field-filled',        pill.bg);
+                if (pill && pill.border) document.documentElement.style.setProperty('--color-field-filled-border', pill.border);
+                if (pill && pill.text)   document.documentElement.style.setProperty('--color-field-filled-text',   pill.text);
+                window.__ocrePillAutofill = pill;
+              } catch (_) {}
+            }
           } else {
             window.__ocrePriceVariant = 'A';
             window.__ocreGlobalRate = 10.84;
@@ -18663,6 +18682,13 @@ function PreferencesPage({onBack, showToast, currentUser}) {
             <option value="ar">العربية (à venir)</option>
           </select>
         </div>
+        {/* M/2026/05/14/32 — Row super-admin Pill autofill, visible si role super_admin uniquement. */}
+        {currentUser && currentUser.role === 'super_admin' && (
+          <div onClick={() => setSubscreen('pill_autofill')} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderTop:'1px solid var(--color-border-cream)', cursor:'pointer', marginTop:8}}>
+            <span style={{fontSize:13, fontWeight:600}}>🎨 Pill autofill (super-admin)</span>
+            <span style={{fontSize:12, color:'var(--color-text-muted)'}}>Configurer ›</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -18720,6 +18746,75 @@ function PreferencesPage({onBack, showToast, currentUser}) {
     } catch (e) { showToast && showToast('Erreur'); }
     setRgpdBusy(false);
   }
+  // M/2026/05/14/32 — Subscreen super-admin "Pill autofill" : 3 color pickers + sauvegarde
+  // via /api/superadmin_app_settings.php POST action=set key=autofill_pill_colors value=JSON.
+  const [pillBg, setPillBg]     = React.useState((window.__ocrePillAutofill && window.__ocrePillAutofill.bg)     || '#EEF4F2');
+  const [pillBorder, setPillBorder] = React.useState((window.__ocrePillAutofill && window.__ocrePillAutofill.border) || '#0D7A5F');
+  const [pillText, setPillText] = React.useState((window.__ocrePillAutofill && window.__ocrePillAutofill.text)   || '#0D7A5F');
+  const [pillSaving, setPillSaving] = React.useState(false);
+  async function savePillColors() {
+    setPillSaving(true);
+    try {
+      const r = await fetch('/api/superadmin_app_settings.php?action=set', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'X-Session-Token': (localStorage.getItem('ocre_token') || '')},
+        body: JSON.stringify({key:'autofill_pill_colors', value: JSON.stringify({bg:pillBg, border:pillBorder, text:pillText})}),
+      });
+      const d = await r.json();
+      if (d && d.ok) {
+        document.documentElement.style.setProperty('--color-field-filled', pillBg);
+        document.documentElement.style.setProperty('--color-field-filled-border', pillBorder);
+        document.documentElement.style.setProperty('--color-field-filled-text', pillText);
+        window.__ocrePillAutofill = {bg:pillBg, border:pillBorder, text:pillText};
+        showToast && showToast('Pill autofill sauvegardée ✓');
+      } else {
+        showToast && showToast('Erreur : ' + (d && d.error || 'inconnue'));
+      }
+    } catch (e) { showToast && showToast('Erreur réseau'); }
+    setPillSaving(false);
+  }
+  function resetPillColors() {
+    setPillBg('#EEF4F2'); setPillBorder('#0D7A5F'); setPillText('#0D7A5F');
+  }
+  const renderPillAutofill = () => (
+    <div style={{padding:'14px'}}>
+      <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
+        <div style={{fontSize:13, fontWeight:700, color:'var(--color-accent)', marginBottom:10}}>🎨 Couleurs de la pill autofill (champs remplis)</div>
+        <div style={{fontSize:12, color:'var(--color-text-muted)', marginBottom:14, lineHeight:1.5}}>
+          Personnalise les 3 couleurs des champs remplis (fond, bordure, texte). Applique en temps réel à toute l'app.
+        </div>
+        <div style={{display:'flex', flexDirection:'column', gap:10}}>
+          <label style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:10}}>
+            <span style={{fontSize:13, flex:1}}>Fond</span>
+            <input type="color" value={pillBg} onChange={e => setPillBg(e.target.value)} style={{width:50, height:32, border:'1px solid #D8CCB4', borderRadius:4, cursor:'pointer'}}/>
+            <code style={{fontSize:11, fontFamily:'monospace', color:'var(--color-text-muted)'}}>{pillBg}</code>
+          </label>
+          <label style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:10}}>
+            <span style={{fontSize:13, flex:1}}>Bordure</span>
+            <input type="color" value={pillBorder} onChange={e => setPillBorder(e.target.value)} style={{width:50, height:32, border:'1px solid #D8CCB4', borderRadius:4, cursor:'pointer'}}/>
+            <code style={{fontSize:11, fontFamily:'monospace', color:'var(--color-text-muted)'}}>{pillBorder}</code>
+          </label>
+          <label style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:10}}>
+            <span style={{fontSize:13, flex:1}}>Texte</span>
+            <input type="color" value={pillText} onChange={e => setPillText(e.target.value)} style={{width:50, height:32, border:'1px solid #D8CCB4', borderRadius:4, cursor:'pointer'}}/>
+            <code style={{fontSize:11, fontFamily:'monospace', color:'var(--color-text-muted)'}}>{pillText}</code>
+          </label>
+        </div>
+        {/* Preview live champ rempli */}
+        <div style={{marginTop:18}}>
+          <div style={{fontSize:11, color:'var(--color-text-muted)', marginBottom:6, textTransform:'uppercase', letterSpacing:.4}}>Preview</div>
+          <input type="text" value="exbattat@gmail.com" readOnly
+            style={{width:'100%', boxSizing:'border-box', height:40, padding:'0 11px', borderRadius:8, fontSize:13, outline:'none',
+                    border:'1.5px solid ' + pillBorder, background: pillBg, color: pillText, fontFamily:'inherit'}}/>
+        </div>
+        <div style={{display:'flex', gap:8, marginTop:14, flexWrap:'wrap'}}>
+          <button onClick={savePillColors} disabled={pillSaving} style={{padding:'9px 14px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor: pillSaving ? 'wait' : 'pointer'}}>{pillSaving ? 'Sauvegarde…' : 'Enregistrer'}</button>
+          <button onClick={resetPillColors} style={{padding:'9px 14px', background:'#fff', color:'var(--color-accent)', border:'1.5px solid var(--color-accent)', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer'}}>Réinitialiser défaut</button>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderRgpd = () => (
     <div style={{padding:'14px'}}>
       <div style={{background:'#fff', border:'1px solid var(--color-border-cream)', borderRadius:10, padding:14, marginBottom:10}}>
@@ -18769,6 +18864,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
   const TITRES = {
     home:'Réglages', notifs:'Notifications', profil:'Profil', securite:'Sécurité',
     apparence:'Devise & langue', abonnement:'Abonnement', rgpd:'Mes données',
+    pill_autofill:'Pill autofill (super-admin)',
   };
   const titre = TITRES[subscreen] || 'Réglages';
   const showSave = subscreen !== 'home';
@@ -18786,6 +18882,7 @@ function PreferencesPage({onBack, showToast, currentUser}) {
         {subscreen === 'apparence' && renderApparence()}
         {subscreen === 'abonnement' && renderAbonnement()}
         {subscreen === 'rgpd' && renderRgpd()}
+        {subscreen === 'pill_autofill' && renderPillAutofill()}
       </div>
     </div>
   );
@@ -23574,6 +23671,21 @@ function Section7({d, set}) {
   );
 }
 
+// M/2026/05/14/32 — mapClientAddressPick : handler partage Section Client Particulier+Societe.
+// Phase 2 audit M/14/31 : les 2 onPick inline dupliques ne propageaient pas p.quartier
+// (quartier auto-detecte par AddressAutocomplete.pick + cleanQuartier perdu apres Google select).
+// Fix : 5 set sequentiels incluant quartier_residence. Section Bien intacte (setBMany atomique).
+function mapClientAddressPick(p, set) {
+  if (!p || typeof set !== 'function') return;
+  if (p.adresse) set('adresse', p.adresse);
+  if (p.ville) set('ville', p.ville);
+  if (p.code_postal) set('code_postal', p.code_postal);
+  if (p.pays) set('pays_residence', p.pays);
+  // M/2026/05/14/32 fix : quartier_residence propage (cleanQuartier deja applique cote
+  // AddressAutocomplete.pick — p.quartier est deja safe vs garbage).
+  if (p.quartier) set('quartier_residence', p.quartier);
+}
+
 function FormView(props) {
   const {editing, setEditing, activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          isPromoteur, setIsPromoteur, isMarchandDeBiens, setIsMarchandDeBiens,
@@ -24988,12 +25100,7 @@ function FormView(props) {
                 <AddressAutocomplete label="Adresse" value={d.adresse} onChange={v => set('adresse', v)}
                   autoComplete="street-address" name="street-address"
                   style={{marginBottom:'var(--space-0)'}}
-                  onPick={(p) => {
-                    if (p.adresse) set('adresse', p.adresse);
-                    if (p.ville) set('ville', p.ville);
-                    if (p.code_postal) set('code_postal', p.code_postal);
-                    if (p.pays) set('pays_residence', p.pays);
-                  }}/>
+                  onPick={p => mapClientAddressPick(p, set)}/>
               </div>
               {/* M/2026/05/02/12 — M123 : 3 cols Ville/CP/Quartier cohérent Section II.
                   Quartier résidence = Field texte libre (saisie optionnelle, pas de DistrictPicker
@@ -25084,12 +25191,7 @@ function FormView(props) {
                 <AddressAutocomplete label="Adresse société" value={d.adresse} onChange={v => set('adresse', v)}
                   autoComplete="section-societe street-address" name="societe-street-address"
                   style={{marginBottom:'var(--space-0)'}}
-                  onPick={(p) => {
-                    if (p.adresse) set('adresse', p.adresse);
-                    if (p.ville) set('ville', p.ville);
-                    if (p.code_postal) set('code_postal', p.code_postal);
-                    if (p.pays) set('pays_residence', p.pays);
-                  }}/>
+                  onPick={p => mapClientAddressPick(p, set)}/>
               </div>
               {/* M/2026/05/02/12 — M123 : 3 cols Ville/CP/Quartier cohérent Section II + Particulier. */}
               {/* M/2026/05/02/15 — M126 : VilleAutocomplete + auto-fill CP Section I Société. */}
