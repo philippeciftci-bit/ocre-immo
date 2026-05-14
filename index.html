@@ -5067,14 +5067,20 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
   const token = () => localStorage.getItem('ocre_token') || '';
 
   // M/2026/05/14/24 — DnD natif inline (touch + pointer). Long press 1s -> grab.
-  // touchmove -> translate + hitTest overIdx. touchend -> arrayMove + onPhotosChange.
-  // Cancel : touchcancel ou move > 8px AVANT activation longpress.
+  // M/2026/05/14/25 — Fluidite : position courante en useRef + transform direct DOM
+  // dans rAF (bypass state React), state seulement pour overIdx (changements rares).
+  // transition='none' UNIQUEMENT sur draggee (CSS inline), will-change:'transform'.
   const _LONG_PRESS_MS = 1000;
   const _CANCEL_THRESHOLD_PX = 8;
-  const [dragState, setDragState] = React.useState({grabbing:false, fromIdx:null, overIdx:null, dx:0, dy:0});
+  const [dragState, setDragState] = React.useState({grabbing:false, fromIdx:null, overIdx:null});
   const longPressTimerRef = React.useRef(null);
   const dragStartRef = React.useRef({x:0, y:0, fromIdx:null});
   const tileRefs = React.useRef([]);
+  // Position en ref (60+fps writes sans re-render React).
+  const positionRef = React.useRef({dx:0, dy:0});
+  const lastTouchRef = React.useRef(null);
+  const rafIdRef = React.useRef(null);
+  const currentOverIdxRef = React.useRef(null);
 
   function _clearLongPress() {
     if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
@@ -5082,16 +5088,53 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
   function _hapticPulse(duration) {
     try { if (navigator.vibrate) navigator.vibrate(duration || 40); } catch (e) {}
   }
+  function _cancelRaf() {
+    if (rafIdRef.current != null) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+  }
 
   function handleTileTouchStart(idx, e) {
     if (selectMode || uploading > 0 || bulkDeleteRemaining > 0) return;
     const t = e.touches && e.touches[0]; if (!t) return;
     dragStartRef.current = {x: t.clientX, y: t.clientY, fromIdx: idx};
+    positionRef.current = {dx: 0, dy: 0};
     _clearLongPress();
     longPressTimerRef.current = setTimeout(() => {
       _hapticPulse(40);
-      setDragState({grabbing: true, fromIdx: idx, overIdx: idx, dx: 0, dy: 0});
+      currentOverIdxRef.current = idx;
+      setDragState({grabbing: true, fromIdx: idx, overIdx: idx});
     }, _LONG_PRESS_MS);
+  }
+
+  // M/2026/05/14/25 — rAF loop : applique transform direct DOM + hitTest une fois par frame.
+  // Re-render React seulement si overIdx change (threshold cellule). Cancel longpress si
+  // l'user move avant activation grab.
+  function _rafTick() {
+    rafIdRef.current = null;
+    const t = lastTouchRef.current;
+    if (!t) return;
+    const grabbing = dragState.grabbing;
+    const fromIdx = dragState.fromIdx;
+    if (!grabbing || fromIdx == null) return;
+    const pos = positionRef.current;
+    // Apply transform direct sur le DOM de la tile draggee (bypass React render).
+    const draggedTile = tileRefs.current[fromIdx];
+    if (draggedTile) {
+      draggedTile.style.transform = 'translate(' + pos.dx + 'px, ' + pos.dy + 'px) scale(1.05)';
+    }
+    // Hit test : determine overIdx sous le doigt.
+    let newOverIdx = currentOverIdxRef.current;
+    for (let i = 0; i < tileRefs.current.length; i++) {
+      const tile = tileRefs.current[i];
+      if (!tile) continue;
+      const r = tile.getBoundingClientRect();
+      if (t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom) {
+        newOverIdx = i; break;
+      }
+    }
+    if (newOverIdx !== currentOverIdxRef.current) {
+      currentOverIdxRef.current = newOverIdx;
+      setDragState(prev => ({...prev, overIdx: newOverIdx}));
+    }
   }
 
   function handleTileTouchMove(e) {
@@ -5103,37 +5146,45 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
       if (Math.abs(dx) > _CANCEL_THRESHOLD_PX || Math.abs(dy) > _CANCEL_THRESHOLD_PX) _clearLongPress();
       return;
     }
-    e.preventDefault(); // empeche scroll pendant drag actif
-    let newOverIdx = dragState.fromIdx;
-    for (let i = 0; i < tileRefs.current.length; i++) {
-      const tile = tileRefs.current[i];
-      if (!tile) continue;
-      const r = tile.getBoundingClientRect();
-      if (t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom) {
-        newOverIdx = i; break;
-      }
+    e.preventDefault();
+    positionRef.current = {dx, dy};
+    lastTouchRef.current = {clientX: t.clientX, clientY: t.clientY};
+    // Schedule rAF si pas deja en cours (throttle naturel ~60fps).
+    if (rafIdRef.current == null) {
+      rafIdRef.current = requestAnimationFrame(_rafTick);
     }
-    setDragState(prev => ({...prev, dx, dy, overIdx: newOverIdx}));
   }
 
   function handleTileTouchEnd() {
     _clearLongPress();
+    _cancelRaf();
     if (!dragState.grabbing) return;
     const from = dragState.fromIdx;
-    const to = dragState.overIdx;
+    const to = currentOverIdxRef.current != null ? currentOverIdxRef.current : dragState.overIdx;
+    // Reset transform DOM avant le state change (evite flash visuel).
+    const draggedTile = tileRefs.current[from];
+    if (draggedTile) { draggedTile.style.transform = ''; }
     if (from !== null && to !== null && from !== to && from >= 0 && to >= 0 && from < list.length && to < list.length) {
       const next = list.slice();
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
-      try { onPhotosChange && onPhotosChange(next); } catch (e) { console.error('[M/14/24] reorder onPhotosChange err:', e); }
+      try { onPhotosChange && onPhotosChange(next); } catch (e) { console.error('[M/14/25] reorder onPhotosChange err:', e); }
       _hapticPulse(20);
     }
-    setDragState({grabbing: false, fromIdx: null, overIdx: null, dx: 0, dy: 0});
+    positionRef.current = {dx:0, dy:0};
+    currentOverIdxRef.current = null;
+    setDragState({grabbing: false, fromIdx: null, overIdx: null});
   }
 
   function handleTileTouchCancel() {
     _clearLongPress();
-    setDragState({grabbing: false, fromIdx: null, overIdx: null, dx: 0, dy: 0});
+    _cancelRaf();
+    const from = dragState.fromIdx;
+    const draggedTile = from != null ? tileRefs.current[from] : null;
+    if (draggedTile) { draggedTile.style.transform = ''; }
+    positionRef.current = {dx:0, dy:0};
+    currentOverIdxRef.current = null;
+    setDragState({grabbing: false, fromIdx: null, overIdx: null});
   }
 
   // Shift indicateur (effet accordeon) : tile entre from et over decalee de la largeur d'une tile.
@@ -5378,16 +5429,33 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
           const src = photoSrc(p);
           const key = photoKey(p, idx);
           const isSelected = selectMode && selectedUuids.includes(key);
-          // M/2026/05/14/24 — bordure ocre + badge Principale sur photos[0], DnD natif transform accordeon.
+          // M/2026/05/14/24 + M/2026/05/14/25 — bordure ocre + badge Principale sur photos[0].
+          // DnD : tile draggee transform via rAF direct DOM (bypass React), transition off,
+          // will-change. Voisines : transform accordeon via state (changements rares cellule).
           const _isCover = idx === 0;
           const _isDragged = dragState.grabbing && dragState.fromIdx === idx;
           const _shift = _accordionShift(idx);
-          const _transform = _isDragged
-            ? `translate(${dragState.dx}px, ${dragState.dy}px) scale(1.05)`
-            : (_shift !== 0 ? `translateX(${_shift * 100}%)` : 'none');
+          // Pour la draggee, on NE met PAS de transform inline : rAF ecrit directement sur ref.style.transform.
+          // Pour les voisines, transform accordeon controle par React state (rare, threshold cellule).
+          const _transformNonDragged = _shift !== 0 ? `translateX(${_shift * 100}%)` : 'none';
           const _border = _isCover
             ? '3px solid var(--color-accent)'
             : (isSelected ? '2px solid #7A5132' : '1px solid var(--color-border-subtle)');
+          // Style inline : pas de transform pour draggee (rAF gere), transform accordeon pour voisines.
+          const _style = {
+            position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden',
+            border: _border,
+            background:'#F4ECE3',
+            cursor: selectMode ? 'pointer' : (dragState.grabbing ? 'grabbing' : 'default'),
+            opacity: isSelected ? 0.85 : 1,
+            transition: _isDragged ? 'none' : 'transform 220ms cubic-bezier(0.2, 0, 0.2, 1)',
+            zIndex: _isDragged ? 10 : 1,
+            boxShadow: _isDragged ? '0 8px 22px rgba(60,40,20,0.35)' : 'none',
+            touchAction: dragState.grabbing ? 'none' : 'auto',
+            userSelect:'none', WebkitUserSelect:'none', WebkitTouchCallout:'none',
+            willChange: _isDragged ? 'transform' : 'auto',
+          };
+          if (!_isDragged) _style.transform = _transformNonDragged;
           return (
             <div key={key}
               ref={el => { tileRefs.current[idx] = el; }}
@@ -5396,17 +5464,7 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
               onTouchEnd={handleTileTouchEnd}
               onTouchCancel={handleTileTouchCancel}
               onClick={selectMode ? () => toggleUuid(key) : undefined}
-              style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden',
-                      border: _border,
-                      background:'#F4ECE3',
-                      cursor: selectMode ? 'pointer' : (dragState.grabbing ? 'grabbing' : 'default'),
-                      opacity: isSelected ? 0.85 : 1,
-                      transform: _transform,
-                      transition: _isDragged ? 'none' : 'transform 220ms cubic-bezier(0.2, 0, 0.2, 1)',
-                      zIndex: _isDragged ? 10 : 1,
-                      boxShadow: _isDragged ? '0 8px 22px rgba(60,40,20,0.35)' : 'none',
-                      touchAction: dragState.grabbing ? 'none' : 'auto',
-                      userSelect:'none', WebkitUserSelect:'none', WebkitTouchCallout:'none'}}>
+              style={_style}>
               {src && <img src={src} alt="" loading="lazy" draggable={false} style={{width:'100%', height:'100%', objectFit:'cover', display:'block', pointerEvents:'none'}} onError={e => { e.target.style.display = 'none'; }}/>}
               {_isCover && !selectMode && (
                 <div style={{position:'absolute', top:6, left:6, padding:'3px 8px', background:'var(--color-accent)', color:'#fff', fontSize:'9.5px', fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase', borderRadius:4, pointerEvents:'none', boxShadow:'0 1px 3px rgba(0,0,0,0.25)'}}>Principale</div>
