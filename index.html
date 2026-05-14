@@ -418,6 +418,28 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
   document.addEventListener('focusin', function(e) {
     if (isTextInput(e.target)) lastFocusAt = Date.now();
   }, true);
+  // M/14/48 — focusout global -> reflow anti-fantome. Couvre scenarios non-scroll :
+  // (A) tap ailleurs zone non-input, (B) tap bouton V iOS barre clavier, (C) Enter blur.
+  // Skip si nouveau activeElement est aussi input texte (changement champ, clavier reste).
+  document.addEventListener('focusout', function(e) {
+    if (!isTextInput(e.target)) return;
+    setTimeout(function() {
+      if (isTextInput(document.activeElement)) return;
+      try {
+        document.body.style.transform = 'translateZ(0)';
+        setTimeout(function() { document.body.style.transform = ''; }, 50);
+      } catch (err) {}
+    }, 0);
+  }, true);
+  // M/14/48 — Enter sur INPUT (non-textarea) -> blur pour fermer clavier (textarea preserve newline).
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    var el = e.target;
+    if (!el || el.tagName !== 'INPUT') return;
+    var t = (el.type || 'text').toLowerCase();
+    if (['text','search','email','tel','url','password','number'].indexOf(t) === -1) return;
+    try { el.blur(); } catch (err) {}
+  }, true);
   // Scroll handler : skip si scroll dans fenetre 700ms post-focus + dy > 30px requis.
   window.addEventListener('scroll', function() {
     var dy = Math.abs((window.scrollY || 0) - lastScrollY);
