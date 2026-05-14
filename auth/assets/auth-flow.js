@@ -39,12 +39,9 @@
     "[data-ocre-auth] .of-tel-row{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:end}",
     "[data-ocre-auth] .of-pwd-wrap{position:relative}",
     "[data-ocre-auth] .of-pwd-wrap input{padding-right:44px}",
-    "[data-ocre-auth] .of-pwd-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:#998877;font-size:16px}",
-    // M/2026/05/14/81 — tooltip overlay autofill iOS Keychain.
-    "[data-ocre-auth] .of-pwd-wrap{position:relative}",
-    "[data-ocre-auth] .of-eye-tooltip{position:absolute;left:0;right:44px;bottom:calc(100% + 8px);background:#FFF8E7;border:1px solid #D4A256;padding:8px 12px;border-radius:8px;font-family:'SF Mono',Menlo,Consolas,monospace;color:#3D2818;font-size:15px;box-shadow:0 4px 12px rgba(60,40,24,0.2);z-index:50;word-break:break-all;pointer-events:none}",
-    "[data-ocre-auth] .of-eye-tooltip::after{content:'';position:absolute;bottom:-6px;left:14px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #D4A256}",
-    "[data-ocre-auth] .of-eye-tooltip::before{content:'';position:absolute;bottom:-5px;left:15px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #FFF8E7;z-index:1}",
+    "[data-ocre-auth] .of-pwd-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:8px;color:#998877;display:flex;align-items:center;justify-content:center}",
+    "[data-ocre-auth] .of-pwd-toggle:hover{color:#6B5642}",
+    "[data-ocre-auth] .of-pwd-toggle svg{width:20px;height:20px}",
     "[data-ocre-auth] .of-hint{font-size:11.5px;color:#998877;margin-top:4px}",
     "[data-ocre-auth] .of-hint.ok{color:#2E7D32}",
     "[data-ocre-auth] .of-hint.err{color:#C62828}",
@@ -105,7 +102,7 @@
       + '<form data-form="login" autocomplete="on" novalidate>'
       + '<input type="email" data-hidden="login" name="username" autocomplete="username" class="of-hidden">'
       + '<div class="of-field"><label for="of-login-pwd">Mot de passe</label>'
-      + '<div class="of-pwd-wrap"><input id="of-login-pwd" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"><button type="button" class="of-pwd-toggle" data-toggle="of-login-pwd">👁</button></div>'
+      + '<div class="of-pwd-wrap"><input id="of-login-pwd" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"><button type="button" class="of-pwd-toggle" data-toggle="of-login-pwd"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>'
       + '</div>'
       + '<button type="submit" class="of-btn-primary" data-submit="login">Se connecter</button>'
       + '<div class="of-msg" data-msg="login"></div>'
@@ -138,11 +135,11 @@
       + '<input id="of-tel" type="tel" required autocomplete="tel" inputmode="tel" placeholder="6 12 34 56 78">'
       + '</div><div class="of-hint" data-hint="tel"></div></div>'
       + '<div class="of-field"><label for="of-signup-pwd">Crée ton mot de passe *</label>'
-      + '<div class="of-pwd-wrap"><input id="of-signup-pwd" type="password" required autocomplete="new-password" minlength="8" placeholder="8 caractères minimum"><button type="button" class="of-pwd-toggle" data-toggle="of-signup-pwd">👁</button></div>'
+      + '<div class="of-pwd-wrap"><input id="of-signup-pwd" type="password" required autocomplete="new-password" minlength="8" placeholder="8 caractères minimum"><button type="button" class="of-pwd-toggle" data-toggle="of-signup-pwd"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>'
       + '<div class="of-strength-bar"><span data-strength></span></div>'
       + '<div class="of-hint" data-hint="pwd"></div></div>'
       + '<div class="of-field"><label for="of-signup-confirm">Confirme ton mot de passe *</label>'
-      + '<div class="of-pwd-wrap"><input id="of-signup-confirm" type="password" required autocomplete="new-password" minlength="8"><button type="button" class="of-pwd-toggle" data-toggle="of-signup-confirm">👁</button></div>'
+      + '<div class="of-pwd-wrap"><input id="of-signup-confirm" type="password" required autocomplete="new-password" minlength="8"><button type="button" class="of-pwd-toggle" data-toggle="of-signup-confirm"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>'
       + '<div class="of-match" data-match></div></div>'
       + '<label class="of-cgu"><input type="checkbox" id="of-cgu"> J\'accepte les <a href="https://ocre.immo/mentions-legales/" target="_blank">conditions générales d\'utilisation</a> *</label>'
       + '<label class="of-cgu"><input type="checkbox" id="of-rgpd"> J\'accepte le traitement de mes données (<a href="https://ocre.immo/confidentialite/" target="_blank">RGPD</a>) *</label>'
@@ -186,11 +183,11 @@
       + '<form data-form="reset" autocomplete="on" novalidate>'
       + '<input type="email" name="username" autocomplete="username" class="of-hidden">'
       + '<div class="of-field"><label for="of-reset-pwd">Nouveau mot de passe *</label>'
-      + '<div class="of-pwd-wrap"><input id="of-reset-pwd" type="password" required autocomplete="new-password" minlength="8"><button type="button" class="of-pwd-toggle" data-toggle="of-reset-pwd">👁</button></div>'
+      + '<div class="of-pwd-wrap"><input id="of-reset-pwd" type="password" required autocomplete="new-password" minlength="8"><button type="button" class="of-pwd-toggle" data-toggle="of-reset-pwd"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>'
       + '<div class="of-strength-bar"><span data-strength="reset"></span></div>'
       + '<div class="of-hint" data-hint="reset-pwd"></div></div>'
       + '<div class="of-field"><label for="of-reset-confirm">Confirme *</label>'
-      + '<div class="of-pwd-wrap"><input id="of-reset-confirm" type="password" required autocomplete="new-password" minlength="8"><button type="button" class="of-pwd-toggle" data-toggle="of-reset-confirm">👁</button></div>'
+      + '<div class="of-pwd-wrap"><input id="of-reset-confirm" type="password" required autocomplete="new-password" minlength="8"><button type="button" class="of-pwd-toggle" data-toggle="of-reset-confirm"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>'
       + '<div class="of-match" data-match="reset"></div></div>'
       + '<button type="submit" class="of-btn-primary" data-submit="reset">Enregistrer</button>'
       + '<div class="of-msg" data-msg="reset"></div>'
@@ -275,51 +272,19 @@
         a.addEventListener('click', function(e) { e.preventDefault(); show(a.dataset.go); });
       });
 
-      // M/2026/05/14/81 — Eye toggle + tooltip overlay pour autofill iOS Keychain.
-      // Safari/iOS bloque le toggle type password->text pour les champs autofilled. Solution :
-      // tooltip DOM separe qui lit input.value via JS (toujours accessible) et l affiche au-dessus.
-      // Triangle indicateur, textContent (anti-XSS), focus-out hide.
+      // M/2026/05/14/82 — ROLLBACK : toggle eye classique SVG lucide Eye/EyeOff. Suppression
+      // franche tooltip overlay M/14/81 (mauvaise solution faux probleme).
+      var SVG_EYE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+      var SVG_EYE_OFF = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>';
       $$('.of-pwd-toggle').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var input = root.querySelector('#' + btn.dataset.toggle);
           if (!input) return;
-          var wrap = btn.parentNode; // .of-pwd-wrap
-          var tooltip = wrap.querySelector('.of-eye-tooltip');
-          if (tooltip) {
-            // Tooltip ouvert -> fermer
-            tooltip.remove();
-            try { input.type = 'password'; } catch (_) {}
-            btn.textContent = '👁';
-          } else {
-            // Cree tooltip overlay (au-dessus du champ)
-            try { input.type = 'text'; } catch (_) {} // marche en saisie manuelle, no-op en autofill
-            tooltip = document.createElement('div');
-            tooltip.className = 'of-eye-tooltip';
-            tooltip.textContent = input.value || '(vide)';
-            wrap.appendChild(tooltip);
-            btn.textContent = '🔒';
-          }
+          var isPassword = input.getAttribute('type') === 'password';
+          input.setAttribute('type', isPassword ? 'text' : 'password');
+          btn.innerHTML = isPassword ? SVG_EYE_OFF : SVG_EYE;
+          btn.setAttribute('aria-label', isPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
         });
-      });
-      // Fermer tooltips au focusout (securite)
-      root.addEventListener('focusout', function(e) {
-        if (e.target && e.target.classList && e.target.classList.contains('of-pwd-wrap')) return;
-        setTimeout(function() {
-          $$('.of-eye-tooltip').forEach(function(tt) {
-            // Si focus est encore dans la card, garder tooltip ouvert pour cette session.
-            // Sinon (focus out card) fermer pour securite.
-            if (!root.contains(document.activeElement)) {
-              tt.remove();
-              var w = tt.closest('.of-pwd-wrap');
-              if (w) {
-                var i = w.querySelector('input');
-                var b = w.querySelector('.of-pwd-toggle');
-                if (i) { try { i.type = 'password'; } catch (_) {} }
-                if (b) b.textContent = '👁';
-              }
-            }
-          });
-        }, 100);
       });
 
       // Form email
