@@ -9066,16 +9066,10 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
 
   return (
     <S3CardRound>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'var(--space-2)', paddingBottom:'var(--space-6px)', borderBottom:'1px solid var(--color-success)40'}}>
-        <span style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.4}}>Frais notaire — total global</span>
-        {/* M/2026/05/13/52 — SSOT PriceField2ColDisplay : pattern charte unifie. */}
-        <div style={{flex:'1 1 auto', minWidth:0}}>
-          <PriceField2ColDisplay
-            leftValue={totalLeft}
-            rightValue={totalRight}
-            forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
-        </div>
-      </div>
+      {/* M/2026/05/14/19 — Mirror M53FraisAgenceMulti (M/2026/05/13/56).
+          Ordre cible : acteurs -> + Ajouter -> TOTAL GLOBAL -> Repartition par camp.
+          Theme couleur conserve : var(--color-success) (vert/beige semantique notaire). */}
+      {/* 1. Acteurs (Notaire principal / Notaire 2 / 3 / 4 max) */}
       {acteurs.length === 0 && (
         <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)', fontStyle:'italic', textAlign:'center', padding:'8px 0'}}>Aucun notaire. Tap + Ajouter un notaire pour commencer.</div>
       )}
@@ -9095,14 +9089,25 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
           onRemove={acteurs.length > 1 ? () => removeActeur(idx) : null}
         />
       ))}
+      {/* 2. + Ajouter un notaire (deplace au-dessus du TOTAL GLOBAL, mirror Frais agence) */}
+      {acteurs.length < 4 && (
+        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:'var(--space-2)', marginTop:'var(--space-2)', background:'#fff', border:'1.5px dashed var(--color-success)', borderRadius:8, color:'var(--color-success)', fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un notaire ({acteurs.length}/4)</button>
+      )}
+      {/* 3. TOTAL GLOBAL en BAS (mirror Frais agence M/2026/05/13/61) avec label "Total global"
+          via PriceField2ColDisplay — coherence layout. */}
+      <div style={{marginTop:'var(--space-2)', paddingTop:'var(--space-6px)', borderTop:'1px solid var(--color-success)40'}}>
+        <PriceField2ColDisplay
+          label="Total global"
+          leftValue={totalLeft}
+          rightValue={totalRight}
+          forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
+      </div>
+      {/* 4. Repartition par camp (Vendeur / Acheteur) */}
       {acteurs.length > 0 && (
         <div style={{marginTop:'var(--space-6px)'}}>
           <div style={{fontSize:'var(--font-size-9-5)', fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-3px)'}}>Répartition par camp</div>
           <S3SplitTotal totals={splitTotals} transactionType={transactionType}/>
         </div>
-      )}
-      {acteurs.length < 4 && (
-        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:'var(--space-2)', marginTop:'var(--space-2)', background:'#fff', border:'1.5px dashed var(--color-success)', borderRadius:8, color:'var(--color-success)', fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un notaire ({acteurs.length}/4)</button>
       )}
       <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontStyle:'italic', marginTop:'var(--space-6px)'}}>{refTexte} · à charge acheteur par défaut</div>
     </S3CardRound>
