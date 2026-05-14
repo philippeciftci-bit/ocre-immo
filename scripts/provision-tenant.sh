@@ -81,13 +81,30 @@ FLUSH PRIVILEGES;
 
 mysql -uroot -p"$ROOT_PWD" --database="${DB_AGENT}" < "$SCHEMA"
 
-# M/2026/05/14/1 — Pipeline migrations idempotent: applique versions/V*.sql
-# manquantes immediatement apres le snapshot canonique, et logue dans
-# _schema_migrations. Skip si script absent (fallback graceful).
+# M/2026/05/14/1 + M/2026/05/14/61 — Pipeline migrations idempotent: applique versions/V*.sql
+# manquantes apres le snapshot canonique, log _schema_migrations.
+# M/14/61 fix Codex : vérif post-migrate avec SCHEMA_VERSION_REQUIRED dynamique (lu depuis
+# api/config.php). Rollback DROP DATABASE si migrate échoue OU si version installée
+# différente de la version attendue. Avant : WARN-but-continue laissait DB partielle
+# en cas d'échec migrate -> SCHEMA_DRIFT au prochain hit api/health.php.
 if [[ -x /root/bin/ocre-migrate.sh ]]; then
-  OCRE_MIGRATE_SKIP_BACKUP=1 /root/bin/ocre-migrate.sh "${DB_AGENT}" || {
-    echo "WARN: ocre-migrate.sh a echoue sur ${DB_AGENT} (continuer quand meme)" >&2
-  }
+  EXPECTED=$(grep -E "define\('SCHEMA_VERSION_REQUIRED'," /opt/ocre-app/api/config.php 2>/dev/null \
+    | sed -E "s/.*'SCHEMA_VERSION_REQUIRED', *'([^']+)'.*/\1/" | head -1)
+  [[ -z "$EXPECTED" ]] && EXPECTED="V001"
+  echo "Running migrations via ocre-migrate.sh (expected ${EXPECTED})"
+  if ! OCRE_MIGRATE_SKIP_BACKUP=1 /root/bin/ocre-migrate.sh "${DB_AGENT}" >/tmp/ocre-provision.log 2>&1; then
+    cat /tmp/ocre-provision.log >&2
+    echo "ERROR: migrate failed on ${DB_AGENT}" >&2
+    mysql -uroot -p"$ROOT_PWD" -e "DROP DATABASE IF EXISTS \`${DB_AGENT}\`"
+    exit 5
+  fi
+  LATEST=$(mysql -uroot -p"$ROOT_PWD" -BNe "SELECT name FROM \`${DB_AGENT}\`._schema_migrations ORDER BY id DESC LIMIT 1;" 2>/dev/null)
+  if [[ -z "$LATEST" || "${LATEST:0:${#EXPECTED}}" != "$EXPECTED" ]]; then
+    echo "ERROR: schema ${DB_AGENT} latest='${LATEST:-NONE}' expected prefix '$EXPECTED'" >&2
+    mysql -uroot -p"$ROOT_PWD" -e "DROP DATABASE IF EXISTS \`${DB_AGENT}\`"
+    exit 6
+  fi
+  echo "Schema ${DB_AGENT} ready at ${LATEST}"
 fi
 
 mysql -uroot -p"$ROOT_PWD" --database="${DB_AGENT}" -e "
