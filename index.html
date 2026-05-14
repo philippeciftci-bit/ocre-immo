@@ -483,13 +483,14 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
     });
   }
 })();
-// DEBUG M/14/52 TEMP - instrumentation scroll autofill iOS. A retirer apres diag.
-// Scope : exbattat-a312 uniquement. Trace focusin/input/change/blur sur inputs adresse
-// + scroll + visualViewport.resize pendant 10s post-focus. POST /api/debug-scroll-log.php.
+// DEBUG M/14/52 + M/14/53 TEMP - instrumentation scroll autofill iOS. A retirer apres diag.
+// M/14/53 FIX : retire restriction hostname (logs zero recus, hypothese hostname filter
+// rejette PWA installee / app.ocre.immo proxy / autre URL). Filtre cote serveur via X-Tenant.
+// Selector elargi (placeholder, aria-label contient adresse). Fetch direct au lieu de
+// sendBeacon (sendBeacon peut etre bloque silencieusement Safari iOS PWA mode).
 (function setupScrollDebugM52() {
   if (window.__ocreScrollDbg) return;
   window.__ocreScrollDbg = true;
-  if (!location.hostname || location.hostname.indexOf('exbattat-a312') === -1) return;
   var sessionId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
   var activeUntil = 0;
   function tenantSlug() {
@@ -506,28 +507,38 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
         innerHeight: window.innerHeight,
         vvH: window.visualViewport ? Math.round(window.visualViewport.height) : null,
         vvOY: window.visualViewport ? Math.round(window.visualViewport.offsetTop) : null,
+        host: location.hostname,
       };
       if (extra) for (var k in extra) payload[k] = extra[k];
-      var blob = new Blob([JSON.stringify(payload)], {type: 'application/json'});
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon('/api/debug-scroll-log.php?_t=' + encodeURIComponent(tenantSlug()), blob);
-      } else {
-        fetch('/api/debug-scroll-log.php', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json', 'X-Tenant': tenantSlug()},
-          body: JSON.stringify(payload),
-          keepalive: true,
-        }).catch(function() {});
-      }
+      // M/14/53 : fetch direct (sendBeacon peut etre silencieusement bloque iOS PWA mode).
+      fetch('/api/debug-scroll-log.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Tenant': tenantSlug()},
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(function() {
+        // M/14/53 fallback : si fetch echoue, console.log + tente sendBeacon
+        try { console.log('[M14-53 fallback]', evt, payload); } catch (e) {}
+        try {
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/debug-scroll-log.php', new Blob([JSON.stringify(payload)], {type: 'application/json'}));
+          }
+        } catch (e) {}
+      });
     } catch (e) {}
   }
   function isAddressInput(el) {
     if (!el || el.tagName !== 'INPUT') return false;
     var ac = (el.getAttribute('autocomplete') || '').toLowerCase();
     var nm = (el.getAttribute('name') || '').toLowerCase();
+    var ph = (el.getAttribute('placeholder') || '').toLowerCase();
+    var al = (el.getAttribute('aria-label') || '').toLowerCase();
     if (ac.indexOf('street-address') !== -1) return true;
     if (nm.indexOf('street-address') !== -1) return true;
-    if (nm === 'address-line1' || nm === 'address-line2') return true;
+    if (nm.indexOf('address') !== -1) return true;
+    if (nm.indexOf('adresse') !== -1) return true;
+    if (ph.indexOf('adresse') !== -1) return true;
+    if (al.indexOf('adresse') !== -1) return true;
     return false;
   }
   function targetInfo(el) {
