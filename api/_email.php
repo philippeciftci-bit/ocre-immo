@@ -96,9 +96,12 @@ function sendEmail(string $to, string $subject, string $html, string $template =
 // ============================================================================
 
 function emailLayout(string $title, string $bodyHtml, ?string $ctaLabel = null, ?string $ctaUrl = null, ?string $footerNote = null): string {
+    // M/2026/05/14/74 — bouton canonical via ocre_btn_html() unique (mailer.php M/14/63).
+    // Avant : gradient inline + shadow divergent.
     $cta = '';
     if ($ctaLabel && $ctaUrl) {
-        $cta = '<tr><td style="padding:8px 0 24px"><a href="' . htmlspecialchars($ctaUrl, ENT_QUOTES) . '" style="display:inline-block;background:linear-gradient(135deg,#8B5E3C,#A06B45);color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:700;font-size:14px;font-family:\'DM Sans\',Arial,sans-serif;box-shadow:0 2px 6px rgba(60,40,20,.2)">' . htmlspecialchars($ctaLabel, ENT_QUOTES) . '</a></td></tr>';
+        require_once __DIR__ . '/lib/mailer.php';
+        $cta = '<tr><td>' . ocre_btn_html($ctaUrl, $ctaLabel) . '</td></tr>';
     }
     $footer = $footerNote
         ? '<p style="font-size:11px;color:#8B7F6E;margin:8px 0">' . $footerNote . '</p>'
