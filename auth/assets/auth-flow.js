@@ -40,6 +40,11 @@
     "[data-ocre-auth] .of-pwd-wrap{position:relative}",
     "[data-ocre-auth] .of-pwd-wrap input{padding-right:44px}",
     "[data-ocre-auth] .of-pwd-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;color:#998877;font-size:16px}",
+    // M/2026/05/14/81 — tooltip overlay autofill iOS Keychain.
+    "[data-ocre-auth] .of-pwd-wrap{position:relative}",
+    "[data-ocre-auth] .of-eye-tooltip{position:absolute;left:0;right:44px;bottom:calc(100% + 8px);background:#FFF8E7;border:1px solid #D4A256;padding:8px 12px;border-radius:8px;font-family:'SF Mono',Menlo,Consolas,monospace;color:#3D2818;font-size:15px;box-shadow:0 4px 12px rgba(60,40,24,0.2);z-index:50;word-break:break-all;pointer-events:none}",
+    "[data-ocre-auth] .of-eye-tooltip::after{content:'';position:absolute;bottom:-6px;left:14px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #D4A256}",
+    "[data-ocre-auth] .of-eye-tooltip::before{content:'';position:absolute;bottom:-5px;left:15px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #FFF8E7;z-index:1}",
     "[data-ocre-auth] .of-hint{font-size:11.5px;color:#998877;margin-top:4px}",
     "[data-ocre-auth] .of-hint.ok{color:#2E7D32}",
     "[data-ocre-auth] .of-hint.err{color:#C62828}",
@@ -270,13 +275,51 @@
         a.addEventListener('click', function(e) { e.preventDefault(); show(a.dataset.go); });
       });
 
+      // M/2026/05/14/81 — Eye toggle + tooltip overlay pour autofill iOS Keychain.
+      // Safari/iOS bloque le toggle type password->text pour les champs autofilled. Solution :
+      // tooltip DOM separe qui lit input.value via JS (toujours accessible) et l affiche au-dessus.
+      // Triangle indicateur, textContent (anti-XSS), focus-out hide.
       $$('.of-pwd-toggle').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var input = root.querySelector('#' + btn.dataset.toggle);
           if (!input) return;
-          input.type = input.type === 'password' ? 'text' : 'password';
-          btn.textContent = input.type === 'password' ? '👁' : '🔒';
+          var wrap = btn.parentNode; // .of-pwd-wrap
+          var tooltip = wrap.querySelector('.of-eye-tooltip');
+          if (tooltip) {
+            // Tooltip ouvert -> fermer
+            tooltip.remove();
+            try { input.type = 'password'; } catch (_) {}
+            btn.textContent = '👁';
+          } else {
+            // Cree tooltip overlay (au-dessus du champ)
+            try { input.type = 'text'; } catch (_) {} // marche en saisie manuelle, no-op en autofill
+            tooltip = document.createElement('div');
+            tooltip.className = 'of-eye-tooltip';
+            tooltip.textContent = input.value || '(vide)';
+            wrap.appendChild(tooltip);
+            btn.textContent = '🔒';
+          }
         });
+      });
+      // Fermer tooltips au focusout (securite)
+      root.addEventListener('focusout', function(e) {
+        if (e.target && e.target.classList && e.target.classList.contains('of-pwd-wrap')) return;
+        setTimeout(function() {
+          $$('.of-eye-tooltip').forEach(function(tt) {
+            // Si focus est encore dans la card, garder tooltip ouvert pour cette session.
+            // Sinon (focus out card) fermer pour securite.
+            if (!root.contains(document.activeElement)) {
+              tt.remove();
+              var w = tt.closest('.of-pwd-wrap');
+              if (w) {
+                var i = w.querySelector('input');
+                var b = w.querySelector('.of-pwd-toggle');
+                if (i) { try { i.type = 'password'; } catch (_) {} }
+                if (b) b.textContent = '👁';
+              }
+            }
+          });
+        }, 100);
       });
 
       // Form email
