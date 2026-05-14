@@ -152,25 +152,39 @@ case 'reset_tenant': {
     @chmod($backup, 0600);
     if (!$r['ok']) rout(['ok'=>false,'error'=>'Backup pre-reset echoue, RESET ANNULE','detail'=>$r], 500);
     $dbName = 'ocre_wsp_' . $slug;
+    // M/2026/05/14/57 — atomicite : DROP + CREATE + ocre-migrate.sh (V001..V012) + verify + rollback si fail.
+    // Avant : tentait import tenant_template.sql inexistant, @exec silence, ok=true template_imported=false
+    // -> DB vide en prod jusqu'a rattrapage audit-timer 4-6 min. CAUSE RACINE downtime M/14/55.
     try {
         $meta = pdo_meta();
         $meta->exec("DROP DATABASE IF EXISTS `$dbName`");
         $meta->exec("CREATE DATABASE `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        // Tenter import schema template
-        $template = '/root/workspace/ocre-immo/db/tenant_template.sql';
-        $imported = false;
-        if (is_file($template)) {
-            $cnf = '/root/.secrets/mysql_dump.cnf';
-            $cmd = is_file($cnf)
-                ? "mysql --defaults-extra-file=" . escapeshellarg($cnf) . " " . escapeshellarg($dbName) . " < " . escapeshellarg($template) . " 2>&1"
-                : "mysql -u" . escapeshellarg(DB_USER) . " -p" . escapeshellarg(DB_PASS) . " " . escapeshellarg($dbName) . " < " . escapeshellarg($template) . " 2>&1";
-            @exec($cmd, $oo, $rc);
-            $imported = ($rc === 0);
+        // Apply migrations V001..V012 via ocre-migrate.sh (idempotent, sait re-importer schema canonique).
+        $migrateCmd = "/root/bin/ocre-migrate.sh " . escapeshellarg($slug) . " 2>&1";
+        $migrateOut = []; $migrateRc = 0;
+        @exec($migrateCmd, $migrateOut, $migrateRc);
+        if ($migrateRc !== 0) {
+            // Import echoue -> rollback DROP. Logguer puis 500.
+            try { $meta->exec("DROP DATABASE IF EXISTS `$dbName`"); } catch (Throwable $e2) {}
+            reset_log((int)$user['id'], 'reset_tenant_migrate_failed', ['slug'=>$slug,'rc'=>$migrateRc,'out_tail'=>array_slice($migrateOut, -5)]);
+            rout(['ok'=>false,'error'=>'reset_tenant migrate failed','rc'=>$migrateRc,'out_tail'=>array_slice($migrateOut, -5),'backup_file'=>basename($backup)], 500);
         }
-        reset_log((int)$user['id'], 'reset_tenant', ['slug'=>$slug,'db'=>$dbName,'template_imported'=>$imported,'backup'=>$backup]);
-        reset_telegram('reset_tenant', ['slug'=>$slug,'template_imported'=>$imported,'backup'=>basename($backup)]);
-        rout(['ok'=>true, 'tenant_db_recreated'=>$dbName, 'template_imported'=>$imported, 'backup_file'=>basename($backup)]);
+        // Verify post-import : _schema_migrations doit contenir V012 (latest).
+        $verifyPdo = new PDO('mysql:host=' . DB_HOST . ';dbname=' . $dbName . ';charset=utf8mb4', DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $verifyRow = $verifyPdo->query("SELECT name FROM _schema_migrations ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        $latest = $verifyRow ? (string)$verifyRow['name'] : '';
+        if (strpos($latest, 'V012') !== 0) {
+            // Verify echec -> rollback
+            try { $meta->exec("DROP DATABASE IF EXISTS `$dbName`"); } catch (Throwable $e2) {}
+            reset_log((int)$user['id'], 'reset_tenant_verify_failed', ['slug'=>$slug,'latest'=>$latest]);
+            rout(['ok'=>false,'error'=>'reset_tenant verify failed (V012 expected)','latest'=>$latest,'backup_file'=>basename($backup)], 500);
+        }
+        reset_log((int)$user['id'], 'reset_tenant', ['slug'=>$slug,'db'=>$dbName,'schema_version'=>$latest,'backup'=>$backup]);
+        reset_telegram('reset_tenant', ['slug'=>$slug,'schema_version'=>$latest,'backup'=>basename($backup)]);
+        rout(['ok'=>true, 'tenant_db_recreated'=>$dbName, 'schema_version'=>$latest, 'backup_file'=>basename($backup)]);
     } catch (Throwable $e) {
+        // Rollback defensif si exception au milieu (CREATE OK mais SELECT verify foire, etc.)
+        try { $meta = pdo_meta(); $meta->exec("DROP DATABASE IF EXISTS `$dbName`"); } catch (Throwable $e2) {}
         reset_log((int)$user['id'], 'reset_tenant_failed', ['slug'=>$slug,'error'=>$e->getMessage()]);
         rout(['ok'=>false,'error'=>'reset_tenant failed: ' . $e->getMessage(),'backup_file'=>basename($backup)], 500);
     }
@@ -198,14 +212,26 @@ case 'reset_total': {
             if (in_array($t, $preserveTables, true)) continue;
             try { $meta->exec("TRUNCATE TABLE `$t`"); $truncatedCount++; } catch (Throwable $e) {}
         }
-        // Recreate tenant test exbat-tat-ad7d minimal
+        // M/2026/05/14/57 — Recreate tenant test exbat-tat-ad7d AVEC schema importe via ocre-migrate.sh.
+        // Avant : CREATE DATABASE seul -> DB vide -> SCHEMA_DRIFT au prochain hit api/health.php
+        // jusqu'au rattrapage audit-timer 4-6 min plus tard. Cause racine downtime M/14/55.
+        $testSlug = 'exbat-tat-ad7d';
+        $testDb = 'ocre_wsp_' . $testSlug;
+        $testSchemaVersion = '';
         try {
-            $meta->exec("CREATE DATABASE IF NOT EXISTS `ocre_wsp_exbat-tat-ad7d` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $meta->exec("CREATE DATABASE IF NOT EXISTS `$testDb` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $migrateOut = []; $migrateRc = 0;
+            @exec("/root/bin/ocre-migrate.sh " . escapeshellarg($testSlug) . " 2>&1", $migrateOut, $migrateRc);
+            if ($migrateRc === 0) {
+                $verifyPdo = new PDO('mysql:host=' . DB_HOST . ';dbname=' . $testDb . ';charset=utf8mb4', DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                $row = $verifyPdo->query("SELECT name FROM _schema_migrations ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+                $testSchemaVersion = $row ? (string)$row['name'] : '';
+            }
             $meta->exec("INSERT INTO users (email, role, tenant_slug, is_active, created_at) VALUES ('philippe.ciftci@gmail.com', 'owner', 'exbat-tat-ad7d', 1, NOW()) ON DUPLICATE KEY UPDATE is_active=1");
         } catch (Throwable $e) { /* tables differentes selon schema, swallow */ }
-        reset_log((int)$user['id'], 'reset_total', ['dbs_dropped'=>$droppedCount,'tables_truncated'=>$truncatedCount,'backup'=>$backup]);
-        reset_telegram('reset_total', ['dbs_dropped'=>$droppedCount,'tables_truncated'=>$truncatedCount,'backup'=>basename($backup),'by'=>$user['email']??'?']);
-        rout(['ok'=>true, 'dbs_dropped'=>$droppedCount, 'tables_truncated'=>$truncatedCount, 'backup_file'=>basename($backup), 'message'=>'Reset TOTAL OK. Tu peux tester sur exbat-tat-ad7d.ocre.immo']);
+        reset_log((int)$user['id'], 'reset_total', ['dbs_dropped'=>$droppedCount,'tables_truncated'=>$truncatedCount,'test_schema_version'=>$testSchemaVersion,'backup'=>$backup]);
+        reset_telegram('reset_total', ['dbs_dropped'=>$droppedCount,'tables_truncated'=>$truncatedCount,'test_schema_version'=>$testSchemaVersion,'backup'=>basename($backup),'by'=>$user['email']??'?']);
+        rout(['ok'=>true, 'dbs_dropped'=>$droppedCount, 'tables_truncated'=>$truncatedCount, 'test_schema_version'=>$testSchemaVersion, 'backup_file'=>basename($backup), 'message'=>'Reset TOTAL OK. Tu peux tester sur exbat-tat-ad7d.ocre.immo']);
     } catch (Throwable $e) {
         reset_log((int)$user['id'], 'reset_total_failed', ['error'=>$e->getMessage()]);
         rout(['ok'=>false,'error'=>'reset_total failed: ' . $e->getMessage(),'backup_file'=>basename($backup)], 500);
