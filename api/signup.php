@@ -2,6 +2,7 @@
 // M/2026/04/29/1 — Signup public + provisioning auto. Hosted sur app.ocre.immo.
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/lib/email_sender.php';
+require_once __DIR__ . '/lib/mailer.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -145,18 +146,17 @@ if ($provisionRc !== 0) {
     exit;
 }
 
-// Email d'activation
+// M/2026/05/14/65 — Email activation via template UNIQUE ocre_signup_welcome_email_html().
+// Suppression franche du HTML inline divergent. Toute modification UI passe par mailer.php.
 $activationUrl = "https://{$slug}.ocre.immo/login?activation_token={$activationToken}";
 $subject = 'Bienvenue sur Ocre Immo — Activez votre compte';
-$html = "<html><body style=\"font-family:-apple-system,sans-serif;color:#3a2e22;\">"
-    . "<div style=\"max-width:600px;margin:0 auto;padding:24px;\">"
-    . "<h1 style=\"font-family:'Cormorant Garamond',Georgia,serif;color:#8B6F47;\">Bienvenue sur Ocre Immo</h1>"
-    . "<p>Bonjour " . htmlspecialchars($prenom, ENT_QUOTES) . ",</p>"
-    . "<p>Votre compte est créé. Cliquez sur le bouton pour définir votre mot de passe et commencer.</p>"
-    . "<p style=\"text-align:center;margin:24px 0\"><a href=\"{$activationUrl}\" style=\"display:inline-block;padding:14px 24px;background:#8B5A3C;color:#ffffff;text-decoration:none;border-radius:10px;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:1.2\">Activer mon compte</a></p>"
-    . "<p style=\"font-size:12px;color:#999;\">Ce lien est valide 7 jours. Si le bouton ne fonctionne pas :<br>{$activationUrl}</p>"
-    . "<p style=\"font-size:11px;color:#999;margin-top:24px;\">Ocre Immo — philippe.ciftci@gmail.com</p>"
-    . "</div></body></html>";
+$html = ocre_signup_welcome_email_html(
+    $prenom,
+    $activationUrl,
+    'Activer mon compte',
+    'Bienvenue sur Ocre Immo',
+    'Votre compte est créé. Cliquez sur le bouton pour définir votre mot de passe et commencer.<br><span style="font-size:13px;color:#6B5642">Ce lien est valide 7 jours.</span>'
+);
 $emailSent = ocre_send_email($email, $subject, $html);
 
 echo json_encode([

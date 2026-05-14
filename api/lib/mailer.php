@@ -94,6 +94,38 @@ function ocre_wrap_html(string $inner): string {
          . "</body></html>";
 }
 
+// M/2026/05/14/65 — UNIQUE template canonical pour email "1er enregistrement utilisateur".
+// Spec stricte Philippe : VRAI bouton large plein ocre, identique au pixel pres dans tous les
+// emails de 1er enregistrement (signup.php + superadmin_pending_activations.php resend).
+// Bouton wrap en table TD (Gmail iOS robust), padding genereux 18x32, radius 12px, font 16/700.
+// Toute modification UI doit passer par cette fonction unique. Suppression franche des HTML
+// inline ailleurs : tous appels remplaces par ocre_signup_welcome_email_html().
+function ocre_signup_welcome_email_html(string $prenom, string $activation_url, string $label = 'Activer mon compte', string $titre = 'Bienvenue sur Ocre Immo', string $intro = null): string {
+    $p = htmlspecialchars($prenom, ENT_QUOTES);
+    $url = htmlspecialchars($activation_url, ENT_QUOTES);
+    $urlPlain = htmlspecialchars($activation_url);
+    $lbl = htmlspecialchars($label);
+    $t = htmlspecialchars($titre);
+    $i = $intro !== null ? $intro : 'Votre compte est créé. Cliquez sur le bouton pour définir votre mot de passe et commencer.';
+    return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head>'
+        . '<body style="font-family:-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;color:#3a2e22;background:#FAF6EC;margin:0;padding:32px">'
+        . '<div style="max-width:560px;margin:0 auto;padding:36px 30px;background:#fff;border-radius:14px;border:1px solid #E5DAC6">'
+        . '<h1 style="font-family:\'Cormorant Garamond\',Georgia,serif;color:#8B5A3C;font-style:italic;font-weight:600;margin:0 0 16px;font-size:28px;text-align:center">' . $t . '</h1>'
+        . '<p style="font-size:15px;line-height:1.5">Bonjour ' . $p . ',</p>'
+        . '<p style="font-size:15px;line-height:1.5">' . $i . '</p>'
+        // Bouton canonical : table TD bgcolor (Gmail iOS robust) + <a> display:block padding genereux.
+        . '<table cellpadding="0" cellspacing="0" border="0" role="presentation" align="center" style="margin:32px auto;border-collapse:separate">'
+        . '<tr><td align="center" bgcolor="#8B5A3C" style="background-color:#8B5A3C;border-radius:12px;padding:18px 32px">'
+        . '<a href="' . $url . '" target="_blank" style="display:block;text-align:center;color:#ffffff;text-decoration:none;'
+        . 'font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;'
+        . 'font-size:16px;font-weight:700;line-height:1.2">'
+        . $lbl . '</a>'
+        . '</td></tr></table>'
+        . '<p style="font-size:12px;color:#999;line-height:1.5">Si le bouton ne fonctionne pas, copiez-collez ce lien :<br><span style="word-break:break-all">' . $urlPlain . '</span></p>'
+        . '<p style="font-size:11px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:16px">Ocre Immo · contact@ocre.immo</p>'
+        . '</div></body></html>';
+}
+
 // === 6 emails officiels ===
 
 function email_welcome_agent(string $to, string $prenom, string $slug, string $email, string $pwd_temp): bool {

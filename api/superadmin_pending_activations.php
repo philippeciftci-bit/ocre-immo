@@ -94,22 +94,17 @@ if ($action === 'resend') {
           WHERE id = ?"
     );
     $upd->execute([$token, $userId]);
-    // Mail dedouble (court) : evite de require agents_register.php qui execute du code top-level.
+    // M/2026/05/14/65 — UNIQUE template via ocre_signup_welcome_email_html(). Suppression
+    // franche HTML inline. Toute modification UI passe par mailer.php seul.
+    require_once __DIR__ . '/lib/mailer.php';
     $url = 'https://app.ocre.immo/api/agents_activate.php?token=' . $token;
-    $safePrenom = htmlspecialchars((string)$target['prenom'], ENT_QUOTES, 'UTF-8');
-    $html = '<html><body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#3a2e22;background:#FAF6EC;margin:0;padding:0;">'
-        . '<div style="max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(60,40,20,0.08);">'
-        . '<h1 style="font-family:\'Cormorant Garamond\',Georgia,serif;font-style:italic;color:#8B5E3C;font-weight:500;margin:0 0 12px;font-size:28px;">Bienvenue sur Oi Agent</h1>'
-        . '<p style="font-size:15px;line-height:1.5;">Bonjour <b>' . $safePrenom . '</b>,</p>'
-        . '<p style="font-size:15px;line-height:1.5;">Voici votre nouveau lien d\'activation (lien valide 48 heures) :</p>'
-        // M/2026/05/14/64 — bouton spec canonical M/14/63 (Philippe). Avant : VERT #10B981 +
-        // border 1px (divergent). Table wrapper conserve pour robustesse Gmail iOS.
-        . '<table border="0" cellpadding="0" cellspacing="0" role="presentation" align="center" style="margin:24px auto;border-collapse:separate">'
-        . '<tr><td bgcolor="#8B5A3C" style="border-radius:10px;background-color:#8B5A3C;padding:14px 24px;">'
-        . '<a href="' . $url . '" target="_blank" style="display:inline-block;background-color:#8B5A3C;color:#ffffff;text-decoration:none;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:1.2">Activer mon compte</a>'
-        . '</td></tr></table>'
-        . '<p style="font-size:11px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">Oi Agent — un produit Ocre · contact@ocre.immo</p>'
-        . '</div></body></html>';
+    $html = ocre_signup_welcome_email_html(
+        (string)$target['prenom'],
+        $url,
+        'Activer mon compte',
+        'Bienvenue sur Ocre Immo',
+        'Voici votre nouveau lien d\'activation.<br><span style="font-size:13px;color:#6B5642">Lien valide 48 heures.</span>'
+    );
     $r = function_exists('send_mail')
         ? send_mail((string)$target['email'], 'Bienvenue sur Oi Agent — Nouveau lien d\'activation', $html)
         : ['ok' => false, 'error' => 'send_mail unavailable', 'message_id' => null, 'provider' => null];
