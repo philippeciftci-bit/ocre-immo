@@ -106,15 +106,40 @@ try {
 
 $meta->prepare("INSERT INTO signup_rate_limit (ip) VALUES (?)")->execute([$ip]);
 
-// Provisioning tenant : appel script en arrière-plan (best-effort).
+// M/2026/05/14/62 — Provisioning tenant SYNCHRONE avec capture exit code + rollback meta.
+// AVANT : nohup background -> exit code perdu -> si provision-tenant.sh exit 5/6 (M/14/61
+// fail-strict DROP DB), user meta cree sans DB tenant -> sub-domain affiche SCHEMA_DRIFT
+// au login. Cause racine bug sciage44-1ad8 (M/14/62). Pattern Codex : sync wait + rollback.
 $provisionLog = '/var/log/ocre-signup.log';
 $cmd = sprintf(
-    'nohup /root/workspace/ocre-immo/scripts/provision-tenant.sh %s %d >> %s 2>&1 &',
+    '/root/workspace/ocre-immo/scripts/provision-tenant.sh %s %d 2>&1',
     escapeshellarg($slug),
-    $newUid,
-    escapeshellarg($provisionLog)
+    $newUid
 );
-@shell_exec($cmd);
+$provisionOut = [];
+$provisionRc = 0;
+@exec($cmd, $provisionOut, $provisionRc);
+@file_put_contents(
+    $provisionLog,
+    '[' . date('c') . "] slug=$slug uid=$newUid rc=$provisionRc\n" . implode("\n", $provisionOut) . "\n\n",
+    FILE_APPEND
+);
+if ($provisionRc !== 0) {
+    // Rollback meta : retire user + workspace + members crees a L95-107 + L107.
+    try {
+        $meta->prepare("DELETE wm FROM workspace_members wm JOIN workspaces w ON wm.workspace_id = w.id WHERE w.slug = ?")->execute([$slug]);
+        $meta->prepare("DELETE FROM workspaces WHERE slug = ?")->execute([$slug]);
+        $meta->prepare("DELETE FROM users WHERE id = ?")->execute([$newUid]);
+    } catch (Throwable $e) { /* swallow rollback errors */ }
+    http_response_code(500);
+    echo json_encode([
+        'ok' => false,
+        'error' => 'Tenant provisioning failed, signup annule',
+        'rc' => $provisionRc,
+        'tail' => array_slice($provisionOut, -5),
+    ]);
+    exit;
+}
 
 // Email d'activation
 $activationUrl = "https://{$slug}.ocre.immo/login?activation_token={$activationToken}";
