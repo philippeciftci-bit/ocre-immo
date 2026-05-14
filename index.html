@@ -9096,10 +9096,12 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
       {/* 3. TOTAL GLOBAL en BAS (mirror Frais agence M/2026/05/13/61) avec label "Total global"
           via PriceField2ColDisplay — coherence layout. */}
       <div style={{marginTop:'var(--space-2)', paddingTop:'var(--space-6px)', borderTop:'1px solid var(--color-success)40'}}>
+        {/* M/2026/05/14/23 — leftAlignLeft={true} : Total global Frais notaire rendu dans col gauche FormView → montant EUR aligne a gauche (mirror S3ActeurRow). */}
         <PriceField2ColDisplay
           label="Total global"
           leftValue={totalLeft}
           rightValue={totalRight}
+          leftAlignLeft={true}
           forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
       </div>
       {/* 4. Repartition par camp (Vendeur / Acheteur) */}
@@ -9211,10 +9213,12 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
       {/* 3. TOTAL GLOBAL. M/2026/05/13/61 : layout 2 lignes (label en haut, valeur pleine
           largeur dessous) via PriceField2ColDisplay label="Total global" — coherence Liquide. */}
       <div style={{marginTop:'var(--space-2)', paddingTop:'var(--space-6px)', borderTop:'1px solid var(--color-info)40'}}>
+        {/* M/2026/05/14/23 — leftAlignLeft={true} : Total global Frais agence rendu dans col gauche FormView → montant EUR aligne a gauche (mirror S3ActeurRow). */}
         <PriceField2ColDisplay
           label="Total global"
           leftValue={totalLeft}
           rightValue={totalRight}
+          leftAlignLeft={true}
           forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
       </div>
       {/* 4. Repartition par camp */}
