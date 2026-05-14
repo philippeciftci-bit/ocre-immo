@@ -7,3 +7,4 @@ _prod_backup_*
 api/_smtp_config.php
 scripts/__pycache__/
 api/_image_hmac.php
+.secrets/
