@@ -133,7 +133,7 @@ $html = '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head><body
     . '<h1 style="font-family:Georgia,serif;font-style:italic;font-weight:600;color:#3D2818;margin:0 0 16px;font-size:24px;text-align:center">Ton lien d\'accès Ocre</h1>'
     . '<p style="color:#6B5642">Voici ton lien magique. Valide <strong>' . htmlspecialchars($ttlLabel, ENT_QUOTES, 'UTF-8') . '</strong>, à usage unique.</p>'
     . '<p style="text-align:center;margin:32px 0">'
-    . '<a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" style="background:#8B5E3C;color:#fff;text-decoration:none;padding:15px 32px;border-radius:10px;font-weight:600;display:inline-block">Entrer dans Oi ' . $appLabel . ' &rarr;</a>'
+    . '<a href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" style="display:inline-block;padding:14px 24px;background:#8B5A3C;color:#ffffff;text-decoration:none;border-radius:10px;font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:1.2">Entrer dans Oi ' . $appLabel . ' &rarr;</a>'
     . '</p>'
     . '<p style="font-size:12.5px;color:#998877">Si tu n\'as pas demandé ce lien, ignore cet email.</p>'
     . '<p style="font-size:11.5px;color:#998877">&mdash; Ocre Immo</p>'

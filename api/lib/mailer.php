@@ -72,11 +72,19 @@ function ocre_send_mail(string $to, string $subject, string $html_body, ?string 
     return false;
 }
 
+// M/2026/05/14/63 — Bouton email magic-link/activation canonical. Style unifie spec
+// Philippe : ocre fonce plein, pas de border, DM Sans, taille 15px/700, radius 10px.
+// Tous les flows magic-link/activation/agent register doivent utiliser CE STYLE EXACT
+// (copie HTML inline dans signup.php / auth-root pour eviter dependances cross-tree).
 function ocre_btn_html(string $url, string $label): string {
     $u = htmlspecialchars($url);
     $l = htmlspecialchars($label);
-    $bg = OCRE_BTN_BG;
-    return "<p style=\"text-align:center;margin:24px 0\"><a href=\"{$u}\" style=\"display:inline-block;padding:12px 28px;background:{$bg};color:#fff;text-decoration:none;border-radius:4px;font-family:Georgia,serif\">{$l}</a></p>";
+    return '<p style="text-align:center;margin:24px 0">'
+        . '<a href="' . $u . '" style="display:inline-block;padding:14px 24px;'
+        . 'background:#8B5A3C;color:#ffffff;text-decoration:none;border-radius:10px;'
+        . 'font-family:\'DM Sans\',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;'
+        . 'font-size:15px;font-weight:700;line-height:1.2">'
+        . $l . '</a></p>';
 }
 
 function ocre_wrap_html(string $inner): string {
