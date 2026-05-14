@@ -25070,20 +25070,30 @@ function FormView(props) {
           <div style={{display:'flex', gap:'var(--space-6px)', marginBottom:'var(--space-3)'}}>
             {['Particulier', 'Société'].map(t => (
               <button key={t} onClick={() => {
-                /* M/2026/05/12/3 + M/2026/05/14/42 — Recopie bidirectionnelle prenom/nom au toggle
-                   Particulier<->Societe. Ne ecrase JAMAIS un champ destination deja rempli.
-                   PAS de {commit:true} sur les set() intermediaires : commit('profil_type', t)
-                   final declenche l autosave avec le state deja mis a jour synchronement. Le
-                   {commit:true} sur prefill (M/14/39) provoquait UPDATE immediat sans projet
-                   -> SQL constraint violation (regression M/14/42). */
-                if (t === 'Société') {
-                  if (!d.representant_prenom && d.prenom) set('representant_prenom', d.prenom);
-                  if (!d.representant_nom && d.nom) set('representant_nom', d.nom);
-                } else if (t === 'Particulier') {
-                  if (!d.prenom && d.representant_prenom) set('prenom', d.representant_prenom);
-                  if (!d.nom && d.representant_nom) set('nom', d.representant_nom);
-                }
-                setProfilType(t); commit('profil_type', t);
+                /* M/2026/05/14/43 — fix prefill bidirectionnel Particulier<->Societe.
+                   Cause racine bug M/14/39+M/14/42 : commit('profil_type', t) construit
+                   next via {...d (closure)} et setD(next) non-fonctionnel, ce qui OVERWRITE
+                   les setD(prev=>...) prefill batches juste avant -> prefill annule.
+                   Fix : un seul setD fonctionnel qui merge prefill + profil_type + champs
+                   meta de commit, puis handleSaveLocal sur le state merge. Equivalent
+                   semantique a commit() mais sans la closure stale. */
+                markUserAction();
+                userBlurredRef.current = true;
+                setProfilType(t);
+                setD(prev => {
+                  const updates = {profil_type: t};
+                  if (t === 'Société') {
+                    if (!prev.representant_prenom && prev.prenom) updates.representant_prenom = prev.prenom;
+                    if (!prev.representant_nom && prev.nom) updates.representant_nom = prev.nom;
+                  } else if (t === 'Particulier') {
+                    if (!prev.prenom && prev.representant_prenom) updates.prenom = prev.representant_prenom;
+                    if (!prev.nom && prev.representant_nom) updates.nom = prev.representant_nom;
+                  }
+                  const next = {...prev, ...updates, projet: activeProfil, is_investisseur: isInvestisseur};
+                  const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+                  if (_hasRealId || !allFieldsEmpty(next)) handleSaveLocal(next);
+                  return next;
+                });
               }}
                 style={{flex:1, padding:'7px 10px', borderRadius:8, border:'1.5px solid ' + (profilType === t ? 'var(--color-accent)' : 'var(--color-border-subtle)'),
                         background: profilType === t ? 'var(--color-bg-tint-hover)' : 'var(--color-bg-input)', color: profilType === t ? 'var(--color-accent)' : 'var(--color-text-muted)',
