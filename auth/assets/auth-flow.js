@@ -18,7 +18,8 @@
   var CSS = [
     "[data-ocre-auth] *,[data-ocre-auth] *::before,[data-ocre-auth] *::after{box-sizing:border-box}",
     "[data-ocre-auth]{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#3D2818;line-height:1.5;-webkit-font-smoothing:antialiased}",
-    "[data-ocre-auth] .of-card{background:#fff;border-radius:16px;padding:32px 28px;border:1px solid #E5DAC6;box-shadow:0 4px 28px rgba(139,111,58,0.10);max-width:440px;margin:0 auto}",
+    // M/2026/05/14/79 — card OPAQUE blanche, shadow plus profonde, max-width 460.
+    "[data-ocre-auth] .of-card{background:#FFFFFF;border-radius:16px;padding:32px 28px;border:1px solid #E5DAC6;box-shadow:0 20px 60px rgba(60,40,24,0.25);max-width:460px;margin:0 auto}",
     "[data-ocre-auth] .of-brand{text-align:center;margin-bottom:4px;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:32px;color:#8B5A3C;letter-spacing:-0.02em}",
     "[data-ocre-auth] .of-brand span{color:#D4A256}",
     "[data-ocre-auth] .of-sub-app{text-align:center;font-size:11px;color:#998877;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:18px;font-weight:600}",
