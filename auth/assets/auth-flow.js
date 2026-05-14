@@ -272,18 +272,58 @@
         a.addEventListener('click', function(e) { e.preventDefault(); show(a.dataset.go); });
       });
 
-      // M/2026/05/14/82 — ROLLBACK : toggle eye classique SVG lucide Eye/EyeOff. Suppression
-      // franche tooltip overlay M/14/81 (mauvaise solution faux probleme).
+      // M/2026/05/15/1 — Pattern Codex/Stripe : input swap synchronise. Resout iOS Safari
+      // qui bloque setAttribute(type, text) sur input password autofill Keychain.
+      // Garde l input password ORIGINAL hidden (preserve autofill + submit form), insere un
+      // input visible type=text frere, sync via event 'input', remove au re-clic.
       var SVG_EYE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
       var SVG_EYE_OFF = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>';
       $$('.of-pwd-toggle').forEach(function(btn) {
+        var hiddenField = root.querySelector('#' + btn.dataset.toggle);
+        if (!hiddenField) return;
+        var visibleField = null;
+
+        function syncToHidden() {
+          if (visibleField) hiddenField.value = visibleField.value;
+          // Trigger 'input' sur hidden pour que les listeners (strength, match) re-evaluent
+          hiddenField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function showPassword() {
+          if (visibleField) return;
+          visibleField = document.createElement('input');
+          visibleField.type = 'text';
+          visibleField.value = hiddenField.value;
+          visibleField.className = hiddenField.className;
+          visibleField.setAttribute('autocomplete', 'off');
+          visibleField.setAttribute('spellcheck', 'false');
+          visibleField.setAttribute('autocapitalize', 'off');
+          visibleField.setAttribute('autocorrect', 'off');
+          visibleField.setAttribute('inputmode', 'text');
+          if (hiddenField.placeholder) visibleField.placeholder = hiddenField.placeholder;
+          visibleField.addEventListener('input', syncToHidden);
+          hiddenField.style.display = 'none';
+          hiddenField.parentNode.insertBefore(visibleField, hiddenField.nextSibling);
+          requestAnimationFrame(function() { try { visibleField.focus(); } catch (_) {} });
+          btn.innerHTML = SVG_EYE_OFF;
+          btn.setAttribute('aria-label', 'Masquer le mot de passe');
+        }
+
+        function hidePassword() {
+          if (!visibleField) return;
+          hiddenField.value = visibleField.value;
+          hiddenField.dispatchEvent(new Event('input', { bubbles: true }));
+          hiddenField.style.display = '';
+          visibleField.removeEventListener('input', syncToHidden);
+          visibleField.remove();
+          visibleField = null;
+          try { hiddenField.focus(); } catch (_) {}
+          btn.innerHTML = SVG_EYE;
+          btn.setAttribute('aria-label', 'Afficher le mot de passe');
+        }
+
         btn.addEventListener('click', function() {
-          var input = root.querySelector('#' + btn.dataset.toggle);
-          if (!input) return;
-          var isPassword = input.getAttribute('type') === 'password';
-          input.setAttribute('type', isPassword ? 'text' : 'password');
-          btn.innerHTML = isPassword ? SVG_EYE_OFF : SVG_EYE;
-          btn.setAttribute('aria-label', isPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+          if (visibleField) hidePassword(); else showPassword();
         });
       });
 
