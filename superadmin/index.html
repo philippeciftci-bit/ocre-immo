@@ -244,7 +244,14 @@ body.drawer-open { overflow: hidden; }
   <div class="auth-card">
     <div class="brand">Oc<span style="color:#d4a256">re</span></div>
     <h1>Super-admin</h1>
-    <p class="lead">Saisis ton email super-administrateur, reçois un lien d'accès direct au dashboard.</p>
+    <p class="lead" id="login-lead">Saisis ton email super-administrateur, reçois un lien d'accès direct au dashboard.</p>
+    <!-- M/2026/05/14/66 — Etat one-tap (localStorage retient last email). Visible si ocre_sa_last_email present. -->
+    <div id="login-onetap-state" style="display:none;text-align:center">
+      <p class="lead" style="margin-bottom:18px">Connexion en tant que<br><b id="onetap-email" style="color:#8B5A3C;word-break:break-all"></b></p>
+      <button id="onetap-btn" type="button" class="btn btn-primary" style="width:100%">Envoyer le magic-link</button>
+      <p id="onetap-err" class="feedback error" style="display:none;margin-top:8px"></p>
+      <button id="change-email-btn" type="button" class="btn btn-ghost" style="width:100%;margin-top:10px;font-size:12.5px">Changer d'email</button>
+    </div>
     <div id="login-form-state">
       <form id="magic-form" autocomplete="on" novalidate>
         <input id="email-input" type="email" placeholder="Email super-admin" autocomplete="email" inputmode="email" required>
@@ -383,25 +390,48 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const emailInput = $('#email-input');
 const submitBtn = $('#submit-btn');
 emailInput.addEventListener('input', () => { submitBtn.disabled = !EMAIL_RE.test(emailInput.value.trim()); });
-$('#magic-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  if (submitBtn.disabled) return;
-  const email = emailInput.value.trim();
-  submitBtn.disabled = true; submitBtn.innerHTML = '<span class="spin"></span> Envoi…';
-  const err = $('#login-err'); err.style.display = 'none';
+// M/2026/05/14/66 — UX one-tap : helper envoi magic-link. Reutilise par form classique + one-tap btn.
+const LAST_EMAIL_KEY = 'ocre_sa_last_email';
+async function sendMagicLink(email, opts = {}) {
+  const errEl = opts.errEl || null;
+  const btnEl = opts.btnEl || null;
+  const labelDefault = opts.labelDefault || '';
+  if (errEl) errEl.style.display = 'none';
+  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spin"></span> Envoi…'; }
   try {
     const r = await fetch('/api/superadmin_send_magic_link.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ email }) });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'erreur envoi');
+    // Memorise email pour next login one-tap.
+    try { localStorage.setItem(LAST_EMAIL_KEY, email); } catch (_) {}
     $('#confirm-email').textContent = email;
     $('#login-form-state').style.display = 'none';
+    $('#login-onetap-state').style.display = 'none';
     $('#login-confirm-state').style.display = 'block';
   } catch (ex) {
-    err.textContent = ex.message || 'Erreur réseau'; err.style.display = 'block';
-    submitBtn.disabled = false; submitBtn.innerHTML = "Demander un lien d'accès";
+    if (errEl) { errEl.textContent = ex.message || 'Erreur réseau'; errEl.style.display = 'block'; }
+    if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = labelDefault; }
   }
+}
+$('#magic-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (submitBtn.disabled) return;
+  const email = emailInput.value.trim();
+  await sendMagicLink(email, { errEl: $('#login-err'), btnEl: submitBtn, labelDefault: "Demander un lien d'accès" });
+});
+$('#onetap-btn').addEventListener('click', () => {
+  const email = ($('#onetap-email').textContent || '').trim();
+  if (!email) return;
+  sendMagicLink(email, { errEl: $('#onetap-err'), btnEl: $('#onetap-btn'), labelDefault: 'Envoyer le magic-link' });
+});
+$('#change-email-btn').addEventListener('click', () => {
+  try { localStorage.removeItem(LAST_EMAIL_KEY); } catch (_) {}
+  $('#login-onetap-state').style.display = 'none';
+  $('#login-form-state').style.display = 'block';
+  $('#login-lead').textContent = 'Saisis ton email super-administrateur, reçois un lien d\'accès direct au dashboard.';
 });
 $('#other-email-btn').addEventListener('click', () => {
+  try { localStorage.removeItem(LAST_EMAIL_KEY); } catch (_) {}
   $('#login-confirm-state').style.display = 'none';
   $('#login-form-state').style.display = 'block';
   submitBtn.disabled = false; submitBtn.innerHTML = "Demander un lien d'accès";
@@ -451,7 +481,17 @@ $('#other-email-btn').addEventListener('click', () => {
       return;
     }
   } catch (e) {}
-  // Phase 3 : stay on login form (auth-shell visible par defaut)
+  // M/2026/05/14/66 — Phase 3 : si localStorage retient last email, basculer en mode one-tap.
+  // Sinon stay on form classique (default).
+  try {
+    const lastEmail = localStorage.getItem(LAST_EMAIL_KEY);
+    if (lastEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lastEmail)) {
+      $('#onetap-email').textContent = lastEmail;
+      $('#login-form-state').style.display = 'none';
+      $('#login-onetap-state').style.display = 'block';
+      $('#login-lead').textContent = 'Un tap pour recevoir ton lien d\'accès.';
+    }
+  } catch (_) {}
 })();
 
 function enterApp(user) {
