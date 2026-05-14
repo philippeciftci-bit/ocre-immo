@@ -440,6 +440,24 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
     if (['text','search','email','tel','url','password','number'].indexOf(t) === -1) return;
     try { el.blur(); } catch (err) {}
   }, true);
+  // M/14/50 — autofill iOS QuickType anti-scroll : tap suggestion barre QuickType au-dessus
+  // du clavier declenche un event input avec inputType='insertReplacementText' + iOS scroll
+  // automatique tout en bas. Save scrollY avant le replacement, restore apres 2 rAF (laisse
+  // iOS finir son sequence input/change/scrollIntoView avant restoration).
+  document.addEventListener('input', function(e) {
+    if (!isTextInput(e.target)) return;
+    var it = e.inputType || '';
+    // Signature autofill QuickType iOS = insertReplacementText. Aussi insertFromAutoFill (futur Safari).
+    if (it !== 'insertReplacementText' && it !== 'insertFromAutoFill') return;
+    var savedY = window.scrollY || window.pageYOffset || 0;
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        try {
+          if (Math.abs((window.scrollY || 0) - savedY) > 30) window.scrollTo(0, savedY);
+        } catch (err) {}
+      });
+    });
+  }, true);
   // Scroll handler : skip si scroll dans fenetre 700ms post-focus + dy > 30px requis.
   window.addEventListener('scroll', function() {
     var dy = Math.abs((window.scrollY || 0) - lastScrollY);
