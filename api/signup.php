@@ -148,7 +148,9 @@ if ($provisionRc !== 0) {
 
 // M/2026/05/14/65 — Email activation via template UNIQUE ocre_signup_welcome_email_html().
 // Suppression franche du HTML inline divergent. Toute modification UI passe par mailer.php.
-$activationUrl = "https://{$slug}.ocre.immo/login?activation_token={$activationToken}";
+// M/2026/05/14/72 — Phase C : redirect vers /setup-password.html (saisie mot de passe permanent)
+// au lieu de /login?activation_token (legacy magic-link login recurrent).
+$activationUrl = "https://{$slug}.ocre.immo/setup-password.html?token={$activationToken}";
 $subject = 'Bienvenue sur Ocre Immo — Activez votre compte';
 $html = ocre_signup_welcome_email_html(
     $prenom,
