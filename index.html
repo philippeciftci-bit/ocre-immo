@@ -884,20 +884,20 @@ const PROFILS_LABEL = {
 // V18.26 — titres sections adaptés par profil. Section II varie (ciblé/en vente/à louer/recherché).
 // Section III : "Budget & rendement" pour Investisseur, "Budget & financement" pour les autres.
 // Section IV : "Suivi & notes" pour tous (renommé depuis "Infos complémentaires").
-// M/2026/05/05/30 — M-Photos-Stage-V : ajout 5e stage "V. Photos" pour tous les profils.
+// M/2026/05/05/30 — M-Photos-Stage-V : ajout 5e stage "Photos" pour tous les profils.
 // M/2026/05/06/78 — Stage VI "Mandat et frais" ajoute pour Vendeur/Promoteur/MarchandBiens.
 // M/2026/05/07/94 — UNIFICATION : tous les profils ont les 7 stages I-VII (Mandat + Notaire
 // inclus). Profil = tag informatif, PAS un filtre UI. Titres de section adaptes au profil
 // pour clarte semantique (Le bien cible vs en vente vs a louer) mais structure identique.
 const STAGES = {
-  Acheteur:      ["I. L'Acheteur",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
-  Vendeur:       ["I. Le Vendeur",     "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
-  Investisseur:  ["I. L'Investisseur", "II. Le bien ciblé",     "III. Budget & rendement",   "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
-  Bailleur:      ["I. Le Bailleur",    "II. Le bien à louer",   "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
-  Locataire:     ["I. Le Locataire",   "II. Le bien recherché", "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
-  Curieux:       ["I. Le Curieux",     "II. Le bien ciblé",     "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
-  Promoteur:     ["I. Le Promoteur",   "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"],
-  MarchandBiens: ["I. Le Marchand",    "II. Le bien en vente",  "III. Budget & financement", "IV. Activité & documents", "V. Photos", "VI. Mandat et frais", "VII. Notaire & Avocat"]
+  Acheteur:      ["L'Acheteur",     "Le bien ciblé",     "Budget & financement", "Activité & documents", "Photos", "Mandat et frais", "Notaire & Avocat"],
+  Vendeur:       ["Le Vendeur",     "Le bien en vente",  "Budget & financement", "Activité & documents", "Photos", "Mandat et frais", "Notaire & Avocat"],
+  Investisseur:  ["L'Investisseur", "Le bien ciblé",     "Budget & rendement",   "Activité & documents", "Photos", "Mandat et frais", "Notaire & Avocat"],
+  Bailleur:      ["Le Bailleur",    "Le bien à louer",   "Budget & financement", "Activité & documents", "Photos", "Mandat et frais", "Notaire & Avocat"],
+  Locataire:     ["Le Locataire",   "Le bien recherché", "Budget & financement", "Activité & documents", "Photos", "Mandat et frais", "Notaire & Avocat"],
+  Curieux:       ["Le Curieux",     "Le bien ciblé",     "Budget & financement", "Activité & documents", "Photos", "Mandat et frais", "Notaire & Avocat"],
+  Promoteur:     ["Le Promoteur",   "Le bien en vente",  "Budget & financement", "Activité & documents", "Photos", "Mandat et frais", "Notaire & Avocat"],
+  MarchandBiens: ["Le Marchand",    "Le bien en vente",  "Budget & financement", "Activité & documents", "Photos", "Mandat et frais", "Notaire & Avocat"]
 };
 // V17.4 : suggestions "Aussi…" selon profil courant.
 const BASCULES = {
@@ -6460,7 +6460,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
 
           {/* === Sub-head 03b MANDAT === */}
           <div style={{borderLeft:'3px solid var(--color-accent)', paddingLeft:'var(--space-10px)', marginTop:'var(--space-4)', marginBottom:'var(--space-10px)'}}>
-            <div style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4}}>03b · Mandat de vente</div>
+            <div style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4}}>Mandat de vente</div>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'var(--space-2)'}}>
             <SelectPopup label="Type de mandat" value={bien.type_mandat} onChange={v => setB('type_mandat', v)} options={V4_TYPE_MANDAT}/>
@@ -6617,7 +6617,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
 
           {/* === Sub-head 04b VUES & EXPOSITION === */}
           <div style={{borderLeft:'3px solid var(--color-accent)', paddingLeft:'var(--space-10px)', marginTop:'var(--space-4)', marginBottom:'var(--space-10px)'}}>
-            <div style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4}}>04b · Vues &amp; exposition</div>
+            <div style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4}}>Vues &amp; exposition</div>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'var(--space-2)'}}>
             <SelectPopup label="Exposition" value={bien.exposition} onChange={v => setB('exposition', v)} options={V4_EXPOSITIONS}/>
@@ -6631,7 +6631,7 @@ function BienForm({activeProfil, isInvestisseur, d, set, dossierId, showToast}) 
           {(['FR','BE','NL','LU','IT','ES','PT','DE','AT','IE','GR','FI','SE','DK','PL','CZ','HU'].includes(bien.pays)) && (
             <>
               <div style={{borderLeft:'3px solid var(--color-accent)', paddingLeft:'var(--space-10px)', marginTop:'var(--space-4)', marginBottom:'var(--space-10px)'}}>
-                <div style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4}}>04c · Performance énergétique (DPE)</div>
+                <div style={{fontSize:'var(--font-size-xs)', fontWeight:700, color:'var(--color-accent)', fontStyle:'italic', letterSpacing:.4}}>Performance énergétique (DPE)</div>
               </div>
               <DpePillRadio label="Classe DPE (consommation)" value={bien.dpe_classe || ''}
                 onChange={v => setB('dpe_classe', v)}
@@ -23235,7 +23235,7 @@ const M79_COUNTRY_REF = {
       {id:'mutation',       label:'Droits de mutation',  text:'5,8 % a charge acheteur (hors honoraires).'},
       {id:'tva_honoraires', label:'TVA honoraires',      text:'20 % sur honoraires agence.'},
     ],
-    blockHeaders: {pieces:'07c · Diagnostics DDT', legal:'07d · Delais & retractation', notaire:'Notaire(s)'},
+    blockHeaders: {pieces:'Diagnostics DDT', legal:'Delais & retractation', notaire:'Notaire(s)'},
     avocatSuffix: '(optionnel)',
   },
   MA: {
@@ -23254,7 +23254,7 @@ const M79_COUNTRY_REF = {
       {id:'conservation',   label:'Conservation fonciere', text:'1 % + frais fixes.'},
       {id:'no_retract',     label:'Pas de delai legal',  text:'Pas de retractation au Maroc — protection contractuelle uniquement.'},
     ],
-    blockHeaders: {pieces:'07c · Pieces & formalites', legal:'07d · Taxes & cadre legal', notaire:'Notaire / Adoul'},
+    blockHeaders: {pieces:'Pieces & formalites', legal:'Taxes & cadre legal', notaire:'Notaire / Adoul'},
     avocatSuffix: '(recommande etrangers)',
   },
 };
@@ -23280,7 +23280,7 @@ function M80PrixVenteBlock({d}) {
   const fmt = (n) => fmtNumV5(n) + ' ' + (CURRENCY_SYMBOL_V5[cur.left] || cur.left || '');
   return (
     <div style={{padding:'14px 16px', background:'var(--color-text-brown)', border:'1px solid var(--color-text-brown)', borderRadius:11, color:'#F4EDDC'}}>
-      <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'#F4EDDC', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-6px)', opacity:.85}}>06c &middot; Prix de vente affiche</div>
+      <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'#F4EDDC', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-6px)', opacity:.85}}>Prix de vente affiche</div>
       <div style={{fontSize:'var(--font-size-22)', fontWeight:800, color:'#fff', marginBottom:'var(--space-1)', lineHeight:1.2}}>{fmt(_total)}</div>
       <div style={{fontSize:'var(--font-size-11)', color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.4}}>
         Prix {fmt(_prixAff)}{_liq > 0 ? ' + Liquide ' + fmt(_liq) : ''} + Frais agence {fmt(_totalAgenceMulti)} (hors notaire a charge acheteur)
@@ -23297,7 +23297,7 @@ function M80MandatBlock({d, set}) {
   const _onSel = (k, v) => set(k, v, {commit: true});
   return (
     <div style={{padding:'12px 14px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:11}}>
-      <div style={{fontFamily:"var(--font-serif)", fontStyle:'italic', fontSize:'var(--font-size-sm)', color:'var(--color-text-brown)', marginBottom:'var(--space-2)', letterSpacing:.3}}>06a &middot; Mandat</div>
+      <div style={{fontFamily:"var(--font-serif)", fontStyle:'italic', fontSize:'var(--font-size-sm)', color:'var(--color-text-brown)', marginBottom:'var(--space-2)', letterSpacing:.3}}>Mandat</div>
       <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'var(--space-2)'}}>
         <div>
           <label style={{display:'block', fontSize:'var(--font-size-11)', fontWeight:600, color:'var(--color-text-muted)', marginBottom:'var(--space-1)', textTransform:'uppercase', letterSpacing:.4}}>Type de mandat</label>
@@ -23580,7 +23580,7 @@ function Section7({d, set}) {
       {/* 7a Notaire — placeholder migration */}
       <div style={{padding:'10px 12px', background:'#E8EFE9', border:'1px solid #5C8A6F', borderRadius:10, marginBottom:'var(--space-2)'}}>
         <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'var(--space-6px)', flexWrap:'wrap', gap:'var(--space-2)'}}>
-          <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.5}}>07a · {_ref ? _ref.blockHeaders.notaire : 'Notaire(s)'}</div>
+          <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.5}}>{_ref ? _ref.blockHeaders.notaire : 'Notaire(s)'}</div>
           {_pays === 'MA' && (
             <div style={{display:'inline-flex', gap:'var(--space-1)'}}>
               {[{k:'notaire', l:'Notaire moderne'}, {k:'adoul', l:'Adoul'}].map(o => {
@@ -23602,7 +23602,7 @@ function Section7({d, set}) {
 
       {/* 7b Avocat */}
       <div style={{padding:'10px 12px', background:'#FBF7EF', border:'1px solid #E8DDC9', borderRadius:11, marginBottom:'var(--space-2)'}}>
-        <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-2)'}}>07b · Avocat <span style={{fontWeight:500, fontSize:'var(--font-size-10)', color:'#9A8B7C', textTransform:'none', letterSpacing:0}}>{_ref ? _ref.avocatSuffix : ''}</span></div>
+        <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-2)'}}>Avocat <span style={{fontWeight:500, fontSize:'var(--font-size-10)', color:'#9A8B7C', textTransform:'none', letterSpacing:0}}>{_ref ? _ref.avocatSuffix : ''}</span></div>
         <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'var(--space-2)'}}>
           <Field label="Nom" value={_avocat.nom || ''} onChange={v => setAvocatField('nom', v)} placeholder="Maitre Dupont"/>
           <Field label="Cabinet" value={_avocat.cabinet || ''} onChange={v => setAvocatField('cabinet', v)} placeholder="Cabinet Dupont &amp; Associes"/>
@@ -23618,7 +23618,7 @@ function Section7({d, set}) {
 
       {/* 7c Pieces / Diagnostics pays-dependant */}
       <div style={{padding:'10px 12px', background:'#fff', border:'1px solid #E8DDC9', borderRadius:11, marginBottom:'var(--space-2)'}}>
-        <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-brown)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-2)'}}>{_ref ? _ref.blockHeaders.pieces : '07c · Pieces & diagnostics'}</div>
+        <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-brown)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-2)'}}>{_ref ? _ref.blockHeaders.pieces : 'Pieces & diagnostics'}</div>
         {_ref ? (
           <div style={{display:'flex', flexDirection:'column', gap:'var(--space-6px)'}}>
             {((_ref.diagnostics) || (_ref.pieces) || []).map(item => {
@@ -23656,7 +23656,7 @@ function Section7({d, set}) {
 
       {/* 7d Cadre legal pays-dependant */}
       <div style={{padding:'10px 12px', background:'#fff', border:'1.5px dashed #C9A961', borderRadius:10}}>
-        <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-brown)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-2)'}}>{_ref ? _ref.blockHeaders.legal : '07d · Cadre legal'}</div>
+        <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-brown)', textTransform:'uppercase', letterSpacing:.5, marginBottom:'var(--space-2)'}}>{_ref ? _ref.blockHeaders.legal : 'Cadre legal'}</div>
         {_ref ? (
           <ul style={{listStyle:'none', padding:'var(--space-0)', margin:'var(--space-0)', display:'flex', flexDirection:'column', gap:'var(--space-6px)'}}>
             {_ref.legal.map(item => {
@@ -25313,7 +25313,7 @@ function FormView(props) {
 
         </div>
         <div data-stage-anchor="3">
-        <Stage idx={3} title={(STAGES[activeProfil] || STAGES.Acheteur)[3] || 'IV. Suivi & notes'} expanded={expanded[3] || isMatched(3)} onToggle={() => toggleStage(3)} highlighted={isMatched(3)}
+        <Stage idx={3} title={(STAGES[activeProfil] || STAGES.Acheteur)[3] || 'Suivi & notes'} expanded={expanded[3] || isMatched(3)} onToggle={() => toggleStage(3)} highlighted={isMatched(3)}
                status={stageStatus[3].status} summary={stageStatus[3].summary}>
           {/* V18.1 — Module Suivi (4 cards : prochain RDV, todos, agenda, journal). */}
           {/* M/2026/04/28/31 — Section IV refondue Activité & documents.
@@ -25331,7 +25331,7 @@ function FormView(props) {
 
         {/* M/2026/05/05/30 — M-Photos-Stage-V : 5e stage autonome Photos. Sortie de Stage II. */}
         <div data-stage-anchor="4">
-        <Stage idx={4} title={(STAGES[activeProfil] || STAGES.Acheteur)[4] || 'V. Photos'} expanded={expanded[4] || isMatched(4)} onToggle={() => toggleStage(4)} highlighted={isMatched(4)}
+        <Stage idx={4} title={(STAGES[activeProfil] || STAGES.Acheteur)[4] || 'Photos'} expanded={expanded[4] || isMatched(4)} onToggle={() => toggleStage(4)} highlighted={isMatched(4)}
                status={stageStatus[4].status} summary={stageStatus[4].summary}>
           <div id="stage-photos-anchor" style={{scrollMarginTop:60}}>
             {/* M/2026/05/05/31 — M-Hotfix-DossierId-Typo : dossierId n existe pas dans le scope FormView,
