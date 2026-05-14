@@ -2,7 +2,7 @@
 // Conversion depuis killswitch v474 : on garde le SW REGISTERED (plus d'unregister à activate)
 // pour permettre la réception des push notifications PWA. Tous les fetchs restent en network-first
 // (pas de cache offline business — fallback minimal pour mode=navigate uniquement).
-const SW_VERSION = 'ocre-sw-v583.0-m14-74-unify-emails-final';
+const SW_VERSION = 'ocre-sw-v584.0-m14-75-maquette-auth-final';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
