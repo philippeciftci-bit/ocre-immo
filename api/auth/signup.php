@@ -53,13 +53,18 @@ if ($strengthErr !== null) {
 $pdo = new PDO('mysql:host=' . DB_HOST . ';dbname=ocre_meta;charset=utf8mb4', DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 password_auth_rate_limit_init($pdo);
 
-// Rate-limit : 3 signups/heure/IP
-$st = $pdo->prepare("SELECT COUNT(*) FROM auth_attempts WHERE scope='signup_public' AND ip=? AND ts > NOW() - INTERVAL 1 HOUR");
-$st->execute([$ip]);
-if ((int)$st->fetchColumn() >= 3) {
-    http_response_code(429);
-    echo json_encode(['ok' => false, 'error' => 'Trop d\'inscriptions depuis ton reseau, attends 1 heure']);
-    exit;
+// M/2026/05/15/5 — Rate-limit signup configurable + whitelist IP dev.
+$rateMax = defined('RATE_LIMIT_SIGNUP_MAX') ? RATE_LIMIT_SIGNUP_MAX : 5;
+$rateWin = defined('RATE_LIMIT_SIGNUP_WINDOW_SEC') ? RATE_LIMIT_SIGNUP_WINDOW_SEC : 600;
+$whitelist = defined('RATE_LIMIT_WHITELIST') ? RATE_LIMIT_WHITELIST : [];
+if (!in_array($ip, $whitelist, true)) {
+    $st = $pdo->prepare("SELECT COUNT(*) FROM auth_attempts WHERE scope='signup_public' AND ip=? AND ts > NOW() - INTERVAL ? SECOND");
+    $st->execute([$ip, $rateWin]);
+    if ((int)$st->fetchColumn() >= $rateMax) {
+        http_response_code(429);
+        echo json_encode(['ok' => false, 'error' => 'Trop d\'inscriptions depuis ton reseau, attends ' . (int)($rateWin/60) . ' minutes']);
+        exit;
+    }
 }
 
 // Verifier email pas deja existant (sinon orienter login)

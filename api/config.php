@@ -46,6 +46,21 @@ define('ALLOWED_ORIGINS',['https://app.ocre.immo','https://ocre.immo','https://w
 // SCHEMA_DRIFT si la version courante est inferieure.
 define('SCHEMA_VERSION_REQUIRED', 'V014');
 
+// M/2026/05/15/5 — Rate-limit auth configurables (constantes).
+// Format: (max_attempts_within_window, window_seconds).
+define('RATE_LIMIT_SIGNUP_MAX', 5);
+define('RATE_LIMIT_SIGNUP_WINDOW_SEC', 600); // 10 min
+define('RATE_LIMIT_LOGIN_EMAIL_MAX', 5);
+define('RATE_LIMIT_LOGIN_EMAIL_WINDOW_SEC', 60); // 1 min
+define('RATE_LIMIT_LOGIN_IP_MAX', 20);
+define('RATE_LIMIT_LOGIN_IP_WINDOW_SEC', 3600); // 1 hour
+define('RATE_LIMIT_EMAIL_CHECK_MAX', 30);
+define('RATE_LIMIT_EMAIL_CHECK_WINDOW_SEC', 60);
+define('RATE_LIMIT_RESET_REQUEST_MAX', 5);
+define('RATE_LIMIT_RESET_REQUEST_WINDOW_SEC', 600); // 10 min
+// Whitelist IPs : bypass rate-limit total (dev + serveur lui-meme).
+define('RATE_LIMIT_WHITELIST', ['127.0.0.1', '46.225.215.148']);
+
 // Slug courant (deduit ci-dessus) - expose pour d'autres modules (correlation, monitoring).
 define('OCRE_WSP_SLUG', $_v20_slug);
 
