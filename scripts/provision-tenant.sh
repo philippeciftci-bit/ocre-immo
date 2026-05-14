@@ -41,6 +41,18 @@ SLUG=$(echo "$SLUG" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
 [[ -z "$SLUG" ]] && { echo "Slug invalide" >&2; exit 1; }
 [[ "$WS_TYPE" =~ ^(wsp|wsc)$ ]] || { echo "type invalide (wsp|wsc): $WS_TYPE" >&2; exit 1; }
 
+# M/2026/05/14/8 — Log structure provisioning.log
+PROV_LOG="/var/log/ocre/provisioning.log"
+[[ -d /var/log/ocre ]] || mkdir -p /var/log/ocre 2>/dev/null || true
+_prov_log() {
+  local status="$1"; shift
+  local reason="$*"
+  local ts="$(date -Iseconds)"
+  echo "[$ts] $status slug=$SLUG owner=$OWNER_UID type=$WS_TYPE reason=\"$reason\"" >> "$PROV_LOG" 2>/dev/null || true
+}
+trap '_prov_log FAILED "trap exit $? at line $LINENO"' ERR
+_prov_log STARTED "begin provisioning"
+
 # M/2026/05/14/2 — Reservation slug "staging-*" pour environnement factice E2E.
 # Refus creation utilisateur reel (display_name + email) sur ce prefixe sauf
 # si flag --allow-staging explicite. Le wsp staging-001 est gere par
@@ -96,12 +108,14 @@ if [[ -x /root/bin/ocre-migrate.sh ]]; then
     cat /tmp/ocre-provision.log >&2
     echo "ERROR: migrate failed on ${DB_AGENT}" >&2
     mysql -uroot -p"$ROOT_PWD" -e "DROP DATABASE IF EXISTS \`${DB_AGENT}\`"
+    _prov_log FAILED "migrate rc!=0 on ${DB_AGENT}"
     exit 5
   fi
   LATEST=$(mysql -uroot -p"$ROOT_PWD" -BNe "SELECT name FROM \`${DB_AGENT}\`._schema_migrations ORDER BY id DESC LIMIT 1;" 2>/dev/null)
   if [[ -z "$LATEST" || "${LATEST:0:${#EXPECTED}}" != "$EXPECTED" ]]; then
     echo "ERROR: schema ${DB_AGENT} latest='${LATEST:-NONE}' expected prefix '$EXPECTED'" >&2
     mysql -uroot -p"$ROOT_PWD" -e "DROP DATABASE IF EXISTS \`${DB_AGENT}\`"
+    _prov_log FAILED "schema mismatch latest=${LATEST:-NONE} expected=${EXPECTED}"
     exit 6
   fi
   echo "Schema ${DB_AGENT} ready at ${LATEST}"
@@ -124,4 +138,19 @@ INSERT IGNORE INTO ocre_meta.workspace_members (workspace_id, user_id, role)
 SELECT id, ${OWNER_UID}, 'owner' FROM ocre_meta.workspaces WHERE slug = '${SLUG}';
 "
 
+# M/2026/05/14/8 — Verif finale tables critiques (anti-orphelin).
+# Tables verifiees = sous-ensemble *garanti* du schema canonique (pas de "dossiers" :
+# Ocre Immo modelise les dossiers via clients + tables dossier_* auxiliaires).
+for TBL in clients users _schema_migrations documents; do
+  EXISTS=$(mysql -uroot -p"$ROOT_PWD" -BNe "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_AGENT}' AND table_name='${TBL}'" 2>/dev/null)
+  if [[ "$EXISTS" != "1" ]]; then
+    echo "ERROR: table critique '${TBL}' absente apres provision sur ${DB_AGENT}" >&2
+    mysql -uroot -p"$ROOT_PWD" -e "DROP DATABASE IF EXISTS \`${DB_AGENT}\`"
+    _prov_log FAILED "table ${TBL} missing post-provision"
+    exit 7
+  fi
+done
+
+trap - ERR
+_prov_log SUCCESS "ready at ${LATEST:-V001} owner=${OWNER_UID}"
 echo "OK ${DB_AGENT} + meta workspaces+members (owner=${OWNER_UID})"
