@@ -111,8 +111,12 @@ $meta->prepare("INSERT INTO signup_rate_limit (ip) VALUES (?)")->execute([$ip]);
 // fail-strict DROP DB), user meta cree sans DB tenant -> sub-domain affiche SCHEMA_DRIFT
 // au login. Cause racine bug sciage44-1ad8 (M/14/62). Pattern Codex : sync wait + rollback.
 $provisionLog = '/var/log/ocre-signup.log';
+// M/14/62 : sudo + path PROD /opt/ocre-app/scripts/. Sudoers autorise www-ocre -> NOPASSWD root
+// UNIQUEMENT sur ce path (pas le path repo /root/workspace/ocre-immo/scripts/). PHP-FPM tourne
+// en www-ocre qui ne peut pas lire /root/.secrets/mysql-root.pwd -> ROOT_PWD vide -> mysql fail
+// silent si pas root. Le path repo etait incorrect (cause bug sciage44-1ad8 originel).
 $cmd = sprintf(
-    '/root/workspace/ocre-immo/scripts/provision-tenant.sh %s %d 2>&1',
+    'sudo /opt/ocre-app/scripts/provision-tenant.sh %s %d 2>&1',
     escapeshellarg($slug),
     $newUid
 );
