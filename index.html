@@ -385,22 +385,22 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
 })();
 </script>
 <script>
-// M/2026/05/14/45 — keyboard dismiss iOS Safari au scroll + cleanup fantome visuel.
-// Probleme : clavier reste affiche quand user scroll, fantome visuel apres dismiss.
-// Solution Mistral validee : scroll listener -> activeElement.blur() si INPUT/TEXTAREA
-// + reflow translateZ pour tuer le fantome iOS.
-// interactive-widget=resizes-content au meta viewport (geree separement) gere le resize layout.
+// M/2026/05/14/45 + M/2026/05/14/47 — keyboard dismiss iOS Safari au scroll.
+// REGRESSION M/14/47 : scroll listener M/14/45 blur ait l input pendant le scroll
+// auto iOS au focus -> clavier annule. Fix focus-timer guard : ignore scroll pendant
+// 700ms apres focus d un input texte (fenetre scroll auto iOS post-focus pour ajuster
+// la vue au-dessus du clavier). Seuil dy releve de 8 a 30px pour eviter false-positives.
 (function setupKeyboardDismiss() {
   if (window.__ocreKbDismiss) return;
   window.__ocreKbDismiss = true;
   var lastScrollY = 0;
+  var lastFocusAt = 0;
   function isTextInput(el) {
     if (!el) return false;
     var tag = el.tagName;
     if (tag === 'TEXTAREA') return true;
     if (tag === 'INPUT') {
       var t = (el.type || 'text').toLowerCase();
-      // types qui ouvrent clavier texte (exclu checkbox/radio/button/range/color/file)
       return ['text','search','email','tel','url','password','number'].indexOf(t) !== -1;
     }
     return false;
@@ -409,18 +409,21 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
     var el = document.activeElement;
     if (!isTextInput(el)) return;
     try { el.blur(); } catch (e) {}
-    // M/14/45 — force reflow pour tuer fantome iOS Safari apres blur.
     try {
       document.body.style.transform = 'translateZ(0)';
       requestAnimationFrame(function() { document.body.style.transform = ''; });
     } catch (e) {}
   }
-  // Scroll handler : declenche dismiss si delta significatif (> 8px) pour eviter
-  // false-positive sur scroll natif input lui-meme.
+  // M/14/47 — track focus timestamp pour distinguer scroll auto iOS (post-focus) vs scroll user.
+  document.addEventListener('focusin', function(e) {
+    if (isTextInput(e.target)) lastFocusAt = Date.now();
+  }, true);
+  // Scroll handler : skip si scroll dans fenetre 700ms post-focus + dy > 30px requis.
   window.addEventListener('scroll', function() {
     var dy = Math.abs((window.scrollY || 0) - lastScrollY);
     lastScrollY = window.scrollY || 0;
-    if (dy > 8) dismissIfTextInput();
+    if (Date.now() - lastFocusAt < 700) return;
+    if (dy > 30) dismissIfTextInput();
   }, { passive: true, capture: true });
   // visualViewport API : detecte resize clavier ferme (event 'resize')
   if (window.visualViewport) {
