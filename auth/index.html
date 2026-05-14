@@ -16,11 +16,24 @@ body { margin: 0; padding: 24px; background: #FAF6F1; min-height: 100vh; display
 </head>
 <body>
 <!-- M/2026/05/14/77 — SPA auth via module unique auth-flow.js. Memes 6 ecrans qu'inline popup vitrine. -->
+<!-- M/2026/05/14/10 — Banner erreur si ?error= present (redirige depuis /confirm sur token KO). -->
+<div id="ocre-auth-banner"></div>
 <div id="ocre-auth-mount"></div>
 <script src="/assets/auth-flow.js?v=20260514"></script>
 <script>
 (function() {
   var qs = new URLSearchParams(location.search);
+  var err = qs.get('error');
+  if (err) {
+    var msg = '';
+    if (err === 'missing_token') msg = 'Lien d\'activation incomplet. Connecte-toi avec ton email et mot de passe.';
+    else if (err === 'token_invalid') msg = 'Lien expire ou invalide. Connecte-toi avec ton email et mot de passe.';
+    else if (err === 'workspace_not_ready') msg = 'Workspace en preparation. Reessaie dans 1 minute.';
+    else msg = 'Une erreur est survenue. Reessaie ou contacte le support.';
+    var b = document.getElementById('ocre-auth-banner');
+    b.style.cssText = 'max-width:460px;margin:24px auto 0;padding:14px 18px;background:#FFF6E6;border:1px solid #D4A256;border-radius:12px;color:#6B5642;font-family:DM Sans,sans-serif;font-size:14px;line-height:1.5;text-align:center';
+    b.textContent = msg;
+  }
   OcreAuth.mount('#ocre-auth-mount', {
     apiBase: '',
     initialEmail: qs.get('email') || '',

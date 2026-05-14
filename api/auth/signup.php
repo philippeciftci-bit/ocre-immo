@@ -111,7 +111,7 @@ try {
             password_auth_rate_log($pdo, 'signup_public', $email, $ip, true, $ua);
             @file_put_contents($signupLog, '[' . date('c') . "] signup-public RESEND uid=$uid slug=$slug email=$email ip=$ip\n", FILE_APPEND);
 
-            $activationUrl = "https://auth.ocre.immo/confirm-signup.html?token={$newToken}";
+            $activationUrl = "https://auth.ocre.immo/confirm?token={$newToken}";
             $html = ocre_signup_welcome_email_html(
                 $prenom,
                 $activationUrl,
@@ -173,7 +173,7 @@ try {
                 )->execute([$newToken, $newHash, (int)$row['id']]);
                 $pdo2->commit();
 
-                $activationUrl = "https://auth.ocre.immo/confirm-signup.html?token={$newToken}";
+                $activationUrl = "https://auth.ocre.immo/confirm?token={$newToken}";
                 $html = ocre_signup_welcome_email_html($prenom, $activationUrl, 'Activer mon compte', 'Bienvenue sur Ocre Immo',
                     'Confirme ton email pour activer ton compte.<br><span style="font-size:13px;color:#6B5642">Lien valide 7 jours.</span>');
                 @ocre_send_email($email, 'Confirme ton inscription Ocre Immo', $html);
@@ -233,7 +233,7 @@ if ($provisionRc !== 0) {
     exit;
 }
 
-$activationUrl = "https://auth.ocre.immo/confirm-signup.html?token={$activationToken}";
+$activationUrl = "https://auth.ocre.immo/confirm?token={$activationToken}";
 $html = ocre_signup_welcome_email_html(
     $prenom,
     $activationUrl,
