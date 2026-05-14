@@ -23223,6 +23223,214 @@ function M80MandatBlock({d, set}) {
   );
 }
 
+// M/2026/05/14/26 — DocumentsSection : matrice profil x pays 3 niveaux N1/N2/N3.
+// MVP : catalogue inline. Migration vers /api/documents-catalog.php recommandee par
+// Gemini Pro + Mistral (mission ulterieure). Stockage data.documents[] JSON (pas migration SQL).
+// Structure : { catalog_id, label, category, required, expirable, expiry_days, file, upload_date, validity_date }
+// Bloc PieceIdentiteBlock M/2026/04/29/44 reutilise en N1 (suppression franche des 2 instances Section I).
+const DOCUMENTS_CATALOG_N1 = [
+  {id:'identite_block',     label:'Pièce d\'identité',         category:'identite',  required:'obligatoire'},
+  {id:'justif_domicile',    label:'Justificatif de domicile actuel', category:'identite',  required:'obligatoire'},
+  {id:'rib',                label:'RIB / IBAN',                 category:'financier', required:'obligatoire'},
+  {id:'kbis',               label:'Kbis ou équivalent (si personne morale)', category:'identite', required:'recommande'},
+  {id:'statuts_societe',    label:'Statuts société (si personne morale)',    category:'identite', required:'recommande'},
+];
+const DOCUMENTS_CATALOG_N2 = {
+  Vendeur: [
+    {id:'titre_propriete',   label:'Titre / preuve de propriété', category:'propriete', required:'obligatoire'},
+    {id:'plan_bien',         label:'Plan du bien',                 category:'propriete', required:'recommande'},
+    {id:'factures_travaux',  label:'Justificatifs travaux + factures', category:'propriete', required:'recommande'},
+    {id:'assurance_do',      label:'Assurance dommages-ouvrage',  category:'propriete', required:'facultatif'},
+    {id:'inventaire_mobilier', label:'Inventaire mobilier (si vente meublée)', category:'propriete', required:'facultatif'},
+  ],
+  Acheteur: [
+    {id:'justifs_revenus',   label:'Justificatifs revenus (3 derniers bulletins ou 2 bilans)', category:'financier', required:'obligatoire'},
+    {id:'avis_imposition',   label:'Dernier avis d\'imposition',  category:'financier', required:'obligatoire'},
+    {id:'fonds_dispo',       label:'Attestation bancaire fonds disponibles ou accord prêt', category:'financier', required:'obligatoire'},
+    {id:'origine_fonds',     label:'Justification origine des fonds (LCB-FT)', category:'financier', required:'obligatoire'},
+  ],
+  Bailleur: [
+    {id:'titre_propriete',   label:'Titre / preuve de propriété', category:'propriete', required:'obligatoire'},
+    {id:'inventaire_meuble', label:'Inventaire mobilier (si meublé)', category:'propriete', required:'recommande'},
+    {id:'assurance_pno',     label:'Assurance PNO',               category:'propriete', required:'recommande'},
+  ],
+  Locataire: [
+    {id:'situation_pro',     label:'Contrat travail / attestation employeur < 3 mois', category:'financier', required:'obligatoire'},
+    {id:'bulletins_paie',    label:'3 derniers bulletins de paie', category:'financier', required:'obligatoire'},
+    {id:'avis_imposition',   label:'Dernier avis d\'imposition (N-1)', category:'financier', required:'recommande'},
+    {id:'quittances_loyer',  label:'3 dernières quittances loyer (si logé)', category:'financier', required:'recommande'},
+  ],
+  Investisseur: [
+    {id:'etude_rentabilite', label:'Étude rentabilité (yield, TIR, cash-flow)', category:'financier', required:'recommande'},
+    {id:'business_plan',     label:'Business plan locatif + étude marché', category:'financier', required:'recommande'},
+  ],
+  MarchandBiens: [
+    {id:'statut_juridique',  label:'Kbis + statuts + dernier bilan', category:'identite', required:'obligatoire'},
+    {id:'budget_travaux',    label:'Budget travaux estimé + devis', category:'financier', required:'obligatoire'},
+    {id:'accord_credit_relais', label:'Accord crédit relais', category:'financier', required:'recommande'},
+  ],
+  Promoteur: [
+    {id:'permis_construire', label:'Permis de construire ou autorisation', category:'urbanisme', required:'obligatoire'},
+    {id:'etude_faisabilite', label:'Étude faisabilité urbaine', category:'urbanisme', required:'obligatoire'},
+    {id:'plan_commercialisation', label:'Plan commercialisation', category:'financier', required:'recommande'},
+  ],
+  Curieux: [
+    {id:'curieux_note_qualif', label:'Note qualification (champ libre)', category:'autre', required:'facultatif'},
+  ],
+};
+const DOCUMENTS_CATALOG_N3 = {
+  FR: {
+    Vendeur: [
+      {id:'fr_dpe',           label:'DPE (réformé 2026)', category:'diagnostic', required:'obligatoire', expirable:true, expiry_days:3650},
+      {id:'fr_audit_energie', label:'Audit énergétique (E/F/G en 2026, D dès 2028)', category:'diagnostic', required:'obligatoire'},
+      {id:'fr_amiante',       label:'Amiante (permis < juillet 1997)', category:'diagnostic', required:'obligatoire'},
+      {id:'fr_crep_plomb',    label:'CREP plomb (permis < 1949)',   category:'diagnostic', required:'obligatoire'},
+      {id:'fr_erp',           label:'ERP état des risques', category:'diagnostic', required:'obligatoire', expirable:true, expiry_days:180},
+      {id:'fr_mesurage',      label:'Mesurage Carrez (copro) ou Boutin (meublé)', category:'diagnostic', required:'obligatoire'},
+      {id:'fr_dpe_collectif', label:'DPE collectif copro (obligatoire 1er janv 2026)', category:'diagnostic', required:'obligatoire'},
+    ],
+    Bailleur: [
+      {id:'fr_dpe_loc',       label:'DPE (G interdite 2025, F dès 2028, E dès 2034)', category:'diagnostic', required:'obligatoire', expirable:true, expiry_days:3650},
+      {id:'fr_erp_loc',       label:'ERP', category:'diagnostic', required:'obligatoire', expirable:true, expiry_days:180},
+    ],
+    Locataire: [
+      {id:'fr_garant_dossier', label:'Garant OU Visale OU GLI (cumul interdit Loi 2025-412)', category:'financier', required:'recommande', _warning:'Loi 2025-412 : cumul garant+Visale+GLI INTERDIT'},
+    ],
+  },
+  MA: {
+    Vendeur: [
+      {id:'ma_titre_foncier', label:'Titre foncier ANCFCC ou Moulkia adoulaire', category:'propriete', required:'obligatoire'},
+      {id:'ma_cert_propriete', label:'Certificat propriété ANCFCC récent', category:'propriete', required:'obligatoire'},
+      {id:'ma_extrait_cadastral', label:'Extrait cadastral + plan foncier', category:'urbanisme', required:'obligatoire'},
+      {id:'ma_attestation_fiscale', label:'Attestation fiscale apurement', category:'fiscal', required:'obligatoire'},
+      {id:'ma_mainlevee_hypotheque', label:'Mainlevée hypothèque (si applicable)', category:'propriete', required:'facultatif'},
+      {id:'ma_permis_habiter', label:'Permis d\'habiter (PH)', category:'urbanisme', required:'obligatoire'},
+    ],
+    Acheteur: [
+      {id:'ma_origine_fonds_etranger', label:'Justification origine fonds renforcée (étranger)', category:'financier', required:'obligatoire'},
+      {id:'ma_autorisation_change', label:'Autorisation Office des Changes (non-résident)', category:'fiscal', required:'recommande'},
+    ],
+  },
+  ES: {
+    Vendeur: [
+      {id:'es_nota_simple', label:'Nota Simple récente', category:'propriete', required:'obligatoire'},
+      {id:'es_cee', label:'Certificado Energético (CEE)', category:'diagnostic', required:'obligatoire'},
+      {id:'es_ibi', label:'IBI dernier paiement quitancé', category:'fiscal', required:'obligatoire'},
+    ],
+    Acheteur: [{id:'es_nie', label:'NIE (Numéro Identification Étranger)', category:'identite', required:'obligatoire'}],
+  },
+};
+
+function DocumentsSection({d, set, dossierId, showToast, activeProfil, paysBien}) {
+  const [expanded, setExpanded] = React.useState(true);
+  const [openN, setOpenN] = React.useState({N1: true, N2: true, N3: true});
+  const docs = Array.isArray(d.documents) ? d.documents : [];
+  const profilKey = activeProfil || 'Acheteur';
+  const paysKey = (paysBien || '').toUpperCase();
+  const n2List = DOCUMENTS_CATALOG_N2[profilKey] || [];
+  const n3List = (DOCUMENTS_CATALOG_N3[paysKey] && DOCUMENTS_CATALOG_N3[paysKey][profilKey]) || [];
+  const _isFRLoc = paysKey === 'FR' && profilKey === 'Locataire';
+
+  function uploadedFor(catalogId) { return docs.find(dd => dd && dd.catalog_id === catalogId) || null; }
+  function addPlaceholderDoc(entry) {
+    const next = [...docs, {
+      catalog_id: entry.id, label: entry.label, category: entry.category, required: entry.required,
+      expirable: !!entry.expirable, expiry_days: entry.expiry_days || null,
+      file: null, upload_date: new Date().toISOString(), validity_date: null,
+    }];
+    set('documents', next, {commit: true});
+    showToast && showToast(`Document "${entry.label}" ajouté (placeholder, upload via mission ultérieure).`);
+  }
+  function removeDoc(catalogId) { set('documents', docs.filter(dd => dd && dd.catalog_id !== catalogId), {commit: true}); }
+  function addFreeDoc() {
+    const label = window.prompt('Libellé du document libre :', '');
+    if (!label || !label.trim()) return;
+    const next = [...docs, {
+      catalog_id: 'libre_' + Date.now(), label: label.trim(), category: 'autre', required: 'facultatif',
+      expirable: false, file: null, upload_date: new Date().toISOString(), validity_date: null,
+    }];
+    set('documents', next, {commit: true});
+    showToast && showToast(`Document libre "${label}" ajouté.`);
+  }
+  function _renderRow(entry) {
+    const uploaded = uploadedFor(entry.id);
+    const isIdentite = entry.id === 'identite_block';
+    const _reqColor = entry.required === 'obligatoire' ? 'var(--color-error)' : entry.required === 'recommande' ? 'var(--color-accent)' : 'var(--color-text-muted)';
+    return (
+      <div key={entry.id} style={{display:'flex', alignItems:'center', gap:'var(--space-2)', padding:'var(--space-6px) var(--space-2)', background:uploaded?'#F4ECE3':'transparent', borderRadius:6, marginBottom:'var(--space-3px)', flexWrap:'wrap'}}>
+        <span style={{flex:'1 1 60%', fontSize:'var(--font-size-13)', fontWeight:600, color:'var(--color-text-primary)'}}>{entry.label}</span>
+        <span style={{fontSize:'var(--font-size-10)', textTransform:'uppercase', fontWeight:700, letterSpacing:.4, color:_reqColor, padding:'2px 6px', border:'1px solid '+_reqColor, borderRadius:4}}>{entry.required}</span>
+        {entry._warning && <span style={{fontSize:'var(--font-size-10)', color:'#A95B1C', flex:'1 1 100%', fontStyle:'italic'}}>⚠ {entry._warning}</span>}
+        {isIdentite ? (
+          <span style={{fontSize:'var(--font-size-11)', color:'var(--color-text-muted)', fontStyle:'italic'}}>(voir bloc dédié ci-dessous)</span>
+        ) : uploaded ? (
+          <button type="button" onClick={() => removeDoc(entry.id)} style={{fontSize:'var(--font-size-11)', padding:'3px 8px', background:'transparent', color:'var(--color-error)', border:'1px solid var(--color-error)', borderRadius:4, cursor:'pointer', fontFamily:'inherit'}}>Retirer</button>
+        ) : (
+          <button type="button" onClick={() => addPlaceholderDoc(entry)} style={{fontSize:'var(--font-size-11)', padding:'3px 8px', background:'var(--color-accent)', color:'#fff', border:'none', borderRadius:4, cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter</button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div style={{border:'2px solid var(--color-border-cream)', borderRadius:10, padding:'var(--space-3)', marginTop:'var(--space-3)', marginBottom:'var(--space-3)', background:'#fff'}}>
+      <button type="button" onClick={() => setExpanded(e => !e)} aria-expanded={expanded}
+        style={{display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', background:'transparent', border:'none', padding:'var(--space-2) 0', cursor:'pointer', fontFamily:'inherit'}}>
+        <span style={{fontFamily:'"Cormorant Garamond", Georgia, serif', fontSize:'var(--font-size-18)', fontWeight:700, fontStyle:'italic', color:'var(--color-accent)'}}>Section Documents</span>
+        <span style={{fontSize:'var(--font-size-12)', color:'var(--color-text-muted)', display:'flex', gap:'var(--space-2)', alignItems:'center'}}>
+          <span>{docs.length} doc{docs.length>1?'s':''}</span>
+          <span style={{transform:expanded?'rotate(180deg)':'rotate(0deg)', transition:'transform 200ms'}}>▼</span>
+        </span>
+      </button>
+      {expanded && (
+        <div style={{marginTop:'var(--space-2)'}}>
+          {_isFRLoc && (
+            <div style={{padding:'var(--space-2)', background:'#FEF3E5', border:'1px solid #C9A961', borderRadius:6, marginBottom:'var(--space-3)', fontSize:'var(--font-size-11-5)', color:'#7A4F18'}}>
+              <b>⚠ France — Locataire (décret 2015-1437)</b> : liste limitative obligatoire. Documents <b>INTERDITS</b> (amende 3000-15000€) : carte Vitale, casier judiciaire, relevés bancaires détaillés, dossier médical, contrat mariage. <b>Loi 2025-412</b> : cumul garant + Visale + GLI <b>INTERDIT</b>.
+            </div>
+          )}
+          <div style={{marginBottom:'var(--space-3)'}}>
+            <button type="button" onClick={() => setOpenN(p => ({...p, N1: !p.N1}))} style={{display:'flex', alignItems:'center', gap:'var(--space-2)', width:'100%', padding:'var(--space-2)', background:'#F4ECE3', border:'none', borderRadius:6, cursor:'pointer', fontFamily:'inherit'}}>
+              <span style={{fontSize:'var(--font-size-12-5)', fontWeight:700, color:'var(--color-text-brown)', flex:1, textAlign:'left'}}>N1 — Commun tous profils / pays</span>
+              <span style={{transform:openN.N1?'rotate(180deg)':'rotate(0deg)', transition:'transform 200ms'}}>▼</span>
+            </button>
+            {openN.N1 && <div style={{paddingTop:'var(--space-2)'}}>{DOCUMENTS_CATALOG_N1.map(_renderRow)}</div>}
+          </div>
+          {n2List.length > 0 && (
+            <div style={{marginBottom:'var(--space-3)'}}>
+              <button type="button" onClick={() => setOpenN(p => ({...p, N2: !p.N2}))} style={{display:'flex', alignItems:'center', gap:'var(--space-2)', width:'100%', padding:'var(--space-2)', background:'#F4ECE3', border:'none', borderRadius:6, cursor:'pointer', fontFamily:'inherit'}}>
+                <span style={{fontSize:'var(--font-size-12-5)', fontWeight:700, color:'var(--color-text-brown)', flex:1, textAlign:'left'}}>N2 — Profil : {profilKey}</span>
+                <span style={{transform:openN.N2?'rotate(180deg)':'rotate(0deg)', transition:'transform 200ms'}}>▼</span>
+              </button>
+              {openN.N2 && <div style={{paddingTop:'var(--space-2)'}}>{n2List.map(_renderRow)}</div>}
+            </div>
+          )}
+          {n3List.length > 0 && (
+            <div style={{marginBottom:'var(--space-3)'}}>
+              <button type="button" onClick={() => setOpenN(p => ({...p, N3: !p.N3}))} style={{display:'flex', alignItems:'center', gap:'var(--space-2)', width:'100%', padding:'var(--space-2)', background:'#F4ECE3', border:'none', borderRadius:6, cursor:'pointer', fontFamily:'inherit'}}>
+                <span style={{fontSize:'var(--font-size-12-5)', fontWeight:700, color:'var(--color-text-brown)', flex:1, textAlign:'left'}}>N3 — Pays bien : {paysKey || '(non défini)'}</span>
+                <span style={{transform:openN.N3?'rotate(180deg)':'rotate(0deg)', transition:'transform 200ms'}}>▼</span>
+              </button>
+              {openN.N3 && <div style={{paddingTop:'var(--space-2)'}}>{n3List.map(_renderRow)}</div>}
+            </div>
+          )}
+          {n3List.length === 0 && paysKey && (
+            <div style={{padding:'var(--space-2)', background:'#FAF6EE', border:'1px dashed var(--color-border-medium)', borderRadius:6, marginBottom:'var(--space-3)', fontSize:'var(--font-size-11-5)', color:'var(--color-text-muted)', fontStyle:'italic'}}>
+              N3 pays {paysKey} : matrice MVP incomplète ce profil. Utilise "+ Ajouter document libre" ci-dessous. Catalogue complet via API endpoint /api/documents-catalog.php (mission ultérieure recommandée par Gemini Pro + Mistral).
+            </div>
+          )}
+          <div style={{padding:'var(--space-2)', background:'#FAF6EE', borderRadius:8, marginBottom:'var(--space-3)'}}>
+            <PieceIdentiteBlock d={d} set={set} dossierId={dossierId} showToast={showToast}/>
+          </div>
+          <button type="button" onClick={addFreeDoc}
+            style={{display:'block', width:'100%', padding:'var(--space-2)', marginTop:'var(--space-2)', background:'#fff', border:'1.5px dashed var(--color-accent)', borderRadius:8, color:'var(--color-accent)', fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>
+            + Ajouter un document libre
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Section7({d, set}) {
   // M/2026/05/07/100-FIX-CRASH — ROOT CAUSE: pattern (d && d.bien && (d.bien.pays || '')).toUpperCase()
   // crash "undefined is not an object" sur Safari iPad quand d.bien est null/undefined :
@@ -24805,8 +25013,7 @@ function FormView(props) {
                 <Field label="Quartier" value={d.quartier_residence} onChange={v => set('quartier_residence', v)} style={{marginBottom:'var(--space-0)'}}
                   placeholder="Optionnel" autoComplete="address-level3" name="address-level3"/>
               </div>
-              {/* M/2026/05/12/23 — Date+Pays naissance deplaces en 1ere ligne du bloc Piece d'identite (logique metier : ce sont des infos d'identite). */}
-              <PieceIdentiteBlock d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null} showToast={showToast}/>
+              {/* M/2026/05/14/26 — PieceIdentiteBlock supprime de Section I, deplace dans DocumentsSection N1 (apres Section VII Notaire). */}
               </form>
             </>
           ) : (
@@ -24909,8 +25116,7 @@ function FormView(props) {
                   <EmailMulti value={d.emails} onChange={v => set('emails', v)} showToast={showToast}/>
                 </div>
               </div>
-              {/* M/2026/04/29/45 v8 Société — Sub-bloc Pièce d'identité du représentant légal. */}
-              <PieceIdentiteBlock d={d} set={set} dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null} showToast={showToast}/>
+              {/* M/2026/05/14/26 — PieceIdentiteBlock supprime de Section I Societe, deplace dans DocumentsSection N1. */}
               </form>
             </>
           )}
@@ -25067,6 +25273,15 @@ function FormView(props) {
             </div>
           );
         })()}
+
+        {/* M/2026/05/14/26 — Section Documents nouvelle (apres Stage VII Notaire).
+            Matrice 8 profils x 11 pays N1/N2/N3. Reutilise PieceIdentiteBlock (deplacement Section I).
+            Bouton + Ajouter doc libre. Catalogue MVP inline, /api/documents-catalog.php reco mission suivante. */}
+        <DocumentsSection d={d} set={set}
+          dossierId={editing && editing.id && !String(editing.id).startsWith('tmp-') ? editing.id : null}
+          showToast={showToast}
+          activeProfil={activeProfil}
+          paysBien={(d && d.bien && d.bien.pays) || ''}/>
 
         {/* M/2026/05/05/63 — Section "Destinataire personnalise du PDF" (M/58) RETIREE : le bloc droite PDF
             affiche desormais les coordonnees du CLIENT proprietaire (prenom/nom/societe/tel/email deja
