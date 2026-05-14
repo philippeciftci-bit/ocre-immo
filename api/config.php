@@ -44,7 +44,7 @@ define('ALLOWED_ORIGINS',['https://app.ocre.immo','https://ocre.immo','https://w
 // nouvelle migration ajoutee dans /opt/ocre-app/migrations/versions/.
 // db.php verifie la version a chaque connexion wsp et retourne 503
 // SCHEMA_DRIFT si la version courante est inferieure.
-define('SCHEMA_VERSION_REQUIRED', 'V012');
+define('SCHEMA_VERSION_REQUIRED', 'V013');
 
 // Slug courant (deduit ci-dessus) - expose pour d'autres modules (correlation, monitoring).
 define('OCRE_WSP_SLUG', $_v20_slug);
