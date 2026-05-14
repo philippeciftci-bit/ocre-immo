@@ -1,61 +1,68 @@
 <?php
-// M/2026/05/14/79 — Popup visuel propre : overlay sombre + card OPAQUE blanche + close button + body lock.
-// Le contenu interne (form 6 etapes) est rendu par OcreAuth.mount() depuis assets/js/auth-flow.js.
+// M/2026/05/14/80 — URGENT-POPUP-OPAQUE-RADICAL. Classes renommees ocre-popup-* avec !important
+// pour battre les overrides WP. Card OPAQUE #FFFFFF + overlay sombre + body lock.
 ?>
 <style>
-/* Overlay sombre semi-transparent qui couvre tout */
-.oal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(60, 40, 24, 0.55);
-  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  z-index: 9998;
-  opacity: 0; pointer-events: none;
-  transition: opacity .25s;
-  display: flex; align-items: center; justify-content: center;
-  padding: 16px;
+/* Overlay sombre - !important pour battre styles WP */
+.ocre-popup-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background-color: rgba(60, 40, 24, 0.6) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  backdrop-filter: blur(4px) !important;
+  z-index: 99998 !important;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
 }
-.oal-overlay.oal-show { opacity: 1; pointer-events: auto; }
-/* Shell qui wrap la card + close. Centre + scroll si overflow. */
-.oal-shell {
-  position: relative;
-  width: 100%; max-width: 460px;
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  transform: translateY(40px); opacity: 0;
-  transition: all .35s cubic-bezier(.2,.7,.2,1);
-  z-index: 9999;
+.ocre-popup-overlay.ocre-popup-show {
+  display: flex !important;
+  animation: ocrePopupFadeIn .25s ease;
 }
-.oal-overlay.oal-show .oal-shell { transform: translateY(0); opacity: 1; }
-/* Bouton close en absolute sur la card (top-right) */
-.oal-close {
-  position: absolute; top: 16px; right: 16px;
-  width: 32px; height: 32px; border-radius: 50%;
-  background: #F4ECDF; color: #6B5642;
-  border: none; cursor: pointer;
-  font-size: 18px; font-weight: 600;
-  display: flex; align-items: center; justify-content: center;
-  z-index: 10;
-  transition: background .15s;
+@keyframes ocrePopupFadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* Bouton close - position absolue dans la card */
+.ocre-popup-close {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background-color: #F4ECDF !important;
+  color: #6B5642 !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 100 !important;
+  transition: background-color .15s;
+  padding: 0 !important;
+  line-height: 1 !important;
 }
-.oal-close:hover { background: #E5DAC6; }
-/* Body lock quand popup ouverte (classe appliquee par JS) */
-body.oal-locked { overflow: hidden !important; }
+.ocre-popup-close:hover { background-color: #E5DAC6 !important; }
+/* Body lock */
+body.ocre-popup-open {
+  overflow: hidden !important;
+}
 </style>
-<div class="oal-overlay" id="oal-overlay" onclick="if(event.target===this){window.ocreSignupClose();}">
-  <div class="oal-shell">
-    <button type="button" class="oal-close" aria-label="Fermer" onclick="window.ocreSignupClose()">&times;</button>
+<div class="ocre-popup-overlay" id="ocre-popup-overlay" onclick="if(event.target===this){window.ocreSignupClose();}">
+  <div style="position:relative;width:100%;max-width:460px;">
+    <button type="button" class="ocre-popup-close" aria-label="Fermer" onclick="window.ocreSignupClose()">&times;</button>
     <div id="ocre-auth-mount"></div>
   </div>
 </div>
 <script src="<?php echo esc_url(get_stylesheet_directory_uri() . '/assets/js/auth-flow.js?v=' . date('Ymd-Hi')); ?>"></script>
 <script>
 (function() {
-  var overlay = document.getElementById('oal-overlay');
+  var overlay = document.getElementById('ocre-popup-overlay');
   var mounted = false;
   window.ocreSignupOpen = function() {
-    overlay.classList.add('oal-show');
-    document.body.classList.add('oal-locked');
+    overlay.classList.add('ocre-popup-show');
+    document.body.classList.add('ocre-popup-open');
     if (!mounted && window.OcreAuth) {
       window.OcreAuth.mount('#ocre-auth-mount', {
         apiBase: 'https://auth.ocre.immo',
@@ -65,8 +72,8 @@ body.oal-locked { overflow: hidden !important; }
     }
   };
   window.ocreSignupClose = function() {
-    overlay.classList.remove('oal-show');
-    document.body.classList.remove('oal-locked');
+    overlay.classList.remove('ocre-popup-show');
+    document.body.classList.remove('ocre-popup-open');
   };
   document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-signup-trigger]').forEach(function(el) {
@@ -75,7 +82,7 @@ body.oal-locked { overflow: hidden !important; }
     });
   });
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && overlay.classList.contains('oal-show')) window.ocreSignupClose();
+    if (e.key === 'Escape' && overlay.classList.contains('ocre-popup-show')) window.ocreSignupClose();
   });
 })();
 </script>

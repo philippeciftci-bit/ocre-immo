@@ -18,8 +18,9 @@
   var CSS = [
     "[data-ocre-auth] *,[data-ocre-auth] *::before,[data-ocre-auth] *::after{box-sizing:border-box}",
     "[data-ocre-auth]{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;color:#3D2818;line-height:1.5;-webkit-font-smoothing:antialiased}",
-    // M/2026/05/14/79 — card OPAQUE blanche, shadow plus profonde, max-width 460.
-    "[data-ocre-auth] .of-card{background:#FFFFFF;border-radius:16px;padding:32px 28px;border:1px solid #E5DAC6;box-shadow:0 20px 60px rgba(60,40,24,0.25);max-width:460px;margin:0 auto}",
+    // M/2026/05/14/80 — card OPAQUE FORCEE !important contre WP overrides. Class renomme ocre-popup-card.
+    "[data-ocre-auth].ocre-popup-card,[data-ocre-auth] .ocre-popup-card{background-color:#FFFFFF !important;background:#FFFFFF !important;border-radius:16px !important;padding:32px 28px !important;border:1px solid #E5DAC6 !important;box-shadow:0 20px 60px rgba(60,40,24,0.3) !important;max-width:460px !important;width:100% !important;max-height:calc(100vh - 32px) !important;overflow-y:auto !important;margin:0 auto !important;position:relative !important;opacity:1 !important}",
+    "[data-ocre-auth].ocre-popup-card *,[data-ocre-auth] .ocre-popup-card *{background-color:transparent}",
     "[data-ocre-auth] .of-brand{text-align:center;margin-bottom:4px;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:32px;color:#8B5A3C;letter-spacing:-0.02em}",
     "[data-ocre-auth] .of-brand span{color:#D4A256}",
     "[data-ocre-auth] .of-sub-app{text-align:center;font-size:11px;color:#998877;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:18px;font-weight:600}",
@@ -31,7 +32,7 @@
     "[data-ocre-auth] .of-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}",
     "[data-ocre-auth] .of-field label{font-size:11.5px;color:#6B5642;font-weight:600;letter-spacing:0.04em;text-transform:uppercase}",
     "[data-ocre-auth] .of-field label .opt{color:#998877;font-weight:400;text-transform:none;letter-spacing:0}",
-    "[data-ocre-auth] .of-field input,[data-ocre-auth] .of-field select{padding:13px 14px;border:1px solid #E5DAC6;border-radius:10px;font-size:16px;font-family:inherit;color:#3D2818;background:#FCFAF7;width:100%;min-width:0}",
+    "[data-ocre-auth] .of-field input,[data-ocre-auth] .of-field select{padding:13px 14px;border:1px solid #E5DAC6;border-radius:10px;font-size:16px;font-family:inherit;color:#3D2818;background-color:#FCFAF7 !important;width:100%;min-width:0}",
     "[data-ocre-auth] .of-field input:focus,[data-ocre-auth] .of-field select:focus{outline:none;border-color:#8B5A3C;background:#fff}",
     "[data-ocre-auth] .of-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}",
     "[data-ocre-auth] .of-row-2 .of-field{margin-bottom:0;min-width:0}",
@@ -47,7 +48,7 @@
     "[data-ocre-auth] .of-cgu{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#6B5642;line-height:1.5;margin-bottom:10px}",
     "[data-ocre-auth] .of-cgu input{margin-top:2px;accent-color:#8B5A3C}",
     "[data-ocre-auth] .of-cgu a{color:#8B5A3C}",
-    "[data-ocre-auth] .of-btn-primary{display:block;width:100%;padding:15px 20px;background:#8B5A3C;color:#fff;border:none;border-radius:12px;font-family:'DM Sans',-apple-system,sans-serif;font-size:16px;font-weight:700;line-height:1.2;cursor:pointer;transition:background .15s;margin-top:10px}",
+    "[data-ocre-auth] .of-btn-primary{display:block;width:100%;padding:15px 20px;background-color:#8B5A3C !important;color:#fff !important;border:none;border-radius:12px;font-family:'DM Sans',-apple-system,sans-serif;font-size:16px;font-weight:700;line-height:1.2;cursor:pointer;transition:background .15s;margin-top:10px}",
     "[data-ocre-auth] .of-btn-primary:hover:not(:disabled){background:#6B3F26}",
     "[data-ocre-auth] .of-btn-primary:disabled{opacity:0.4;cursor:not-allowed}",
     "[data-ocre-auth] .of-link-row{text-align:center;margin-top:14px;font-size:13px;color:#998877}",
@@ -77,7 +78,7 @@
   // Templates HTML par etape (data-step). Pas de Cormorant fontface ajoute ici - charge en parent.
   function htmlAll() {
     return ''
-      + '<div class="of-card" data-ocre-auth>'
+      + '<div class="of-card ocre-popup-card" data-ocre-auth>'
       + '<div class="of-brand">Oc<span>re</span></div>'
       + '<div class="of-sub-app">Oi Agent</div>'
 
