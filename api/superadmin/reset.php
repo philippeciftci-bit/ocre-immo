@@ -152,32 +152,34 @@ case 'reset_tenant': {
     @chmod($backup, 0600);
     if (!$r['ok']) rout(['ok'=>false,'error'=>'Backup pre-reset echoue, RESET ANNULE','detail'=>$r], 500);
     $dbName = 'ocre_wsp_' . $slug;
-    // M/2026/05/14/57 — atomicite : DROP + CREATE + ocre-migrate.sh (V001..V012) + verify + rollback si fail.
-    // Avant : tentait import tenant_template.sql inexistant, @exec silence, ok=true template_imported=false
-    // -> DB vide en prod jusqu'a rattrapage audit-timer 4-6 min. CAUSE RACINE downtime M/14/55.
+    // M/2026/05/14/57 + M/2026/05/14/60 — atomicite : DROP + CREATE + ocre-migrate.sh + verify
+    // dynamique SCHEMA_VERSION_REQUIRED + rollback si fail.
+    // M/14/60 fix Codex : version verify lue depuis SCHEMA_VERSION_REQUIRED (V013 actuel), plus
+    // de V012 hardcode qui declenchait un faux rollback DROP apres reussite migrate V013.
+    // OCRE_MIGRATE_SKIP_BACKUP=1 : DB juste creee = vide = backup mysqldump < 1024 bytes -> abort
+    // legitime evitable via env var pour la phase post-CREATE.
     try {
         $meta = pdo_meta();
         $meta->exec("DROP DATABASE IF EXISTS `$dbName`");
         $meta->exec("CREATE DATABASE `$dbName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        // Apply migrations V001..V012 via ocre-migrate.sh (idempotent, sait re-importer schema canonique).
-        $migrateCmd = "/root/bin/ocre-migrate.sh " . escapeshellarg($slug) . " 2>&1";
+        // Apply migrations via ocre-migrate.sh (idempotent, applique toutes V*.sql disponibles).
+        $migrateCmd = "OCRE_MIGRATE_SKIP_BACKUP=1 /root/bin/ocre-migrate.sh " . escapeshellarg($slug) . " 2>&1";
         $migrateOut = []; $migrateRc = 0;
         @exec($migrateCmd, $migrateOut, $migrateRc);
         if ($migrateRc !== 0) {
-            // Import echoue -> rollback DROP. Logguer puis 500.
             try { $meta->exec("DROP DATABASE IF EXISTS `$dbName`"); } catch (Throwable $e2) {}
             reset_log((int)$user['id'], 'reset_tenant_migrate_failed', ['slug'=>$slug,'rc'=>$migrateRc,'out_tail'=>array_slice($migrateOut, -5)]);
             rout(['ok'=>false,'error'=>'reset_tenant migrate failed','rc'=>$migrateRc,'out_tail'=>array_slice($migrateOut, -5),'backup_file'=>basename($backup)], 500);
         }
-        // Verify post-import : _schema_migrations doit contenir V012 (latest).
+        // Verify post-import : _schema_migrations doit contenir SCHEMA_VERSION_REQUIRED (dynamic).
         $verifyPdo = new PDO('mysql:host=' . DB_HOST . ';dbname=' . $dbName . ';charset=utf8mb4', DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $verifyRow = $verifyPdo->query("SELECT name FROM _schema_migrations ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
         $latest = $verifyRow ? (string)$verifyRow['name'] : '';
-        if (strpos($latest, 'V012') !== 0) {
-            // Verify echec -> rollback
+        $expected = defined('SCHEMA_VERSION_REQUIRED') ? SCHEMA_VERSION_REQUIRED : 'V001';
+        if (strncmp($latest, $expected, strlen($expected)) !== 0) {
             try { $meta->exec("DROP DATABASE IF EXISTS `$dbName`"); } catch (Throwable $e2) {}
-            reset_log((int)$user['id'], 'reset_tenant_verify_failed', ['slug'=>$slug,'latest'=>$latest]);
-            rout(['ok'=>false,'error'=>'reset_tenant verify failed (V012 expected)','latest'=>$latest,'backup_file'=>basename($backup)], 500);
+            reset_log((int)$user['id'], 'reset_tenant_verify_failed', ['slug'=>$slug,'latest'=>$latest,'expected'=>$expected]);
+            rout(['ok'=>false,'error'=>"reset_tenant verify failed ($expected required)",'latest'=>$latest,'backup_file'=>basename($backup)], 500);
         }
         reset_log((int)$user['id'], 'reset_tenant', ['slug'=>$slug,'db'=>$dbName,'schema_version'=>$latest,'backup'=>$backup]);
         reset_telegram('reset_tenant', ['slug'=>$slug,'schema_version'=>$latest,'backup'=>basename($backup)]);
@@ -220,8 +222,9 @@ case 'reset_total': {
         $testSchemaVersion = '';
         try {
             $meta->exec("CREATE DATABASE IF NOT EXISTS `$testDb` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            // M/14/60 : OCRE_MIGRATE_SKIP_BACKUP=1 car DB fraichement creee = vide -> backup abort sinon.
             $migrateOut = []; $migrateRc = 0;
-            @exec("/root/bin/ocre-migrate.sh " . escapeshellarg($testSlug) . " 2>&1", $migrateOut, $migrateRc);
+            @exec("OCRE_MIGRATE_SKIP_BACKUP=1 /root/bin/ocre-migrate.sh " . escapeshellarg($testSlug) . " 2>&1", $migrateOut, $migrateRc);
             if ($migrateRc === 0) {
                 $verifyPdo = new PDO('mysql:host=' . DB_HOST . ';dbname=' . $testDb . ';charset=utf8mb4', DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
                 $row = $verifyPdo->query("SELECT name FROM _schema_migrations ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
