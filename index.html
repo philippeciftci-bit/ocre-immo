@@ -440,19 +440,38 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
     if (['text','search','email','tel','url','password','number'].indexOf(t) === -1) return;
     try { el.blur(); } catch (err) {}
   }, true);
-  // M/14/50 + M/14/51 — autofill iOS QuickType anti-scroll. Mistral confirme pattern
-  // Stripe/Shopify : scrollTo({behavior:'auto'}) explicit (pas smooth) bypasse scrollIntoView
-  // iOS. M/14/51 fix M/14/50 partiel : seuil dy > 30 laissait passer les decalages 5-30px qui
-  // sont visibles. Force restoration sans seuil + multi-tick (2rAF + 50ms + 200ms) car iOS
-  // peut faire son scrollIntoView sur plusieurs ticks selon version Safari.
+  // M/14/50 + M/14/51 + M/14/54 — autofill iOS QuickType anti-scroll.
+  // M/14/54 (analyse Codex validee Philippe) : cause racine = iOS Safari declenche
+  // ensureCaretVisible() ENTRE beforeinput et input pour insertReplacementText /
+  // insertFromAutoFill. Capturer scrollY dans 'input' est trop tard, position deja
+  // decalee -> restauration vers mauvaise position. Fix : capturer scrollY dans
+  // beforeinput AVANT ensureCaretVisible, restaurer dans input apres iOS scroll.
+  // Pattern Stripe Elements / Shopify Polaris.
+  var quickTypeRestoreY = null;
+  function currentScrollY() {
+    var body = document.body;
+    if (body && body.dataset && body.dataset.ocreScrollLockY) {
+      var locked = parseInt(body.dataset.ocreScrollLockY, 10);
+      if (!isNaN(locked)) return locked;
+    }
+    return window.scrollY || window.pageYOffset || 0;
+  }
+  document.addEventListener('beforeinput', function(e) {
+    if (!isTextInput(e.target)) return;
+    var it = e.inputType || '';
+    if (it === 'insertReplacementText' || it === 'insertFromAutoFill') {
+      quickTypeRestoreY = currentScrollY();
+    }
+  }, true);
   document.addEventListener('input', function(e) {
     if (!isTextInput(e.target)) return;
     var it = e.inputType || '';
     if (it !== 'insertReplacementText' && it !== 'insertFromAutoFill') return;
-    var savedY = window.scrollY || window.pageYOffset || 0;
+    var savedY = quickTypeRestoreY != null ? quickTypeRestoreY : currentScrollY();
+    quickTypeRestoreY = null;
     function restore() {
       try {
-        if ((window.scrollY || 0) !== savedY) {
+        if ((window.scrollY || window.pageYOffset || 0) !== savedY) {
           window.scrollTo({ top: savedY, left: 0, behavior: 'auto' });
         }
       } catch (err) {
@@ -483,115 +502,8 @@ window.ocreLogError = window.ocreLogError || function(code, sub, details) {
     });
   }
 })();
-// DEBUG M/14/52 + M/14/53 TEMP - instrumentation scroll autofill iOS. A retirer apres diag.
-// M/14/53 FIX : retire restriction hostname (logs zero recus, hypothese hostname filter
-// rejette PWA installee / app.ocre.immo proxy / autre URL). Filtre cote serveur via X-Tenant.
-// Selector elargi (placeholder, aria-label contient adresse). Fetch direct au lieu de
-// sendBeacon (sendBeacon peut etre bloque silencieusement Safari iOS PWA mode).
-(function setupScrollDebugM52() {
-  if (window.__ocreScrollDbg) return;
-  window.__ocreScrollDbg = true;
-  var sessionId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-  var activeUntil = 0;
-  function tenantSlug() {
-    var h = location.hostname || '';
-    return h.split('.')[0] || 'unknown';
-  }
-  function send(evt, extra) {
-    try {
-      var payload = {
-        session: sessionId,
-        ts: Math.round(performance.now()),
-        evt: evt,
-        scrollY: Math.round(window.scrollY || 0),
-        innerHeight: window.innerHeight,
-        vvH: window.visualViewport ? Math.round(window.visualViewport.height) : null,
-        vvOY: window.visualViewport ? Math.round(window.visualViewport.offsetTop) : null,
-        host: location.hostname,
-      };
-      if (extra) for (var k in extra) payload[k] = extra[k];
-      // M/14/53 : fetch direct (sendBeacon peut etre silencieusement bloque iOS PWA mode).
-      fetch('/api/debug-scroll-log.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-Tenant': tenantSlug()},
-        body: JSON.stringify(payload),
-        keepalive: true,
-      }).catch(function() {
-        // M/14/53 fallback : si fetch echoue, console.log + tente sendBeacon
-        try { console.log('[M14-53 fallback]', evt, payload); } catch (e) {}
-        try {
-          if (navigator.sendBeacon) {
-            navigator.sendBeacon('/api/debug-scroll-log.php', new Blob([JSON.stringify(payload)], {type: 'application/json'}));
-          }
-        } catch (e) {}
-      });
-    } catch (e) {}
-  }
-  function isAddressInput(el) {
-    if (!el || el.tagName !== 'INPUT') return false;
-    var ac = (el.getAttribute('autocomplete') || '').toLowerCase();
-    var nm = (el.getAttribute('name') || '').toLowerCase();
-    var ph = (el.getAttribute('placeholder') || '').toLowerCase();
-    var al = (el.getAttribute('aria-label') || '').toLowerCase();
-    if (ac.indexOf('street-address') !== -1) return true;
-    if (nm.indexOf('street-address') !== -1) return true;
-    if (nm.indexOf('address') !== -1) return true;
-    if (nm.indexOf('adresse') !== -1) return true;
-    if (ph.indexOf('adresse') !== -1) return true;
-    if (al.indexOf('adresse') !== -1) return true;
-    return false;
-  }
-  function targetInfo(el) {
-    return {
-      name: el.getAttribute('name') || '',
-      ac: el.getAttribute('autocomplete') || '',
-      val: (el.value || '').slice(0, 30),
-    };
-  }
-  document.addEventListener('focusin', function(e) {
-    if (!isAddressInput(e.target)) return;
-    activeUntil = performance.now() + 10000;
-    send('focusin', targetInfo(e.target));
-  }, true);
-  document.addEventListener('input', function(e) {
-    if (!isAddressInput(e.target)) return;
-    activeUntil = performance.now() + 10000;
-    var ti = targetInfo(e.target);
-    ti.inputType = e.inputType || '';
-    send('input', ti);
-  }, true);
-  document.addEventListener('change', function(e) {
-    if (!isAddressInput(e.target)) return;
-    send('change', targetInfo(e.target));
-  }, true);
-  document.addEventListener('focusout', function(e) {
-    if (!isAddressInput(e.target)) return;
-    send('blur', targetInfo(e.target));
-  }, true);
-  var lastScrollLog = 0;
-  window.addEventListener('scroll', function() {
-    var now = performance.now();
-    if (now > activeUntil) return;
-    if (now - lastScrollLog < 50) return;
-    lastScrollLog = now;
-    send('scroll');
-  }, { passive: true, capture: true });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function() {
-      if (performance.now() > activeUntil) return;
-      send('vv-resize');
-    });
-    window.visualViewport.addEventListener('scroll', function() {
-      var now = performance.now();
-      if (now > activeUntil) return;
-      if (now - lastScrollLog < 50) return;
-      lastScrollLog = now;
-      send('vv-scroll');
-    });
-  }
-  // Boot tag pour distinguer les sessions dans le log.
-  send('boot', {ua: (navigator.userAgent || '').slice(0, 80)});
-})();
+// M/14/54 — instrumentation debug M/14/52+M/14/53 retiree (cause identifiee Codex,
+// fix beforeinput hook applique dans setupKeyboardDismiss au-dessus).
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes">
