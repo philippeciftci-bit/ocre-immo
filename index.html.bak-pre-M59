@@ -77,258 +77,6 @@
 })();
 </script>
 <script>
-// M/2026/05/14/1 — apiCall wrapper + monkey-patch fetch (erreurs visibles).
-// M/2026/05/14/2 — Ajouts : SCHEMA_DRIFT 503 special-case + correlation ID X-Request-Id.
-//   2xx              -> normal
-//   401/403          -> redirect /?session-expired
-//   4xx              -> toast warning + throw
-//   5xx SCHEMA_DRIFT -> toast non-dismissable "Mise a niveau" + log priority high
-//   5xx autre        -> toast critique avec request_id 8-chars + log + throw
-//   timeout/network  -> toast "Connexion perdue" + retry x2 backoff
-//
-// Approche: monkey-patch window.fetch (transparent, zero regression sur
-// existing call sites). window.apiCall expose pour nouveau code.
-// M/2026/05/14/9 (M/83) — Enum codes erreur normalises pour anti-fatigue alerting.
-window.OCRE_ERROR_CODES = window.OCRE_ERROR_CODES || {
-  JS_RUNTIME: 'JS_RUNTIME',                // ReferenceError, TypeError JS local
-  API_500: 'API_500',                      // backend crash
-  API_4XX: 'API_4XX',                      // auth, validation, not found generique
-  AUTH_FAILURE: 'AUTH_FAILURE',            // token expire / invalide / 401-403
-  SCHEMA_DRIFT: 'SCHEMA_DRIFT',            // 503 SCHEMA_DRIFT (M/2026/05/14/2 V_B)
-  NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',      // fetch fail, abort
-  CORS_BLOCKED: 'CORS_BLOCKED',            // header A-C-A-O manquant
-  UNHANDLED_REJECTION: 'UNHANDLED_REJECTION', // catch global window
-};
-
-// Helper externe pour les composants qui veulent logger sans passer par apiCall.
-// Usage: window.ocreLogError('JS_RUNTIME', 'missing_prop', { prop: 'X', component: 'Y' })
-window.ocreLogError = window.ocreLogError || function(code, sub, details) {
-  try {
-    var slug = '';
-    var m = location.hostname.match(/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/);
-    if (m) slug = m[1];
-    var uid = 0;
-    try { uid = parseInt(localStorage.getItem('ocre_user_id') || '0', 10); } catch (e) {}
-    fetch('/api/log_client_error.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({
-        url: 'ocreLogError:' + (sub || ''),
-        status: 0,
-        body_snippet: JSON.stringify(details || {}).slice(0, 500),
-        user_id: uid,
-        wsp_slug: slug,
-        ua: navigator.userAgent.slice(0, 250),
-        ts: new Date().toISOString(),
-        request_id: '',
-        error_code: code || 'JS_RUNTIME'
-      })
-    }).catch(function() {});
-  } catch (e) {}
-};
-
-(function() {
-  if (window.__ocreApiCallInstalled) return;
-  window.__ocreApiCallInstalled = true;
-  var originalFetch = window.fetch.bind(window);
-
-  function genRequestId() {
-    try {
-      if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
-    } catch (e) {}
-    // Fallback (Safari iOS < 15.4 ne supporte pas randomUUID)
-    return 'r' + Date.now().toString(16) + '-' + Math.random().toString(16).slice(2, 10);
-  }
-
-  function showToast(level, msg, opts) {
-    opts = opts || {};
-    try {
-      if (typeof window.__ocreToast === 'function') return window.__ocreToast(level, msg, opts);
-    } catch (e) {}
-    try {
-      var bg = level === 'critical' ? '#B00020' : level === 'warning' ? '#A95B1C' : '#2A1810';
-      var d = document.createElement('div');
-      d.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:' + bg + ';color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-family:system-ui,sans-serif;max-width:90vw;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,0.25);cursor:' + (opts.requestId ? 'pointer' : 'default');
-      var line1 = document.createElement('div');
-      line1.textContent = msg;
-      d.appendChild(line1);
-      if (opts.requestId) {
-        var line2 = document.createElement('div');
-        line2.style.cssText = 'margin-top:6px;font-size:11px;opacity:0.85';
-        var rid8 = String(opts.requestId).slice(0, 8);
-        line2.textContent = 'Code: ' + rid8 + '. Tap pour copier.';
-        d.appendChild(line2);
-        d.addEventListener('click', function() {
-          try {
-            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(opts.requestId);
-            line2.textContent = 'Code copie: ' + rid8;
-          } catch (e) {}
-        });
-      }
-      document.body && document.body.appendChild(d);
-      var ttl = opts.persist ? 600000 : 5000;
-      setTimeout(function() { try { d.remove(); } catch (e) {} }, ttl);
-    } catch (e) {}
-  }
-
-  function getWspSlug() {
-    try {
-      var m = location.hostname.match(/^([a-z0-9][a-z0-9-]*)\.ocre\.immo$/);
-      return m ? m[1] : '';
-    } catch (e) { return ''; }
-  }
-
-  function getCurrentUserId() {
-    try {
-      var s = localStorage.getItem('ocre_user_id');
-      return s ? parseInt(s, 10) : 0;
-    } catch (e) { return 0; }
-  }
-
-  function logServerError(url, status, bodySnippet, requestId, errorCode) {
-    try {
-      originalFetch('/api/log_client_error.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          url: String(url).slice(0, 500),
-          status: status,
-          body_snippet: String(bodySnippet || '').slice(0, 500),
-          user_id: getCurrentUserId(),
-          wsp_slug: getWspSlug(),
-          ua: navigator.userAgent.slice(0, 250),
-          ts: new Date().toISOString(),
-          request_id: requestId || '',
-          error_code: errorCode || ''
-        })
-      }).catch(function() {});
-    } catch (e) {}
-  }
-
-  function sleep(ms) { return new Promise(function(r) { setTimeout(r, ms); }); }
-
-  function injectRequestId(opts, requestId) {
-    opts = opts || {};
-    var headers = opts.headers || {};
-    // Normalize: support Headers object or plain object
-    if (headers instanceof Headers) {
-      headers.set('X-Request-Id', requestId);
-    } else {
-      headers['X-Request-Id'] = requestId;
-    }
-    opts.headers = headers;
-    return opts;
-  }
-
-  // M/2026/05/14/7 — Retry exclusivement sur erreurs RESEAU (fetch throw avant
-  // response). JAMAIS sur 5xx : une 5xx = bug serveur, retry duplique l'ecriture
-  // et masque le probleme. Max 1 retry (2 attempts), delai fixe 500ms.
-  async function doFetchWithRetry(url, opts) {
-    try {
-      return await originalFetch(url, opts);
-    } catch (e) {
-      // Erreur reseau : 1 seul retry apres 500ms.
-      await sleep(500);
-      return await originalFetch(url, opts);
-    }
-  }
-
-  function handle5xx(urlStr, resp, requestId) {
-    resp.clone().text().then(function(t) {
-      var bodyText = t || '';
-      var errCode = '';
-      var schemaDrift = false;
-      try {
-        var j = JSON.parse(bodyText);
-        errCode = j.error || '';
-        if (errCode === 'SCHEMA_DRIFT') schemaDrift = true;
-      } catch (e) {}
-      if (schemaDrift) {
-        showToast('warning', 'Mise a niveau en cours. Reconnecte-toi dans 1 minute.', { persist: true, requestId: requestId });
-      } else {
-        showToast('critical', 'Erreur serveur. L equipe est notifiee.', { requestId: requestId });
-      }
-      logServerError(urlStr, resp.status, bodyText, requestId, errCode);
-    }).catch(function() {
-      showToast('critical', 'Erreur serveur. L equipe est notifiee.', { requestId: requestId });
-      logServerError(urlStr, resp.status, '', requestId, '');
-    });
-  }
-
-  // window.apiCall - haut niveau, retourne body JSON direct, throw sur erreur.
-  window.apiCall = async function(url, opts) {
-    opts = opts || {};
-    if (!opts.credentials) opts.credentials = 'same-origin';
-    var requestId = genRequestId();
-    opts = injectRequestId(opts, requestId);
-    try {
-      var resp = await doFetchWithRetry(url, opts);
-      var ct = resp.headers.get('content-type') || '';
-      var bodyText = '';
-      try { bodyText = await resp.clone().text(); } catch (e) {}
-      if (resp.status >= 200 && resp.status < 300) {
-        return ct.indexOf('application/json') >= 0 && bodyText ? JSON.parse(bodyText) : bodyText;
-      }
-      if (resp.status === 401 || resp.status === 403) {
-        window.location.href = '/?session-expired';
-        throw new Error('session expired');
-      }
-      if (resp.status >= 400 && resp.status < 500) {
-        var msg = 'requete invalide';
-        try { var j = JSON.parse(bodyText); msg = j.message || j.error || msg; } catch (e) {}
-        showToast('warning', 'Action refusee : ' + msg, { requestId: requestId });
-        throw new Error('http ' + resp.status);
-      }
-      if (resp.status >= 500) {
-        handle5xx(url, resp, requestId);
-        throw new Error('http ' + resp.status);
-      }
-      return bodyText;
-    } catch (e) {
-      if (e && e.message && (e.message.indexOf('http ') === 0 || e.message === 'session expired')) {
-        throw e;
-      }
-      showToast('warning', 'Connexion perdue. Reessayer.', { requestId: requestId });
-      throw e;
-    }
-  };
-
-  // Monkey-patch fetch : intercept transparent /api/*.
-  window.fetch = function(url, opts) {
-    var urlStr = (typeof url === 'string') ? url : (url && url.url) || '';
-    var isApi = urlStr.indexOf('/api/') >= 0 || urlStr.indexOf('/api?') >= 0 || /^https?:\/\/[^/]+\/api\//.test(urlStr);
-    if (urlStr.indexOf('/api/log_client_error.php') >= 0 || urlStr.indexOf('/api/version.php') >= 0) {
-      return originalFetch(url, opts);
-    }
-    if (!isApi) return originalFetch(url, opts);
-
-    var requestId = genRequestId();
-    opts = injectRequestId(opts || {}, requestId);
-
-    return doFetchWithRetry(url, opts).then(function(resp) {
-      if (resp.status === 401 || resp.status === 403) {
-        return resp;
-      }
-      if (resp.status >= 500) {
-        handle5xx(urlStr, resp, requestId);
-      }
-      return resp;
-    }).catch(function(e) {
-      showToast('warning', 'Connexion perdue. Reessayer.', { requestId: requestId });
-      throw e;
-    });
-  };
-
-  window.addEventListener('unhandledrejection', function(e) {
-    var msg = e && e.reason && (e.reason.message || String(e.reason)) || 'erreur JS';
-    if (msg.indexOf('http ') === 0 || msg === 'session expired') return;
-    logServerError('unhandledrejection', 0, msg, genRequestId(), 'unhandledrejection');
-  });
-})();
-</script>
-<script>
 // M/2026/05/12/21 — Boot-time fetch design tokens (3 etats champs) + injection dans :root style.
 // Fallback silencieux aux valeurs CSS par defaut si l API echoue. Cache navigateur 5min cote HTTP.
 (function() {
@@ -5066,92 +4814,6 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
 
   const token = () => localStorage.getItem('ocre_token') || '';
 
-  // M/2026/05/14/24 — DnD natif inline (touch + pointer). Long press 1s -> grab.
-  // touchmove -> translate + hitTest overIdx. touchend -> arrayMove + onPhotosChange.
-  // Cancel : touchcancel ou move > 8px AVANT activation longpress.
-  const _LONG_PRESS_MS = 1000;
-  const _CANCEL_THRESHOLD_PX = 8;
-  const [dragState, setDragState] = React.useState({grabbing:false, fromIdx:null, overIdx:null, dx:0, dy:0});
-  const longPressTimerRef = React.useRef(null);
-  const dragStartRef = React.useRef({x:0, y:0, fromIdx:null});
-  const tileRefs = React.useRef([]);
-
-  function _clearLongPress() {
-    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
-  }
-  function _hapticPulse(duration) {
-    try { if (navigator.vibrate) navigator.vibrate(duration || 40); } catch (e) {}
-  }
-
-  function handleTileTouchStart(idx, e) {
-    if (selectMode || uploading > 0 || bulkDeleteRemaining > 0) return;
-    const t = e.touches && e.touches[0]; if (!t) return;
-    dragStartRef.current = {x: t.clientX, y: t.clientY, fromIdx: idx};
-    _clearLongPress();
-    longPressTimerRef.current = setTimeout(() => {
-      _hapticPulse(40);
-      setDragState({grabbing: true, fromIdx: idx, overIdx: idx, dx: 0, dy: 0});
-    }, _LONG_PRESS_MS);
-  }
-
-  function handleTileTouchMove(e) {
-    const t = e.touches && e.touches[0]; if (!t) return;
-    const start = dragStartRef.current;
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    if (!dragState.grabbing) {
-      if (Math.abs(dx) > _CANCEL_THRESHOLD_PX || Math.abs(dy) > _CANCEL_THRESHOLD_PX) _clearLongPress();
-      return;
-    }
-    e.preventDefault(); // empeche scroll pendant drag actif
-    let newOverIdx = dragState.fromIdx;
-    for (let i = 0; i < tileRefs.current.length; i++) {
-      const tile = tileRefs.current[i];
-      if (!tile) continue;
-      const r = tile.getBoundingClientRect();
-      if (t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom) {
-        newOverIdx = i; break;
-      }
-    }
-    setDragState(prev => ({...prev, dx, dy, overIdx: newOverIdx}));
-  }
-
-  function handleTileTouchEnd() {
-    _clearLongPress();
-    if (!dragState.grabbing) return;
-    const from = dragState.fromIdx;
-    const to = dragState.overIdx;
-    if (from !== null && to !== null && from !== to && from >= 0 && to >= 0 && from < list.length && to < list.length) {
-      const next = list.slice();
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      try { onPhotosChange && onPhotosChange(next); } catch (e) { console.error('[M/14/24] reorder onPhotosChange err:', e); }
-      _hapticPulse(20);
-    }
-    setDragState({grabbing: false, fromIdx: null, overIdx: null, dx: 0, dy: 0});
-  }
-
-  function handleTileTouchCancel() {
-    _clearLongPress();
-    setDragState({grabbing: false, fromIdx: null, overIdx: null, dx: 0, dy: 0});
-  }
-
-  // Shift indicateur (effet accordeon) : tile entre from et over decalee de la largeur d'une tile.
-  function _accordionShift(idx) {
-    if (!dragState.grabbing) return 0;
-    const from = dragState.fromIdx, over = dragState.overIdx;
-    if (idx === from) return 0; // tile draggee elle-meme gere par transform translate
-    if (from === null || over === null || from === over) return 0;
-    if (from < over) {
-      // move forward : tiles between (from+1..over) shift backward
-      if (idx > from && idx <= over) return -1;
-    } else {
-      // move backward : tiles between (over..from-1) shift forward
-      if (idx >= over && idx < from) return 1;
-    }
-    return 0;
-  }
-
   function photoKey(p, idx) {
     if (!p) return 'idx-' + idx;
     if (typeof p === 'string') return p;
@@ -5378,39 +5040,14 @@ function PhotoUpload({dossierId, photos, onPhotosChange, showToast}) {
           const src = photoSrc(p);
           const key = photoKey(p, idx);
           const isSelected = selectMode && selectedUuids.includes(key);
-          // M/2026/05/14/24 — bordure ocre + badge Principale sur photos[0], DnD natif transform accordeon.
-          const _isCover = idx === 0;
-          const _isDragged = dragState.grabbing && dragState.fromIdx === idx;
-          const _shift = _accordionShift(idx);
-          const _transform = _isDragged
-            ? `translate(${dragState.dx}px, ${dragState.dy}px) scale(1.05)`
-            : (_shift !== 0 ? `translateX(${_shift * 100}%)` : 'none');
-          const _border = _isCover
-            ? '3px solid var(--color-accent)'
-            : (isSelected ? '2px solid #7A5132' : '1px solid var(--color-border-subtle)');
           return (
             <div key={key}
-              ref={el => { tileRefs.current[idx] = el; }}
-              onTouchStart={e => handleTileTouchStart(idx, e)}
-              onTouchMove={handleTileTouchMove}
-              onTouchEnd={handleTileTouchEnd}
-              onTouchCancel={handleTileTouchCancel}
               onClick={selectMode ? () => toggleUuid(key) : undefined}
               style={{position:'relative', aspectRatio:'1/1', borderRadius:8, overflow:'hidden',
-                      border: _border,
-                      background:'#F4ECE3',
-                      cursor: selectMode ? 'pointer' : (dragState.grabbing ? 'grabbing' : 'default'),
-                      opacity: isSelected ? 0.85 : 1,
-                      transform: _transform,
-                      transition: _isDragged ? 'none' : 'transform 220ms cubic-bezier(0.2, 0, 0.2, 1)',
-                      zIndex: _isDragged ? 10 : 1,
-                      boxShadow: _isDragged ? '0 8px 22px rgba(60,40,20,0.35)' : 'none',
-                      touchAction: dragState.grabbing ? 'none' : 'auto',
-                      userSelect:'none', WebkitUserSelect:'none', WebkitTouchCallout:'none'}}>
-              {src && <img src={src} alt="" loading="lazy" draggable={false} style={{width:'100%', height:'100%', objectFit:'cover', display:'block', pointerEvents:'none'}} onError={e => { e.target.style.display = 'none'; }}/>}
-              {_isCover && !selectMode && (
-                <div style={{position:'absolute', top:6, left:6, padding:'3px 8px', background:'var(--color-accent)', color:'#fff', fontSize:'9.5px', fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase', borderRadius:4, pointerEvents:'none', boxShadow:'0 1px 3px rgba(0,0,0,0.25)'}}>Principale</div>
-              )}
+                      border: isSelected ? '2px solid #7A5132' : '1px solid var(--color-border-subtle)',
+                      background:'#F4ECE3', cursor: selectMode ? 'pointer' : 'default',
+                      opacity: isSelected ? 0.85 : 1}}>
+              {src && <img src={src} alt="" loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}} onError={e => { e.target.style.display = 'none'; }}/>}
               {/* M/2026/05/05/50 — croix individuelle retiree. Suppression via mode Selectionner -> checkbox -> Supprimer (N). */}
               {selectMode && (
                 <div style={{position:'absolute', top:6, right:6, width:22, height:22, borderRadius:11, border: isSelected ? 'none' : '2px solid var(--color-border-strong)', background: isSelected ? '#7A5132' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 3px rgba(0,0,0,0.15)'}}>
@@ -8540,6 +8177,7 @@ function S3CardRound({children, style}) {
 }
 
 // Barre 3 pills : [gauche 100px][taux 1fr 17px gras][droite 100px] h44, fond sable.
+// M/2026/05/06/77 — DualCurrencyPair : composant autonome dual-currency par bloc.
 // Layout V3 (pastille centrale cliquable) sur tablette/desktop, V1 fallback (sous-ligne) sur iPhone.
 // Source taux : LIVE via /api/currency_rate.php (cache 30min) + override agent saisi manuel.
 // Persistance : data.currency_rates[pair_id] = {rate, source, currency_left, currency_right, updated_at}.
@@ -8587,6 +8225,172 @@ async function m77FetchLiveRate(from, to) {
   return m77FallbackRate(from, to);
 }
 
+function DualCurrencyPair({pairId, label, leftValue, rightValue, leftCurrency, rightCurrency, rateOverride, rateSource, onChange, dossierCustomRate, isCustomActive}) {
+  const _lc = leftCurrency || 'EUR';
+  const _rc = rightCurrency || 'MAD';
+  const [pickerSide, setPickerSide] = React.useState(null);
+  const [editorOpen, setEditorOpen] = React.useState(false);
+  const [liveRate, setLiveRate] = React.useState(null);
+  const [editorVal, setEditorVal] = React.useState('');
+  // M/2026/05/13/8 — Variant B branchement : lit window.__ocrePriceVariant au mount.
+  const _variant = (typeof window !== 'undefined' && window.__ocrePriceVariant === 'B') ? 'B' : 'A';
+  const _globalRate = (typeof window !== 'undefined' && typeof window.__ocreGlobalRate === 'number') ? window.__ocreGlobalRate : 10.84;
+  React.useEffect(() => {
+    let alive = true;
+    if (rateSource !== 'manual') {
+      m77FetchLiveRate(_lc, _rc).then(r => { if (alive) setLiveRate(r); });
+    }
+    return () => { alive = false; };
+  }, [_lc, _rc, rateSource]);
+  // M/2026/05/13/8 — priorite : custom fiche (dossierCustomRate) > manual override > live > fallback.
+  let _rate;
+  if (typeof dossierCustomRate === 'number' && dossierCustomRate > 0 && _lc === 'EUR' && _rc === 'MAD') {
+    _rate = dossierCustomRate;
+  } else if (rateSource === 'manual' && rateOverride > 0) {
+    _rate = Number(rateOverride);
+  } else {
+    _rate = liveRate || m77FallbackRate(_lc, _rc);
+  }
+  const _emit = (patch) => onChange && onChange({pairId, leftValue, rightValue, leftCurrency: _lc, rightCurrency: _rc, rateOverride, rateSource, ...patch});
+  const onLeftAmount = (v) => {
+    const n = Number(v);
+    const r = isFinite(n) ? Number((n * _rate).toFixed(2)) : '';
+    _emit({leftValue: v, rightValue: r});
+  };
+  const onRightAmount = (v) => {
+    const n = Number(v);
+    const r = isFinite(n) && _rate > 0 ? Number((n / _rate).toFixed(2)) : '';
+    _emit({rightValue: v, leftValue: r});
+  };
+  const onPickCurrency = (side, code) => {
+    if (side === 'left' && code !== _lc) _emit({leftCurrency: code, rateSource: 'live', rateOverride: null});
+    else if (side === 'right' && code !== _rc) _emit({rightCurrency: code, rateSource: 'live', rateOverride: null});
+    setPickerSide(null);
+  };
+  const _isManual = rateSource === 'manual';
+  const _flagBtn = {flexShrink:0, width:30, height:28, borderRadius:6, border:'1px solid #D6C7AC', background:'#FDF8F0', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:'var(--space-2px)', fontSize:'var(--font-size-sm)', padding:'0 4px'};
+  const _input = {flex:1, minWidth:0, padding:'6px 8px', border:'1px solid #D6C7AC', borderRadius:6, fontSize:'var(--font-size-sm)', fontFamily:'inherit', background:'#fff', textAlign:'right'};
+
+  // M/2026/05/13/8 — Variant B layout : grid 3 cols 1fr 0.7fr 1fr + drapeau emoji filigrane background + col milieu tinted (ROADMAP L205).
+  const _isMobile = (typeof window !== 'undefined' && window.innerWidth < 600);
+  const _flagSize = _isMobile ? 44 : 56;
+  const _pad = _isMobile ? 42 : 56;
+  const _gap = _isMobile ? 6 : 8;
+  const _rateDifferent = Math.abs(_rate - _globalRate) > 0.001; // feedback visuel point ocre
+  function renderVariantB() {
+    return (
+      <div data-m77-pair={pairId} data-variant="B" style={{margin:'8px 0'}}>
+        {label && <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-6px)'}}>{label} {isCustomActive && <span style={{marginLeft:6, fontSize:'var(--font-size-9)', background:'var(--color-accent)', color:'#fff', padding:'1px 6px', borderRadius:10, fontWeight:700}}>TAUX PERSO</span>}</div>}
+        <div style={{display:'grid', gridTemplateColumns:'1fr 0.7fr 1fr', gap: _gap, alignItems:'center'}}>
+          {/* Col gauche : EUR avec filigrane */}
+          <div style={{position:'relative', padding: '8px ' + _pad + 'px 8px 10px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:8, overflow:'hidden'}}>
+            <span aria-hidden="true" style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{M77_CURR_FLAGS[_lc] || '🌐'}</span>
+            <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2}}>{_lc}</div>
+            <input type="number" inputMode="decimal" value={leftValue ?? ''} onChange={e => onLeftAmount(e.target.value)}
+              style={{width:'100%', border:'none', outline:'none', fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', padding:0, background:'transparent'}}
+              placeholder="0"/>
+          </div>
+          {/* Col milieu : taux editable tinted */}
+          <div style={{position:'relative', padding:'8px 10px', background:'var(--color-bg-tint-warm)', border:'1px solid #D6C7AC', borderRadius:8, textAlign:'center'}}>
+            <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginBottom:2}}>1 {_lc} =</div>
+            <button type="button" onClick={() => { setEditorVal(String(_rate.toFixed(4))); setEditorOpen(true); }}
+              style={{position:'relative', background:'transparent', border:'none', color:'var(--color-accent)', fontWeight:700, fontSize:'var(--font-size-13)', cursor:'pointer', fontFamily:'inherit', padding:0}}>
+              {Number(_rate).toFixed(_rate < 10 ? 4 : 2)}
+              {_rateDifferent && <span style={{display:'inline-block', width:6, height:6, borderRadius:'50%', background:'var(--color-accent)', marginLeft:6, verticalAlign:'middle'}} title="Taux different du global"/>}
+            </button>
+            <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', marginTop:2}}>{_rc}</div>
+          </div>
+          {/* Col droite : MAD avec filigrane */}
+          <div style={{position:'relative', padding: '8px 10px 8px ' + _pad + 'px', background:'#fff', border:'1px solid #D6C7AC', borderRadius:8, overflow:'hidden'}}>
+            <span aria-hidden="true" style={{position:'absolute', left:6, top:'50%', transform:'translateY(-50%)', fontSize: _flagSize, opacity:0.18, pointerEvents:'none', userSelect:'none', lineHeight:1}}>{M77_CURR_FLAGS[_rc] || '🌐'}</span>
+            <div style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-muted)', letterSpacing:'0.04em', marginBottom:2, textAlign:'right'}}>{_rc}</div>
+            <input type="number" inputMode="decimal" value={rightValue ?? ''} onChange={e => onRightAmount(e.target.value)}
+              style={{width:'100%', border:'none', outline:'none', fontSize: _isMobile ? 15 : 16, fontWeight:500, color:'var(--color-text-primary)', fontFamily:'inherit', padding:0, background:'transparent', textAlign:'right'}}
+              placeholder="0"/>
+          </div>
+        </div>
+        {editorOpen && renderEditor()}
+      </div>
+    );
+  }
+
+  function renderEditor() {
+    return (
+      <div onClick={() => setEditorOpen(false)} style={{position:'fixed', inset:0, background:'rgba(20,15,10,.45)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'var(--space-5)'}}>
+        <div onClick={e => e.stopPropagation()} style={{background:'#fff', borderRadius:12, padding:'var(--space-18px)', width:'100%', maxWidth:340, boxShadow:'0 8px 32px rgba(0,0,0,.18)'}}>
+          <div style={{fontFamily:"var(--font-serif)", fontSize:'var(--font-size-lg)', fontWeight:700, color:'#2D2018', marginBottom:'var(--space-2)'}}>Taux {_lc} → {_rc}</div>
+          <input type="number" inputMode="decimal" step="0.0001" value={editorVal} onChange={e => setEditorVal(e.target.value)}
+            placeholder="Ex : 10.8400"
+            style={{width:'100%', padding:'10px 12px', border:'1.5px solid #D6C7AC', borderRadius:8, fontSize:'var(--font-size-sm)', fontFamily:'inherit', boxSizing:'border-box', marginBottom:'var(--space-10px)'}}/>
+          <div style={{display:'flex', gap:'var(--space-6px)', justifyContent:'flex-end', flexWrap:'wrap'}}>
+            <button type="button" onClick={() => setEditorOpen(false)} style={{padding:'8px 12px', background:'var(--color-bg-input)', color:'var(--color-accent)', border:'1.5px solid var(--color-border-subtle)', borderRadius:8, fontWeight:600, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>Annuler</button>
+            <button type="button" onClick={async () => {
+              const r = await m77FetchLiveRate(_lc, _rc);
+              setLiveRate(r);
+              _emit({rateSource: 'live', rateOverride: null});
+              setEditorOpen(false);
+            }} style={{padding:'8px 12px', background:'var(--color-bg-input)', color:'var(--color-text-brown)', border:'1.5px solid var(--color-border-medium)', borderRadius:8, fontWeight:600, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>Taux LIVE</button>
+            <button type="button" onClick={() => {
+              const v = Number(editorVal);
+              if (!(v > 0) || v > 100000) { return; }
+              _emit({rateSource: 'manual', rateOverride: v});
+              setEditorOpen(false);
+            }} style={{padding:'8px 12px', background:'var(--color-text-brown)', color:'#fff', border:'none', borderRadius:8, fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>Utiliser ce taux</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Branchement : si setting Variant=B au boot, rendre Variant B sinon Variant A (legacy).
+  if (_variant === 'B') return renderVariantB();
+
+  return (
+    <div data-m77-pair={pairId} data-variant="A" style={{margin:'8px 0'}}>
+      {label && <div style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-muted)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-6px)'}}>{label} {isCustomActive && <span style={{marginLeft:6, fontSize:'var(--font-size-9)', background:'var(--color-accent)', color:'#fff', padding:'1px 6px', borderRadius:10, fontWeight:700}}>TAUX PERSO</span>}</div>}
+      <div style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) auto minmax(0,1fr)', gap:'var(--space-6px)', alignItems:'center'}}>
+        <div style={{display:'flex', alignItems:'center', gap:'var(--space-1)', position:'relative'}}>
+          <button type="button" onClick={() => setPickerSide(pickerSide === 'left' ? null : 'left')} style={_flagBtn} title={'Devise: ' + _lc}>
+            <span aria-hidden="true">{M77_CURR_FLAGS[_lc] || '🌐'}</span><span style={{fontSize:'var(--font-size-8)'}}>▾</span>
+          </button>
+          <input type="number" inputMode="decimal" value={leftValue ?? ''} onChange={e => onLeftAmount(e.target.value)} style={_input} placeholder="0"/>
+          <span style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-brown)', flexShrink:0}}>{_lc}</span>
+          {pickerSide === 'left' && (
+            <div onClick={e => e.stopPropagation()} style={{position:'absolute', top:'100%', left:0, marginTop:'var(--space-1)', background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, boxShadow:'0 4px 12px rgba(0,0,0,0.12)', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'var(--space-2px)', padding:'var(--space-1)', minWidth:160}}>
+              {M77_CURR_LIST.map(c => (
+                <button key={c} type="button" onClick={() => onPickCurrency('left', c)} style={{padding:'6px 4px', background: c === _lc ? 'var(--color-text-brown)' : '#fff', color: c === _lc ? '#fff' : 'var(--color-text-primary)', border:'1px solid #E8DDC9', borderRadius:6, cursor:'pointer', fontSize:'var(--font-size-11)', fontWeight:700, fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:'var(--space-1px)'}}>
+                  <span style={{fontSize:'var(--font-size-13)'}}>{M77_CURR_FLAGS[c]}</span><span>{c}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <button type="button" onClick={() => { setEditorVal(String(_rate.toFixed(4))); setEditorOpen(true); }} title="Editer le taux"
+          style={{padding:'6px 8px', background: _isManual ? '#F4ECE3' : 'transparent', border: '1.5px ' + (_isManual ? 'solid' : 'dashed') + ' ' + (_isManual ? 'var(--color-text-brown)' : 'var(--color-border-medium)'), borderRadius:7, cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:'var(--space-1px)', minWidth:74}}>
+          <span style={{fontSize:'var(--font-size-8)', fontWeight:700, color:'var(--color-text-muted)', letterSpacing:.5, textTransform:'uppercase'}}>{_isManual ? 'Saisi' : 'Taux'}</span>
+          <span style={{fontSize:'var(--font-size-10)', fontWeight:600, color:'var(--color-text-brown)'}}>1 {_lc} = {Number(_rate).toFixed(_rate < 10 ? 4 : 2)} {_rc}</span>
+        </button>
+        <div style={{display:'flex', alignItems:'center', gap:'var(--space-1)', position:'relative'}}>
+          <button type="button" onClick={() => setPickerSide(pickerSide === 'right' ? null : 'right')} style={_flagBtn} title={'Devise: ' + _rc}>
+            <span aria-hidden="true">{M77_CURR_FLAGS[_rc] || '🌐'}</span><span style={{fontSize:'var(--font-size-8)'}}>▾</span>
+          </button>
+          <input type="number" inputMode="decimal" value={rightValue ?? ''} onChange={e => onRightAmount(e.target.value)} style={_input} placeholder="0"/>
+          <span style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-text-brown)', flexShrink:0}}>{_rc}</span>
+          {pickerSide === 'right' && (
+            <div onClick={e => e.stopPropagation()} style={{position:'absolute', top:'100%', right:0, marginTop:'var(--space-1)', background:'#fff', border:'1.5px solid #D6C7AC', borderRadius:8, zIndex:50, boxShadow:'0 4px 12px rgba(0,0,0,0.12)', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'var(--space-2px)', padding:'var(--space-1)', minWidth:160}}>
+              {M77_CURR_LIST.map(c => (
+                <button key={c} type="button" onClick={() => onPickCurrency('right', c)} style={{padding:'6px 4px', background: c === _rc ? 'var(--color-text-brown)' : '#fff', color: c === _rc ? '#fff' : 'var(--color-text-primary)', border:'1px solid #E8DDC9', borderRadius:6, cursor:'pointer', fontSize:'var(--font-size-11)', fontWeight:700, fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:'var(--space-1px)'}}>
+                  <span style={{fontSize:'var(--font-size-13)'}}>{M77_CURR_FLAGS[c]}</span><span>{c}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {editorOpen && renderEditor()}
+    </div>
+  );
+}
 
 function CurrencyBar3Pills({forceUpdate}) {
   const cur = getCurrencyV5State();
@@ -9177,10 +8981,16 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
 
   return (
     <S3CardRound>
-      {/* M/2026/05/14/19 — Mirror M53FraisAgenceMulti (M/2026/05/13/56).
-          Ordre cible : acteurs -> + Ajouter -> TOTAL GLOBAL -> Repartition par camp.
-          Theme couleur conserve : var(--color-success) (vert/beige semantique notaire). */}
-      {/* 1. Acteurs (Notaire principal / Notaire 2 / 3 / 4 max) */}
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'var(--space-2)', paddingBottom:'var(--space-6px)', borderBottom:'1px solid var(--color-success)40'}}>
+        <span style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.4}}>Frais notaire — total global</span>
+        {/* M/2026/05/13/52 — SSOT PriceField2ColDisplay : pattern charte unifie. */}
+        <div style={{flex:'1 1 auto', minWidth:0}}>
+          <PriceField2ColDisplay
+            leftValue={totalLeft}
+            rightValue={totalRight}
+            forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
+        </div>
+      </div>
       {acteurs.length === 0 && (
         <div style={{fontSize:'var(--font-size-xs)', color:'var(--color-text-muted)', fontStyle:'italic', textAlign:'center', padding:'8px 0'}}>Aucun notaire. Tap + Ajouter un notaire pour commencer.</div>
       )}
@@ -9200,27 +9010,14 @@ function FraisNotaireBlock2Col({d, set, paysBien, neufAncien, baseAmount, forceU
           onRemove={acteurs.length > 1 ? () => removeActeur(idx) : null}
         />
       ))}
-      {/* 2. + Ajouter un notaire (deplace au-dessus du TOTAL GLOBAL, mirror Frais agence) */}
-      {acteurs.length < 4 && (
-        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:'var(--space-2)', marginTop:'var(--space-2)', background:'#fff', border:'1.5px dashed var(--color-success)', borderRadius:8, color:'var(--color-success)', fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un notaire ({acteurs.length}/4)</button>
-      )}
-      {/* 3. TOTAL GLOBAL en BAS (mirror Frais agence M/2026/05/13/61) avec label "Total global"
-          via PriceField2ColDisplay — coherence layout. */}
-      <div style={{marginTop:'var(--space-2)', paddingTop:'var(--space-6px)', borderTop:'1px solid var(--color-success)40'}}>
-        {/* M/2026/05/14/23 — leftAlignLeft={true} : Total global Frais notaire rendu dans col gauche FormView → montant EUR aligne a gauche (mirror S3ActeurRow). */}
-        <PriceField2ColDisplay
-          label="Total global"
-          leftValue={totalLeft}
-          rightValue={totalRight}
-          leftAlignLeft={true}
-          forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
-      </div>
-      {/* 4. Repartition par camp (Vendeur / Acheteur) */}
       {acteurs.length > 0 && (
         <div style={{marginTop:'var(--space-6px)'}}>
           <div style={{fontSize:'var(--font-size-9-5)', fontWeight:700, color:'var(--color-success)', textTransform:'uppercase', letterSpacing:.4, marginBottom:'var(--space-3px)'}}>Répartition par camp</div>
           <S3SplitTotal totals={splitTotals} transactionType={transactionType}/>
         </div>
+      )}
+      {acteurs.length < 4 && (
+        <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:'var(--space-2)', marginTop:'var(--space-2)', background:'#fff', border:'1.5px dashed var(--color-success)', borderRadius:8, color:'var(--color-success)', fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter un notaire ({acteurs.length}/4)</button>
       )}
       <div style={{fontSize:'var(--font-size-10)', color:'var(--color-text-muted)', fontStyle:'italic', marginTop:'var(--space-6px)'}}>{refTexte} · à charge acheteur par défaut</div>
     </S3CardRound>
@@ -9321,16 +9118,15 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
       {acteurs.length < 4 && (
         <button type="button" onClick={addActeur} style={{display:'block', width:'100%', padding:'var(--space-2)', marginTop:'var(--space-2)', background:'#fff', border:'1.5px dashed var(--color-info)', borderRadius:8, color:'var(--color-info)', fontWeight:700, fontSize:'var(--font-size-xs)', cursor:'pointer', fontFamily:'inherit'}}>+ Ajouter une agence ({acteurs.length}/4)</button>
       )}
-      {/* 3. TOTAL GLOBAL. M/2026/05/13/61 : layout 2 lignes (label en haut, valeur pleine
-          largeur dessous) via PriceField2ColDisplay label="Total global" — coherence Liquide. */}
-      <div style={{marginTop:'var(--space-2)', paddingTop:'var(--space-6px)', borderTop:'1px solid var(--color-info)40'}}>
-        {/* M/2026/05/14/23 — leftAlignLeft={true} : Total global Frais agence rendu dans col gauche FormView → montant EUR aligne a gauche (mirror S3ActeurRow). */}
-        <PriceField2ColDisplay
-          label="Total global"
-          leftValue={totalLeft}
-          rightValue={totalRight}
-          leftAlignLeft={true}
-          forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
+      {/* 3. TOTAL GLOBAL (deplace du haut vers ici, apres acteurs + bouton +) */}
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'var(--space-2)', paddingTop:'var(--space-6px)', borderTop:'1px solid var(--color-info)40'}}>
+        <span style={{fontSize:'var(--font-size-11)', fontWeight:700, color:'var(--color-info)', textTransform:'uppercase', letterSpacing:.4}}>Total global</span>
+        <div style={{flex:'1 1 auto', minWidth:0}}>
+          <PriceField2ColDisplay
+            leftValue={totalLeft}
+            rightValue={totalRight}
+            forceUpdate={typeof forceUpdate === 'function' ? forceUpdate : () => {}}/>
+        </div>
       </div>
       {/* 4. Repartition par camp */}
       {acteurs.length > 0 && (
@@ -9356,8 +9152,7 @@ function M53FraisAgenceMulti({d, set, baseAmount, profil, forceUpdate}) {
 
 // M/2026/05/13/57 — Reduit a 3 pills + 1 Libre sur meme ligne (suppression 2.5, 3, 8).
 const S3_PCT_PRESETS = [2, 5, 10];
-// M/2026/05/13/60 — S3_FORFAIT_PRESETS supprime franche : montants forfait variables selon
-// bien (1000 sur loyer, 5000 sur vente). Champ Libre seul desormais.
+const S3_FORFAIT_PRESETS = [5000, 10000, 15000, 20000, 25000];
 
 const S3_THEME_COLORS = {
   navy:  {border:'var(--color-info)', bg:'#EFF4FA', label:'var(--color-info)', chip:'var(--color-info)'},
@@ -9443,10 +9238,12 @@ function S3PopinMode({mode, value, baseAmount, onChange, onClose, themeColor='na
           </div>
         </div>
       ) : (
-        // M/2026/05/13/60 — Onglet FORFAIT : champ Libre seul pleine largeur. Pills chiffres supprimes franche.
-        <div style={{marginBottom:'var(--space-7px)'}}>
-          <div style={{padding:'var(--space-0)', border:'1px solid #D6C7AC', borderRadius:11, display:'flex', alignItems:'center', background:'#fff'}}>
-            <input type="text" inputMode="numeric" value={forVal} onChange={e => setForVal(e.target.value)} placeholder="Libre" style={{border:'none', outline:'none', fontSize:'var(--font-size-11)', padding:'8px 12px', width:'100%', fontFamily:'inherit', background:'transparent'}}/>
+        <div style={{display:'flex', flexWrap:'wrap', gap:'var(--space-5px)', marginBottom:'var(--space-7px)'}}>
+          {S3_FORFAIT_PRESETS.map(f => (
+            <div key={f} onClick={() => setForVal(String(f))} style={chipStyle(forNum === f)}>{fmtNumV5(f)}</div>
+          ))}
+          <div style={{...chipStyle(false), padding:'var(--space-0)', border:'1px solid #D6C7AC', display:'flex', alignItems:'center'}}>
+            <input type="text" inputMode="numeric" value={forVal} onChange={e => setForVal(e.target.value)} placeholder="Libre" style={{border:'none', outline:'none', fontSize:'var(--font-size-11)', padding:'5px 7px', width:80, fontFamily:'inherit', background:'transparent'}}/>
           </div>
         </div>
       )}
@@ -13212,7 +13009,7 @@ function App() {
   <div style={{paddingTop: (ssoBannerVisible ? 32 : 0) + (impersonation ? 40 : 0), height:'100%'}}>
   {view === 'list' ? (
     <ListView
-      clients={clients} setClients={setClients} country={country} setCountry={setCountry}
+      clients={clients} country={country} setCountry={setCountry}
       showArchives={showArchives} setShowArchives={setShowArchives}
       userMenu={userMenu} setUserMenu={setUserMenu}
       currentUser={currentUser} logout={logout}
@@ -19835,8 +19632,7 @@ function Header({
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </HeaderRoundBtn>
           <HeaderRoundBtn onClick={onOpenMatches} title="Matchs IA détectés" badge={matchesCount}>
-            {/* M/2026/05/14/22 — emoji 🎯 mirror page Matching (Option B Philippe). Badge={matchesCount} preserve auto via HeaderRoundBtn. */}
-            <span style={{fontSize:'var(--font-size-lg)', lineHeight:1}}>🎯</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
           </HeaderRoundBtn>
           <HeaderRoundBtn onClick={toggleSearch} title="Rechercher un dossier">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -20101,18 +19897,7 @@ function AdvancedSearchPanel({clients, criteria, setCriteria, onClose, resultsCo
 }
 
 function ListView(props) {
-  // M/2026/05/14/9 (M/83) — Validation runtime des props critiques.
-  // Bug racine M/2026/05/14/3 = setClients absent du destructure -> ReferenceError
-  // silencieuse au swipe Archiver. Ce check transforme une regression en log
-  // diagnostiquable au lieu d un crash silencieux. Toute future regression de
-  // ce type sera capturee par /api/log_client_error.php.
-  if (typeof props.setClients !== 'function') {
-    console.error('[OCRE/M83] Prop critique manquante: setClients dans ListView');
-    try {
-      if (window.ocreLogError) window.ocreLogError('JS_RUNTIME', 'missing_prop', { prop: 'setClients', component: 'ListView' });
-    } catch (e) {}
-  }
-  const {clients, setClients, country, setCountry, showArchives, setShowArchives,
+  const {clients, country, setCountry, showArchives, setShowArchives,
          userMenu, setUserMenu, currentUser, logout,
          activeProfil, setActiveProfil, isInvestisseur, setIsInvestisseur,
          listFilter, setListFilter, listSearch, setListSearch,
@@ -20223,7 +20008,7 @@ function ListView(props) {
   function renderGroup(g) {
     if (g.dossiers.length === 1) {
       const c = g.dossiers[0];
-      return <ClientRow key={'s-'+c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)} openDossierPdf={props.openDossierPdf} onRemoveStart={(rid) => setClients(prev => prev.map(x => x.id === rid ? {...x, _removing: true} : x))} onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))} onArchiveOptimistic={(rid, archived) => setClients(prev => prev.map(x => x.id === rid ? {...x, archived} : x))}/>;
+      return <ClientRow key={'s-'+c.id} c={c} clients={clients} matchInfo={matchesById && matchesById[c.id]} onOpenMatches={() => openMatchModal(c.id)} onOpenSection={openClientAtSection} onClick={() => openClient(c)} openDossierPdf={props.openDossierPdf} onRemoveStart={(rid) => setClients(prev => prev.map(x => x.id === rid ? {...x, _removing: true} : x))} onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}/>;
     }
     return (
       <div key={'g-'+g.ids.join('-')} className="dossier-group"
@@ -20240,8 +20025,7 @@ function ListView(props) {
               onClick={() => openClient(c)}
               openDossierPdf={props.openDossierPdf}
               onRemoveStart={(rid) => setClients(prev => prev.map(x => x.id === rid ? {...x, _removing: true} : x))}
-              onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}
-              onArchiveOptimistic={(rid, archived) => setClients(prev => prev.map(x => x.id === rid ? {...x, archived} : x))}/>
+              onRemove={(rid) => setClients(prev => prev.filter(x => x.id !== rid))}/>
           </div>
         ))}
       </div>
@@ -20273,7 +20057,7 @@ function ListView(props) {
         onOpenCalendrier={() => props.openCalendrier && props.openCalendrier()}
         onOpenMatches={() => props.openMatches && props.openMatches()}
         toggleSearch={toggleSearch}
-        onOpenArchives={() => { setShowArchives(true); setListFilter(null); }}
+        onOpenArchives={() => setShowArchives(true)}
         onOpenHelp={() => props.openHelp && props.openHelp()}
         onOpenPreferences={() => props.openPreferences && props.openPreferences()}
         onOpenExport={() => props.openExport && props.openExport()}
@@ -20868,36 +20652,36 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       title: titleText, message: msgText,
       danger: false, confirmLabel: isRestore ? 'Restaurer' : 'Archiver',
     }))) { setSwipeX(0); return; }
-    // M/2026/05/13/67 — Optimistic update : retire immediatement de la liste source
-    // (accueil ou Archives selon isRestore). Le filtre archivedFiltered = clients.filter
-    // (c => !!c.archived === showArchives) deplacera la card a la bonne liste instantanement.
-    // Rollback si erreur API.
-    const newArchived = isRestore ? 0 : 1;
-    const prevArchived = c.archived;
-    setSwipeX(0);
-    if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, newArchived);
     try {
       const token = localStorage.getItem('ocre_token') || '';
       const r = await fetch(API + '/clients.php?action=archive', {
         method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':token},
-        body: JSON.stringify({id: c.id, archived: newArchived}),
+        body: JSON.stringify({id: c.id, archived: isRestore ? 0 : 1}),
       });
       // M/2026/05/12/27 — gestion explicite 401 + r.json() defensif (response peut etre HTML/empty si redirect auth).
       if (r.status === 401) {
-        if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, prevArchived);
+        try { setSwipeX(0); } catch (_) {}
         if (typeof showOcreToast === 'function') showOcreToast('Session expiree, reconnexion necessaire');
         try { localStorage.removeItem('ocre_token'); window.location = '/login/?expired=1'; } catch (_) {}
         return;
       }
       let j = null;
       try { j = await r.json(); } catch (_jsonErr) {
-        if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, prevArchived);
+        try { setSwipeX(0); } catch (_) {}
         if (typeof showOcreToast === 'function') showOcreToast('Reponse serveur invalide (status ' + r.status + ')');
         return;
       }
       if (j && j.ok) {
-        // State deja a jour grace a l'optimistic update. Just toast.
+        // M/2026/05/12/40 — Pattern modèle interne Ocre/interne/GitHub : 200 OK qu il s agisse d un succes reel ou d un noop
+        // idempotent (j.already_archived / j.already_unarchived). Dans les 2 cas la card doit disparaitre du flux
+        // pour matcher l'attente utilisateur (le dossier n'est plus ici).
+        setSwipeX(0);
+        if (props.onRemoveStart) props.onRemoveStart(c.id);
+        setRemoving(true);
+        setTimeout(() => { if (props.onRemove) props.onRemove(c.id); }, 200);
         if (j.noop) {
+          // Cas idempotent : etat deja a la cible. Pas de toast vert "Archive" (mensonge si deja archived).
+          // Toast info silencieux contextuel pour eviter "Deja archive" rouge anxiogene.
           if (typeof showOcreToast === 'function') {
             showOcreToast(isRestore ? 'Deja restaure' : 'Deja archive (etat synchronise)');
           }
@@ -20905,15 +20689,17 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
           if (typeof showOcreToast === 'function') showOcreToast(isRestore ? 'Dossier restaure' : 'Dossier archive');
         }
       } else {
-        // ROLLBACK : remettre archived a la valeur precedente.
-        if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, prevArchived);
+        // M/2026/05/12/40 — feedback erreur precis. Backend renvoie j.error ('not_found' / 'id requis' / ...).
+        // Status code informatif inclus pour diagnostic. Avant : toast generique 'Échec archivage'.
+        try { setSwipeX(0); } catch (_) {}
         const msg = (j && j.error) ? ('Echec archivage : ' + j.error) : ('Echec archivage (HTTP ' + r.status + ')');
         if (typeof showOcreToast === 'function') showOcreToast(msg);
         else alert(msg);
       }
     } catch (e) {
-      // ROLLBACK reseau/JS : remettre archived a la valeur precedente.
-      if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, prevArchived);
+      // M/2026/05/12/40 — message reseau explicite avec cause (avant : 'Erreur reseau (archivage)' generique
+      // masquait les vraies erreurs JS. Pattern modèle interne Ocre : afficher la cause precise pour debug rapide).
+      try { setSwipeX(0); } catch (_) {}
       const cause = (e && e.message) ? e.message : (e && e.name) || 'inconnue';
       if (typeof showOcreToast === 'function') showOcreToast('Erreur archivage : ' + cause);
       else alert('Erreur archivage : ' + cause);
@@ -20998,43 +20784,35 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
   const wrapperMargin = isGrouped ? 0 : 10;
   return (
     <div ref={swipeRowRef} style={{position:'relative', overflow:'hidden', borderRadius:wrapperRadius, marginBottom:wrapperMargin, background:'transparent', transition:'opacity 200ms ease-out, transform 200ms ease-out, max-height 220ms ease-out, margin-bottom 220ms ease-out', opacity: removing ? 0 : 1, transform: removing ? 'translateX(-30px)' : 'none', maxHeight: removing ? 0 : '600px', marginBottom: removing ? 0 : wrapperMargin, pointerEvents: removing ? 'none' : 'auto'}}>
-      {/* M/2026/05/09/78 + M/2026/05/14/10 — Swipe contextuel UNIFIE: meme composant rond
-          46x46 + mini-label que vue Tous, applique aussi a vue Archives. Couleurs
-          semantiques conservees (rouge --color-error pour Suppr, vert #2D7A3E pour
-          Restaurer). Plus de slot fantome : 2 ronds dans le meme container. */}
+      {/* M/2026/05/09/78 — Swipe contextuel: si !archived (accueil) -> [Archiver] + [PDF].
+          Si archived (page Archives) -> [Restaurer] + [Suppr. definitivement] (modale durcie). */}
       {c.archived ? (
-        <div style={{position:'absolute', right:8, top:0, bottom:0, width:56, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', opacity: swipeX <= -36 ? 1 : 0, transition:'opacity 200ms ease', pointerEvents: swipeX <= -36 ? 'auto' : 'none'}}>
-          <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px'}}>
-            <button type="button"
-              onClick={e => { e.stopPropagation(); if (swipeX <= -36) doDelete(e); }}
-              disabled={swipeX > -36}
-              aria-label="Supprimer definitivement"
-              title="Supprimer définitivement"
-              style={{width:46, height:46, borderRadius:'50%', background:'var(--color-error)', color:'#fff', border:'none', display:'inline-flex', alignItems:'center', justifyContent:'center', cursor: swipeX <= -36 ? 'pointer' : 'default', padding:0, boxShadow:'0 1px 3px rgba(0,0,0,0.12)'}}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
-                <path d="M10 11v6"/><path d="M14 11v6"/>
-                <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
-              </svg>
-            </button>
-            <span style={{fontFamily:'DM Sans, sans-serif', fontSize:'9px', fontWeight:600, color:'#7A6A52', letterSpacing:'0.03em', lineHeight:1.1}}>Suppr.</span>
-          </div>
-          <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'2px'}}>
-            <button type="button"
-              onClick={e => { e.stopPropagation(); if (swipeX <= -36) doArchive(e); }}
-              disabled={swipeX > -36}
-              aria-label="Restaurer"
-              title="Restaurer"
-              style={{width:46, height:46, borderRadius:'50%', background:'#2D7A3E', color:'#fff', border:'none', display:'inline-flex', alignItems:'center', justifyContent:'center', cursor: swipeX <= -36 ? 'pointer' : 'default', padding:0, boxShadow:'0 1px 3px rgba(0,0,0,0.12)'}}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 14 4 9 9 4"/>
-                <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
-              </svg>
-            </button>
-            <span style={{fontFamily:'DM Sans, sans-serif', fontSize:'9px', fontWeight:600, color:'#7A6A52', letterSpacing:'0.03em', lineHeight:1.1}}>Restaurer</span>
-          </div>
-        </div>
+        <>
+          <button type="button"
+            onClick={e => { e.stopPropagation(); if (swipeX <= -60) doDelete(e); }}
+            disabled={swipeX > -60}
+            title="Supprimer définitivement"
+            style={{position:'absolute', right:40, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'var(--color-error)', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+            </svg>
+            <span>SUPPR.</span>
+          </button>
+          <button type="button"
+            onClick={e => { e.stopPropagation(); if (swipeX <= -60) doArchive(e); }}
+            disabled={swipeX > -60}
+            title="Restaurer"
+            style={{position:'absolute', right:0, top:0, bottom:0, width:40, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'#2D7A3E', color:'#fff', fontSize:'var(--font-size-8)', fontWeight:700, gap:'var(--space-3px)', border:'none', cursor: swipeX <= -60 ? 'pointer' : 'default', fontFamily:'inherit', padding:'var(--space-0)', letterSpacing:'0.02em', textTransform:'uppercase', pointerEvents: swipeX <= -60 ? 'auto' : 'none'}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 14 4 9 9 4"/>
+              <path d="M20 20v-7a4 4 0 0 0-4-4H4"/>
+            </svg>
+            <span>RESTAURER</span>
+          </button>
+        </>
       ) : (
         /* M/2026/05/09/82 — accueil: 2 ronds 46x46 empiles verticalement + mini-labels (Option B iOS Messages). */
         <div style={{position:'absolute', right:8, top:0, bottom:0, width:56, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', opacity: swipeX <= -36 ? 1 : 0, transition:'opacity 200ms ease', pointerEvents: swipeX <= -36 ? 'auto' : 'none'}}>
@@ -23659,10 +23437,7 @@ function FormView(props) {
     markUserAction();
     const next = {...d, [k]: v, profil_type: profilType, projet: activeProfil, is_investisseur: isInvestisseur};
     setD(next);
-    // M/2026/05/13/71 — editingIdRef est defini dans App scope, pas accessible ici en
-    // closure stricte. Fallback sur editing.id (passe en prop). Sans ce fix, ReferenceError
-    // "editingIdRef is not defined" jete dans commit() au tap bouton -> bloque archivage swipe.
-    const _hasRealId = !!(editing && editing.id && !String(editing.id).startsWith('tmp-'));
+    const _hasRealId = !!(editingIdRef.current && !String(editingIdRef.current).startsWith('tmp-'));
     if (!_hasRealId && allFieldsEmpty(next)) return; // M104 — bouton ✅ no-op sur dossier vide
     handleSaveLocal(next);
   }
@@ -23776,9 +23551,7 @@ function FormView(props) {
   useEffect(() => {
     return () => {
       try {
-        // M/2026/05/13/71 — fallback editing.id au lieu de editingIdRef.current
-        // (variable App scope inaccessible dans FormView closure).
-        const did = editing && editing.id;
+        const did = editingIdRef.current;
         if (!did || String(did).startsWith('tmp-')) return;
         const data = latestRef.current || {};
         if (!allFieldsEmpty(data)) return;
@@ -25089,48 +24862,44 @@ function FormView(props) {
               if (!_hasRealId) { showToast && showToast("Enregistrez d'abord le dossier"); return; }
               if (props.openDossierPdf) props.openDossierPdf(editing.id);
             };
-            // M/2026/05/13/70 — Optimistic update sur onArchive FormView (bottombar). Avant
-            // M67 corrigeait ClientRow.doArchive (swipe accueil) mais pas ce handler bottombar.
-            // Le bug Philippe = clic Archiver depuis fiche -> setClients update APRES await
-            // fetch -> backToList kick avant que React re-render -> liste accueil ne reflete pas
-            // le changement. Fix : setClients + setEditing AVANT fetch, rollback si erreur.
             const onArchive = async () => {
               if (!_hasRealId) { showToast && showToast("Saisis d'abord quelques champs"); return; }
-              const isRestore = !!d.archived;
-              const newArchived = isRestore ? 0 : 1;
-              const prevArchived = d.archived;
-              const titleAsk = isRestore ? 'Restaurer ce dossier ?' : 'Archiver ce dossier ?';
-              const msgAsk = isRestore
-                ? 'Le dossier reapparaîtra dans la liste principale.'
-                : 'Le dossier sera retiré de la liste principale mais restera accessible dans Archives. Tu pourras le restaurer à tout moment.';
-              if (!(await askConfirm({title: titleAsk, message: msgAsk, danger: false, confirmLabel: isRestore ? 'Restaurer' : 'Archiver'}))) return;
-              // OPTIMISTIC : update setClients + setEditing + commit AVANT fetch.
-              commit('archived', !!newArchived);
-              if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: newArchived} : c));
-              if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: newArchived} : prev);
+              const targetState = !d.archived;
+              if (!targetState) {
+                // M/2026/05/12/14 — Fix bug critique 2 : remplace window.location.reload() par mise a jour
+                // state React + backToList(). Garde showArchives actif. Pattern optimistic : la fiche
+                // disparait de la liste archives en cohérence avec archived=0 (pipeline filtre).
+                if (!(await askConfirm({title: 'Restaurer ce dossier ?', message: 'Le dossier reapparaîtra dans la liste principale.', danger:false, confirmLabel:'Restaurer'}))) return;
+                try {
+                  const tk = localStorage.getItem('ocre_token') || '';
+                  const r = await fetch(API + '/clients.php?action=unarchive', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({id: editing.id})});
+                  const j = await r.json();
+                  if (j && j.ok) {
+                    commit('archived', false);
+                    if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: 0} : c));
+                    if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: 0} : prev);
+                    showToast && showToast('Dossier restauré');
+                    setTimeout(() => backToList && backToList(), 250);
+                  }
+                  else showToast && showToast((j && j.error) || 'Échec désarchivage');
+                } catch (e) { showToast && showToast('Erreur réseau'); }
+                return;
+              }
+              if (!(await askConfirm({title: 'Archiver ce dossier ?', message: 'Le dossier sera retiré de la liste principale mais restera accessible dans Archives. Tu pourras le restaurer à tout moment.', danger:false, confirmLabel:'Archiver'}))) return;
               try {
                 const tk = localStorage.getItem('ocre_token') || '';
-                const endpoint = isRestore ? '/clients.php?action=unarchive' : '/clients.php?action=archive';
-                const body = isRestore ? {id: editing.id} : {id: editing.id, archived: 1};
-                const r = await fetch(API + endpoint, {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify(body)});
+                const r = await fetch(API + '/clients.php?action=archive', {method:'POST', headers:{'Content-Type':'application/json','X-Session-Token':tk}, body: JSON.stringify({id: editing.id, archived:1})});
                 const j = await r.json();
                 if (j && j.ok) {
-                  showToast && showToast(isRestore ? 'Dossier restauré' : 'Dossier archivé');
+                  commit('archived', true);
+                  // M/2026/05/12/14 — propagation state archived=1 (coherent listes brouillons/archives).
+                  if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: 1} : c));
+                  if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: 1} : prev);
+                  showToast && showToast('Dossier archivé');
                   setTimeout(() => backToList && backToList(), 250);
-                } else {
-                  // ROLLBACK : remettre prev value
-                  commit('archived', !!prevArchived);
-                  if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: prevArchived} : c));
-                  if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: prevArchived} : prev);
-                  showToast && showToast((j && j.error) || (isRestore ? 'Échec désarchivage' : 'Échec archivage'));
                 }
-              } catch (e) {
-                // ROLLBACK reseau
-                commit('archived', !!prevArchived);
-                if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: prevArchived} : c));
-                if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: prevArchived} : prev);
-                showToast && showToast('Erreur réseau');
-              }
+                else showToast && showToast((j && j.error) || 'Échec archivage');
+              } catch (e) { showToast && showToast('Erreur réseau'); }
             };
             const onTrash = () => {
               // M/2026/05/12/14 — Fix bug critique 1 : supprime le window.confirm() qui causait
@@ -25423,11 +25192,6 @@ function FormView(props) {
                   danger: false,
                   confirmLabel: 'Archiver',
                 }))) return;
-                // M/2026/05/13/70 — Optimistic update + setClients propagation.
-                const prevArchA = d.archived;
-                commit('archived', true);
-                if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: 1} : c));
-                if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: 1} : prev);
                 try {
                   const token = localStorage.getItem('ocre_token') || '';
                   const r = await fetch(API + '/clients.php?action=archive', {
@@ -25436,20 +25200,13 @@ function FormView(props) {
                   });
                   const j = await r.json();
                   if (j && j.ok) {
+                    commit('archived', true);
                     showToast && showToast('Dossier archivé');
                     setTimeout(() => backToList && backToList(), 250);
                   } else {
-                    commit('archived', !!prevArchA);
-                    if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: prevArchA} : c));
-                    if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: prevArchA} : prev);
                     showToast && showToast((j && j.error) || 'Échec archivage');
                   }
-                } catch (e) {
-                  commit('archived', !!prevArchA);
-                  if (typeof setClients === 'function') setClients(prev => prev.map(c => c.id === editing.id ? {...c, archived: prevArchA} : c));
-                  if (typeof setEditing === 'function') setEditing(prev => prev ? {...prev, archived: prevArchA} : prev);
-                  showToast && showToast('Erreur réseau');
-                }
+                } catch (e) { showToast && showToast('Erreur réseau'); }
               }}
               title={(editing && editing.id && !String(editing.id).startsWith('tmp-')) ? (d.archived ? 'Désarchiver' : 'Archiver') : "Saisis quelques champs pour activer l'archivage"}
               style={{flex:'1 1 0', minWidth:0, height:40, padding:'var(--space-0)',
