@@ -428,6 +428,10 @@ switch ($action) {
             if ($beforeStatut === 'enregistre' && $projet !== $beforeProjet && $beforeProjet !== '') {
                 jsonError('Profil verrouille apres publication. Pour changer de profil, creer un nouveau dossier (autre casquette).', 409);
             }
+            // M/2026/05/14/42 — guard UPDATE symetrique a L471 INSERT (M/2026/05/12/5). projet NOT NULL en DB.
+            // Si UPDATE arrive sans projet (autosave avant choix profil ou toggle Particulier<->Societe),
+            // preserver la valeur DB existante au lieu d ecraser avec NULL -> contrainte SQL violation.
+            if ($projet === null) $projet = $beforeProjet !== '' ? $beforeProjet : 'Acheteur';
             $stmt = db()->prepare(
                 "UPDATE clients SET data = ?, projet = ?, is_investisseur = ?, archived = ?,
                    is_draft = ?, prenom = ?, nom = ?, societe_nom = ?, tel = ?, email = ?,

@@ -25054,15 +25054,18 @@ function FormView(props) {
           <div style={{display:'flex', gap:'var(--space-6px)', marginBottom:'var(--space-3)'}}>
             {['Particulier', 'Société'].map(t => (
               <button key={t} onClick={() => {
-                /* M/2026/05/12/3 + M/2026/05/14/39 — Recopie bidirectionnelle prenom/nom au toggle
-                   Particulier<->Societe avec commit DB. Ne ecrase JAMAIS un champ destination deja
-                   rempli. Auto-save persiste via {commit:true}. */
+                /* M/2026/05/12/3 + M/2026/05/14/42 — Recopie bidirectionnelle prenom/nom au toggle
+                   Particulier<->Societe. Ne ecrase JAMAIS un champ destination deja rempli.
+                   PAS de {commit:true} sur les set() intermediaires : commit('profil_type', t)
+                   final declenche l autosave avec le state deja mis a jour synchronement. Le
+                   {commit:true} sur prefill (M/14/39) provoquait UPDATE immediat sans projet
+                   -> SQL constraint violation (regression M/14/42). */
                 if (t === 'Société') {
-                  if (!d.representant_prenom && d.prenom) set('representant_prenom', d.prenom, {commit: true});
-                  if (!d.representant_nom && d.nom) set('representant_nom', d.nom, {commit: true});
+                  if (!d.representant_prenom && d.prenom) set('representant_prenom', d.prenom);
+                  if (!d.representant_nom && d.nom) set('representant_nom', d.nom);
                 } else if (t === 'Particulier') {
-                  if (!d.prenom && d.representant_prenom) set('prenom', d.representant_prenom, {commit: true});
-                  if (!d.nom && d.representant_nom) set('nom', d.representant_nom, {commit: true});
+                  if (!d.prenom && d.representant_prenom) set('prenom', d.representant_prenom);
+                  if (!d.nom && d.representant_nom) set('nom', d.representant_nom);
                 }
                 setProfilType(t); commit('profil_type', t);
               }}
