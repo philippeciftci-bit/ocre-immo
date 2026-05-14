@@ -39,7 +39,12 @@ ensureGoogleQuotaSchema();
 
 $action = $_GET['action'] ?? 'autocomplete';
 $apiKey = getSetting('google_places_api_key', '');
-if (!$apiKey) jsonError('Google Places API non configure (settings.google_places_api_key absent)', 503);
+// M/2026/05/14/30 — Degradation gracieuse : si clé Google Places non configurée sur ce wsp,
+// retourner HTTP 200 + structure vide (au lieu de 503). Le front (M/79 monkey-patch apiCall)
+// ne déclenche plus le toast critique 5xx pour une feature simplement non activée. La saisie
+// adresse manuelle reste possible. Si la clé existe et que Google retourne une vraie erreur,
+// le comportement aval (jsonError 5xx) est conservé sur la branche legitime.
+if (!$apiKey) { jsonOk(['configured' => false, 'suggestions' => [], 'predictions' => []]); exit; }
 
 $casaTz = new DateTimeZone('Africa/Casablanca');
 $today = (new DateTime('now', $casaTz))->format('Y-m-d');
