@@ -1,0 +1,101 @@
+/* M/2026/05/15/11 — Charte OCRE centralisee (gravee 2026-05-15, Philippe Ciftci).
+ * Source de verite : /root/workspace/atelier-philippe/docs/CHARTE_OCRE.md
+ * Reference visuelle validee : docs/charte-ocre-finale.html
+ *
+ * 3 presentations validees UNIQUEMENT. Toute autre forme INTERDITE.
+ * Typo universelle : Cormorant Garamond 600, droite (jamais italique).
+ * Couleurs : ocre #8B5A3C, noir #1a1a1a, rouge #B83A3A.
+ *
+ * Glyphes requis (a precharger dans <head>) :
+ *   <link rel="preload" as="style"
+ *     href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+ *   <link rel="stylesheet"
+ *     href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&display=swap">
+ */
+
+/* ===== 1. LOGO (monogramme Oi) ===== */
+.ocre-logo-mono {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 110px;
+  height: 110px;
+}
+.ocre-logo-mono .o-letter {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  color: #8B5A3C;
+  font-size: 140px;
+  line-height: 1;
+  position: absolute;
+}
+.ocre-logo-mono .i-letter {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 82px;
+  line-height: 1;
+  position: relative;
+  z-index: 2;
+  top: 4px;
+}
+.ocre-logo-mono .dot-red {
+  position: absolute;
+  background: #B83A3A;
+  border-radius: 50%;
+  z-index: 3;
+  width: 15px;
+  height: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 33px;
+}
+
+/* ===== 2. MARQUE OCRE.immo ===== */
+.ocre-marque {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  font-size: 88px;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.ocre-marque .ocre-c { color: #8B5A3C; }
+.ocre-marque .dot-c  { color: #B83A3A; }
+.ocre-marque .immo-c { color: #1a1a1a; }
+
+/* ===== 3. LOGO + NOM OUTIL ===== */
+.ocre-logo-outil {
+  font-family: 'Cormorant Garamond', serif;
+  line-height: 1;
+  white-space: nowrap;
+  display: inline-block;
+}
+.ocre-logo-outil .logo-anchor {
+  display: inline-block;
+  position: relative;
+  vertical-align: baseline;
+  margin-right: 32px;
+}
+.ocre-logo-outil .logo-anchor .baseline-ghost {
+  font-size: 140px;
+  color: transparent;
+  line-height: 1;
+  visibility: hidden;
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+}
+.ocre-logo-outil .logo-anchor .ocre-logo-mono {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.ocre-logo-outil .outil {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  font-size: 88px;
+  color: #1a1a1a;
+  line-height: 1;
+  vertical-align: baseline;
+}
