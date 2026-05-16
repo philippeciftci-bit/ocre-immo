@@ -247,6 +247,22 @@ body.drawer-open { overflow: hidden; }
 .of-pwd-toggle svg { width: 20px; height: 20px; }
 .of-pwd-wrap { margin-bottom: 12px; }
 .of-pwd-wrap input { margin-bottom: 0; }
+/* M/2026/05/16/12 — Modale recuperation code super-admin self-service */
+.rec-overlay { position: fixed; inset: 0; background: rgba(42,24,16,.5); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+.rec-overlay.modal-open { display: flex; }
+.rec-card { background: #fff; border-radius: 14px; padding: 32px; max-width: 380px; width: 100%; box-shadow: 0 18px 50px rgba(42,24,16,.28); }
+.rec-card h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; color: #8B5A3C; font-size: 22px; font-weight: 600; margin: 0 0 8px; }
+.rec-card p.rec-lead { font-size: 13px; color: #6B5642; margin: 0 0 18px; line-height: 1.5; }
+.rec-card input { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid #d8c5a8; border-radius: 10px; font-size: 15px; color: #2A1810; margin-bottom: 16px; }
+.rec-card input:focus { outline: none; border-color: #8B5A3C; }
+.rec-actions { display: flex; gap: 10px; }
+.rec-btn { flex: 1; padding: 12px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.rec-btn-primary { background: #8B5A3C; color: #fff; border: none; }
+.rec-btn-primary:disabled { opacity: .55; cursor: default; }
+.rec-btn-cancel { background: transparent; color: #6B5642; border: 1px solid #d8c5a8; }
+.rec-feedback { font-size: 13px; margin: 14px 0 0; line-height: 1.5; display: none; }
+.rec-feedback.ok { color: #2e7d32; display: block; }
+.rec-feedback.err { color: #c0392b; display: block; }
 </style>
 </head>
 <body>
@@ -268,8 +284,24 @@ body.drawer-open { overflow: hidden; }
         <button id="submit-btn" type="submit" class="btn btn-primary" disabled>Accéder au dashboard</button>
       </form>
       <p id="login-err" class="feedback error" style="display:none"></p>
-      <p style="font-size:11px;color:#998877;margin-top:18px;text-align:center">Code oublié ? <a href="mailto:contact@ocre.immo?subject=Code%20oubli%C3%A9%20superadmin%20Ocre.immo&body=Bonjour%2C%0A%0AJ%27ai%20oubli%C3%A9%20mon%20code%20super-admin%20pour%20acc%C3%A9der%20%C3%A0%20superadmin.ocre.immo.%0A%0AMerci%20de%20me%20le%20renvoyer.%0A%0APhilippe" style="color:#8B5A3C">contact@ocre.immo</a></p>
+      <p style="font-size:11px;color:#998877;margin-top:18px;text-align:center"><a href="#" id="recover-link" style="color:#8B5A3C">Code oublié ?</a> · <a href="mailto:contact@ocre.immo?subject=Code%20oubli%C3%A9%20superadmin%20Ocre.immo&body=Bonjour%2C%0A%0AJ%27ai%20oubli%C3%A9%20mon%20code%20super-admin%20pour%20acc%C3%A9der%20%C3%A0%20superadmin.ocre.immo.%0A%0AMerci%20de%20me%20le%20renvoyer.%0A%0APhilippe" style="color:#8B5A3C">contact@ocre.immo</a></p>
     </div>
+  </div>
+</div>
+
+<!-- ============== MODALE RECUP CODE SUPER-ADMIN (M/2026/05/16/12) ============== -->
+<div class="rec-overlay" id="rec-overlay" role="dialog" aria-modal="true" aria-labelledby="rec-title">
+  <div class="rec-card">
+    <h2 id="rec-title">Récupérer mon code super-admin</h2>
+    <p class="rec-lead">Saisis ton email. Si tu es autorisé, ton code super-admin t'est envoyé par mail.</p>
+    <form id="rec-form" autocomplete="off" novalidate>
+      <input type="email" id="rec-email" placeholder="ton@email.fr" autocomplete="email" required>
+      <p class="rec-feedback" id="rec-feedback"></p>
+      <div class="rec-actions">
+        <button type="button" class="rec-btn rec-btn-cancel" id="rec-cancel">Annuler</button>
+        <button type="submit" class="rec-btn rec-btn-primary" id="rec-submit" disabled>Recevoir mon code</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -455,6 +487,71 @@ $('#code-form').addEventListener('submit', async e => {
     codeInput.focus();
   }
 });
+
+// ====== Modale recuperation code super-admin (M/2026/05/16/12) ======
+(function () {
+  const overlay = $('#rec-overlay');
+  const link = $('#recover-link');
+  const form = $('#rec-form');
+  const emailEl = $('#rec-email');
+  const submit = $('#rec-submit');
+  const cancel = $('#rec-cancel');
+  const fb = $('#rec-feedback');
+  if (!overlay || !link) return;
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function setFb(msg, kind) {
+    fb.textContent = msg || '';
+    fb.className = 'rec-feedback' + (kind ? ' ' + kind : '');
+  }
+  function open(e) {
+    if (e) e.preventDefault();
+    setFb('', '');
+    emailEl.value = '';
+    submit.disabled = true;
+    overlay.classList.add('modal-open');
+    setTimeout(() => emailEl.focus(), 50);
+  }
+  function close() {
+    overlay.classList.remove('modal-open');
+    form.reset();
+    setFb('', '');
+    submit.disabled = true;
+  }
+  link.addEventListener('click', open);
+  cancel.addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.classList.contains('modal-open')) close(); });
+  emailEl.addEventListener('input', () => { submit.disabled = !EMAIL_RE.test(emailEl.value.trim()); });
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = emailEl.value.trim();
+    if (!EMAIL_RE.test(email)) { setFb('Email invalide.', 'err'); return; }
+    submit.disabled = true;
+    submit.innerHTML = '<span class="spin"></span> Envoi…';
+    setFb('', '');
+    try {
+      const r = await fetch('/api/superadmin/recover.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) {
+        setFb(j.msg || 'Si cet email est autorisé, le code arrive sous peu.', 'ok');
+        setTimeout(close, 2600);
+      } else {
+        setFb(j.error || 'Erreur, réessaie dans un instant.', 'err');
+      }
+    } catch (ex) {
+      setFb('Erreur réseau, réessaie.', 'err');
+    } finally {
+      submit.innerHTML = 'Recevoir mon code';
+      submit.disabled = !EMAIL_RE.test(emailEl.value.trim());
+    }
+  });
+})();
 
 // ====== structure CSS Ocre : 3 phases —
 //   1) ?activate=<token> reçu par email → POST /api/superadmin_activate.php (cookie ocre_session) → reload sans param
