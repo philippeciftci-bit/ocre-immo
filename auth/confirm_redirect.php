@@ -32,6 +32,18 @@ $slug = (string)$result['slug'];
 $sessToken = createSession($uid, $ua, $ip);
 setSessionCookie($sessToken);
 
-$redirect = $slug !== '' ? "https://{$slug}.ocre.immo/" : '/';
-header('Location: ' . $redirect, true, 302);
+// M/2026/05/16/4 — Token exchange cross-subdomain : 302 vers
+// <slug>.ocre.immo/?st=<exchange_token> one-time-use (TTL 60s). Le cookie de
+// session definitif est pose FIRST-PARTY par exchange.php cote tenant
+// (survit Safari Private Mode + ITP). cf. /opt/ocre-app/api/auth/exchange.php.
+if ($slug !== '') {
+    $exToken = bin2hex(random_bytes(32));
+    _session_pdo()->prepare(
+        "INSERT INTO auth_exchange_tokens (token, user_id, slug, expires_at)
+         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 60 SECOND))"
+    )->execute([$exToken, $uid, $slug]);
+    header('Location: ' . "https://{$slug}.ocre.immo/?st={$exToken}", true, 302);
+} else {
+    header('Location: /', true, 302);
+}
 exit;

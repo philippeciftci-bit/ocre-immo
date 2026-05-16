@@ -40,7 +40,7 @@ if ($rateErr !== null) {
 }
 
 // Lookup user
-$st = $pdo->prepare("SELECT id, email, password_hash, locked_until, failed_login_count, role, archived_at FROM users WHERE email = ? LIMIT 1");
+$st = $pdo->prepare("SELECT id, email, password_hash, locked_until, failed_login_count, role, slug, archived_at FROM users WHERE email = ? LIMIT 1");
 $st->execute([$email]);
 $user = $st->fetch(PDO::FETCH_ASSOC);
 
@@ -85,8 +85,23 @@ if (password_auth_needs_rehash((string)$user['password_hash'])) {
 $token = createSession((int)$user['id'], $ua, $ip);
 setSessionCookie($token);
 
+// M/2026/05/16/4 — Token exchange cross-subdomain : on redirige vers le tenant
+// avec ?st=<exchange_token> one-time-use (TTL 60s, table auth_exchange_tokens).
+// Le cookie de session definitif est pose FIRST-PARTY par
+// <slug>.ocre.immo/api/auth/exchange.php (survit Safari Private Mode + ITP).
+$slug = (string)($user['slug'] ?? '');
+$redirect = '/';
+if ($slug !== '') {
+    $exToken = bin2hex(random_bytes(32));
+    $pdo->prepare(
+        "INSERT INTO auth_exchange_tokens (token, user_id, slug, expires_at)
+         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 60 SECOND))"
+    )->execute([$exToken, (int)$user['id'], $slug]);
+    $redirect = "https://{$slug}.ocre.immo/?st={$exToken}";
+}
+
 echo json_encode([
     'ok' => true,
-    'redirect' => '/',
+    'redirect' => $redirect,
     'session_token' => $token, // bridge legacy X-Session-Token compat helper api()
 ]);

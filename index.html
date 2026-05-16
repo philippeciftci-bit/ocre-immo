@@ -7,6 +7,27 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<!-- M/2026/05/16/4 — Token exchange cross-subdomain (pattern Auth0/Clerk). AVANT
+     tout autre script : si ?st=<exchange_token>, on consomme le token via
+     exchange.php (POST synchrone) -> cookie session pose FIRST-PARTY sur ce
+     sous-domaine, puis on nettoie l'URL. Le bootstrap continue ensuite :
+     session_check.php trouve le cookie first-party meme en Safari Private Mode. -->
+<script>
+(function(){
+  try {
+    var p = new URLSearchParams(window.location.search);
+    var st = p.get('st');
+    if (!st || !/^[a-f0-9]{64}$/.test(st)) return;
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/auth/exchange.php', false); // synchrone : bloque le bootstrap
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    try { xhr.send(JSON.stringify({ token: st })); } catch (e) {}
+    p.delete('st');
+    var clean = window.location.pathname + (p.toString() ? '?' + p.toString() : '') + window.location.hash;
+    window.history.replaceState({}, '', clean);
+  } catch (e) {}
+})();
+</script>
 <!-- M/2026/04/29/47 — Auto-invalidation FORCEE 4 couches.
      Couche 1 : headers HTTP no-cache (nginx, en place depuis M/27).
      Couche 2 : SW killswitch sw.js v82 (skipWaiting + clients.claim + caches.delete + unregister + navigate).
@@ -12649,7 +12670,7 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const activateToken = params.get('activate');
     if (!activateToken || !/^[a-f0-9]{32,128}$/i.test(activateToken)) {
-      window.location = '/login/?activate_error=TOKEN_FORMAT';
+      window.location.href = 'https://auth.ocre.immo/?return_to=' + encodeURIComponent(window.location.hostname);
       return null;
     }
     if (!window.__m72PostStarted) {
@@ -12882,9 +12903,9 @@ function App() {
           } else if (d && d.reason === 'tenant_mismatch') {
             window.location = 'https://app.ocre.immo/?error=tenant_mismatch';
           } else {
-            window.location = '/login/';
+            window.location.href = 'https://auth.ocre.immo/?return_to=' + encodeURIComponent(window.location.hostname);
           }
-        } catch (_) { window.location = '/login/'; }
+        } catch (_) { window.location.href = 'https://auth.ocre.immo/?return_to=' + encodeURIComponent(window.location.hostname); }
       })();
       return;
     }
@@ -12903,7 +12924,7 @@ function App() {
           if (e && e.name === 'AbortError') { setApiLoading(false); return; }
           throw e;
         }
-        if (!me || !me.ok) { localStorage.removeItem('ocre_token'); window.location = '/login/'; return; }
+        if (!me || !me.ok) { localStorage.removeItem('ocre_token'); window.location.href = 'https://auth.ocre.immo/?return_to=' + encodeURIComponent(window.location.hostname); return; }
         setCurrentUser(me.user);
         // M/2026/05/04/19 — boot feature flags apres me.user etabli (email pour cache key + override email).
         try { window.__ocreUserEmail = (me.user && me.user.email) || ''; window.bootFlags && window.bootFlags(); } catch (e) {}
@@ -13122,7 +13143,7 @@ function App() {
         if (r.status === 401) {
           // Session expiree : pas de retry. Clear localStorage et redirect vers login.
           try { localStorage.removeItem('ocre_token'); } catch (_) {}
-          try { window.location = '/login/?expired=1'; } catch (_) {}
+          try { window.location.href = 'https://auth.ocre.immo/?return_to=' + encodeURIComponent(window.location.hostname); } catch (_) {}
           return null;
         }
         const d = await r.json();
@@ -13301,7 +13322,7 @@ function App() {
     try { await fetch('/api/logout.php', {method:'POST', credentials:'include'}); } catch (e) {}
     localStorage.removeItem('ocre_token');
     localStorage.removeItem('ocre_user');
-    window.location = '/login/';
+    window.location.href = 'https://auth.ocre.immo/?return_to=' + encodeURIComponent(window.location.hostname);
   }
   // M/2026/04/30/26 — auto-logout 30 min inactivite (warning a 28 min via askConfirm).
   useInactivityLogout(logout);
@@ -20044,7 +20065,7 @@ function globalLogout() {
   } catch (e) {}
   ['ocre_token','ocre_user','ocre_first_login','ocre.session_token','ocre.user_email','ocre_user_email','ocre_impersonation','ocre_impersonation_token'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
   try { sessionStorage.clear(); } catch (e) {}
-  window.location = '/login/';
+  window.location.href = 'https://auth.ocre.immo/?return_to=' + encodeURIComponent(window.location.hostname);
 }
 function LogoutButton({size = 36}) {
   // V52.8 conserve : composant déconnexion icône (pas utilisé en prod, gardé pour
@@ -21246,7 +21267,7 @@ function ClientRow({c, onClick, clients, matchInfo, onOpenMatches, onOpenSection
       if (r.status === 401) {
         if (props.onArchiveOptimistic) props.onArchiveOptimistic(c.id, prevArchived);
         if (typeof showOcreToast === 'function') showOcreToast('Session expiree, reconnexion necessaire');
-        try { localStorage.removeItem('ocre_token'); window.location = '/login/?expired=1'; } catch (_) {}
+        try { localStorage.removeItem('ocre_token'); window.location.href = 'https://auth.ocre.immo/?return_to=' + encodeURIComponent(window.location.hostname); } catch (_) {}
         return;
       }
       let j = null;
