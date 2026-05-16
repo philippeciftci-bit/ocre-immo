@@ -4,13 +4,18 @@
 // Anti-enumeration OWASP : reponse generique identique que l'email soit autorise ou non.
 // Throttle 1 demande / email / 10 min via table ocre_meta.superadmin_recovery.
 // Toutes tentatives (autorisees ou non) loggees en DB + notif Telegram a Philippe.
+//
+// CHEMIN PLAT OBLIGATOIRE : le vhost superadmin.ocre.immo ne route vers PHP-FPM que
+// `location ~ ^/api/([^/]+\.php)$` (aucun slash). Un sous-dossier /api/superadmin/
+// tombe en static -> 405 sur POST. Tous les endpoints superadmin sont donc plats
+// (superadmin_code_login.php, superadmin_activate.php, ...). Ne pas re-deplacer en sous-dossier.
 
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../db.php';
-require_once __DIR__ . '/../lib/email_sender.php';
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib/email_sender.php';
 
 const RECOVER_VAGUE_MSG = 'Si cet email est autorisé, le code arrive sous peu.';
 

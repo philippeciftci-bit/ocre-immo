@@ -532,7 +532,7 @@ $('#code-form').addEventListener('submit', async e => {
     submit.innerHTML = '<span class="spin"></span> Envoi…';
     setFb('', '');
     try {
-      const r = await fetch('/api/superadmin/recover.php', {
+      const r = await fetch('/api/superadmin_recover.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
