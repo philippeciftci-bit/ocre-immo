@@ -13,10 +13,14 @@
      Couche 3 : version-check synchrone APP_VERSION (localStorage compare + purge + reload).
      Couche 4 : registration.update() FORCE au load + fetch /api/version.php periodique 30s.
      Garantie : Philippe ne touche JAMAIS son cache. -->
+<!-- M/2026/05/16/2 — BUILD_ID unique : window.APP_VERSION servi par /api/build-version.php
+     (lit /opt/ocre-app/.build-version, MEME source que /api/version.php). Charge AVANT
+     l'IIFE version-check, synchrone, ordre garanti. Fin de la desync hardcode/sed. -->
+<script src="/api/build-version.php"></script>
 <script>
 (function() {
-  var APP_VERSION = '82643df-1778779316';
-  if (APP_VERSION === '__BUILD_' + 'VERSION__') return;
+  var APP_VERSION = window.APP_VERSION;
+  if (!APP_VERSION || APP_VERSION === 'unknown') return;
 
   function purgeAndReload() {
     var done = function() {
@@ -4107,6 +4111,18 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
   const [focused, setFocused] = React.useState(false);
   useBodyScrollLock(focused || open);
 
+  function normalizeCountry(cc) {
+    return (cc || '').toUpperCase();
+  }
+  function filterByCountry(items, countryCode) {
+    if (!countryCode) return items;
+    const wanted = normalizeCountry(countryCode);
+    const primary = items.filter(it => {
+      const code = normalizeCountry(it.country_code || (it.address && it.address.country_code) || it.pays || it.country);
+      return code === wanted;
+    });
+    return primary.length ? primary : items;
+  }
   function handleChange(e) {
     const raw = e.target.value;
     onChange(raw);
@@ -4123,6 +4139,12 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
         const d = await r.json();
         if (d && d.ok && Array.isArray(d.results)) osmResults = d.results.slice(0, 5).map(s => ({...s, _source: 'osm'}));
       } catch (e) { osmResults = []; }
+      const osmPrioritized = filterByCountry(osmResults, country);
+      if (osmPrioritized.length) {
+        setSuggestions(osmPrioritized);
+        setLoading(false);
+        return;
+      }
       // M/2026/04/30/7 — fallback Google si <=1 resultat OSM ET query >=5 chars.
       if (osmResults.length <= 1 && q.length >= 5) {
         try {
@@ -4138,8 +4160,21 @@ function AddressAutocomplete({label='Adresse', value, onChange, country, onPick,
             const d = await r.json();
             if (d && d.ok) {
               if (d.quota) setQuotaInfo({count: d.quota.count, limit: d.quota.limit, exceeded: false});
-              const googleResults = (d.results || []).map(p => ({...p, _source: 'google'}));
-              osmResults = osmResults.concat(googleResults);
+              const countryName = (() => {
+                if (!country) return '';
+                const cache = (window.M111_COUNTRIES_CACHE && window.M111_COUNTRIES_CACHE.data) || PAYS;
+                const hit = cache.find(p => p.c === country);
+                return hit ? String(hit.n || hit.name || '').toLowerCase() : '';
+              })();
+              let googleResults = (d.results || []).map(p => ({...p, _source: 'google'}));
+              if (countryName) {
+                const filtered = googleResults.filter(p => {
+                  const secondary = (p.secondary_text || p.description || '').toLowerCase();
+                  return secondary.includes(countryName);
+                });
+                if (filtered.length) googleResults = filtered;
+              }
+              osmResults = googleResults.length ? googleResults : osmResults;
             }
           }
         } catch (e) { /* ignore network errors */ }
