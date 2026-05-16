@@ -3,6 +3,10 @@
 <head>
 <!-- ocre-v20-pdf-share -->
 <meta charset="UTF-8">
+<!-- M/2026/05/16/5 — error-logger maison : capture JS/promise/console/nav-loop/http-fail
+     -> /api/error-log.php -> Telegram. Charge AVANT tout autre script (incl. exchange.php)
+     pour intercepter leurs erreurs des le bootstrap. WebKit/Safari iOS prioritaire. -->
+<script src="/assets/error-logger.js"></script>
 <!-- V46 — cache-bust agressif (Safari iOS sert souvent un index obsolete malgre le SW). -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
