@@ -1,0 +1,14 @@
+-- DISABLED 2026-05-17 — M/2026/05/17/FIX-M82-5-RESEED-WSP
+-- Migration FAUTIVE : 'DROP TABLE IF EXISTS workspaces' ciblait la table REGISTRE vivante
+-- (ocre_meta.workspaces) au lieu des tables pivot obsoletes M82.1. A vide le registre,
+-- KO embed public + listing superadmin. Neutralisee : hors pool migrations, .disabled.
+-- Contenu original conserve ci-dessous (commente, NON executable) :
+--
+-- -- M/2026/05/06/82.5 — Cleanup tables workspaces obsoletes (pivot M83 agents+pacts+matching).
+-- -- DROP des tables creees en M82.1, plus utilisees apres l abandon du modele "partage de dossier".
+-- -- Idempotent.
+-- 
+-- SET FOREIGN_KEY_CHECKS = 0;
+-- DROP TABLE IF EXISTS client_workspaces;
+-- DROP TABLE IF EXISTS workspaces;
+-- SET FOREIGN_KEY_CHECKS = 1;
